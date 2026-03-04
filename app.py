@@ -190,9 +190,9 @@ def send_invite_email(to_email, to_name=""):
         return True, token
     except urllib.error.HTTPError as e:
         body = e.read().decode()
-        return False, f"Resend error {{e.code}}: {{body}}"
+        return False, f"Resend error {e.code}: {body}"
     except Exception as e:
-        return False, f"Email error: {{str(e)}}"
+        return False, f"Email error: {str(e)}"
 
 def is_logged_in():
     return session.get("logged_in") is True
