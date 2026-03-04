@@ -48,57 +48,140 @@ DATA_FILE = os.environ.get("DATA_FILE", "documents.json")
 
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "deped2025")
-INVITE_CODE    = os.environ.get("INVITE_CODE", "deped-leyte-staff")
 
-# ── Email config (set these in Railway Variables) ──
-MAIL_SENDER    = os.environ.get("MAIL_SENDER", "")      # your Gmail address
-MAIL_PASSWORD  = os.environ.get("MAIL_PASSWORD", "")    # Gmail App Password
-MAIL_ENABLED   = bool(MAIL_SENDER and MAIL_PASSWORD)
+# ── Email config ──
+MAIL_SENDER   = os.environ.get("MAIL_SENDER", "")
+MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "")
+MAIL_ENABLED  = bool(MAIL_SENDER and MAIL_PASSWORD)
+
+# ─────────────────────────────────────────────
+#  INVITE TOKEN HELPERS
+# ─────────────────────────────────────────────
+
+def generate_invite_token(email, name=""):
+    """Create a unique one-time invite token stored in DB."""
+    token = uuid.uuid4().hex  # random 32-char hex token
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    # Remove any previous unused tokens for this email
+                    cur.execute("DELETE FROM invite_tokens WHERE email=%s AND used=FALSE", (email,))
+                    cur.execute(
+                        "INSERT INTO invite_tokens (token, email, name) VALUES (%s, %s, %s)",
+                        (token, email, name)
+                    )
+                conn.commit()
+        except Exception as e:
+            print(f"Token insert error: {e}")
+    else:
+        # JSON fallback
+        tokens = _load_tokens_json()
+        tokens = [t for t in tokens if not (t["email"] == email and not t.get("used"))]
+        tokens.append({"token": token, "email": email, "name": name, "used": False})
+        _save_tokens_json(tokens)
+    return token
+
+def validate_invite_token(token):
+    """Check token is valid, unused, and not expired. Returns (email, name) or (None, None)."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT email, name FROM invite_tokens
+                        WHERE token=%s AND used=FALSE AND expires_at > NOW()
+                    """, (token,))
+                    row = cur.fetchone()
+                    return (row["email"], row["name"]) if row else (None, None)
+        except Exception as e:
+            print(f"Token validate error: {e}")
+            return None, None
+    else:
+        tokens = _load_tokens_json()
+        for t in tokens:
+            if t["token"] == token and not t.get("used"):
+                return t["email"], t.get("name","")
+        return None, None
+
+def consume_invite_token(token):
+    """Mark token as used after successful registration."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE invite_tokens SET used=TRUE WHERE token=%s", (token,))
+                conn.commit()
+        except Exception as e:
+            print(f"Token consume error: {e}")
+    else:
+        tokens = _load_tokens_json()
+        for t in tokens:
+            if t["token"] == token:
+                t["used"] = True
+        _save_tokens_json(tokens)
+
+def get_all_tokens():
+    """Get all invite tokens for admin view."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT token, email, name, used, created_at, expires_at
+                        FROM invite_tokens ORDER BY created_at DESC LIMIT 50
+                    """)
+                    return cur.fetchall()
+        except:
+            return []
+    return _load_tokens_json()
+
+def _load_tokens_json():
+    if os.path.exists("invite_tokens.json"):
+        with open("invite_tokens.json") as f:
+            return json.load(f)
+    return []
+
+def _save_tokens_json(tokens):
+    with open("invite_tokens.json","w") as f:
+        json.dump(tokens, f, indent=2)
 
 def send_invite_email(to_email, to_name=""):
-    """Send an invite email with the registration link and invite code."""
+    """Generate a unique token and send invite email."""
     if not MAIL_ENABLED:
         return False, "Email not configured. Set MAIL_SENDER and MAIL_PASSWORD in Railway Variables."
     try:
+        token = generate_invite_token(to_email, to_name)
         base_url = os.environ.get("APP_URL", "https://your-app.up.railway.app").rstrip("/")
-        register_link = f"{base_url}/register"
+        register_link = f"{base_url}/register?token={token}"
         greeting = f"Hi {to_name}," if to_name else "Hello,"
 
-        # ── HTML email body ──
         html = f"""
         <div style="font-family:'DM Sans',Arial,sans-serif;max-width:520px;margin:0 auto;background:#F4F7FB;padding:24px;border-radius:16px;">
           <div style="background:#0D1B2A;border-radius:12px 12px 0 0;padding:28px 32px;text-align:center;">
             <div style="font-size:40px;margin-bottom:8px;">🏫</div>
-            <div style="font-family:Arial,sans-serif;font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px;">DocTracker</div>
+            <div style="font-family:Arial,sans-serif;font-size:22px;font-weight:800;color:#fff;">DocTracker</div>
             <div style="font-size:13px;color:#8EA8C3;margin-top:4px;">DepEd Leyte Division — Document Routing System</div>
           </div>
           <div style="background:#fff;border-radius:0 0 12px 12px;padding:32px;">
             <p style="font-size:15px;color:#1A2B45;margin-bottom:16px;">{greeting}</p>
             <p style="font-size:15px;color:#1A2B45;margin-bottom:24px;">
               You have been invited to join the <strong>DepEd Leyte Division Document Tracker</strong> as a staff member.
-              Use the details below to create your account.
+              Click the button below to create your account.
             </p>
-
-            <div style="background:#EFF6FF;border:2px dashed #3B82F6;border-radius:10px;padding:20px;text-align:center;margin-bottom:24px;">
-              <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6B7FA3;margin-bottom:8px;">Your Invite Code</div>
-              <div style="font-size:26px;font-weight:800;color:#1D4ED8;font-family:monospace;letter-spacing:0.05em;">{INVITE_CODE}</div>
-            </div>
-
             <div style="text-align:center;margin-bottom:24px;">
               <a href="{register_link}"
-                 style="display:inline-block;background:#3B82F6;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:16px;">
-                ✅ Register Now
+                 style="display:inline-block;background:#3B82F6;color:#fff;text-decoration:none;padding:16px 36px;border-radius:10px;font-weight:700;font-size:16px;">
+                ✅ Accept Invitation & Register
               </a>
             </div>
-
-            <div style="background:#F4F7FB;border-radius:8px;padding:14px 16px;font-size:13px;color:#6B7FA3;line-height:1.6;">
-              <strong style="color:#1A2B45;">Steps to register:</strong><br/>
-              1. Click the button above or go to <a href="{register_link}" style="color:#3B82F6;">{register_link}</a><br/>
-              2. Enter the invite code shown above<br/>
-              3. Choose your username and password<br/>
-              4. Log in and start tracking documents
+            <div style="background:#FFF3CD;border:1.5px solid #F59E0B;border-radius:8px;padding:12px 16px;font-size:13px;color:#92400E;margin-bottom:20px;">
+              ⏰ <strong>This invite link expires in 48 hours</strong> and can only be used once.
             </div>
-
+            <div style="background:#F4F7FB;border-radius:8px;padding:14px 16px;font-size:13px;color:#6B7FA3;line-height:1.8;">
+              If the button doesn't work, copy this link into your browser:<br/>
+              <a href="{register_link}" style="color:#3B82F6;word-break:break-all;">{register_link}</a>
+            </div>
             <p style="font-size:12px;color:#9CA3AF;margin-top:20px;text-align:center;">
               If you did not expect this invitation, you can ignore this email.<br/>
               DepEd Leyte Division Office
@@ -107,19 +190,12 @@ def send_invite_email(to_email, to_name=""):
         </div>
         """
 
-        # ── Plain text fallback ──
         text = f"""{greeting}
 
-You have been invited to join the DepEd Leyte Division Document Tracker as a staff member.
+You have been invited to join the DepEd Leyte Division Document Tracker.
 
-Your Invite Code: {INVITE_CODE}
-Register here: {register_link}
-
-Steps:
-1. Go to {register_link}
-2. Enter the invite code above
-3. Choose your username and password
-4. Log in and start tracking documents
+Click this link to register (expires in 48 hours, one-time use):
+{register_link}
 
 DepEd Leyte Division Office
         """
@@ -128,7 +204,6 @@ DepEd Leyte Division Office
         msg["Subject"] = "🏫 You're Invited — DepEd Leyte DocTracker Staff Access"
         msg["From"]    = f"DepEd DocTracker <{MAIL_SENDER}>"
         msg["To"]      = to_email
-
         msg.attach(MIMEText(text, "plain"))
         msg.attach(MIMEText(html, "html"))
 
@@ -136,9 +211,9 @@ DepEd Leyte Division Office
             smtp.login(MAIL_SENDER, MAIL_PASSWORD)
             smtp.sendmail(MAIL_SENDER, to_email, msg.as_string())
 
-        return True, None
+        return True, token
     except smtplib.SMTPAuthenticationError:
-        return False, "Gmail authentication failed. Check your App Password in Railway Variables."
+        return False, "Gmail authentication failed. Check your App Password."
     except smtplib.SMTPRecipientsRefused:
         return False, f"Could not send to '{to_email}'. Check the email address."
     except Exception as e:
@@ -183,6 +258,17 @@ def init_db():
                     full_name TEXT,
                     role TEXT DEFAULT 'staff',
                     created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            # Invite tokens table — one-time use, expires in 48 hours
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS invite_tokens (
+                    token TEXT PRIMARY KEY,
+                    email TEXT NOT NULL,
+                    name TEXT,
+                    used BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    expires_at TIMESTAMP DEFAULT (NOW() + INTERVAL '48 hours')
                 )
             """)
         conn.commit()
@@ -526,30 +612,38 @@ def login():
 def register():
     if is_logged_in():
         return redirect(url_for("index"))
+    token = request.args.get("token") or request.form.get("token","")
+    # Validate token on page load
+    token_email, token_name = validate_invite_token(token) if token else (None, None)
+    token_valid = bool(token_email)
     error = None
-    if request.method == "POST":
-        invite   = request.form.get("invite_code","").strip()
-        username = request.form.get("username","").strip()
-        full_name= request.form.get("full_name","").strip()
-        password = request.form.get("password","").strip()
-        confirm  = request.form.get("confirm_password","").strip()
 
-        if invite != INVITE_CODE:
-            error = "Invalid invite code. Please contact your administrator."
-        elif not username or not password:
-            error = "Username and password are required."
-        elif len(password) < 6:
-            error = "Password must be at least 6 characters."
-        elif password != confirm:
-            error = "Passwords do not match."
+    if request.method == "POST":
+        if not token_valid:
+            error = "Invalid or expired invite link. Please ask the admin to send a new one."
         else:
-            ok, err = create_user(username, password, full_name)
-            if ok:
-                flash("Account created! You can now log in.", "success")
-                return redirect(url_for("login"))
+            username = request.form.get("username","").strip()
+            full_name= request.form.get("full_name","").strip()
+            password = request.form.get("password","").strip()
+            confirm  = request.form.get("confirm_password","").strip()
+            if not username or not password:
+                error = "Username and password are required."
+            elif len(password) < 6:
+                error = "Password must be at least 6 characters."
+            elif password != confirm:
+                error = "Passwords do not match."
             else:
-                error = err
-    return render_template("register.html", error=error)
+                ok, err = create_user(username, password, full_name or token_name)
+                if ok:
+                    consume_invite_token(token)
+                    flash("Account created! You can now log in.", "success")
+                    return redirect(url_for("login"))
+                else:
+                    error = err
+
+    return render_template("register.html", error=error,
+                           token=token, token_valid=token_valid,
+                           token_email=token_email, token_name=token_name)
 
 @app.route("/logout")
 def logout():
@@ -574,20 +668,33 @@ def send_invite():
         flash("Admin access required.", "error")
         return redirect(url_for("index"))
     result = None
+    generated_link = None
     if request.method == "POST":
         to_email = request.form.get("email","").strip()
         to_name  = request.form.get("name","").strip()
         if not to_email:
             result = {"ok": False, "msg": "Email address is required."}
-        else:
-            ok, err = send_invite_email(to_email, to_name)
+        elif MAIL_ENABLED:
+            ok, token_or_err = send_invite_email(to_email, to_name)
             if ok:
-                result = {"ok": True, "msg": f"Invite sent to {to_email} successfully!"}
+                base_url = os.environ.get("APP_URL","").rstrip("/") or request.host_url.rstrip("/")
+                generated_link = f"{base_url}/register?token={token_or_err}"
+                result = {"ok": True, "msg": f"Invite sent to {to_email}!"}
             else:
-                result = {"ok": False, "msg": err}
+                result = {"ok": False, "msg": token_or_err}
+        else:
+            # Email not configured — just generate the link for manual sharing
+            token = generate_invite_token(to_email, to_name)
+            base_url = os.environ.get("APP_URL","").rstrip("/") or request.host_url.rstrip("/")
+            generated_link = f"{base_url}/register?token={token}"
+            result = {"ok": True, "msg": f"Invite link generated for {to_email}. Copy and share it manually.", "manual": True}
+
+    tokens = get_all_tokens()
     return render_template("send_invite.html", result=result,
                            mail_enabled=MAIL_ENABLED,
-                           invite_code=INVITE_CODE)
+                           generated_link=generated_link,
+                           tokens=tokens,
+                           now=datetime.now())
 @login_required
 def delete_user_route(username):
     if session.get("role") != "admin":
