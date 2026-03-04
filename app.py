@@ -122,7 +122,7 @@ def consume_invite_token(token):
         _save_tokens_json(tokens)
 
 def get_all_tokens():
-    """Get all invite tokens for admin view."""
+    """Get all invite tokens for admin view as plain dicts."""
     if USE_DB:
         try:
             with get_conn() as conn:
@@ -131,8 +131,11 @@ def get_all_tokens():
                         SELECT token, email, name, used, created_at, expires_at
                         FROM invite_tokens ORDER BY created_at DESC LIMIT 50
                     """)
-                    return cur.fetchall()
-        except:
+                    rows = cur.fetchall()
+                    # Convert RealDictRow to plain dict so .get() works in templates
+                    return [dict(r) for r in rows]
+        except Exception as e:
+            print(f"get_all_tokens error: {e}")
             return []
     return _load_tokens_json()
 
@@ -412,8 +415,9 @@ def get_all_users():
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute("SELECT username, full_name, role, created_at FROM users ORDER BY created_at DESC")
-                    return cur.fetchall()
-        except:
+                    return [dict(r) for r in cur.fetchall()]
+        except Exception as e:
+            print(f"get_all_users error: {e}")
             return []
     return load_users_json()
 
@@ -718,32 +722,45 @@ def send_invite():
         return redirect(url_for("index"))
     result = None
     generated_link = None
-    if request.method == "POST":
-        to_email = request.form.get("email","").strip()
-        to_name  = request.form.get("name","").strip()
-        if not to_email:
-            result = {"ok": False, "msg": "Email address is required."}
-        elif MAIL_ENABLED:
-            ok, token_or_err = send_invite_email(to_email, to_name)
-            if ok:
-                base_url = os.environ.get("APP_URL","").rstrip("/") or request.host_url.rstrip("/")
-                generated_link = f"{base_url}/register?token={token_or_err}"
-                result = {"ok": True, "msg": f"Invite sent to {to_email}!"}
+    try:
+        if request.method == "POST":
+            to_email = request.form.get("email","").strip()
+            to_name  = request.form.get("name","").strip()
+            if not to_email:
+                result = {"ok": False, "msg": "Email address is required."}
+            elif MAIL_ENABLED:
+                try:
+                    ok, token_or_err = send_invite_email(to_email, to_name)
+                    if ok:
+                        base_url = os.environ.get("APP_URL","").rstrip("/") or request.host_url.rstrip("/")
+                        generated_link = f"{base_url}/register?token={token_or_err}"
+                        result = {"ok": True, "msg": f"Invite sent to {to_email}!"}
+                    else:
+                        result = {"ok": False, "msg": token_or_err}
+                except Exception as e:
+                    import traceback
+                    print(traceback.format_exc())
+                    token = generate_invite_token(to_email, to_name)
+                    base_url = os.environ.get("APP_URL","").rstrip("/") or request.host_url.rstrip("/")
+                    generated_link = f"{base_url}/register?token={token}"
+                    result = {"ok": False, "msg": f"Email failed: {str(e)} — invite link generated below, share it manually."}
             else:
-                result = {"ok": False, "msg": token_or_err}
-        else:
-            # Email not configured — just generate the link for manual sharing
-            token = generate_invite_token(to_email, to_name)
-            base_url = os.environ.get("APP_URL","").rstrip("/") or request.host_url.rstrip("/")
-            generated_link = f"{base_url}/register?token={token}"
-            result = {"ok": True, "msg": f"Invite link generated for {to_email}. Copy and share it manually.", "manual": True}
+                token = generate_invite_token(to_email, to_name)
+                base_url = os.environ.get("APP_URL","").rstrip("/") or request.host_url.rstrip("/")
+                generated_link = f"{base_url}/register?token={token}"
+                result = {"ok": True, "msg": f"Invite link generated for {to_email}. Copy and share it manually.", "manual": True}
 
-    tokens = get_all_tokens()
-    return render_template("send_invite.html", result=result,
-                           mail_enabled=MAIL_ENABLED,
-                           generated_link=generated_link,
-                           tokens=tokens,
-                           now=datetime.now())
+        tokens = get_all_tokens()
+        return render_template("send_invite.html", result=result,
+                               mail_enabled=MAIL_ENABLED,
+                               generated_link=generated_link,
+                               tokens=tokens,
+                               now=datetime.now())
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        flash(f"Error: {str(e)}", "error")
+        return redirect(url_for("manage_users"))
 @login_required
 def delete_user_route(username):
     if session.get("role") != "admin":

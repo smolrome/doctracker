@@ -74,9 +74,7 @@
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <span class="role-badge role-staff">👤 Staff</span>
-        {% if user.created_at %}
-          <span class="user-date">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}</span>
-        {% endif %}
+        <span class="user-date">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}</span>
         <form method="post" action="/delete-user/{{ user.username }}"
               onsubmit="return confirm('Remove {{ user.username }}? They will lose access immediately.')"
               style="display:inline;">
