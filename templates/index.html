@@ -1,106 +1,82 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- STATS -->
 <div class="stats-grid">
-  <div class="stat-card">
-    <div class="stat-num">{{ stats.total }}</div>
-    <div class="stat-label">Total Documents</div>
-  </div>
-  <div class="stat-card yellow">
-    <div class="stat-num">{{ stats.pending }}</div>
-    <div class="stat-label">Pending</div>
-  </div>
-  <div class="stat-card teal">
-    <div class="stat-num">{{ stats.in_review }}</div>
-    <div class="stat-label">In Review</div>
-  </div>
-  <div class="stat-card green">
-    <div class="stat-num">{{ stats.released }}</div>
-    <div class="stat-label">Released</div>
-  </div>
-  <div class="stat-card red">
-    <div class="stat-num">{{ stats.on_hold }}</div>
-    <div class="stat-label">On Hold</div>
-  </div>
+  <div class="stat-card"><div class="stat-num">{{ stats.total }}</div><div class="stat-label">Total</div></div>
+  <div class="stat-card yellow"><div class="stat-num">{{ stats.pending }}</div><div class="stat-label">Pending</div></div>
+  <div class="stat-card teal"><div class="stat-num">{{ stats.in_review }}</div><div class="stat-label">In Review</div></div>
+  <div class="stat-card"><div class="stat-num">{{ stats.in_transit }}</div><div class="stat-label">In Transit</div></div>
+  <div class="stat-card green"><div class="stat-num">{{ stats.released }}</div><div class="stat-label">Released</div></div>
+  <div class="stat-card red"><div class="stat-num">{{ stats.on_hold }}</div><div class="stat-label">On Hold</div></div>
 </div>
 
-<!-- FILTERS -->
 <form method="get" action="/">
   <div class="filters">
-    <input type="text" name="search" value="{{ search }}" placeholder="🔍  Search by name, ID, sender, recipient..." />
+    <input type="text" name="search" value="{{ search }}" placeholder="🔍 Search name, ID, sender..." />
     <select name="status" onchange="this.form.submit()">
       {% for s in status_options %}
         <option value="{{ s }}" {% if filter_status == s %}selected{% endif %}>{{ s }}</option>
       {% endfor %}
     </select>
     <a href="/?type=All&search={{ search }}&status={{ filter_status }}"
-       class="btn-filter {% if filter_type == 'All' %}active{% endif %}">All</a>
+       class="btn-filter {% if filter_type=='All' %}active{% endif %}">All</a>
     <a href="/?type=Received&search={{ search }}&status={{ filter_status }}"
-       class="btn-filter {% if filter_type == 'Received' %}active{% endif %}">Received</a>
+       class="btn-filter {% if filter_type=='Received' %}active{% endif %}">Received</a>
     <a href="/?type=Released&search={{ search }}&status={{ filter_status }}"
-       class="btn-filter {% if filter_type == 'Released' %}active{% endif %}">Released</a>
+       class="btn-filter {% if filter_type=='Released' %}active{% endif %}">Released</a>
     <button type="submit" class="btn btn-primary btn-sm">Search</button>
   </div>
 </form>
 
-<!-- TABLE -->
 <div class="table-wrap">
   <div class="table-head">
-    <div class="table-title">Documents</div>
+    <div class="table-title">📋 Documents</div>
     <div class="table-count">{{ docs|length }} record{% if docs|length != 1 %}s{% endif %}</div>
   </div>
 
   {% if docs %}
-  <table>
-    <thead>
-      <tr>
-        <th>Document</th>
-        <th>Unit / Office / School</th>
-        <th>Source / Sender</th>
-        <th>Received By</th>
-        <th>Referred To</th>
-        <th>Forwarded To</th>
-        <th>Date Received</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for doc in docs %}
-      <tr onclick="window.location='/view/{{ doc.id }}'">
-        <td>
-          <div class="doc-name">{{ doc.doc_name }}</div>
-          {% if doc.doc_id %}
-            <div class="doc-id">{{ doc.doc_id }}</div>
-          {% endif %}
-          {% if doc.category %}
-            <div style="font-size:11px;color:var(--muted);margin-top:2px;">{{ doc.category }}</div>
-          {% endif %}
-        </td>
-        <td>{{ doc.sender_org or '—' }}</td>
-        <td>{{ doc.sender_name or '—' }}</td>
-        <td>{{ doc.received_by or '—' }}</td>
-        <td>{{ doc.referred_to or '—' }}</td>
-        <td>{{ doc.forwarded_to or '—' }}</td>
-        <td>{{ doc.date_received or '—' }}</td>
-        <td>
-          {% set s = doc.status %}
-          {% if s == 'Pending' %}
-            <span class="badge badge-pending">{{ s }}</span>
-          {% elif s == 'In Review' %}
-            <span class="badge badge-review">{{ s }}</span>
-          {% elif s == 'Released' %}
-            <span class="badge badge-released">{{ s }}</span>
-          {% elif s == 'On Hold' %}
-            <span class="badge badge-hold">{{ s }}</span>
-          {% else %}
-            <span class="badge badge-archived">{{ s }}</span>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Document</th>
+          <th>Unit / Office / School</th>
+          <th>Source / Sender</th>
+          <th>Received By</th>
+          <th>Referred To</th>
+          <th>Forwarded To</th>
+          <th>Date Received</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for doc in docs %}
+        <tr onclick="window.location='/view/{{ doc.id }}'">
+          <td>
+            <div class="doc-name">{{ doc.doc_name }}</div>
+            {% if doc.doc_id %}<div class="doc-id">{{ doc.doc_id }}</div>{% endif %}
+            {% if doc.category %}<div style="font-size:11px;color:var(--muted);margin-top:2px;">{{ doc.category }}</div>{% endif %}
+          </td>
+          <td>{{ doc.sender_org or '—' }}</td>
+          <td>{{ doc.sender_name or '—' }}</td>
+          <td>{{ doc.received_by or '—' }}</td>
+          <td>{{ doc.referred_to or '—' }}</td>
+          <td>{{ doc.forwarded_to or '—' }}</td>
+          <td style="white-space:nowrap;">{{ doc.date_received or '—' }}</td>
+          <td>
+            {% set s = doc.status %}
+            {% if s=='Pending' %}<span class="badge badge-pending">{{ s }}</span>
+            {% elif s=='In Review' %}<span class="badge badge-review">{{ s }}</span>
+            {% elif s=='In Transit' %}<span class="badge badge-transit">{{ s }}</span>
+            {% elif s=='Released' %}<span class="badge badge-released">{{ s }}</span>
+            {% elif s=='On Hold' %}<span class="badge badge-hold">{{ s }}</span>
+            {% else %}<span class="badge badge-archived">{{ s }}</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% else %}
   <div class="empty">
     <div class="empty-icon">📭</div>
