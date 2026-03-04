@@ -241,7 +241,6 @@ def get_conn():
 def init_db():
     with get_conn() as conn:
         with conn.cursor() as cur:
-            # Documents table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS documents (
                     id TEXT PRIMARY KEY,
@@ -249,7 +248,6 @@ def init_db():
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
-            # Users table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
@@ -260,7 +258,7 @@ def init_db():
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
-            # Invite tokens table — one-time use, expires in 48 hours
+            # Safe migration — create invite_tokens if not already present
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS invite_tokens (
                     token TEXT PRIMARY KEY,
@@ -271,6 +269,19 @@ def init_db():
                     expires_at TIMESTAMP DEFAULT (NOW() + INTERVAL '48 hours')
                 )
             """)
+            # Safe migration — add expires_at column if missing from older installs
+            cur.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='invite_tokens' AND column_name='expires_at'
+                    ) THEN
+                        ALTER TABLE invite_tokens
+                        ADD COLUMN expires_at TIMESTAMP DEFAULT (NOW() + INTERVAL '48 hours');
+                    END IF;
+                END$$;
+            """)
         conn.commit()
 
 if USE_DB:
@@ -278,6 +289,44 @@ if USE_DB:
         init_db()
     except Exception as e:
         print(f"DB init error: {e}")
+
+@app.errorhandler(500)
+def internal_error(e):
+    import traceback
+    tb = traceback.format_exc()
+    print(f"500 ERROR: {tb}")
+    # Show detailed error only if DEBUG mode on
+    if os.environ.get("FLASK_DEBUG") == "1":
+        return f"<pre>500 Internal Server Error:\n\n{tb}</pre>", 500
+    return render_template("500.html"), 500
+
+@app.route("/debug-error")
+def debug_error():
+    """Only accessible when FLASK_DEBUG=1 — shows system status."""
+    if os.environ.get("FLASK_DEBUG") != "1":
+        return "Set FLASK_DEBUG=1 in Railway Variables to enable debug info.", 403
+    info = {
+        "USE_DB": USE_DB,
+        "DB_URL_SET": bool(os.environ.get("DATABASE_URL")),
+        "MAIL_ENABLED": MAIL_ENABLED,
+        "APP_URL": os.environ.get("APP_URL","not set"),
+        "ADMIN_USERNAME": ADMIN_USERNAME,
+    }
+    try:
+        docs = load_docs()
+        info["doc_count"] = len(docs)
+        info["db_ok"] = True
+    except Exception as ex:
+        info["db_ok"] = False
+        info["db_error"] = str(ex)
+    try:
+        tokens = get_all_tokens()
+        info["token_count"] = len(tokens)
+        info["tokens_ok"] = True
+    except Exception as ex:
+        info["tokens_ok"] = False
+        info["tokens_error"] = str(ex)
+    return jsonify(info)
 
 @app.context_processor
 def inject_auth():
