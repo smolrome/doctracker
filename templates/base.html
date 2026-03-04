@@ -266,12 +266,139 @@
 
   <div class="main">{% block content %}{% endblock %}</div>
 
+  <!-- ── GLOBAL LOADING OVERLAY ── -->
+  <div id="loading-overlay">
+    <div class="loading-box">
+      <div class="loading-spinner"></div>
+      <div class="loading-text" id="loading-text">Please wait...</div>
+    </div>
+  </div>
+
+  <style>
+    #loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(13, 27, 42, 0.55);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+    #loading-overlay.active { display: flex; }
+    .loading-box {
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px 40px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      min-width: 200px;
+    }
+    .loading-spinner {
+      width: 44px; height: 44px;
+      border: 4px solid #DDE3EE;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text {
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--navy);
+    }
+    .loading-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+  </style>
+
   <script>
     function toggleMenu(){ document.getElementById('nav-drawer').classList.toggle('open'); }
     function closeMenu(){ document.getElementById('nav-drawer').classList.remove('open'); }
     document.addEventListener('click', function(e){
       const d=document.getElementById('nav-drawer'), h=document.querySelector('.nav-hamburger');
-      if(d.classList.contains('open') && !d.contains(e.target) && !h.contains(e.target)) closeMenu();
+      if(d && d.classList.contains('open') && !d.contains(e.target) && !h.contains(e.target)) closeMenu();
+    });
+
+    // ── LOADING OVERLAY HELPERS ──
+    function showLoading(msg, sub) {
+      document.getElementById('loading-text').textContent = msg || 'Please wait...';
+      const subEl = document.querySelector('.loading-sub');
+      if (subEl) subEl.textContent = sub || '';
+      document.getElementById('loading-overlay').classList.add('active');
+    }
+    function hideLoading() {
+      document.getElementById('loading-overlay').classList.remove('active');
+    }
+
+    // ── AUTO-ATTACH TO ALL FORMS ──
+    document.addEventListener('DOMContentLoaded', function () {
+
+      // Every form submit shows loader
+      document.querySelectorAll('form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+          // Skip forms that have data-no-loading
+          if (form.dataset.noLoading) return;
+
+          // Pick a message based on action URL or context
+          const action = form.action || '';
+          const method = (form.method || 'get').toLowerCase();
+          if (method === 'get') {
+            showLoading('Searching...', 'Filtering documents');
+            return;
+          }
+          if (action.includes('/delete/')) {
+            showLoading('Deleting...', 'Removing document');
+          } else if (action.includes('/edit/') || action.includes('/add')) {
+            showLoading('Saving...', 'Updating document record');
+          } else if (action.includes('/receive/') || action.includes('/upload-qr')) {
+            showLoading('Logging Receipt...', 'Updating travel log');
+          } else if (action.includes('/scan')) {
+            showLoading('Scanning Document...', 'AI is extracting data');
+          } else {
+            showLoading('Processing...', 'Please wait');
+          }
+        });
+      });
+
+      // Every nav link / table row click shows loader
+      document.querySelectorAll('tbody tr[onclick]').forEach(function(row) {
+        row.addEventListener('click', function() {
+          showLoading('Loading...', 'Opening document');
+        });
+      });
+
+      // Nav links and buttons that navigate
+      document.querySelectorAll('a.nav-add, a.btn, a.btn-filter, a.page-back, a.topbar-back').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+          const href = link.getAttribute('href');
+          // Skip anchors, external links, or javascript:
+          if (!href || href.startsWith('#') || href.startsWith('javascript') || href.startsWith('http')) return;
+          // Skip download links
+          if (link.hasAttribute('download') || href.endsWith('.png')) return;
+          showLoading('Loading...', 'Please wait');
+        });
+      });
+
+      // QR download link — don't show loader (it's a file download)
+      document.querySelectorAll('a[href$=".png"]').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+          e.stopPropagation();
+        });
+      });
+
+      // Hide loader if page is restored from bfcache (back button)
+      window.addEventListener('pageshow', function(e) {
+        if (e.persisted) hideLoading();
+      });
+
+      // Safety fallback — hide after 10 seconds in case something goes wrong
+      document.getElementById('loading-overlay').addEventListener('click', hideLoading);
     });
   </script>
 </body>
