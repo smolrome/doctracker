@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+  {% if action == 'edit' %}
+    <a href="/view/{{ doc.id }}" class="page-back">← Back</a>
+    <div class="page-title">Edit Document</div>
+  {% else %}
+    <a href="/" class="page-back">← Back</a>
+    <div class="page-title">Log New Document</div>
+  {% endif %}
+</div>
+
+<style>
+  .deped-header {
+    background: linear-gradient(135deg, #0D1B2A 0%, #1B4F8A 100%);
+    border-radius: 12px; padding: 18px 24px; margin-bottom: 24px;
+    display:flex; align-items:center; gap:16px;
+  }
+  .deped-header h2 { font-family:'Syne',sans-serif; font-size:16px; font-weight:800; color:#fff; margin-bottom:2px; }
+  .deped-header p  { font-size:12px; color:#8EA8C3; }
+</style>
+
+<div class="deped-header">
+  <div style="font-size:36px;">🏫</div>
+  <div>
+    <h2>DepEd Leyte Division — Document Routing Log</h2>
+    <p>Fill in all applicable fields. Reference number is auto-generated.</p>
+  </div>
+</div>
+
+<form method="post">
+
+  <!-- ── SECTION 1: Document Identification ── -->
+  <div class="form-card">
+    <h3>📄 Document Identification</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Document Title / Subject <span class="req">*</span></label>
+        <input type="text" name="doc_name"
+          value="{{ doc.get('doc_name','') }}"
+          placeholder="e.g. Request for School Supplies, Memo No. 001..." required />
+      </div>
+      <div class="form-group">
+        <label>Reference No.</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" name="doc_id" id="doc-ref-input"
+            value="{{ doc.get('doc_id') or auto_ref or '' }}"
+            placeholder="Auto-generated" style="flex:1;" />
+          {% if action == 'add' %}
+          <button type="button" onclick="regenRef()" title="Generate new"
+            style="padding:9px 13px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-size:15px;flex-shrink:0;">🔄</button>
+          {% endif %}
+        </div>
+        {% if action == 'add' %}
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Auto-generated — editable or click 🔄 to refresh.</div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Document Type / Category</label>
+        <select name="category">
+          <option value="">— Select type —</option>
+          {% set cats = ['Memo','Letter','Request','Endorsement','Report','Order','Notice','Circular','Indorsement','Voucher','Certificate','Other'] %}
+          {% for c in cats %}
+            <option value="{{ c }}" {% if doc.get('category') == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Document Date</label>
+        <input type="date" name="doc_date" value="{{ doc.get('doc_date','') }}" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Content / Particulars <span class="req">*</span></label>
+      <textarea name="description" rows="3"
+        placeholder="Brief description of the document content and purpose...">{{ doc.get('description','') }}</textarea>
+    </div>
+  </div>
+
+  <!-- ── SECTION 2: Source / Sender ── -->
+  <div class="form-card">
+    <h3>📤 Source / Sender</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Unit / Office / School / District</label>
+        <input type="text" name="sender_org"
+          value="{{ doc.get('sender_org','') }}"
+          placeholder="e.g. Palo Central School, Leyte District I..." />
+      </div>
+      <div class="form-group">
+        <label>Source / Sender (Name &amp; Designation)</label>
+        <input type="text" name="sender_name"
+          value="{{ doc.get('sender_name','') }}"
+          placeholder="e.g. Juan dela Cruz, Principal II" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Contact / Address</label>
+      <input type="text" name="sender_contact"
+        value="{{ doc.get('sender_contact','') }}"
+        placeholder="Email, phone, or office address" />
+    </div>
+  </div>
+
+  <!-- ── SECTION 3: Receiving ── -->
+  <div class="form-card">
+    <h3>📥 Receiving Information</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Received By (Name &amp; Designation)</label>
+        <input type="text" name="received_by"
+          value="{{ doc.get('received_by','') }}"
+          placeholder="e.g. Maria Santos, Admin Aide" />
+      </div>
+      <div class="form-group">
+        <label>Date Received</label>
+        <input type="date" name="date_received" value="{{ doc.get('date_received','') }}" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 4: Routing ── -->
+  <div class="form-card">
+    <h3>📍 Routing Information</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Referred To</label>
+        <input type="text" name="referred_to"
+          value="{{ doc.get('referred_to','') }}"
+          placeholder="e.g. Schools Division Superintendent" />
+      </div>
+      <div class="form-group">
+        <label>Forwarded To</label>
+        <input type="text" name="forwarded_to"
+          value="{{ doc.get('forwarded_to','') }}"
+          placeholder="e.g. Budget Section, HR Unit..." />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Full Office Route <span style="font-weight:400;text-transform:none;letter-spacing:0">(comma-separated, in order)</span></label>
+      <input type="text" name="routing_offices"
+        value="{{ doc.get('routing_str', ', '.join(doc.get('routing',[]))) }}"
+        placeholder="e.g. Records Section, Budget Unit, SDS Office, Release" />
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">Each office scans the QR code to log receipt as the document moves through the route.</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date Released / Forwarded</label>
+        <input type="date" name="date_released" value="{{ doc.get('date_released','') }}" />
+      </div>
+      {% if action == 'edit' %}
+      <div class="form-group">
+        <label>Current Status</label>
+        <select name="status">
+          {% for s in status_options %}
+            <option value="{{ s }}" {% if doc.get('status') == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% else %}<div class="form-group"></div>{% endif %}
+    </div>
+  </div>
+
+  <!-- ── SECTION 5: Remarks ── -->
+  <div class="form-card">
+    <h3>📝 Remarks / Notes</h3>
+    <div class="form-group">
+      <textarea name="notes" rows="3"
+        placeholder="Additional instructions, action required, follow-up notes...">{{ doc.get('notes','') }}</textarea>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    {% if action == 'edit' %}
+      <a href="/view/{{ doc.id }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+    {% else %}
+      <a href="/" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">➕ Log Document</button>
+    {% endif %}
+  </div>
+
+</form>
+
+<script>
+async function regenRef() {
+  const res = await fetch('/api/gen-ref');
+  const data = await res.json();
+  document.getElementById('doc-ref-input').value = data.ref;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+  <a href="/" class="page-back">← Back</a>
+  <div>
+    <div class="page-title">📷 Scan Document</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:2px;">Upload an image or PDF — AI will extract the data automatically</div>
+  </div>
+</div>
+
+{% if not extracted %}
+<!-- UPLOAD FORM -->
+<div class="form-card" style="max-width:600px;">
+  <h3>📤 Upload Document</h3>
+
+  {% if error %}
+    <div class="flash error" style="margin-bottom:20px;">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data">
+    <div class="form-group">
+      <label>Select File</label>
+      <div id="drop-zone" style="
+        border: 2px dashed var(--border);
+        border-radius: 10px;
+        padding: 40px 20px;
+        text-align: center;
+        cursor: pointer;
+        background: var(--surface);
+        transition: border-color 0.2s, background 0.2s;
+      ">
+        <div style="font-size:36px;margin-bottom:10px;">📄</div>
+        <div style="font-weight:600;color:var(--navy);margin-bottom:4px;">Drop file here or click to browse</div>
+        <div style="font-size:13px;color:var(--muted);">Supports: JPG, PNG, PDF</div>
+        <input type="file" name="document" id="file-input" accept=".jpg,.jpeg,.png,.pdf"
+          style="position:absolute;opacity:0;width:0;height:0;" required />
+      </div>
+      <div id="file-name" style="margin-top:8px;font-size:13px;color:var(--muted);"></div>
+    </div>
+
+    <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:8px;padding:14px;margin-bottom:20px;font-size:13px;color:#1E40AF;line-height:1.6;">
+      <strong>🤖 How it works:</strong> The AI will read your document and automatically fill in sender, recipient, dates, reference numbers, and more. You can review and edit before saving.
+    </div>
+
+    <div class="form-actions" style="justify-content:flex-start;">
+      <button type="submit" class="btn btn-primary" id="scan-btn">🔍 Scan Document</button>
+      <a href="/add" class="btn btn-secondary">Fill in manually instead</a>
+    </div>
+  </form>
+</div>
+
+{% else %}
+<!-- EXTRACTED DATA FORM -->
+<div style="background:#D1FAE5;border:1.5px solid #6EE7B7;border-radius:10px;padding:14px 20px;margin-bottom:24px;display:flex;align-items:center;gap:10px;">
+  <span style="font-size:20px;">✅</span>
+  <div>
+    <strong style="color:#065F46;">Document scanned successfully!</strong>
+    <div style="font-size:13px;color:#047857;margin-top:2px;">Review the extracted data below, make any edits, then save.</div>
+  </div>
+</div>
+
+<form method="post" action="/add">
+
+  <div class="form-card">
+    <h3>📄 Document Info</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Document Name <span class="req">*</span></label>
+        <input type="text" name="doc_name" value="{{ extracted.doc_name }}" required />
+      </div>
+      <div class="form-group">
+        <label>Document ID / Reference No.</label>
+        <input type="text" name="doc_id" value="{{ extracted.doc_id }}" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Category</label>
+        <input type="text" name="category" value="{{ extracted.category }}" />
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select name="status">
+          {% for s in status_options %}
+            <option value="{{ s }}" {% if s == 'Pending' %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea name="description" rows="2">{{ extracted.description }}</textarea>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <h3>📅 Dates</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date Received</label>
+        <input type="date" name="date_received" value="{{ extracted.date_received }}" />
+      </div>
+      <div class="form-group">
+        <label>Date Released</label>
+        <input type="date" name="date_released" value="{{ extracted.date_released }}" />
+      </div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <h3>📤 Sender / From</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" name="sender_name" value="{{ extracted.sender_name }}" />
+      </div>
+      <div class="form-group">
+        <label>Organization</label>
+        <input type="text" name="sender_org" value="{{ extracted.sender_org }}" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Contact Info</label>
+      <input type="text" name="sender_contact" value="{{ extracted.sender_contact }}" />
+    </div>
+  </div>
+
+  <div class="form-card">
+    <h3>📥 Recipient / To</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" name="recipient_name" value="{{ extracted.recipient_name }}" />
+      </div>
+      <div class="form-group">
+        <label>Organization</label>
+        <input type="text" name="recipient_org" value="{{ extracted.recipient_org }}" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Contact Info</label>
+      <input type="text" name="recipient_contact" value="{{ extracted.recipient_contact }}" />
+    </div>
+  </div>
+
+  <div class="form-card">
+    <h3>📝 Notes</h3>
+    <div class="form-group">
+      <textarea name="notes" rows="3">{{ extracted.notes }}</textarea>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <a href="/scan" class="btn btn-secondary">↩ Scan Another</a>
+    <button type="submit" class="btn btn-primary">💾 Save Document</button>
+  </div>
+
+</form>
+{% endif %}
+
+<script>
+  const zone = document.getElementById('drop-zone');
+  const input = document.getElementById('file-input');
+  const label = document.getElementById('file-name');
+  const btn = document.getElementById('scan-btn');
+
+  if (zone) {
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor = 'var(--accent)'; zone.style.background = '#EFF6FF'; });
+    zone.addEventListener('dragleave', () => { zone.style.borderColor = 'var(--border)'; zone.style.background = 'var(--surface)'; });
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.style.borderColor = 'var(--border)';
+      zone.style.background = 'var(--surface)';
+      if (e.dataTransfer.files[0]) {
+        input.files = e.dataTransfer.files;
+        label.textContent = '📎 ' + e.dataTransfer.files[0].name;
+      }
+    });
+    input.addEventListener('change', () => {
+      if (input.files[0]) label.textContent = '📎 ' + input.files[0].name;
+    });
+    document.querySelector('form').addEventListener('submit', () => {
+      if (btn) { btn.textContent = '⏳ Scanning...'; btn.disabled = true; }
+    });
+  }
+</script>
+
+{% endblock %}

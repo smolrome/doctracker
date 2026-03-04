@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+  <a href="/" class="page-back">← Back</a>
+  <div class="page-title">📤 Upload QR Code</div>
+</div>
+
+<style>
+  .upload-wrap { max-width: 680px; margin: 0 auto; }
+
+  /* ── STEP INDICATOR ── */
+  .steps { display:flex; align-items:center; gap:0; margin-bottom:32px; }
+  .step  { display:flex; align-items:center; gap:10px; flex:1; }
+  .step-num {
+    width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:14px; font-family:'Syne',sans-serif; flex-shrink:0;
+    background:var(--border); color:var(--muted);
+  }
+  .step.active .step-num  { background:var(--accent); color:#fff; }
+  .step.done   .step-num  { background:var(--success); color:#fff; }
+  .step-label { font-size:13px; font-weight:600; color:var(--muted); }
+  .step.active .step-label, .step.done .step-label { color:var(--text); }
+  .step-line  { flex:1; height:2px; background:var(--border); margin:0 8px; }
+  .step-line.done { background:var(--success); }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    border:2.5px dashed var(--border); border-radius:16px; padding:48px 32px;
+    text-align:center; background:var(--surface); cursor:pointer; transition:all 0.2s;
+    position:relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color:var(--accent); background:#EFF6FF;
+  }
+  .upload-zone input[type=file] {
+    position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
+  }
+  .upload-icon { font-size:56px; margin-bottom:14px; display:block; }
+  .upload-zone h3 { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--navy); margin-bottom:6px; }
+  .upload-zone p  { font-size:13px; color:var(--muted); }
+  .upload-zone .file-name { font-size:13px; color:var(--accent); font-weight:600; margin-top:10px; display:none; }
+
+  /* ── PREVIEW ── */
+  #qr-preview-wrap { display:none; text-align:center; margin-top:16px; }
+  #qr-preview { max-width:200px; border-radius:10px; border:2px solid var(--border); }
+
+  /* ── WARN BOX ── */
+  .warn-box {
+    background:#FFFBEB; border:1.5px solid #FCD34D; border-radius:10px;
+    padding:14px 16px; font-size:13px; color:#92400E; margin-bottom:20px;
+    display:flex; gap:10px; align-items:flex-start;
+  }
+
+  /* ── DOC FOUND CARD ── */
+  .doc-found {
+    background:#fff; border:2px solid var(--accent); border-radius:14px;
+    padding:22px 24px; margin-bottom:20px;
+  }
+  .doc-found-header {
+    display:flex; align-items:flex-start; justify-content:space-between;
+    margin-bottom:16px; padding-bottom:14px; border-bottom:1.5px solid var(--border);
+  }
+  .doc-found-title { font-family:'Syne',sans-serif; font-weight:800; font-size:20px; color:var(--navy); }
+  .doc-found-ref   { font-size:12px; color:var(--muted); font-family:monospace; margin-top:3px; }
+  .doc-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .doc-meta-item label { display:block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:2px; }
+  .doc-meta-item span  { font-size:13px; font-weight:500; color:var(--text); }
+
+  /* ── LOG FORM ── */
+  .log-form-card { background:#fff; border:1.5px solid var(--border); border-radius:14px; padding:24px; }
+  .log-form-card h3 { font-family:'Syne',sans-serif; font-size:16px; font-weight:800; color:var(--navy); margin-bottom:4px; }
+  .log-form-card p  { font-size:13px; color:var(--muted); margin-bottom:20px; }
+  .form-group { margin-bottom:16px; }
+  .form-group label { display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:5px; }
+  .form-group label .req { color:var(--danger); }
+  .form-group input, .form-group select, .form-group textarea {
+    width:100%; padding:10px 13px; border:1.5px solid var(--border); border-radius:9px;
+    font-family:inherit; font-size:14px; color:var(--text); background:var(--surface); outline:none; transition:border 0.15s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--accent); background:#fff; }
+
+  .action-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
+  .action-btn  {
+    padding:10px 8px; border:2px solid var(--border); border-radius:9px;
+    font-family:inherit; font-size:13px; font-weight:700; cursor:pointer;
+    background:var(--surface); color:var(--muted); text-align:center; transition:all 0.15s; display:block;
+  }
+  .action-btn:hover, .action-btn.active { border-color:var(--accent); background:#EFF6FF; color:var(--accent); }
+
+  .btn-submit {
+    width:100%; padding:13px; background:var(--accent); color:#fff; border:none;
+    border-radius:9px; font-family:inherit; font-size:15px; font-weight:700;
+    cursor:pointer; transition:background 0.15s; margin-top:4px;
+  }
+  .btn-submit:hover { background:#2563EB; }
+
+  /* ── SUCCESS ── */
+  .success-card {
+    background:#D1FAE5; border:2px solid var(--success); border-radius:14px;
+    padding:32px; text-align:center; margin-bottom:24px;
+  }
+  .success-icon { font-size:52px; margin-bottom:12px; }
+  .success-card h2 { font-family:'Syne',sans-serif; color:#065F46; font-size:22px; margin-bottom:6px; }
+  .success-card p  { color:#065F46; font-size:14px; margin-bottom:3px; }
+  .success-ts { font-size:12px; color:#047857; margin-top:10px; font-weight:600; }
+
+  /* routing mini bar */
+  .routing-bar { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+  .r-stop { padding:3px 11px; border-radius:20px; font-size:11px; font-weight:700; background:var(--surface); color:var(--muted); border:1.5px solid var(--border); }
+  .r-stop.done { background:#D1FAE5; color:#065F46; border-color:#A7F3D0; }
+  .r-arrow { color:var(--muted); font-size:13px; }
+
+  /* travel log mini */
+  .log-mini { list-style:none; padding-left:20px; position:relative; }
+  .log-mini::before { content:''; position:absolute; left:6px; top:6px; bottom:6px; width:2px; background:var(--border); }
+  .log-mini li { position:relative; margin-bottom:12px; }
+  .log-mini li::before { content:''; position:absolute; left:-17px; top:4px; width:10px; height:10px; border-radius:50%; background:var(--accent); border:2px solid #fff; box-shadow:0 0 0 2px var(--accent); }
+  .log-mini li:first-child::before { background:var(--success); box-shadow:0 0 0 2px var(--success); }
+  .log-office { font-weight:700; font-size:13px; color:var(--navy); }
+  .log-action-tag { font-size:11px; font-weight:700; padding:1px 7px; border-radius:10px; background:#EFF6FF; color:var(--accent); margin-left:5px; }
+  .log-meta { font-size:11px; color:var(--muted); margin-top:1px; }
+</style>
+
+<div class="upload-wrap">
+
+  {% if not qr_read_ok %}
+  <div class="warn-box">
+    ⚠️ <div><strong>QR reading library not installed.</strong><br>
+    Run <code>pip install opencv-python numpy Pillow</code> in your terminal, then restart the app.</div>
+  </div>
+  {% endif %}
+
+  <!-- ── SUCCESS STATE ── -->
+  {% if success_entry %}
+    <div class="success-card">
+      <div class="success-icon">✅</div>
+      <h2>Log Entry Saved!</h2>
+      <p><strong>{{ success_entry.office }}</strong> — {{ success_entry.action }}</p>
+      {% if success_entry.officer %}<p>Logged by: {{ success_entry.officer }}</p>{% endif %}
+      {% if success_entry.remarks %}<p>Remarks: {{ success_entry.remarks }}</p>{% endif %}
+      <div class="success-ts">{{ success_entry.timestamp }} · via QR Upload</div>
+    </div>
+
+    {% if doc %}
+    <div class="doc-found">
+      <div class="doc-found-header">
+        <div>
+          <div class="doc-found-title">{{ doc.doc_name }}</div>
+          {% if doc.doc_id %}<div class="doc-found-ref">{{ doc.doc_id }}</div>{% endif %}
+        </div>
+        <span class="badge badge-{{ doc.status.lower().replace(' ','-') }}">{{ doc.status }}</span>
+      </div>
+      {% if doc.travel_log %}
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin-bottom:10px;">Travel Log</div>
+      <ul class="log-mini">
+        {% for e in doc.travel_log | reverse %}
+        <li>
+          <div class="log-office">{{ e.office }} <span class="log-action-tag">{{ e.action }}</span>{% if e.get('via') %} <span style="font-size:10px;color:var(--muted)">· {{ e.via }}</span>{% endif %}</div>
+          <div class="log-meta">{% if e.officer %}{{ e.officer }} · {% endif %}{{ e.timestamp }}</div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div style="display:flex;gap:12px;">
+      <a href="/upload-qr" class="btn btn-primary">📤 Upload Another QR</a>
+      {% if doc %}<a href="/view/{{ doc.id }}" class="btn btn-secondary">📄 View Document</a>{% endif %}
+      <a href="/" class="btn btn-secondary">← Dashboard</a>
+    </div>
+
+  <!-- ── STEP 2: Document found, show log form ── -->
+  {% elif doc %}
+
+    <div class="steps">
+      <div class="step done"><div class="step-num">✓</div><div class="step-label">Upload QR</div></div>
+      <div class="step-line done"></div>
+      <div class="step done"><div class="step-num">✓</div><div class="step-label">Document Found</div></div>
+      <div class="step-line"></div>
+      <div class="step active"><div class="step-num">3</div><div class="step-label">Log Entry</div></div>
+    </div>
+
+    <!-- Doc info summary -->
+    <div class="doc-found" style="margin-bottom:20px;">
+      <div class="doc-found-header">
+        <div>
+          <div class="doc-found-title">{{ doc.doc_name }}</div>
+          {% if doc.doc_id %}<div class="doc-found-ref">Ref: {{ doc.doc_id }}</div>{% endif %}
+        </div>
+        <span class="badge badge-{{ doc.status.lower().replace(' ','-') }}">{{ doc.status }}</span>
+      </div>
+      <div class="doc-meta-grid">
+        <div class="doc-meta-item"><label>From</label><span>{{ doc.sender_name or '—' }}{% if doc.sender_org %}, {{ doc.sender_org }}{% endif %}</span></div>
+        <div class="doc-meta-item"><label>To</label><span>{{ doc.recipient_name or '—' }}{% if doc.recipient_org %}, {{ doc.recipient_org }}{% endif %}</span></div>
+        <div class="doc-meta-item"><label>Category</label><span>{{ doc.category or '—' }}</span></div>
+        <div class="doc-meta-item"><label>Date Received</label><span>{{ doc.date_received or '—' }}</span></div>
+      </div>
+
+      {% if doc.routing %}
+      {% set visited = doc.travel_log | map(attribute='office') | list %}
+      <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid var(--border);">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Routing Chain</div>
+        <div class="routing-bar">
+          {% for stop in doc.routing %}
+            <span class="r-stop {% if stop in visited %}done{% endif %}">{% if stop in visited %}✓ {% endif %}{{ stop }}</span>
+            {% if not loop.last %}<span class="r-arrow">→</span>{% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if doc.travel_log %}
+      <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid var(--border);">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Travel Log ({{ doc.travel_log|length }} entries)</div>
+        <ul class="log-mini">
+          {% for e in doc.travel_log | reverse %}
+          <li>
+            <div class="log-office">{{ e.office }} <span class="log-action-tag">{{ e.action }}</span></div>
+            <div class="log-meta">{% if e.officer %}{{ e.officer }} · {% endif %}{{ e.timestamp }}</div>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Log Entry Form -->
+    <div class="log-form-card">
+      <h3>📝 Log Your Entry</h3>
+      <p>Document identified. Fill in your details to confirm receipt or update status.</p>
+      <form method="post">
+        <input type="hidden" name="doc_id_confirm" value="{{ doc.id }}" />
+        <div class="form-group">
+          <label>Office / Department <span class="req">*</span></label>
+          <input type="text" name="office" placeholder="e.g. Records Office, Finance Dept..." required />
+        </div>
+        <div class="form-group">
+          <label>Received By (Your Name)</label>
+          <input type="text" name="officer" placeholder="Full name" />
+        </div>
+        <div class="form-group">
+          <label>Action</label>
+          <div class="action-grid">
+            {% for act in action_options %}
+            <label class="action-btn" onclick="setAction('{{ act }}', this)">
+              {% if act=='Received' %}📥{% elif act=='Released' %}📤{% elif act=='On Hold' %}⏸️{% elif act=='Returned' %}↩️{% else %}✅{% endif %}
+              {{ act }}
+            </label>
+            {% endfor %}
+          </div>
+          <input type="hidden" name="action" id="action-input" value="Received" />
+        </div>
+        <div class="form-group">
+          <label>Remarks (optional)</label>
+          <textarea name="remarks" rows="2" placeholder="Any notes or conditions..."></textarea>
+        </div>
+        <button type="submit" class="btn-submit">✅ Save Log Entry</button>
+      </form>
+    </div>
+
+  <!-- ── STEP 1: Upload QR Image ── -->
+  {% else %}
+
+    <div class="steps">
+      <div class="step active"><div class="step-num">1</div><div class="step-label">Upload QR</div></div>
+      <div class="step-line"></div>
+      <div class="step"><div class="step-num">2</div><div class="step-label">Document Found</div></div>
+      <div class="step-line"></div>
+      <div class="step"><div class="step-num">3</div><div class="step-label">Log Entry</div></div>
+    </div>
+
+    {% if error %}
+    <div style="background:#FEE2E2;border:1.5px solid var(--danger);border-radius:10px;padding:14px 16px;font-size:14px;color:#7F1D1D;margin-bottom:20px;border-left:4px solid var(--danger);">
+      ❌ {{ error }}
+    </div>
+    {% endif %}
+
+    <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:24px;margin-bottom:20px;">
+      <h3 style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--navy);margin-bottom:4px;">Upload a QR Code Image</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">
+        Upload a photo or screenshot of the document's QR code. The system will automatically identify the document and let you log receipt.
+      </p>
+
+      <form method="post" enctype="multipart/form-data" id="upload-form">
+        <div class="upload-zone" id="drop-zone">
+          <input type="file" name="qr_image" id="qr-file" accept="image/*" onchange="previewFile(this)" />
+          <span class="upload-icon">📷</span>
+          <h3>Drop QR image here or click to browse</h3>
+          <p>Supports JPG, PNG, GIF, WebP — take a photo of the printed QR or upload a screenshot</p>
+          <div class="file-name" id="file-name-display"></div>
+        </div>
+
+        <div id="qr-preview-wrap">
+          <img id="qr-preview" src="" alt="QR Preview" />
+          <p style="font-size:12px;color:var(--muted);margin-top:6px;">QR image ready to scan</p>
+        </div>
+
+        <button type="submit" class="btn-submit" style="margin-top:20px;">
+          🔍 Read QR Code &amp; Find Document
+        </button>
+      </form>
+    </div>
+
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:18px 20px;">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin-bottom:10px;">How it works</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;text-align:center;">
+        <div>
+          <div style="font-size:28px;margin-bottom:6px;">📷</div>
+          <div style="font-size:12px;font-weight:600;color:var(--navy);">Upload QR Image</div>
+          <div style="font-size:11px;color:var(--muted);">Photo or screenshot of the printed QR</div>
+        </div>
+        <div>
+          <div style="font-size:28px;margin-bottom:6px;">🔍</div>
+          <div style="font-size:12px;font-weight:600;color:var(--navy);">Auto-Identify</div>
+          <div style="font-size:11px;color:var(--muted);">System reads QR and finds the document</div>
+        </div>
+        <div>
+          <div style="font-size:28px;margin-bottom:6px;">✅</div>
+          <div style="font-size:12px;font-weight:600;color:var(--navy);">Log Receipt</div>
+          <div style="font-size:11px;color:var(--muted);">Enter your office and confirm receipt</div>
+        </div>
+      </div>
+    </div>
+
+  {% endif %}
+
+</div>
+
+<script>
+function previewFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('file-name-display').style.display = 'block';
+  document.getElementById('file-name-display').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('qr-preview').src = e.target.result;
+    document.getElementById('qr-preview-wrap').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function setAction(val, el) {
+  document.getElementById('action-input').value = val;
+  document.querySelectorAll('.action-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const btns = document.querySelectorAll('.action-btn');
+  if (btns.length) btns[0].classList.add('active');
+
+  // Drag and drop
+  const zone = document.getElementById('drop-zone');
+  if (zone) {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        document.getElementById('qr-file').files = e.dataTransfer.files;
+        previewFile(document.getElementById('qr-file'));
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

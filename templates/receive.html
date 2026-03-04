@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Log Document Receipt</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0D1B2A; --accent: #3B82F6; --surface: #F4F7FB;
+      --card: #fff; --border: #DDE3EE; --text: #1A2B45; --muted: #6B7FA3;
+      --success: #10B981; --danger: #EF4444; --warning: #F59E0B;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--surface); color: var(--text); min-height: 100vh; }
+
+    .topbar {
+      background: var(--navy); padding: 14px 24px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .topbar-brand { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: #fff; }
+    .topbar-sub { font-size: 13px; color: #8EA8C3; margin-left: auto; }
+
+    .wrap { max-width: 600px; margin: 36px auto; padding: 0 20px 60px; }
+
+    /* ── ERROR STATE ── */
+    .error-card {
+      background: #FEE2E2; border: 2px solid var(--danger); border-radius: 14px;
+      padding: 36px; text-align: center;
+    }
+    .error-card h2 { font-family: 'Syne', sans-serif; color: var(--danger); font-size: 22px; margin-bottom: 8px; }
+    .error-card p  { color: #7F1D1D; font-size: 15px; }
+
+    /* ── SUCCESS STATE ── */
+    .success-card {
+      background: #D1FAE5; border: 2px solid var(--success); border-radius: 14px;
+      padding: 32px; text-align: center; margin-bottom: 24px;
+    }
+    .success-icon { font-size: 52px; margin-bottom: 12px; }
+    .success-card h2 { font-family: 'Syne', sans-serif; color: #065F46; font-size: 22px; margin-bottom: 6px; }
+    .success-card p { color: #065F46; font-size: 15px; margin-bottom: 4px; }
+    .success-ts { font-size: 12px; color: #047857; margin-top: 10px; font-weight: 600; }
+
+    /* ── DOC INFO CARD ── */
+    .doc-card {
+      background: var(--card); border: 1.5px solid var(--border); border-radius: 14px;
+      padding: 22px 24px; margin-bottom: 20px;
+    }
+    .doc-card-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1.5px solid var(--border);
+      gap: 12px;
+    }
+    .doc-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: var(--navy); }
+    .doc-ref   { font-size: 12px; color: var(--muted); font-family: monospace; margin-top: 3px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap;
+    }
+    .badge-transit  { background: #DBEAFE; color: #1D4ED8; }
+    .badge-pending  { background: #FFF3CD; color: #856404; }
+    .badge-released { background: #D4EDDA; color: #155724; }
+    .badge-hold     { background: #F8D7DA; color: #721C24; }
+    .badge-review   { background: #CCE5FF; color: #004085; }
+
+    .doc-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .meta-item label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 2px; }
+    .meta-item span  { font-size: 13px; font-weight: 500; color: var(--text); }
+
+    /* ── TRAVEL LOG MINI ── */
+    .log-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 12px; }
+    .log-list  { list-style: none; position: relative; padding-left: 20px; }
+    .log-list::before { content:''; position:absolute; left:6px; top:6px; bottom:6px; width:2px; background:var(--border); border-radius:2px; }
+    .log-item  { position: relative; margin-bottom: 14px; }
+    .log-item::before { content:''; position:absolute; left:-17px; top:5px; width:10px; height:10px; border-radius:50%; background:var(--accent); border:2px solid #fff; box-shadow:0 0 0 2px var(--accent); }
+    .log-item:first-child::before { background: var(--success); box-shadow:0 0 0 2px var(--success); }
+    .log-office { font-weight: 700; font-size: 14px; color: var(--navy); }
+    .log-action { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 10px; background: #EFF6FF; color: var(--accent); margin-left: 6px; }
+    .log-meta   { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── FORM ── */
+    .form-card {
+      background: var(--card); border: 1.5px solid var(--border); border-radius: 14px; padding: 24px;
+    }
+    .form-card h2 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--navy); margin-bottom: 4px; }
+    .form-card p  { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 5px; }
+    .form-group label .req { color: var(--danger); margin-left: 3px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 9px;
+      font-family: inherit; font-size: 14px; color: var(--text); background: var(--surface); outline: none; transition: border 0.15s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); background: #fff; }
+    .form-group textarea { resize: vertical; }
+
+    .action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+    .action-btn  {
+      padding: 10px 8px; border: 2px solid var(--border); border-radius: 9px;
+      font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+      background: var(--surface); color: var(--muted); text-align: center; transition: all 0.15s;
+    }
+    .action-btn:hover, .action-btn.active { border-color: var(--accent); background: #EFF6FF; color: var(--accent); }
+    .action-btn.action-released { }
+    .action-btn.action-hold:hover  { border-color: var(--warning); background: #FFFBEB; color: var(--warning); }
+    .action-btn.action-completed:hover { border-color: var(--success); background: #ECFDF5; color: var(--success); }
+
+    .btn-submit {
+      width: 100%; padding: 13px; background: var(--accent); color: #fff;
+      border: none; border-radius: 9px; font-family: inherit; font-size: 16px;
+      font-weight: 700; cursor: pointer; transition: background 0.15s; margin-top: 4px;
+    }
+    .btn-submit:hover { background: #2563EB; }
+
+    .flash { padding: 11px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; margin-bottom: 14px; background: #FEE2E2; color: #7F1D1D; border-left: 4px solid var(--danger); }
+
+    /* routing bar */
+    .routing-bar {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+      margin-bottom: 20px; background: var(--card); border: 1.5px solid var(--border);
+      border-radius: 12px; padding: 14px 18px;
+    }
+    .routing-stop {
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      background: var(--surface); color: var(--muted); border: 1.5px solid var(--border);
+    }
+    .routing-stop.done  { background: #D1FAE5; color: #065F46; border-color: #A7F3D0; }
+    .routing-stop.current { background: #DBEAFE; color: #1D4ED8; border-color: #93C5FD; }
+    .routing-arrow { color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">📂 DocTracker</div>
+  <div class="topbar-sub">Document Routing System</div>
+</div>
+
+<div class="wrap">
+
+  {% if error %}
+    <div class="error-card">
+      <h2>❌ Not Found</h2>
+      <p>{{ error }}</p>
+    </div>
+
+  {% elif success_entry %}
+    <div class="success-card">
+      <div class="success-icon">✅</div>
+      <h2>Receipt Logged!</h2>
+      <p><strong>{{ success_entry.office }}</strong> — {{ success_entry.action }}</p>
+      {% if success_entry.officer %}<p>Logged by: {{ success_entry.officer }}</p>{% endif %}
+      {% if success_entry.remarks %}<p>Remarks: {{ success_entry.remarks }}</p>{% endif %}
+      <div class="success-ts">{{ success_entry.timestamp }}</div>
+    </div>
+
+    <!-- Show updated doc state -->
+    <div class="doc-card">
+      <div class="doc-card-header">
+        <div>
+          <div class="doc-title">{{ doc.doc_name }}</div>
+          {% if doc.doc_id %}<div class="doc-ref">{{ doc.doc_id }}</div>{% endif %}
+        </div>
+        <span class="badge badge-transit">{{ doc.status }}</span>
+      </div>
+      <div class="log-title">Travel Log</div>
+      <ul class="log-list">
+        {% for entry in doc.travel_log | reverse %}
+        <li class="log-item">
+          <div class="log-office">{{ entry.office }} <span class="log-action">{{ entry.action }}</span></div>
+          <div class="log-meta">
+            {% if entry.officer %}{{ entry.officer }} · {% endif %}{{ entry.timestamp }}
+            {% if entry.remarks %} · {{ entry.remarks }}{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+  {% else %}
+
+    <!-- Document Info -->
+    <div class="doc-card">
+      <div class="doc-card-header">
+        <div>
+          <div class="doc-title">{{ doc.doc_name }}</div>
+          {% if doc.doc_id %}<div class="doc-ref">Ref: {{ doc.doc_id }}</div>{% endif %}
+        </div>
+        {% set s = doc.status %}
+        {% if s == 'In Transit' %}<span class="badge badge-transit">{{ s }}</span>
+        {% elif s == 'Pending' %}<span class="badge badge-pending">{{ s }}</span>
+        {% elif s == 'Released' %}<span class="badge badge-released">{{ s }}</span>
+        {% elif s == 'On Hold' %}<span class="badge badge-hold">{{ s }}</span>
+        {% else %}<span class="badge badge-review">{{ s }}</span>{% endif %}
+      </div>
+
+      <div class="doc-meta">
+        <div class="meta-item"><label>From</label><span>{{ doc.sender_name or '—' }}{% if doc.sender_org %}, {{ doc.sender_org }}{% endif %}</span></div>
+        <div class="meta-item"><label>To</label><span>{{ doc.recipient_name or '—' }}{% if doc.recipient_org %}, {{ doc.recipient_org }}{% endif %}</span></div>
+        <div class="meta-item"><label>Category</label><span>{{ doc.category or '—' }}</span></div>
+        <div class="meta-item"><label>Date Received</label><span>{{ doc.date_received or '—' }}</span></div>
+      </div>
+    </div>
+
+    <!-- Routing chain -->
+    {% if doc.routing %}
+    {% set visited_offices = doc.travel_log | map(attribute='office') | list %}
+    <div class="routing-bar">
+      {% for stop in doc.routing %}
+        {% if stop in visited_offices %}
+          <span class="routing-stop done">✓ {{ stop }}</span>
+        {% else %}
+          <span class="routing-stop">{{ stop }}</span>
+        {% endif %}
+        {% if not loop.last %}<span class="routing-arrow">→</span>{% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Travel log -->
+    {% if doc.travel_log %}
+    <div class="doc-card" style="margin-bottom:20px">
+      <div class="log-title">Travel Log ({{ doc.travel_log|length }} stops)</div>
+      <ul class="log-list">
+        {% for entry in doc.travel_log | reverse %}
+        <li class="log-item">
+          <div class="log-office">{{ entry.office }} <span class="log-action">{{ entry.action }}</span></div>
+          <div class="log-meta">
+            {% if entry.officer %}{{ entry.officer }} · {% endif %}{{ entry.timestamp }}
+            {% if entry.remarks %} · {{ entry.remarks }}{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <!-- Log Receipt Form -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="form-card">
+      <h2>📥 Log This Document</h2>
+      <p>Fill in your office details to confirm receipt or update the document status.</p>
+
+      <form method="post">
+        <div class="form-group">
+          <label>Office / Department <span class="req">*</span></label>
+          <input type="text" name="office" placeholder="e.g. Records Office, Finance Dept..." required />
+        </div>
+        <div class="form-group">
+          <label>Received By (Name)</label>
+          <input type="text" name="officer" placeholder="Your full name" />
+        </div>
+
+        <div class="form-group">
+          <label>Action</label>
+          <div class="action-grid">
+            {% for act in action_options %}
+            <label class="action-btn" onclick="setAction('{{ act }}', this)">
+              {% if act == 'Received' %}📥{% elif act == 'Released' %}📤{% elif act == 'On Hold' %}⏸️{% elif act == 'Returned' %}↩️{% else %}✅{% endif %}
+              {{ act }}
+            </label>
+            {% endfor %}
+          </div>
+          <input type="hidden" name="action" id="action-input" value="Received" />
+        </div>
+
+        <div class="form-group">
+          <label>Remarks (optional)</label>
+          <textarea name="remarks" rows="2" placeholder="Any notes, conditions, or instructions..."></textarea>
+        </div>
+
+        <button type="submit" class="btn-submit">✅ Submit Log Entry</button>
+      </form>
+    </div>
+
+  {% endif %}
+
+</div>
+
+<script>
+function setAction(val, el) {
+  document.getElementById('action-input').value = val;
+  document.querySelectorAll('.action-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+// Default highlight first
+document.addEventListener('DOMContentLoaded', () => {
+  const btns = document.querySelectorAll('.action-btn');
+  if (btns.length) btns[0].classList.add('active');
+});
+</script>
+</body>
+</html>
