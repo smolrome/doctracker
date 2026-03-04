@@ -1,10 +1,10 @@
-import os, uuid, base64, json, re, hashlib, smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import os, uuid, base64, json, re, hashlib
+import urllib.request, urllib.error
 from datetime import datetime
 from io import BytesIO
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, session
+import urllib.request
 import qrcode
 
 # ── PostgreSQL via psycopg2 (Railway) or fallback to JSON file (local) ──
@@ -49,10 +49,10 @@ DATA_FILE = os.environ.get("DATA_FILE", "documents.json")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "deped2025")
 
-# ── Email config ──
-MAIL_SENDER   = os.environ.get("MAIL_SENDER", "")
-MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "")
-MAIL_ENABLED  = bool(MAIL_SENDER and MAIL_PASSWORD)
+# ── Email config — Resend API (no SMTP, works on Railway) ──
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+MAIL_SENDER    = os.environ.get("MAIL_SENDER", "onboarding@resend.dev")
+MAIL_ENABLED   = bool(RESEND_API_KEY)
 
 # ─────────────────────────────────────────────
 #  INVITE TOKEN HELPERS
@@ -150,77 +150,49 @@ def _save_tokens_json(tokens):
         json.dump(tokens, f, indent=2)
 
 def send_invite_email(to_email, to_name=""):
-    """Generate a unique token and send invite email."""
+    """Send invite via Resend HTTP API - no SMTP, works on Railway."""
     if not MAIL_ENABLED:
-        return False, "Email not configured. Set MAIL_SENDER and MAIL_PASSWORD in Railway Variables."
+        return False, "Email not configured. Set RESEND_API_KEY in Railway Variables."
     try:
         token = generate_invite_token(to_email, to_name)
         base_url = os.environ.get("APP_URL", "https://your-app.up.railway.app").rstrip("/")
         register_link = f"{base_url}/register?token={token}"
         greeting = f"Hi {to_name}," if to_name else "Hello,"
-
-        html = f"""
-        <div style="font-family:'DM Sans',Arial,sans-serif;max-width:520px;margin:0 auto;background:#F4F7FB;padding:24px;border-radius:16px;">
-          <div style="background:#0D1B2A;border-radius:12px 12px 0 0;padding:28px 32px;text-align:center;">
-            <div style="font-size:40px;margin-bottom:8px;">🏫</div>
-            <div style="font-family:Arial,sans-serif;font-size:22px;font-weight:800;color:#fff;">DocTracker</div>
-            <div style="font-size:13px;color:#8EA8C3;margin-top:4px;">DepEd Leyte Division — Document Routing System</div>
+        html = f"""<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;">
+          <div style="background:#0D1B2A;padding:28px;text-align:center;">
+            <div style="font-size:22px;font-weight:800;color:#fff;">DocTracker - DepEd Leyte</div>
           </div>
-          <div style="background:#fff;border-radius:0 0 12px 12px;padding:32px;">
-            <p style="font-size:15px;color:#1A2B45;margin-bottom:16px;">{greeting}</p>
-            <p style="font-size:15px;color:#1A2B45;margin-bottom:24px;">
-              You have been invited to join the <strong>DepEd Leyte Division Document Tracker</strong> as a staff member.
-              Click the button below to create your account.
-            </p>
-            <div style="text-align:center;margin-bottom:24px;">
-              <a href="{register_link}"
-                 style="display:inline-block;background:#3B82F6;color:#fff;text-decoration:none;padding:16px 36px;border-radius:10px;font-weight:700;font-size:16px;">
-                ✅ Accept Invitation & Register
-              </a>
+          <div style="background:#fff;padding:32px;">
+            <p>{greeting}</p>
+            <p>You have been invited to join the DepEd Leyte Division Document Tracker.</p>
+            <div style="text-align:center;margin:24px 0;">
+              <a href="{register_link}" style="background:#3B82F6;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:16px;">Accept Invitation &amp; Register</a>
             </div>
-            <div style="background:#FFF3CD;border:1.5px solid #F59E0B;border-radius:8px;padding:12px 16px;font-size:13px;color:#92400E;margin-bottom:20px;">
-              ⏰ <strong>This invite link expires in 48 hours</strong> and can only be used once.
-            </div>
-            <div style="background:#F4F7FB;border-radius:8px;padding:14px 16px;font-size:13px;color:#6B7FA3;line-height:1.8;">
-              If the button doesn't work, copy this link into your browser:<br/>
-              <a href="{register_link}" style="color:#3B82F6;word-break:break-all;">{register_link}</a>
-            </div>
-            <p style="font-size:12px;color:#9CA3AF;margin-top:20px;text-align:center;">
-              If you did not expect this invitation, you can ignore this email.<br/>
-              DepEd Leyte Division Office
-            </p>
+            <p style="color:#92400E;background:#FFF3CD;padding:12px;border-radius:6px;">This link expires in 48 hours and can only be used once.</p>
+            <p style="color:#666;font-size:13px;">Or copy: {register_link}</p>
           </div>
-        </div>
-        """
-
-        text = f"""{greeting}
-
-You have been invited to join the DepEd Leyte Division Document Tracker.
-
-Click this link to register (expires in 48 hours, one-time use):
-{register_link}
-
-DepEd Leyte Division Office
-        """
-
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = "🏫 You're Invited — DepEd Leyte DocTracker Staff Access"
-        msg["From"]    = f"DepEd DocTracker <{MAIL_SENDER}>"
-        msg["To"]      = to_email
-        msg.attach(MIMEText(text, "plain"))
-        msg.attach(MIMEText(html, "html"))
-
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login(MAIL_SENDER, MAIL_PASSWORD)
-            smtp.sendmail(MAIL_SENDER, to_email, msg.as_string())
-
+        </div>"""
+        payload = json.dumps({{
+            "from": f"DepEd DocTracker <{{MAIL_SENDER}}>",
+            "to": [to_email],
+            "subject": "You're Invited - DepEd Leyte DocTracker",
+            "html": html,
+            "text": f"{{greeting}}\n\nRegister here (expires 48hrs):\n{{register_link}}"
+        }}).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.resend.com/emails",
+            data=payload,
+            headers={{"Authorization": f"Bearer {{RESEND_API_KEY}}", "Content-Type": "application/json"}},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp.read()
         return True, token
-    except smtplib.SMTPAuthenticationError:
-        return False, "Gmail authentication failed. Check your App Password."
-    except smtplib.SMTPRecipientsRefused:
-        return False, f"Could not send to '{to_email}'. Check the email address."
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        return False, f"Resend error {{e.code}}: {{body}}"
     except Exception as e:
-        return False, f"Email error: {str(e)}"
+        return False, f"Email error: {{str(e)}}"
 
 def is_logged_in():
     return session.get("logged_in") is True
@@ -297,11 +269,9 @@ if USE_DB:
 def internal_error(e):
     import traceback
     tb = traceback.format_exc()
-    print(f"500 ERROR: {tb}")
-    # Show detailed error only if DEBUG mode on
-    if os.environ.get("FLASK_DEBUG") == "1":
-        return f"<pre>500 Internal Server Error:\n\n{tb}</pre>", 500
-    return render_template("500.html"), 500
+    print(f"500 ERROR:\n{tb}")
+    # Always show detailed error so we can debug
+    return f"<pre style='padding:20px;font-size:13px;'><b>500 Internal Server Error:</b>\n\n{tb}</pre>", 500
 
 @app.route("/debug-error")
 def debug_error():
