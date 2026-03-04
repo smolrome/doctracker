@@ -1,19 +1,27 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
-import json, os, uuid, base64
+import os, uuid, base64, json, re
 from datetime import datetime
 from io import BytesIO
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
 import qrcode
+
+# ── PostgreSQL via psycopg2 (Railway) or fallback to JSON file (local) ──
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    DB_URL = os.environ.get("DATABASE_URL")
+    USE_DB = bool(DB_URL)
+except ImportError:
+    USE_DB = False
 
 # QR reading via OpenCV
 try:
     import cv2
     import numpy as np
-    from PIL import Image
     QR_READ_OK = True
 except ImportError:
     QR_READ_OK = False
 
-# Anthropic (optional — only needed for /scan AI feature)
+# Anthropic (optional)
 try:
     import anthropic
     ai_client = anthropic.Anthropic()
@@ -23,27 +31,128 @@ except Exception:
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "doctracker-deped-leyte-2025")
-
-# Use /data/documents.json on Railway (mount a volume at /data)
-# Falls back to local documents.json when running locally
 DATA_FILE = os.environ.get("DATA_FILE", "documents.json")
 
 # ─────────────────────────────────────────────
-#  DATA HELPERS
+#  DATABASE SETUP
+# ─────────────────────────────────────────────
+
+def get_conn():
+    return psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
+
+def init_db():
+    """Create table if it doesn't exist."""
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS documents (
+                    id TEXT PRIMARY KEY,
+                    data JSONB NOT NULL,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+        conn.commit()
+
+if USE_DB:
+    try:
+        init_db()
+    except Exception as e:
+        print(f"DB init error: {e}")
+
+# ─────────────────────────────────────────────
+#  DATA HELPERS — transparent DB / JSON switch
 # ─────────────────────────────────────────────
 
 def load_docs():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE) as f:
-            return json.load(f)
-    return []
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT data FROM documents ORDER BY created_at DESC")
+                    rows = cur.fetchall()
+                    return [row['data'] for row in rows]
+        except Exception as e:
+            print(f"DB load error: {e}")
+            return []
+    else:
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE) as f:
+                return json.load(f)
+        return []
 
 def save_docs(docs):
-    with open(DATA_FILE, "w") as f:
-        json.dump(docs, f, indent=2)
+    """Save is only used for JSON mode. DB mode saves per-document."""
+    if not USE_DB:
+        with open(DATA_FILE, "w") as f:
+            json.dump(docs, f, indent=2)
+
+def save_doc(doc):
+    """Upsert a single document — used in DB mode."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO documents (id, data, created_at)
+                        VALUES (%s, %s::jsonb, %s)
+                        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
+                    """, (doc['id'], json.dumps(doc), doc.get('created_at', now_str())))
+                conn.commit()
+        except Exception as e:
+            print(f"DB save error: {e}")
+    else:
+        docs = load_docs()
+        for i, d in enumerate(docs):
+            if d['id'] == doc['id']:
+                docs[i] = doc
+                break
+        else:
+            docs.insert(0, doc)
+        save_docs(docs)
+
+def insert_doc(doc):
+    """Insert a brand new document."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "INSERT INTO documents (id, data, created_at) VALUES (%s, %s::jsonb, %s)",
+                        (doc['id'], json.dumps(doc), doc.get('created_at', now_str()))
+                    )
+                conn.commit()
+        except Exception as e:
+            print(f"DB insert error: {e}")
+    else:
+        docs = load_docs()
+        docs.insert(0, doc)
+        save_docs(docs)
+
+def delete_doc(doc_id):
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
+                conn.commit()
+        except Exception as e:
+            print(f"DB delete error: {e}")
+    else:
+        save_docs([d for d in load_docs() if d['id'] != doc_id])
 
 def get_doc(doc_id):
-    return next((d for d in load_docs() if d["id"] == doc_id), None)
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT data FROM documents WHERE id = %s", (doc_id,))
+                    row = cur.fetchone()
+                    return row['data'] if row else None
+        except Exception as e:
+            print(f"DB get error: {e}")
+            return None
+    else:
+        return next((d for d in load_docs() if d['id'] == doc_id), None)
 
 def get_stats(docs):
     return {
@@ -227,8 +336,7 @@ def add():
             "officer": doc["sender_name"], "timestamp": doc["created_at"],
             "remarks": "Document logged into the system.",
         })
-        docs.insert(0, doc)
-        save_docs(docs)
+        insert_doc(doc)
         flash("Document added and routing chain created.", "success")
         return redirect(url_for("view_doc", doc_id=doc["id"]))
     return render_template("form.html", doc={}, action="add",
@@ -255,8 +363,7 @@ def view_doc(doc_id):
 
 @app.route("/receive/<doc_id>", methods=["GET","POST"])
 def receive(doc_id):
-    docs = load_docs()
-    doc  = next((d for d in docs if d["id"] == doc_id), None)
+    doc = get_doc(doc_id)
     if not doc:
         return render_template("receive.html", doc=None,
                                error="Document not found in the system.")
@@ -278,7 +385,7 @@ def receive(doc_id):
             }.get(action, "In Transit")
             if action in ("Released","Completed") and not doc.get("date_released"):
                 doc["date_released"] = datetime.now().strftime("%Y-%m-%d")
-            save_docs(docs)
+            save_doc(doc)
             success_entry = entry
     return render_template("receive.html", doc=doc, success_entry=success_entry,
         action_options=["Received","Released","On Hold","Returned","Completed"])
@@ -349,7 +456,7 @@ def upload_qr():
                     }.get(action, "In Transit")
                     if action in ("Released","Completed") and not doc.get("date_released"):
                         doc["date_released"] = datetime.now().strftime("%Y-%m-%d")
-                    save_docs(docs)
+                    save_doc(doc)
                     success_entry = entry
                     # Reload doc with fresh data
                     doc = get_doc(doc_id)
@@ -397,7 +504,7 @@ def edit(doc_id):
             flash("Document name is required.", "error")
             return render_template("form.html", doc=doc, action="edit",
                 status_options=["Pending","In Review","In Transit","Released","On Hold","Archived"])
-        save_docs(docs)
+        save_doc(doc)
         flash("Document updated.", "success")
         return redirect(url_for("view_doc", doc_id=doc_id))
     doc["routing_str"] = ", ".join(doc.get("routing", []))
@@ -406,7 +513,7 @@ def edit(doc_id):
 
 @app.route("/delete/<doc_id>", methods=["POST"])
 def delete(doc_id):
-    save_docs([d for d in load_docs() if d["id"] != doc_id])
+    delete_doc(doc_id)
     flash("Document deleted.", "error")
     return redirect(url_for("index"))
 
