@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+  <a href="/" class="page-back">← Dashboard</a>
+  <div class="page-title">👥 Manage Staff Accounts</div>
+</div>
+
+<style>
+  .users-card { background:#fff; border:1.5px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:20px; }
+  .users-head { padding:16px 20px; border-bottom:1.5px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+  .users-head h3 { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:var(--navy); }
+  .user-row { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--border); gap:12px; flex-wrap:wrap; }
+  .user-row:last-child { border-bottom:none; }
+  .user-info { display:flex; align-items:center; gap:12px; }
+  .user-avatar { width:40px; height:40px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:16px; flex-shrink:0; }
+  .user-avatar.admin { background:var(--navy); }
+  .user-name { font-weight:700; font-size:14px; color:var(--navy); }
+  .user-username { font-size:12px; color:var(--muted); font-family:monospace; }
+  .role-badge { padding:2px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+  .role-admin { background:#FEF3C7; color:#92400E; }
+  .role-staff { background:#DBEAFE; color:#1D4ED8; }
+  .user-date { font-size:12px; color:var(--muted); }
+
+  .invite-info { background:#EFF6FF; border:1.5px solid var(--accent); border-radius:12px; padding:18px 20px; margin-bottom:20px; }
+  .invite-info h3 { font-family:'Syne',sans-serif; font-size:14px; font-weight:800; color:var(--navy); margin-bottom:8px; }
+  .invite-code { font-family:monospace; font-size:16px; font-weight:700; color:var(--accent); background:#fff; border:1.5px dashed var(--accent); padding:8px 16px; border-radius:8px; display:inline-block; margin:6px 0; letter-spacing:0.05em; }
+  .invite-info p { font-size:13px; color:var(--muted); margin-top:6px; }
+
+  .empty-users { text-align:center; padding:40px 20px; color:var(--muted); }
+</style>
+
+<!-- Invite Code Info -->
+<div class="invite-info">
+  <h3>🔑 Staff Invite Code</h3>
+  <div class="invite-code" id="invite-display">Set via INVITE_CODE env variable</div>
+  <p>Share this code privately with staff members so they can register. Change it anytime in Railway → Variables → <code>INVITE_CODE</code>.</p>
+</div>
+
+<!-- User List -->
+<div class="users-card">
+  <div class="users-head">
+    <h3>Registered Staff ({{ users|length + 1 }} total incl. admin)</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <a href="/send-invite" class="btn btn-primary btn-sm">📧 Send Invite</a>
+      <a href="/register" class="btn btn-secondary btn-sm">+ Add Staff</a>
+    </div>
+  </div>
+
+  <!-- Admin account (always shown) -->
+  <div class="user-row">
+    <div class="user-info">
+      <div class="user-avatar admin">A</div>
+      <div>
+        <div class="user-name">Administrator</div>
+        <div class="user-username">@{{ admin_username }}</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span class="role-badge role-admin">🔐 Admin</span>
+      <span class="user-date">Built-in account</span>
+    </div>
+  </div>
+
+  {% if users %}
+    {% for user in users %}
+    <div class="user-row">
+      <div class="user-info">
+        <div class="user-avatar">{{ (user.full_name or user.username or 'U')[0].upper() }}</div>
+        <div>
+          <div class="user-name">{{ user.full_name or user.username }}</div>
+          <div class="user-username">@{{ user.username }}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span class="role-badge role-staff">👤 Staff</span>
+        {% if user.created_at %}
+          <span class="user-date">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}</span>
+        {% endif %}
+        <form method="post" action="/delete-user/{{ user.username }}"
+              onsubmit="return confirm('Remove {{ user.username }}? They will lose access immediately.')"
+              style="display:inline;">
+          <button type="submit" class="btn btn-danger btn-sm">🗑 Remove</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-users">
+      <div style="font-size:36px;margin-bottom:10px;">👤</div>
+      <p>No staff accounts yet. Share the invite code so staff can register.</p>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

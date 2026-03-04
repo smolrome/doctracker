@@ -1,7 +1,10 @@
-import os, uuid, base64, json, re
+import os, uuid, base64, json, re, hashlib, smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from datetime import datetime
 from io import BytesIO
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
+from functools import wraps
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, session
 import qrcode
 
 # ── PostgreSQL via psycopg2 (Railway) or fallback to JSON file (local) ──
@@ -9,6 +12,9 @@ try:
     import psycopg2
     from psycopg2.extras import RealDictCursor
     DB_URL = os.environ.get("DATABASE_URL")
+    # Railway uses postgres:// but psycopg2 requires postgresql://
+    if DB_URL and DB_URL.startswith("postgres://"):
+        DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
     USE_DB = bool(DB_URL)
 except ImportError:
     USE_DB = False
@@ -34,6 +40,123 @@ app.secret_key = os.environ.get("SECRET_KEY", "doctracker-deped-leyte-2025")
 DATA_FILE = os.environ.get("DATA_FILE", "documents.json")
 
 # ─────────────────────────────────────────────
+#  AUTH CONFIG
+#  Set ADMIN_USERNAME and ADMIN_PASSWORD as
+#  environment variables on Railway.
+#  Defaults are for local dev only.
+# ─────────────────────────────────────────────
+
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "deped2025")
+INVITE_CODE    = os.environ.get("INVITE_CODE", "deped-leyte-staff")
+
+# ── Email config (set these in Railway Variables) ──
+MAIL_SENDER    = os.environ.get("MAIL_SENDER", "")      # your Gmail address
+MAIL_PASSWORD  = os.environ.get("MAIL_PASSWORD", "")    # Gmail App Password
+MAIL_ENABLED   = bool(MAIL_SENDER and MAIL_PASSWORD)
+
+def send_invite_email(to_email, to_name=""):
+    """Send an invite email with the registration link and invite code."""
+    if not MAIL_ENABLED:
+        return False, "Email not configured. Set MAIL_SENDER and MAIL_PASSWORD in Railway Variables."
+    try:
+        base_url = os.environ.get("APP_URL", "https://your-app.up.railway.app").rstrip("/")
+        register_link = f"{base_url}/register"
+        greeting = f"Hi {to_name}," if to_name else "Hello,"
+
+        # ── HTML email body ──
+        html = f"""
+        <div style="font-family:'DM Sans',Arial,sans-serif;max-width:520px;margin:0 auto;background:#F4F7FB;padding:24px;border-radius:16px;">
+          <div style="background:#0D1B2A;border-radius:12px 12px 0 0;padding:28px 32px;text-align:center;">
+            <div style="font-size:40px;margin-bottom:8px;">🏫</div>
+            <div style="font-family:Arial,sans-serif;font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px;">DocTracker</div>
+            <div style="font-size:13px;color:#8EA8C3;margin-top:4px;">DepEd Leyte Division — Document Routing System</div>
+          </div>
+          <div style="background:#fff;border-radius:0 0 12px 12px;padding:32px;">
+            <p style="font-size:15px;color:#1A2B45;margin-bottom:16px;">{greeting}</p>
+            <p style="font-size:15px;color:#1A2B45;margin-bottom:24px;">
+              You have been invited to join the <strong>DepEd Leyte Division Document Tracker</strong> as a staff member.
+              Use the details below to create your account.
+            </p>
+
+            <div style="background:#EFF6FF;border:2px dashed #3B82F6;border-radius:10px;padding:20px;text-align:center;margin-bottom:24px;">
+              <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6B7FA3;margin-bottom:8px;">Your Invite Code</div>
+              <div style="font-size:26px;font-weight:800;color:#1D4ED8;font-family:monospace;letter-spacing:0.05em;">{INVITE_CODE}</div>
+            </div>
+
+            <div style="text-align:center;margin-bottom:24px;">
+              <a href="{register_link}"
+                 style="display:inline-block;background:#3B82F6;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:16px;">
+                ✅ Register Now
+              </a>
+            </div>
+
+            <div style="background:#F4F7FB;border-radius:8px;padding:14px 16px;font-size:13px;color:#6B7FA3;line-height:1.6;">
+              <strong style="color:#1A2B45;">Steps to register:</strong><br/>
+              1. Click the button above or go to <a href="{register_link}" style="color:#3B82F6;">{register_link}</a><br/>
+              2. Enter the invite code shown above<br/>
+              3. Choose your username and password<br/>
+              4. Log in and start tracking documents
+            </div>
+
+            <p style="font-size:12px;color:#9CA3AF;margin-top:20px;text-align:center;">
+              If you did not expect this invitation, you can ignore this email.<br/>
+              DepEd Leyte Division Office
+            </p>
+          </div>
+        </div>
+        """
+
+        # ── Plain text fallback ──
+        text = f"""{greeting}
+
+You have been invited to join the DepEd Leyte Division Document Tracker as a staff member.
+
+Your Invite Code: {INVITE_CODE}
+Register here: {register_link}
+
+Steps:
+1. Go to {register_link}
+2. Enter the invite code above
+3. Choose your username and password
+4. Log in and start tracking documents
+
+DepEd Leyte Division Office
+        """
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "🏫 You're Invited — DepEd Leyte DocTracker Staff Access"
+        msg["From"]    = f"DepEd DocTracker <{MAIL_SENDER}>"
+        msg["To"]      = to_email
+
+        msg.attach(MIMEText(text, "plain"))
+        msg.attach(MIMEText(html, "html"))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(MAIL_SENDER, MAIL_PASSWORD)
+            smtp.sendmail(MAIL_SENDER, to_email, msg.as_string())
+
+        return True, None
+    except smtplib.SMTPAuthenticationError:
+        return False, "Gmail authentication failed. Check your App Password in Railway Variables."
+    except smtplib.SMTPRecipientsRefused:
+        return False, f"Could not send to '{to_email}'. Check the email address."
+    except Exception as e:
+        return False, f"Email error: {str(e)}"
+
+def is_logged_in():
+    return session.get("logged_in") is True
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not is_logged_in():
+            flash("Please log in to perform that action.", "error")
+            return redirect(url_for("login", next=request.url))
+        return f(*args, **kwargs)
+    return decorated
+
+# ─────────────────────────────────────────────
 #  DATABASE SETUP
 # ─────────────────────────────────────────────
 
@@ -41,13 +164,24 @@ def get_conn():
     return psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
 
 def init_db():
-    """Create table if it doesn't exist."""
     with get_conn() as conn:
         with conn.cursor() as cur:
+            # Documents table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS documents (
                     id TEXT PRIMARY KEY,
                     data JSONB NOT NULL,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            # Users table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    username TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    full_name TEXT,
+                    role TEXT DEFAULT 'staff',
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
@@ -58,6 +192,109 @@ if USE_DB:
         init_db()
     except Exception as e:
         print(f"DB init error: {e}")
+
+@app.context_processor
+def inject_auth():
+    return dict(
+        logged_in=is_logged_in(),
+        current_user=session.get("username",""),
+        current_role=session.get("role","guest")
+    )
+
+# ─────────────────────────────────────────────
+#  USER HELPERS
+# ─────────────────────────────────────────────
+
+import hashlib
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def create_user(username, password, full_name="", role="staff"):
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "INSERT INTO users (username, password_hash, full_name, role) VALUES (%s, %s, %s, %s)",
+                        (username.lower().strip(), hash_password(password), full_name.strip(), role)
+                    )
+                conn.commit()
+            return True, None
+        except Exception as e:
+            if "unique" in str(e).lower():
+                return False, "Username already taken."
+            return False, str(e)
+    else:
+        # JSON fallback — store in a users.json file
+        users = load_users_json()
+        if any(u["username"] == username.lower().strip() for u in users):
+            return False, "Username already taken."
+        users.append({
+            "username": username.lower().strip(),
+            "password_hash": hash_password(password),
+            "full_name": full_name.strip(),
+            "role": role
+        })
+        with open("users.json","w") as f:
+            json.dump(users, f, indent=2)
+        return True, None
+
+def verify_user(username, password):
+    """Returns (full_name, role) if valid, else None."""
+    # Check env-var admin first (always works)
+    if username.strip() == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        return ADMIN_USERNAME, "admin"
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT full_name, role FROM users WHERE username=%s AND password_hash=%s",
+                        (username.lower().strip(), hash_password(password))
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        return row["full_name"] or username, row["role"]
+        except Exception as e:
+            print(f"verify_user error: {e}")
+    else:
+        users = load_users_json()
+        for u in users:
+            if u["username"] == username.lower().strip() and u["password_hash"] == hash_password(password):
+                return u.get("full_name") or username, u.get("role","staff")
+    return None, None
+
+def load_users_json():
+    if os.path.exists("users.json"):
+        with open("users.json") as f:
+            return json.load(f)
+    return []
+
+def get_all_users():
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT username, full_name, role, created_at FROM users ORDER BY created_at DESC")
+                    return cur.fetchall()
+        except:
+            return []
+    return load_users_json()
+
+def delete_user(username):
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM users WHERE username=%s", (username,))
+                conn.commit()
+        except Exception as e:
+            print(f"delete_user error: {e}")
+    else:
+        users = [u for u in load_users_json() if u["username"] != username]
+        with open("users.json","w") as f:
+            json.dump(users, f, indent=2)
 
 # ─────────────────────────────────────────────
 #  DATA HELPERS — transparent DB / JSON switch
@@ -261,6 +498,111 @@ def extract_doc_id_from_qr(qr_text):
     return None
 
 # ─────────────────────────────────────────────
+#  AUTH ROUTES
+# ─────────────────────────────────────────────
+
+@app.route("/login", methods=["GET","POST"])
+def login():
+    if is_logged_in():
+        return redirect(url_for("index"))
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username","").strip()
+        password = request.form.get("password","").strip()
+        full_name, role = verify_user(username, password)
+        if full_name:
+            session["logged_in"] = True
+            session["username"]  = username.lower().strip()
+            session["full_name"] = full_name
+            session["role"]      = role
+            next_url = request.args.get("next") or url_for("index")
+            flash(f"Welcome, {full_name}!", "success")
+            return redirect(next_url)
+        else:
+            error = "Invalid username or password."
+    return render_template("login.html", error=error)
+
+@app.route("/register", methods=["GET","POST"])
+def register():
+    if is_logged_in():
+        return redirect(url_for("index"))
+    error = None
+    if request.method == "POST":
+        invite   = request.form.get("invite_code","").strip()
+        username = request.form.get("username","").strip()
+        full_name= request.form.get("full_name","").strip()
+        password = request.form.get("password","").strip()
+        confirm  = request.form.get("confirm_password","").strip()
+
+        if invite != INVITE_CODE:
+            error = "Invalid invite code. Please contact your administrator."
+        elif not username or not password:
+            error = "Username and password are required."
+        elif len(password) < 6:
+            error = "Password must be at least 6 characters."
+        elif password != confirm:
+            error = "Passwords do not match."
+        else:
+            ok, err = create_user(username, password, full_name)
+            if ok:
+                flash("Account created! You can now log in.", "success")
+                return redirect(url_for("login"))
+            else:
+                error = err
+    return render_template("register.html", error=error)
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("You have been logged out.", "success")
+    return redirect(url_for("index"))
+
+@app.route("/manage-users")
+@login_required
+def manage_users():
+    if session.get("role") != "admin":
+        flash("Admin access required.", "error")
+        return redirect(url_for("index"))
+    users = get_all_users()
+    return render_template("manage_users.html", users=users,
+                           admin_username=ADMIN_USERNAME)
+
+@app.route("/send-invite", methods=["GET","POST"])
+@login_required
+def send_invite():
+    if session.get("role") != "admin":
+        flash("Admin access required.", "error")
+        return redirect(url_for("index"))
+    result = None
+    if request.method == "POST":
+        to_email = request.form.get("email","").strip()
+        to_name  = request.form.get("name","").strip()
+        if not to_email:
+            result = {"ok": False, "msg": "Email address is required."}
+        else:
+            ok, err = send_invite_email(to_email, to_name)
+            if ok:
+                result = {"ok": True, "msg": f"Invite sent to {to_email} successfully!"}
+            else:
+                result = {"ok": False, "msg": err}
+    return render_template("send_invite.html", result=result,
+                           mail_enabled=MAIL_ENABLED,
+                           invite_code=INVITE_CODE)
+@login_required
+def delete_user_route(username):
+    if session.get("role") != "admin":
+        flash("Admin access required.", "error")
+        return redirect(url_for("index"))
+    if username == ADMIN_USERNAME:
+        flash("Cannot delete the main admin account.", "error")
+    elif username == session.get("username"):
+        flash("Cannot delete your own account.", "error")
+    else:
+        delete_user(username)
+        flash(f"User '{username}' deleted.", "success")
+    return redirect(url_for("manage_users"))
+
+# ─────────────────────────────────────────────
 #  DASHBOARD
 # ─────────────────────────────────────────────
 
@@ -292,6 +634,7 @@ def index():
 # ─────────────────────────────────────────────
 
 @app.route("/add", methods=["GET","POST"])
+@login_required
 def add():
     if request.method == "POST":
         docs        = load_docs()
@@ -362,6 +705,7 @@ def view_doc(doc_id):
 # ─────────────────────────────────────────────
 
 @app.route("/receive/<doc_id>", methods=["GET","POST"])
+@login_required
 def receive(doc_id):
     doc = get_doc(doc_id)
     if not doc:
@@ -395,6 +739,7 @@ def receive(doc_id):
 # ─────────────────────────────────────────────
 
 @app.route("/upload-qr", methods=["GET","POST"])
+@login_required
 def upload_qr():
     """
     Office uploads a QR code image.
@@ -471,6 +816,7 @@ def upload_qr():
 # ─────────────────────────────────────────────
 
 @app.route("/edit/<doc_id>", methods=["GET","POST"])
+@login_required
 def edit(doc_id):
     docs = load_docs()
     doc  = next((d for d in docs if d["id"] == doc_id), None)
@@ -512,6 +858,7 @@ def edit(doc_id):
         status_options=["Pending","In Review","In Transit","Released","On Hold","Archived"])
 
 @app.route("/delete/<doc_id>", methods=["POST"])
+@login_required
 def delete(doc_id):
     delete_doc(doc_id)
     flash("Document deleted.", "error")
@@ -546,6 +893,7 @@ Return ONLY the JSON. No markdown, no explanation.
 """
 
 @app.route("/scan", methods=["GET","POST"])
+@login_required
 def scan():
     extracted = None; error = None
     if request.method == "POST":
@@ -576,6 +924,32 @@ def scan():
 # ─────────────────────────────────────────────
 #  API
 # ─────────────────────────────────────────────
+
+@app.route("/db-status")
+def db_status():
+    if not USE_DB:
+        return jsonify({
+            "storage": "JSON file (documents.json)",
+            "database": False,
+            "reason": "DATABASE_URL not set or psycopg2 not installed"
+        })
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) as total FROM documents")
+                row = cur.fetchone()
+        return jsonify({
+            "storage": "PostgreSQL ✅",
+            "database": True,
+            "documents": row["total"],
+            "db_url_prefix": DB_URL[:30] + "..."
+        })
+    except Exception as e:
+        return jsonify({
+            "storage": "PostgreSQL (ERROR)",
+            "database": False,
+            "error": str(e)
+        })
 
 @app.route("/api/gen-ref")
 def api_gen_ref():

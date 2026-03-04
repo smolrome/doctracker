@@ -239,19 +239,37 @@
   <nav>
     <a href="/" class="nav-brand">📂 DocTracker <span>DepEd</span></a>
     <div class="nav-actions">
-      <a href="/scan"      class="nav-add" style="background:#0EA5E9;">📷 Scan</a>
-      <a href="/upload-qr" class="nav-add" style="background:#7C3AED;">📤 Upload QR</a>
-      <a href="/add"       class="nav-add">+ Add Document</a>
+      {% if logged_in %}
+        <a href="/scan"      class="nav-add" style="background:#0EA5E9;">📷 Scan</a>
+        <a href="/upload-qr" class="nav-add" style="background:#7C3AED;">📤 Upload QR</a>
+        <a href="/add"       class="nav-add">+ Add Document</a>
+        <div style="display:flex;align-items:center;gap:8px;margin-left:4px;padding-left:12px;border-left:1px solid rgba(255,255,255,.15);">
+          {% if current_role == 'admin' %}
+          <a href="/manage-users" class="nav-add" style="background:#374151;">👥 Users</a>
+          {% endif %}
+          <span style="font-size:13px;color:#8EA8C3;">👤 {{ current_user }}</span>
+          <a href="/logout" class="nav-add" style="background:#374151;">Logout</a>
+        </div>
+      {% else %}
+        <span style="font-size:13px;color:#8EA8C3;">👁 View Only</span>
+        <a href="/login" class="nav-add" style="background:#10B981;">🔐 Staff Login</a>
+      {% endif %}
     </div>
     <button class="nav-hamburger" onclick="toggleMenu()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
   </nav>
   <div class="nav-drawer" id="nav-drawer">
-    <a href="/scan"      class="nav-add" style="background:#0EA5E9;" onclick="closeMenu()">📷 Scan Document</a>
-    <a href="/upload-qr" class="nav-add" style="background:#7C3AED;" onclick="closeMenu()">📤 Upload QR Code</a>
-    <a href="/add"       class="nav-add"                              onclick="closeMenu()">+ Add Document</a>
-    <a href="/"          class="nav-add" style="background:#374151;" onclick="closeMenu()">← Dashboard</a>
+    {% if logged_in %}
+      <a href="/scan"      class="nav-add" style="background:#0EA5E9;" onclick="closeMenu()">📷 Scan Document</a>
+      <a href="/upload-qr" class="nav-add" style="background:#7C3AED;" onclick="closeMenu()">📤 Upload QR Code</a>
+      <a href="/add"       class="nav-add"                              onclick="closeMenu()">+ Add Document</a>
+      <a href="/"          class="nav-add" style="background:#374151;" onclick="closeMenu()">← Dashboard</a>
+      <a href="/logout"    class="nav-add" style="background:#374151;" onclick="closeMenu()">🔓 Logout ({{ current_user }})</a>
+    {% else %}
+      <a href="/"          class="nav-add" style="background:#374151;" onclick="closeMenu()">← Dashboard</a>
+      <a href="/login"     class="nav-add" style="background:#10B981;" onclick="closeMenu()">🔐 Staff Login</a>
+    {% endif %}
   </div>
 
   {% with messages = get_flashed_messages(with_categories=true) %}

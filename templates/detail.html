@@ -42,11 +42,16 @@
 </div>
 
 <div class="detail-actions">
+  {% if logged_in %}
   <a href="/edit/{{ doc.id }}" class="btn btn-primary">✏️ Edit</a>
   <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
   <form method="post" action="/delete/{{ doc.id }}" onsubmit="return confirm('Delete this document?')" style="display:inline;">
     <button type="submit" class="btn btn-danger">🗑 Delete</button>
   </form>
+  {% else %}
+  <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
+  <a href="/login" class="btn btn-primary">🔐 Login to Edit</a>
+  {% endif %}
 </div>
 
 <!-- ── ROUTING CHAIN ── -->

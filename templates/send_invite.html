@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+  <a href="/manage-users" class="page-back">← Manage Users</a>
+  <div class="page-title">📧 Send Staff Invitation</div>
+</div>
+
+<style>
+  .invite-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .inv-card { background:#fff; border:1.5px solid var(--border); border-radius:var(--radius); padding:24px; }
+  .inv-card h3 { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:16px; padding-bottom:10px; border-bottom:1.5px solid var(--border); }
+
+  .result-box { border-radius:10px; padding:14px 16px; margin-bottom:20px; display:flex; align-items:flex-start; gap:10px; font-size:14px; font-weight:500; }
+  .result-ok  { background:#D1FAE5; border:1.5px solid var(--success); color:#065F46; }
+  .result-err { background:#FEE2E2; border:1.5px solid var(--danger);  color:#7F1D1D; }
+  .result-icon { font-size:20px; flex-shrink:0; }
+
+  .setup-steps { list-style:none; counter-reset:step; }
+  .setup-steps li { counter-increment:step; display:flex; gap:12px; margin-bottom:14px; align-items:flex-start; }
+  .setup-steps li::before { content:counter(step); min-width:26px; height:26px; background:var(--accent); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; flex-shrink:0; margin-top:1px; }
+  .setup-steps li p { font-size:13px; color:var(--text); line-height:1.5; margin:0; }
+  .setup-steps li code { background:var(--surface); border:1px solid var(--border); padding:1px 6px; border-radius:4px; font-size:12px; font-family:monospace; color:var(--accent); }
+
+  .warn-box { background:#FFFBEB; border:1.5px solid var(--warning); border-radius:10px; padding:14px 16px; font-size:13px; color:#92400E; margin-bottom:20px; display:flex; gap:10px; }
+
+  .invite-code-display { font-family:monospace; font-size:18px; font-weight:800; color:var(--accent); background:#EFF6FF; border:2px dashed var(--accent); padding:10px 16px; border-radius:8px; display:inline-block; margin:6px 0; letter-spacing:.05em; }
+
+  @media(max-width:700px) { .invite-grid { grid-template-columns:1fr; } }
+</style>
+
+{% if not mail_enabled %}
+<div class="warn-box">
+  <span style="font-size:20px;">⚠️</span>
+  <div>
+    <strong>Email not configured yet.</strong> Set <code>MAIL_SENDER</code> and <code>MAIL_PASSWORD</code> in Railway → Variables to enable sending. See setup guide below.
+  </div>
+</div>
+{% endif %}
+
+{% if result %}
+<div class="result-box {{ 'result-ok' if result.ok else 'result-err' }}">
+  <span class="result-icon">{{ '✅' if result.ok else '❌' }}</span>
+  <span>{{ result.msg }}</span>
+</div>
+{% endif %}
+
+<div class="invite-grid">
+
+  <!-- Send Form -->
+  <div class="inv-card">
+    <h3>📨 Send Invite Email</h3>
+
+    <form method="post">
+      <div class="form-group">
+        <label>Recipient's Email <span style="color:var(--danger)">*</span></label>
+        <input type="email" name="email" placeholder="e.g. staff@deped.gov.ph" required
+               style="font-size:16px;min-height:48px;" />
+      </div>
+      <div class="form-group">
+        <label>Recipient's Name (optional)</label>
+        <input type="text" name="name" placeholder="e.g. Maria Santos"
+               style="font-size:16px;min-height:48px;" />
+      </div>
+
+      <div style="background:#F4F7FB;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;">Invite Code that will be sent</div>
+        <div class="invite-code-display">{{ invite_code }}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px;">Change this anytime via <code style="font-size:11px;">INVITE_CODE</code> in Railway Variables.</div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;min-height:48px;font-size:15px;" {% if not mail_enabled %}disabled title="Configure email first"{% endif %}>
+        📧 Send Invitation Email
+      </button>
+
+      {% if not mail_enabled %}
+      <p style="font-size:12px;color:var(--danger);text-align:center;margin-top:8px;">⚠️ Configure email settings first</p>
+      {% endif %}
+    </form>
+
+    <div style="margin-top:16px;padding-top:16px;border-top:1.5px solid var(--border);">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Or share the invite link manually:</div>
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;font-family:monospace;color:var(--text);word-break:break-all;" id="reg-link">
+        {{ request.host_url }}register
+      </div>
+      <button onclick="copyLink()" class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%;justify-content:center;">
+        📋 Copy Registration Link
+      </button>
+    </div>
+  </div>
+
+  <!-- Setup Guide -->
+  <div class="inv-card">
+    <h3>⚙️ Gmail Setup Guide</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">To send emails, you need a Gmail account with a 2-step App Password. Follow these steps:</p>
+
+    <ol class="setup-steps">
+      <li><p>Go to your <strong>Google Account</strong> → Security → Enable <strong>2-Step Verification</strong> if not already on.</p></li>
+      <li><p>Go to <strong>Google Account → Security → App Passwords</strong>.<br/>(Search "App Passwords" in your Google account settings)</p></li>
+      <li><p>Click <strong>Create</strong>, name it "DocTracker", and copy the 16-character password generated.</p></li>
+      <li>
+        <p>In Railway → your web service → <strong>Variables</strong>, add these two:</p>
+        <div style="margin-top:8px;background:var(--surface);border-radius:8px;padding:12px;font-size:12px;font-family:monospace;line-height:2;">
+          <code>MAIL_SENDER</code> = your Gmail address<br/>
+          <code>MAIL_PASSWORD</code> = the 16-char App Password<br/>
+          <code>APP_URL</code> = https://docktracker.up.railway.app
+        </div>
+      </li>
+      <li><p>Redeploy — email sending will be activated automatically.</p></li>
+    </ol>
+
+    <div style="margin-top:16px;background:#EFF6FF;border-radius:8px;padding:12px;font-size:12px;color:#1D4ED8;line-height:1.6;">
+      💡 <strong>Tip:</strong> Use a dedicated Gmail account for the system (e.g. <em>doctracker.deped.leyte@gmail.com</em>) rather than your personal account.
+    </div>
+  </div>
+
+</div>
+
+<script>
+function copyLink() {
+  const link = document.getElementById('reg-link').textContent.trim();
+  navigator.clipboard.writeText(link).then(() => {
+    const btn = event.target;
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = '📋 Copy Registration Link', 2000);
+  });
+}
+</script>
+
+{% endblock %}
