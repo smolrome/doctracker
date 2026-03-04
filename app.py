@@ -156,44 +156,58 @@ def send_invite_email(to_email, to_name=""):
     try:
         token = generate_invite_token(to_email, to_name)
         base_url = os.environ.get("APP_URL", "https://your-app.up.railway.app").rstrip("/")
-        register_link = f"{base_url}/register?token={token}"
-        greeting = f"Hi {to_name}," if to_name else "Hello,"
-        html = f"""<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;">
-          <div style="background:#0D1B2A;padding:28px;text-align:center;">
-            <div style="font-size:22px;font-weight:800;color:#fff;">DocTracker - DepEd Leyte</div>
-          </div>
-          <div style="background:#fff;padding:32px;">
-            <p>{greeting}</p>
-            <p>You have been invited to join the DepEd Leyte Division Document Tracker.</p>
-            <div style="text-align:center;margin:24px 0;">
-              <a href="{register_link}" style="background:#3B82F6;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:16px;">Accept Invitation &amp; Register</a>
-            </div>
-            <p style="color:#92400E;background:#FFF3CD;padding:12px;border-radius:6px;">This link expires in 48 hours and can only be used once.</p>
-            <p style="color:#666;font-size:13px;">Or copy: {register_link}</p>
-          </div>
-        </div>"""
-        payload = json.dumps({{
-            "from": f"DepEd DocTracker <{{MAIL_SENDER}}>",
+        register_link = base_url + "/register?token=" + token
+        greeting = ("Hi " + to_name + ",") if to_name else "Hello,"
+
+        html_body = (
+            "<div style='font-family:Arial,sans-serif;max-width:520px;margin:0 auto;'>"
+            "<div style='background:#0D1B2A;padding:28px;text-align:center;'>"
+            "<div style='font-size:22px;font-weight:800;color:#fff;'>DocTracker - DepEd Leyte</div>"
+            "</div>"
+            "<div style='background:#fff;padding:32px;'>"
+            "<p>" + greeting + "</p>"
+            "<p>You have been invited to join the <strong>DepEd Leyte Division Document Tracker</strong>.</p>"
+            "<div style='text-align:center;margin:24px 0;'>"
+            "<a href='" + register_link + "' style='background:#3B82F6;color:#fff;text-decoration:none;"
+            "padding:14px 32px;border-radius:8px;font-weight:700;font-size:16px;display:inline-block;'>"
+            "Accept Invitation &amp; Register</a>"
+            "</div>"
+            "<p style='color:#92400E;background:#FFF3CD;padding:12px;border-radius:6px;font-size:13px;'>"
+            "This link expires in 48 hours and can only be used once.</p>"
+            "<p style='color:#666;font-size:12px;word-break:break-all;'>Or copy: " + register_link + "</p>"
+            "</div></div>"
+        )
+
+        text_body = greeting + "\n\nYou are invited to join DepEd Leyte DocTracker.\n\nRegister here (expires 48hrs):\n" + register_link
+
+        payload_dict = {
+            "from": "DepEd DocTracker <" + MAIL_SENDER + ">",
             "to": [to_email],
             "subject": "You're Invited - DepEd Leyte DocTracker",
-            "html": html,
-            "text": f"{{greeting}}\n\nRegister here (expires 48hrs):\n{{register_link}}"
-        }}).encode("utf-8")
+            "html": html_body,
+            "text": text_body
+        }
+        payload = json.dumps(payload_dict).encode("utf-8")
+
+        headers = {
+            "Authorization": "Bearer " + RESEND_API_KEY,
+            "Content-Type": "application/json"
+        }
         req = urllib.request.Request(
             "https://api.resend.com/emails",
             data=payload,
-            headers={{"Authorization": f"Bearer {{RESEND_API_KEY}}", "Content-Type": "application/json"}},
+            headers=headers,
             method="POST"
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             resp.read()
         return True, token
+
     except urllib.error.HTTPError as e:
         body = e.read().decode()
-        return False, f"Resend error {e.code}: {body}"
+        return False, "Resend error " + str(e.code) + ": " + body
     except Exception as e:
-        return False, f"Email error: {str(e)}"
-
+        return False, "Email error: " + str(e)
 def is_logged_in():
     return session.get("logged_in") is True
 
