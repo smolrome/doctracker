@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+  <a href="/" class="page-back">← Dashboard</a>
+  <div class="page-title">
+    {% if action == 'receive' %}📥 Office Entrance — Receive Document
+    {% else %}✅ Office Exit — Release Document{% endif %}
+  </div>
+</div>
+
+<style>
+  .action-wrap{max-width:520px;margin:0 auto;}
+  .action-hero{
+    text-align:center;padding:32px 20px;border-radius:16px;margin-bottom:24px;
+    {% if action == 'receive' %}background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:2px solid #3B82F6;
+    {% else %}background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border:2px solid #10B981;{% endif %}
+  }
+  .action-icon{font-size:56px;margin-bottom:10px;}
+  .action-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;
+    color:{% if action=='receive' %}#1D4ED8{% else %}#065F46{% endif %};margin-bottom:6px;}
+  .action-sub{font-size:14px;color:var(--muted);}
+
+  .action-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:24px;margin-bottom:16px;}
+  .action-card h3{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:16px;}
+
+  .result-ok{background:#D1FAE5;border:2px solid var(--success);border-radius:14px;padding:20px;margin-bottom:16px;}
+  .result-ok h3{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:#065F46;margin-bottom:8px;}
+  .result-ok p{font-size:14px;color:#065F46;}
+  .result-err{background:#FEE2E2;border:2px solid var(--danger);border-radius:14px;padding:20px;margin-bottom:16px;}
+  .result-err p{font-size:14px;color:#7F1D1D;font-weight:600;}
+
+  .doc-result-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;background:#fff;border-radius:8px;padding:12px;}
+  .drm-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+  .drm-value{font-size:14px;font-weight:600;color:var(--navy);}
+
+  .btn-receive{background:#3B82F6;min-height:52px;}
+  .btn-release{background:#10B981;min-height:52px;}
+
+  @media(max-width:480px){.doc-result-meta{grid-template-columns:1fr;}}
+</style>
+
+<div class="action-wrap">
+  <div class="action-hero">
+    <div class="action-icon">{% if action=='receive' %}📥{% else %}✅{% endif %}</div>
+    <div class="action-title">{% if action=='receive' %}Receive Document{% else %}Release Document{% endif %}</div>
+    <div class="action-sub">
+      {% if action=='receive' %}Enter the document ID to mark it as Received at the office.
+      {% else %}Enter the document ID to mark it as Released from the office.{% endif %}
+    </div>
+  </div>
+
+  {% if result %}
+    {% if result.ok %}
+    <div class="result-ok">
+      <h3>{% if action=='receive' %}📥 Document Received{% else %}✅ Document Released{% endif %}</h3>
+      <p>Status updated successfully.</p>
+      <div class="doc-result-meta">
+        <div>
+          <div class="drm-label">Document</div>
+          <div class="drm-value">{{ result.doc.doc_name }}</div>
+        </div>
+        <div>
+          <div class="drm-label">Reference</div>
+          <div class="drm-value">{{ result.doc.doc_id or result.doc.id }}</div>
+        </div>
+        <div>
+          <div class="drm-label">From</div>
+          <div class="drm-value">{{ result.doc.sender_org or result.doc.sender_name or '—' }}</div>
+        </div>
+        <div>
+          <div class="drm-label">New Status</div>
+          <div class="drm-value">{{ result.doc.status }}</div>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="result-err">
+      <p>❌ {{ result.msg }}</p>
+    </div>
+    {% endif %}
+  {% endif %}
+
+  <div class="action-card">
+    <h3>🔍 Enter Document ID</h3>
+    <form method="post">
+      <div class="form-group">
+        <label>Document System ID</label>
+        <input type="text" name="doc_id" placeholder="e.g. A3F9B2C1"
+               style="font-size:20px;font-family:monospace;font-weight:700;text-transform:uppercase;letter-spacing:.1em;min-height:58px;"
+               autocomplete="off" autofocus required />
+        <div style="font-size:12px;color:var(--muted);margin-top:6px;">The 8-character ID found on the document's QR code or detail page.</div>
+      </div>
+      <button type="submit" class="btn btn-primary {% if action=='receive' %}btn-receive{% else %}btn-release{% endif %}" style="width:100%;justify-content:center;font-size:16px;">
+        {% if action=='receive' %}📥 Mark as Received{% else %}✅ Mark as Released{% endif %}
+      </button>
+    </form>
+  </div>
+
+  <div style="text-align:center;margin-top:8px;">
+    <a href="/" class="btn btn-secondary" style="display:inline-flex;">← Back to Dashboard</a>
+  </div>
+</div>
+
+{% endblock %}

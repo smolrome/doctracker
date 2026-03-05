@@ -270,6 +270,26 @@ def init_db():
                     END IF;
                 END$$;
             """)
+            # Office action QR codes (receive/release stations)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS office_qr_codes (
+                    id TEXT PRIMARY KEY,
+                    action TEXT NOT NULL,
+                    label TEXT,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            # Seed default receive/release QR codes if not present
+            cur.execute("""
+                INSERT INTO office_qr_codes (id, action, label)
+                VALUES ('OFFICE-RECEIVE', 'receive', 'Office Entrance - Receive')
+                ON CONFLICT (id) DO NOTHING
+            """)
+            cur.execute("""
+                INSERT INTO office_qr_codes (id, action, label)
+                VALUES ('OFFICE-RELEASE', 'release', 'Office Exit - Release')
+                ON CONFLICT (id) DO NOTHING
+            """)
         conn.commit()
 
 if USE_DB:
@@ -320,7 +340,8 @@ def inject_auth():
     return dict(
         logged_in=is_logged_in(),
         current_user=session.get("username",""),
-        current_role=session.get("role","guest")
+        current_role=session.get("role","guest"),
+        current_full_name=session.get("full_name","")
     )
 
 # ─────────────────────────────────────────────
@@ -418,6 +439,16 @@ def delete_user(username):
         users = [u for u in load_users_json() if u["username"] != username]
         with open("users.json","w") as f:
             json.dump(users, f, indent=2)
+
+# ─────────────────────────────────────────────
+#  CLIENT REGISTRATION — public QR code flow
+# ─────────────────────────────────────────────
+
+CLIENT_REG_CODE = os.environ.get("CLIENT_REG_CODE", "client-reg")  # embed in public QR
+
+def get_office_qr_url(action, host_url):
+    base = os.environ.get("APP_URL", host_url.rstrip("/"))
+    return base + "/office-action/" + action
 
 # ─────────────────────────────────────────────
 #  DATA HELPERS — transparent DB / JSON switch
@@ -638,6 +669,9 @@ def login():
             session["username"]  = username.lower().strip()
             session["full_name"] = full_name
             session["role"]      = role
+            if role == "client":
+                flash(f"Welcome, {full_name}!", "success")
+                return redirect(url_for("client_portal"))
             next_url = request.args.get("next") or url_for("index")
             flash(f"Welcome, {full_name}!", "success")
             return redirect(next_url)
@@ -1081,6 +1115,253 @@ def scan():
 # ─────────────────────────────────────────────
 #  API
 # ─────────────────────────────────────────────
+
+# ─────────────────────────────────────────────
+#  CLIENT PORTAL
+# ─────────────────────────────────────────────
+
+@app.route("/client")
+def client_portal():
+    """Client dashboard — shows only their own submitted documents."""
+    if not is_logged_in() or session.get("role") != "client":
+        return redirect(url_for("client_login"))
+    username = session.get("username")
+    docs = load_docs()
+    my_docs = [d for d in docs if d.get("submitted_by") == username]
+    return render_template("client_portal.html", docs=my_docs)
+
+@app.route("/client/login", methods=["GET","POST"])
+def client_login():
+    if is_logged_in():
+        role = session.get("role")
+        return redirect(url_for("client_portal") if role == "client" else url_for("index"))
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username","").strip()
+        password = request.form.get("password","").strip()
+        full_name, role = verify_user(username, password)
+        if full_name:
+            session["logged_in"] = True
+            session["username"]  = username.lower().strip()
+            session["full_name"] = full_name
+            session["role"]      = role
+            if role == "client":
+                return redirect(url_for("client_portal"))
+            return redirect(url_for("index"))
+        else:
+            error = "Invalid username or password."
+    return render_template("client_login.html", error=error)
+
+@app.route("/client/register", methods=["GET","POST"])
+def client_register():
+    """Public client registration — no invite needed, just the public reg code."""
+    if is_logged_in():
+        return redirect(url_for("client_portal") if session.get("role") == "client" else url_for("index"))
+    error = None
+    if request.method == "POST":
+        reg_code  = request.form.get("reg_code","").strip()
+        username  = request.form.get("username","").strip()
+        full_name = request.form.get("full_name","").strip()
+        password  = request.form.get("password","").strip()
+        confirm   = request.form.get("confirm_password","").strip()
+        if reg_code != CLIENT_REG_CODE:
+            error = "Invalid registration code. Please scan the QR code at the office."
+        elif not username or not password:
+            error = "Username and password are required."
+        elif len(password) < 6:
+            error = "Password must be at least 6 characters."
+        elif password != confirm:
+            error = "Passwords do not match."
+        else:
+            ok, err = create_user(username, password, full_name, role="client")
+            if ok:
+                flash("Account created! You can now log in and submit documents.", "success")
+                return redirect(url_for("client_login"))
+            else:
+                error = err
+    return render_template("client_register.html", error=error)
+
+@app.route("/client/submit", methods=["GET","POST"])
+def client_submit():
+    """Client submits a new document."""
+    if not is_logged_in() or session.get("role") != "client":
+        return redirect(url_for("client_login"))
+    if request.method == "POST":
+        doc = {
+            "id":           str(uuid.uuid4())[:8].upper(),
+            "doc_id":       generate_ref(),
+            "doc_name":     request.form.get("doc_name","").strip(),
+            "category":     request.form.get("category","").strip(),
+            "description":  request.form.get("description","").strip(),
+            "sender_name":  session.get("full_name") or session.get("username"),
+            "sender_org":   request.form.get("unit_office","").strip(),
+            "sender_contact": "",
+            "referred_to":  request.form.get("referred_to","").strip(),
+            "forwarded_to": "",
+            "recipient_name": "",
+            "recipient_org": "",
+            "recipient_contact": "",
+            "received_by":  "",
+            "date_received": "",
+            "date_released": "",
+            "doc_date":     now_str()[:10],
+            "status":       "Pending",
+            "notes":        request.form.get("notes","").strip(),
+            "created_at":   now_str(),
+            "routing":      [],
+            "travel_log":   [],
+            "submitted_by": session.get("username"),
+            "submitted_by_name": session.get("full_name") or session.get("username"),
+        }
+        if not doc["doc_name"]:
+            flash("Document name/particulars is required.", "error")
+            return render_template("client_submit.html", doc=doc)
+        doc["travel_log"].append({
+            "office": doc["sender_org"] or "Client",
+            "action": "Document Submitted by Client",
+            "officer": doc["sender_name"],
+            "timestamp": doc["created_at"],
+            "remarks": "Submitted via client portal.",
+        })
+        insert_doc(doc)
+        flash("Document submitted successfully! Track it below.", "success")
+        return redirect(url_for("client_portal"))
+    return render_template("client_submit.html", doc={})
+
+@app.route("/client/track/<doc_id>")
+def client_track(doc_id):
+    """Client views their own document detail."""
+    if not is_logged_in() or session.get("role") != "client":
+        return redirect(url_for("client_login"))
+    doc = get_doc(doc_id)
+    if not doc or doc.get("submitted_by") != session.get("username"):
+        flash("Document not found.", "error")
+        return redirect(url_for("client_portal"))
+    return render_template("client_track.html", doc=doc)
+
+# ─────────────────────────────────────────────
+#  OFFICE QR ACTIONS — Receive / Release stations
+# ─────────────────────────────────────────────
+
+@app.route("/office-action/<action>", methods=["GET","POST"])
+@login_required
+def office_action(action):
+    """
+    Staff scans office QR → page to enter doc ID → auto-updates status.
+    action = 'receive' or 'release'
+    """
+    if action not in ("receive","release"):
+        flash("Invalid action.", "error")
+        return redirect(url_for("index"))
+    result = None
+    if request.method == "POST":
+        doc_id = request.form.get("doc_id","").strip().upper()
+        doc = get_doc(doc_id)
+        if not doc:
+            result = {"ok": False, "msg": "Document not found. Check the ID and try again."}
+        else:
+            if action == "receive":
+                doc["status"] = "Received"
+                doc["date_received"] = now_str()[:10]
+                log_action = "Document Received at Office"
+                log_remark = "Marked Received via office entrance QR scan."
+            else:
+                doc["status"] = "Released"
+                doc["date_released"] = now_str()[:10]
+                log_action = "Document Released from Office"
+                log_remark = "Marked Released via office exit QR scan."
+            doc.setdefault("travel_log", []).append({
+                "office": "DepEd Leyte Division Office",
+                "action": log_action,
+                "officer": session.get("full_name") or session.get("username"),
+                "timestamp": now_str(),
+                "remarks": log_remark,
+            })
+            save_doc(doc)
+            result = {"ok": True, "doc": doc, "action": action}
+    return render_template("office_action.html", action=action, result=result)
+
+@app.route("/office-qr/<action>.png")
+def office_qr_png(action):
+    """Generate and serve the office receive/release QR code image."""
+    if action not in ("receive","release"):
+        return "Invalid", 404
+    base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
+    url = base + "/office-action/" + action
+    qr = qrcode.QRCode(version=None,
+                        error_correction=qrcode.constants.ERROR_CORRECT_M,
+                        box_size=10, border=4)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#0D1B2A", back_color="white")
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return send_file(buf, mimetype="image/png",
+                     download_name=f"office-{action}-qr.png")
+
+@app.route("/client-reg-qr.png")
+@login_required
+def client_reg_qr():
+    """QR code for client registration — admin prints and posts at office."""
+    if session.get("role") != "admin":
+        return "Admin only", 403
+    base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
+    url = base + "/client/register"
+    qr = qrcode.QRCode(version=None,
+                        error_correction=qrcode.constants.ERROR_CORRECT_M,
+                        box_size=10, border=4)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#0D1B2A", back_color="white")
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return send_file(buf, mimetype="image/png", download_name="client-registration-qr.png")
+
+@app.route("/office-qr-page")
+@login_required
+def office_qr_page():
+    """Admin page to view and print all office QR codes."""
+    if session.get("role") != "admin":
+        flash("Admin access required.", "error")
+        return redirect(url_for("index"))
+    base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
+    return render_template("office_qr_page.html",
+                           receive_url=base + "/office-action/receive",
+                           release_url=base + "/office-action/release",
+                           client_reg_url=base + "/client/register",
+                           client_reg_code=CLIENT_REG_CODE)
+
+# ─────────────────────────────────────────────
+#  QUICK STATUS UPDATE (staff manual)
+# ─────────────────────────────────────────────
+
+@app.route("/update-status/<doc_id>", methods=["POST"])
+@login_required
+def update_status(doc_id):
+    doc = get_doc(doc_id)
+    if not doc:
+        return jsonify({"ok": False, "msg": "Not found"}), 404
+    new_status = request.form.get("status","").strip()
+    valid = ["Pending","Received","In Review","In Transit","Released","On Hold","Archived"]
+    if new_status not in valid:
+        return jsonify({"ok": False, "msg": "Invalid status"}), 400
+    doc["status"] = new_status
+    if new_status == "Received" and not doc.get("date_received"):
+        doc["date_received"] = now_str()[:10]
+    if new_status == "Released" and not doc.get("date_released"):
+        doc["date_released"] = now_str()[:10]
+    doc.setdefault("travel_log", []).append({
+        "office": "DepEd Leyte Division Office",
+        "action": "Status Updated to " + new_status,
+        "officer": session.get("full_name") or session.get("username"),
+        "timestamp": now_str(),
+        "remarks": "Manual status update by staff.",
+    })
+    save_doc(doc)
+    flash("Status updated to " + new_status + ".", "success")
+    return redirect(url_for("view_doc", doc_id=doc_id))
 
 @app.route("/db-status")
 def db_status():

@@ -54,6 +54,20 @@
   {% endif %}
 </div>
 
+{% if logged_in %}
+<div style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:18px;margin-top:16px;">
+  <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;">⚡ Quick Status Update</div>
+  <form method="post" action="/update-status/{{ doc.id }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <select name="status" style="flex:1;min-width:160px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface);">
+      {% for s in ['Pending','Received','In Review','In Transit','Released','On Hold','Archived'] %}
+      <option value="{{ s }}" {% if doc.status == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm" style="min-height:42px;">Update Status</button>
+  </form>
+</div>
+{% endif %}
+
 <!-- ── ROUTING CHAIN ── -->
 {% if doc.routing %}
 {% set visited = doc.travel_log | map(attribute='office') | list %}
