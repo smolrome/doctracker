@@ -1186,10 +1186,12 @@ def index():
         filtered = [d for d in filtered if d.get("date_received") and not d.get("date_released")]
     elif filter_type == "Released":
         filtered = [d for d in filtered if d.get("date_released")]
+    saved_offices = load_saved_offices()
     return render_template("index.html",
         docs=filtered, stats=get_stats(docs),
         search=search, filter_status=filter_status, filter_type=filter_type,
-        status_options=["All","Pending","In Review","In Transit","Released","On Hold","Archived"])
+        status_options=["All","Pending","In Review","In Transit","Released","On Hold","Archived"],
+        saved_offices=saved_offices)
 
 # ─────────────────────────────────────────────
 #  ADD DOCUMENT

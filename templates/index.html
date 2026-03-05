@@ -29,6 +29,141 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════
+     OFFICE SUBMISSION QR FINDER
+     ══════════════════════════════════════════ -->
+{% if saved_offices %}
+<style>
+  .office-qr-section{background:#fff;border:2px solid var(--border);border-radius:18px;
+    margin-bottom:20px;overflow:hidden;box-shadow:0 2px 12px rgba(10,45,100,.06);}
+  .oqs-header{padding:16px 20px;border-bottom:2px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+    background:linear-gradient(135deg,#F0F7FA,#fff);}
+  .oqs-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:900;
+    color:var(--navy);display:flex;align-items:center;gap:10px;}
+  .oqs-subtitle{font-size:14px;color:var(--muted);margin-top:2px;}
+  .oqs-search-wrap{display:flex;gap:10px;align-items:center;flex:1;max-width:400px;}
+  .oqs-search{flex:1;padding:10px 14px;border:2px solid var(--border);border-radius:10px;
+    font-size:15px;font-family:inherit;outline:none;min-height:44px;
+    background:var(--surface);transition:border .15s;}
+  .oqs-search:focus{border-color:var(--teal);background:#fff;}
+  .oqs-body{padding:16px 20px;}
+  .oqs-count{font-size:14px;color:var(--muted);margin-bottom:12px;font-weight:600;}
+
+  /* Office QR grid */
+  .oqs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;}
+  .oqs-card{border:2px solid #7C3AED;border-radius:14px;padding:16px;text-align:center;
+    background:#fff;transition:box-shadow .15s,transform .15s;cursor:pointer;}
+  .oqs-card:hover{box-shadow:0 6px 22px rgba(124,58,237,.18);transform:translateY(-2px);}
+  .oqs-card.hidden{display:none;}
+  .oqs-card-badge{display:inline-flex;align-items:center;gap:5px;background:#EDE9FE;
+    color:#5B21B6;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:700;
+    margin-bottom:8px;}
+  .oqs-card-name{font-family:'Outfit',sans-serif;font-size:16px;font-weight:900;
+    color:var(--navy);margin-bottom:10px;line-height:1.3;}
+  .oqs-qr-img{width:min(140px,100%);aspect-ratio:1;border-radius:9px;
+    border:2px solid var(--border);display:block;margin:0 auto 10px;object-fit:contain;}
+  .oqs-actions{display:flex;flex-direction:column;gap:7px;}
+  .btn-scan-sub{display:flex;align-items:center;justify-content:center;gap:6px;
+    padding:10px;border-radius:9px;font-size:15px;font-weight:800;font-family:inherit;
+    text-decoration:none;border:none;cursor:pointer;min-height:44px;
+    background:linear-gradient(135deg,#5B21B6,#7C3AED);color:#fff;
+    box-shadow:0 4px 12px rgba(124,58,237,.3);transition:all .15s;}
+  .btn-scan-sub:hover{box-shadow:0 6px 18px rgba(124,58,237,.45);}
+  .btn-dl-sub{display:flex;align-items:center;justify-content:center;gap:6px;
+    padding:9px;border-radius:9px;font-size:14px;font-weight:700;
+    border:2px solid var(--border);color:var(--muted);background:var(--surface);
+    text-decoration:none;transition:all .15s;}
+  .btn-dl-sub:hover{border-color:#7C3AED;color:#5B21B6;}
+
+  .oqs-none{text-align:center;padding:28px;color:var(--muted);
+    font-size:16px;display:none;}
+  .oqs-none.visible{display:block;}
+
+  @media(max-width:600px){
+    .oqs-header{flex-direction:column;align-items:flex-start;}
+    .oqs-search-wrap{max-width:100%;width:100%;}
+    .oqs-grid{grid-template-columns:1fr 1fr;}
+  }
+  @media(max-width:400px){
+    .oqs-grid{grid-template-columns:1fr;}
+  }
+</style>
+
+<div class="office-qr-section" id="office-qr-section">
+  <div class="oqs-header">
+    <div>
+      <div class="oqs-title">📋 Office Submission QR Codes</div>
+      <div class="oqs-subtitle">Can't find the QR at the office? Search and submit from here.</div>
+    </div>
+    <div class="oqs-search-wrap">
+      <input type="text" class="oqs-search" id="oqs-search"
+             placeholder="🔍 Search office name..."
+             oninput="filterOffices(this.value)"
+             autocomplete="off"/>
+    </div>
+  </div>
+  <div class="oqs-body">
+    <div class="oqs-count" id="oqs-count">
+      {{ saved_offices|length }} office{% if saved_offices|length != 1 %}s{% endif %} registered
+    </div>
+    <div class="oqs-grid" id="oqs-grid">
+      {% for office in saved_offices %}
+      {% set sub_slug = office.office_slug + '-sub' %}
+      <div class="oqs-card" data-name="{{ office.office_name | lower }}">
+        <div class="oqs-card-badge">📋 SUB</div>
+        <div class="oqs-card-name">{{ office.office_name }}</div>
+        <img src="/office-qr/{{ sub_slug }}.png"
+             class="oqs-qr-img"
+             alt="Submit QR — {{ office.office_name }}"
+             loading="lazy"/>
+        <div class="oqs-actions">
+          {% if current_role == 'client' %}
+          <a href="/client/submit?office_slug={{ office.office_slug | urlencode }}&office_name={{ office.office_name | urlencode }}"
+             class="btn-scan-sub">📋 Submit Here</a>
+          {% else %}
+          <a href="/office-action/{{ sub_slug }}"
+             class="btn-scan-sub">📋 Submit Docs</a>
+          {% endif %}
+          <a href="/office-qr/{{ sub_slug }}.png"
+             download="{{ sub_slug }}.png"
+             class="btn-dl-sub">⬇️ Download QR</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="oqs-none" id="oqs-none">
+      No offices match your search.
+    </div>
+  </div>
+</div>
+
+<script>
+function filterOffices(query) {
+  const q = query.toLowerCase().trim();
+  const cards = document.querySelectorAll('.oqs-card');
+  let visible = 0;
+  cards.forEach(card => {
+    const name = card.dataset.name || '';
+    const show = !q || name.includes(q);
+    card.classList.toggle('hidden', !show);
+    if (show) visible++;
+  });
+  const count = document.getElementById('oqs-count');
+  const none  = document.getElementById('oqs-none');
+  count.textContent = visible + ' office' + (visible !== 1 ? 's' : '') + (q ? ' found' : ' registered');
+  none.classList.toggle('visible', visible === 0);
+}
+// Auto-focus search if user hits /
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault();
+    document.getElementById('oqs-search').focus();
+  }
+});
+</script>
+{% endif %}
+
 <!-- Filters -->
 <form method="get" action="/">
   <div class="filters">
