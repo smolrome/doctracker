@@ -2,51 +2,196 @@
 {% block content %}
 
 <style>
-  .badge-transit { background:#DBEAFE;color:#1D4ED8; }
-  .log-row { border-bottom:1px solid var(--border); }
-  .log-row.last { border-bottom:none; }
-  .deped-banner {
-    background:linear-gradient(135deg,#0D1B2A 0%,#1B4F8A 100%);
-    border-radius:12px; padding:14px 20px; margin-bottom:22px;
-    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+  /* ── TOP HEADER ── */
+  .doc-hero{border-radius:18px;padding:22px 24px;margin-bottom:20px;
+    background:linear-gradient(135deg,#0A2540 0%,#0A4D68 55%,#0E7490 100%);
+    display:flex;align-items:flex-start;justify-content:space-between;
+    gap:16px;flex-wrap:wrap;}
+  .doc-hero-left{flex:1;min-width:0;}
+  .doc-hero-eyebrow{font-size:13px;font-weight:700;color:rgba(255,255,255,.6);
+    text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;
+    display:flex;align-items:center;gap:8px;}
+  .doc-hero-name{font-family:'Outfit',sans-serif;font-size:24px;font-weight:900;
+    color:#fff;line-height:1.3;margin-bottom:8px;word-break:break-word;}
+  .doc-hero-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .hero-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;
+    border-radius:20px;font-size:13px;font-weight:700;
+    background:rgba(255,255,255,.15);color:rgba(255,255,255,.9);
+    border:1.5px solid rgba(255,255,255,.2);}
+  .hero-ref{font-family:monospace;font-size:15px;font-weight:700;
+    color:rgba(255,255,255,.9);background:rgba(255,255,255,.12);
+    padding:5px 12px;border-radius:8px;border:1.5px solid rgba(255,255,255,.2);}
+  .doc-hero-status{flex-shrink:0;}
+
+  /* ── QUICK ACTIONS BAR ── */
+  .actions-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;align-items:center;}
+  .actions-bar .btn{min-height:44px;}
+
+  /* ── QUICK STATUS UPDATE ── */
+  .status-update-card{background:#fff;border:2px solid var(--border);
+    border-radius:16px;padding:18px 20px;margin-bottom:20px;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .status-update-label{font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;
+    color:var(--navy);white-space:nowrap;}
+  .status-update-card select{flex:1;min-width:160px;padding:10px 12px;
+    border:2px solid var(--border);border-radius:10px;font-family:inherit;
+    font-size:15px;background:var(--surface);color:var(--text);outline:none;
+    min-height:44px;}
+  .status-update-card select:focus{border-color:var(--teal);}
+
+  /* ── ROUTING CHAIN ── */
+  .route-card{background:#fff;border:2px solid var(--border);border-radius:16px;
+    padding:18px 20px;margin-bottom:20px;}
+  .route-card-title{font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px;}
+  .route-stops{display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
+  .stop-done{padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;
+    background:#D1FAE5;color:#065F46;border:2px solid #A7F3D0;}
+  .stop-pending{padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;
+    background:var(--surface);color:var(--muted);border:2px solid var(--border);}
+  .route-arrow{color:var(--muted);font-size:16px;}
+
+  /* ── INFO GRID ── */
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+  .info-card{background:#fff;border:2px solid var(--border);border-radius:16px;padding:20px;}
+  .info-card.full{grid-column:1/-1;}
+  .info-card-title{font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
+    margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--border);
+    display:flex;align-items:center;gap:8px;}
+
+  .field{margin-bottom:12px;}
+  .field:last-child{margin-bottom:0;}
+  .field-label{font-size:12px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.06em;color:var(--muted);margin-bottom:4px;}
+  .field-val{font-size:16px;color:var(--navy);font-weight:600;line-height:1.5;
+    word-break:break-word;}
+  .field-val.empty{color:var(--muted);font-weight:400;font-style:italic;}
+  .field-val.mono{font-family:monospace;font-size:14px;}
+
+  /* Source type badge */
+  .source-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;
+    border-radius:20px;font-size:13px;font-weight:800;margin-bottom:14px;}
+  .source-client{background:#EDE9FE;color:#5B21B6;border:2px solid #DDD6FE;}
+  .source-staff{background:#DBEAFE;color:#1D4ED8;border:2px solid #BFDBFE;}
+
+  /* ── STATUS TIMELINE ── */
+  .timeline{display:flex;gap:0;margin-bottom:6px;}
+  .tl-step{flex:1;text-align:center;padding:12px 6px;position:relative;}
+  .tl-step::after{content:'';position:absolute;top:50%;right:-1px;
+    width:2px;height:60%;background:var(--border);transform:translateY(-50%);z-index:1;}
+  .tl-step:last-child::after{display:none;}
+  .tl-dot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-size:18px;margin:0 auto 6px;border:3px solid var(--border);
+    background:#fff;}
+  .tl-step.done .tl-dot{border-color:#059669;background:#D1FAE5;}
+  .tl-step.current .tl-dot{border-color:var(--teal);background:#EFF6FF;
+    box-shadow:0 0 0 4px rgba(14,116,144,.15);}
+  .tl-label{font-size:12px;font-weight:700;color:var(--muted);}
+  .tl-step.done .tl-label{color:#065F46;}
+  .tl-step.current .tl-label{color:var(--teal);}
+  .tl-date{font-size:11px;color:var(--muted);margin-top:2px;}
+
+  /* ── TRAVEL LOG ── */
+  .tlog-table{width:100%;border-collapse:collapse;font-size:14px;}
+  .tlog-table thead tr{background:var(--surface);}
+  .tlog-table th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
+    border-bottom:2px solid var(--border);}
+  .tlog-table td{padding:11px 14px;border-bottom:1.5px solid var(--border);
+    vertical-align:top;}
+  .tlog-table tr:last-child td{border-bottom:none;}
+  .tlog-table tr:hover td{background:#F9FCFE;}
+  .tlog-action-badge{display:inline-flex;align-items:center;padding:3px 10px;
+    border-radius:10px;font-size:12px;font-weight:700;
+    background:#EFF6FF;color:var(--teal);}
+  .tlog-action-badge.received{background:#DBEAFE;color:#1D4ED8;}
+  .tlog-action-badge.released{background:#D1FAE5;color:#065F46;}
+  .tlog-action-badge.submitted{background:#EDE9FE;color:#5B21B6;}
+  .tlog-action-badge.logged{background:#FEF3C7;color:#92400E;}
+  .tlog-num{color:var(--muted);font-weight:600;font-size:13px;}
+  .tlog-office{font-weight:700;color:var(--navy);font-size:15px;}
+  .tlog-ts{color:var(--muted);font-size:12px;white-space:nowrap;}
+
+  /* ── QR SECTION ── */
+  .qr-section{display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;}
+  .qr-img{width:180px;height:180px;border-radius:12px;
+    border:2px solid var(--border);flex-shrink:0;}
+  .qr-info{flex:1;min-width:200px;padding-top:4px;}
+  .qr-info p{font-size:15px;color:var(--text);line-height:1.7;margin-bottom:16px;}
+  .qr-btns{display:flex;gap:10px;flex-wrap:wrap;}
+
+  @media(max-width:768px){.info-grid{grid-template-columns:1fr;}}
+  @media(max-width:600px){
+    .doc-hero-name{font-size:20px;}
+    .doc-hero{padding:18px;}
+    .timeline{display:none;}
+    .tlog-table{font-size:13px;}
+    .tlog-table th,.tlog-table td{padding:8px 10px;}
+    th:nth-child(4),td:nth-child(4){display:none;} /* hide remarks col on mobile */
+    .qr-section{flex-direction:column;}
+    .qr-img{width:160px;height:160px;}
+    .actions-bar{gap:8px;}
+    .actions-bar .btn{flex:1;justify-content:center;}
   }
-  .db-left { display:flex; align-items:center; gap:12px; }
-  .db-label { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:#8EA8C3; text-transform:uppercase; letter-spacing:0.07em; }
-  .db-ref   { font-family:monospace; font-size:16px; font-weight:700; color:#fff; }
+  @media(max-width:420px){
+    .status-update-card{flex-direction:column;align-items:stretch;}
+    .status-update-card select{min-width:unset;}
+  }
+  @media print{
+    .actions-bar,.status-update-card,.page-header{display:none!important;}
+    .doc-hero{background:#0A2540!important;-webkit-print-color-adjust:exact;}
+    .info-grid{grid-template-columns:1fr 1fr;}
+  }
 </style>
 
-<!-- DepEd Banner -->
-<div class="deped-banner">
-  <div class="db-left">
-    <span style="font-size:28px;">🏫</span>
-    <div>
-      <div class="db-label">DepEd Leyte Division — Document Record</div>
-      <div class="db-ref">{{ doc.doc_id or doc.id }}</div>
+<!-- ── DOCUMENT HERO ── -->
+<div class="page-header">
+  <a href="/" class="page-back">← Dashboard</a>
+</div>
+
+<div class="doc-hero">
+  <div class="doc-hero-left">
+    <div class="doc-hero-eyebrow">
+      <span>📄</span> Document Record
+    </div>
+    <div class="doc-hero-name">{{ doc.doc_name }}</div>
+    <div class="doc-hero-meta">
+      {% if doc.doc_id %}<div class="hero-ref">{{ doc.doc_id }}</div>{% endif %}
+      {% if doc.category %}<div class="hero-tag">{{ doc.category }}</div>{% endif %}
+      {% if doc.submitted_by %}
+        <div class="hero-tag">📱 Client Submission</div>
+      {% elif doc.logged_by %}
+        <div class="hero-tag">🖊️ Staff Logged</div>
+      {% endif %}
+      {% if doc.target_office_name %}
+        <div class="hero-tag">🏢 {{ doc.target_office_name }}</div>
+      {% elif doc.referred_to %}
+        <div class="hero-tag">→ {{ doc.referred_to }}</div>
+      {% endif %}
     </div>
   </div>
-  {% set s = doc.status %}
-  {% if s == 'In Transit' %}<span class="badge badge-transit">🚌 {{ s }}</span>
-  {% elif s == 'Pending' %}<span class="badge badge-pending">⏳ {{ s }}</span>
-  {% elif s == 'In Review' %}<span class="badge badge-review">🔍 {{ s }}</span>
-  {% elif s == 'Released' %}<span class="badge badge-released">✅ {{ s }}</span>
-  {% elif s == 'On Hold' %}<span class="badge badge-hold">⏸ {{ s }}</span>
-  {% else %}<span class="badge badge-archived">📦 {{ s }}</span>{% endif %}
-</div>
-
-<div class="page-header" style="margin-bottom:16px;">
-  <a href="/" class="page-back">← Dashboard</a>
-  <div>
-    <div class="page-title">{{ doc.doc_name }}</div>
-    {% if doc.category %}<div style="font-size:13px;color:var(--muted);margin-top:2px;">{{ doc.category }}</div>{% endif %}
+  <div class="doc-hero-status">
+    {% set s = doc.status %}
+    {% if s=='Pending'    %}<span class="badge badge-pending" style="font-size:15px;padding:8px 18px;">⏳ {{ s }}</span>
+    {% elif s=='Received' %}<span class="badge badge-received" style="font-size:15px;padding:8px 18px;">📥 {{ s }}</span>
+    {% elif s=='In Review'%}<span class="badge badge-review"   style="font-size:15px;padding:8px 18px;">🔍 {{ s }}</span>
+    {% elif s=='In Transit'%}<span class="badge badge-transit" style="font-size:15px;padding:8px 18px;">🚌 {{ s }}</span>
+    {% elif s=='Released' %}<span class="badge badge-released" style="font-size:15px;padding:8px 18px;">✅ {{ s }}</span>
+    {% elif s=='On Hold'  %}<span class="badge badge-hold"     style="font-size:15px;padding:8px 18px;">⏸️ {{ s }}</span>
+    {% else %}<span class="badge badge-archived"               style="font-size:15px;padding:8px 18px;">📦 {{ s }}</span>{% endif %}
   </div>
 </div>
 
-<div class="detail-actions">
+<!-- ── ACTIONS ── -->
+<div class="actions-bar">
   {% if logged_in %}
   <a href="/edit/{{ doc.id }}" class="btn btn-primary">✏️ Edit</a>
+  <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ QR Code</a>
   <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
-  <form method="post" action="/delete/{{ doc.id }}" onsubmit="return confirm('Delete this document?')" style="display:inline;">
-    <button type="submit" class="btn btn-danger">🗑 Delete</button>
+  <form method="post" action="/delete/{{ doc.id }}"
+        onsubmit="return confirm('Move this document to Trash?')" style="margin:0;">
+    <button type="submit" class="btn btn-danger">🗑️ Delete</button>
   </form>
   {% else %}
   <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
@@ -54,170 +199,309 @@
   {% endif %}
 </div>
 
+<!-- ── QUICK STATUS UPDATE ── -->
 {% if logged_in %}
-<div style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:18px;margin-top:16px;">
-  <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;">⚡ Quick Status Update</div>
-  <form method="post" action="/update-status/{{ doc.id }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-    <select name="status" style="flex:1;min-width:160px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface);">
+<div class="status-update-card">
+  <div class="status-update-label">⚡ Update Status</div>
+  <form method="post" action="/update-status/{{ doc.id }}"
+        style="display:flex;gap:10px;flex:1;flex-wrap:wrap;align-items:center;">
+    <select name="status" style="flex:1;min-width:160px;padding:10px 12px;
+        border:2px solid var(--border);border-radius:10px;font-family:inherit;
+        font-size:15px;background:var(--surface);outline:none;min-height:44px;">
       {% for s in ['Pending','Received','In Review','In Transit','Released','On Hold','Archived'] %}
-      <option value="{{ s }}" {% if doc.status == s %}selected{% endif %}>{{ s }}</option>
+      <option value="{{ s }}" {% if doc.status==s %}selected{% endif %}>{{ s }}</option>
       {% endfor %}
     </select>
-    <button type="submit" class="btn btn-primary btn-sm" style="min-height:42px;">Update Status</button>
+    <button type="submit" class="btn btn-primary" style="min-height:44px;white-space:nowrap;">
+      Save Status
+    </button>
   </form>
 </div>
 {% endif %}
 
+<!-- ── STATUS TIMELINE ── -->
+<div class="info-card full" style="margin-bottom:20px;">
+  <div class="info-card-title">📅 Status Timeline</div>
+  <div class="timeline">
+    {% set cur = doc.status %}
+    {% set steps = [
+      ('Pending',   '⏳', doc.created_at[:10] if doc.created_at else ''),
+      ('Received',  '📥', doc.date_received or ''),
+      ('In Review', '🔍', ''),
+      ('Released',  '✅', doc.date_released or ''),
+    ] %}
+    {% set order = ['Pending','Received','In Review','In Transit','Released'] %}
+    {% set cur_idx = order.index(cur) if cur in order else 0 %}
+    {% for label, icon, date in steps %}
+      {% set step_idx = order.index(label) if label in order else 0 %}
+      <div class="tl-step {% if step_idx < cur_idx %}done{% elif step_idx == cur_idx %}current{% endif %}">
+        <div class="tl-dot">{{ icon }}</div>
+        <div class="tl-label">{{ label }}</div>
+        {% if date %}<div class="tl-date">{{ date }}</div>{% endif %}
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
 <!-- ── ROUTING CHAIN ── -->
 {% if doc.routing %}
-{% set visited = doc.travel_log | map(attribute='office') | list %}
-<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;">
-  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:10px;">📍 Office Route</div>
-  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+<div class="route-card">
+  <div class="route-card-title">📍 Office Route</div>
+  <div class="route-stops">
+    {% set visited = doc.travel_log | map(attribute='office') | list %}
     {% for stop in doc.routing %}
       {% if stop in visited %}
-        <span style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;background:#D1FAE5;color:#065F46;border:1.5px solid #A7F3D0;">✓ {{ stop }}</span>
+        <span class="stop-done">✓ {{ stop }}</span>
       {% else %}
-        <span style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;background:var(--surface);color:var(--muted);border:1.5px solid var(--border);">{{ stop }}</span>
+        <span class="stop-pending">{{ stop }}</span>
       {% endif %}
-      {% if not loop.last %}<span style="color:var(--muted);font-size:16px;">→</span>{% endif %}
+      {% if not loop.last %}<span class="route-arrow">→</span>{% endif %}
     {% endfor %}
   </div>
 </div>
 {% endif %}
 
-<div class="detail-grid">
+<!-- ── INFO GRID ── -->
+<div class="info-grid">
 
-  <!-- ── Document Info ── -->
-  <div class="detail-card">
-    <h3>📄 Document Info</h3>
-    <div class="detail-field"><label>Title / Subject</label><div class="val">{{ doc.doc_name }}</div></div>
-    <div class="detail-field"><label>Reference No.</label><div class="val {% if not doc.doc_id %}empty{% endif %}">{{ doc.doc_id or '—' }}</div></div>
-    <div class="detail-field"><label>Document Type</label><div class="val {% if not doc.category %}empty{% endif %}">{{ doc.category or '—' }}</div></div>
-    <div class="detail-field"><label>Document Date</label><div class="val {% if not doc.doc_date %}empty{% endif %}">{{ doc.doc_date or '—' }}</div></div>
-    <div class="detail-field"><label>Content / Particulars</label><div class="val {% if not doc.description %}empty{% endif %}" style="line-height:1.6;">{{ doc.description or '—' }}</div></div>
-  </div>
+  <!-- Document Details -->
+  <div class="info-card">
+    <div class="info-card-title">📄 Document Details</div>
 
-  <!-- ── Dates ── -->
-  <div class="detail-card">
-    <h3>📅 Status &amp; Timeline</h3>
-    <div class="detail-field"><label>Current Status</label>
-      <div class="val">
-        {% set s = doc.status %}
-        {% if s == 'In Transit' %}<span class="badge badge-transit">{{ s }}</span>
-        {% elif s == 'Pending' %}<span class="badge badge-pending">{{ s }}</span>
-        {% elif s == 'In Review' %}<span class="badge badge-review">{{ s }}</span>
-        {% elif s == 'Released' %}<span class="badge badge-released">{{ s }}</span>
-        {% elif s == 'On Hold' %}<span class="badge badge-hold">{{ s }}</span>
-        {% else %}<span class="badge badge-archived">{{ s }}</span>{% endif %}
+    {% if doc.submitted_by %}
+    <div class="source-badge source-client">📱 Submitted by Client</div>
+    {% elif doc.logged_by %}
+    <div class="source-badge source-staff">🖊️ Logged by Staff</div>
+    {% endif %}
+
+    <div class="field">
+      <div class="field-label">Content / Particulars</div>
+      <div class="field-val">{{ doc.doc_name }}</div>
+    </div>
+    <div class="field">
+      <div class="field-label">Reference Number</div>
+      <div class="field-val {% if not doc.doc_id %}empty{% endif %} mono">
+        {{ doc.doc_id or 'Not assigned' }}
       </div>
     </div>
-    <div class="detail-field"><label>Record Created</label><div class="val">{{ doc.created_at }}</div></div>
-    <div class="detail-field"><label>System ID</label><div class="val" style="font-family:monospace;font-size:12px;">{{ doc.id }}</div></div>
+    <div class="field">
+      <div class="field-label">Document Type</div>
+      <div class="field-val {% if not doc.category %}empty{% endif %}">
+        {{ doc.category or '—' }}
+      </div>
+    </div>
+    {% if doc.doc_date %}
+    <div class="field">
+      <div class="field-label">Document Date</div>
+      <div class="field-val">{{ doc.doc_date }}</div>
+    </div>
+    {% endif %}
+    {% if doc.description %}
+    <div class="field">
+      <div class="field-label">Description / Remarks</div>
+      <div class="field-val" style="white-space:pre-line;">{{ doc.description }}</div>
+    </div>
+    {% endif %}
+    {% if doc.notes %}
+    <div class="field">
+      <div class="field-label">Notes</div>
+      <div class="field-val" style="white-space:pre-line;">{{ doc.notes }}</div>
+    </div>
+    {% endif %}
   </div>
 
-  <!-- ── Source / Sender ── -->
-  <div class="detail-card">
-    <h3>📤 Source / Sender</h3>
-    <div class="detail-field"><label>Unit / Office / School / District</label><div class="val {% if not doc.sender_org %}empty{% endif %}">{{ doc.sender_org or '—' }}</div></div>
-    <div class="detail-field"><label>Sender (Name &amp; Designation)</label><div class="val {% if not doc.sender_name %}empty{% endif %}">{{ doc.sender_name or '—' }}</div></div>
-    <div class="detail-field"><label>Contact / Address</label><div class="val {% if not doc.sender_contact %}empty{% endif %}">{{ doc.sender_contact or '—' }}</div></div>
+  <!-- Timeline & Status -->
+  <div class="info-card">
+    <div class="info-card-title">📅 Dates &amp; Status</div>
+    <div class="field">
+      <div class="field-label">Current Status</div>
+      <div class="field-val">
+        {% set s = doc.status %}
+        {% if s=='Pending'    %}<span class="badge badge-pending">⏳ {{ s }}</span>
+        {% elif s=='Received' %}<span class="badge badge-received">📥 {{ s }}</span>
+        {% elif s=='In Review'%}<span class="badge badge-review">🔍 {{ s }}</span>
+        {% elif s=='In Transit'%}<span class="badge badge-transit">🚌 {{ s }}</span>
+        {% elif s=='Released' %}<span class="badge badge-released">✅ {{ s }}</span>
+        {% elif s=='On Hold'  %}<span class="badge badge-hold">⏸️ {{ s }}</span>
+        {% else %}<span class="badge badge-archived">📦 {{ s }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-label">Date Submitted / Logged</div>
+      <div class="field-val">{{ doc.created_at[:10] if doc.created_at else '—' }}</div>
+    </div>
+    <div class="field">
+      <div class="field-label">Date Received</div>
+      <div class="field-val {% if not doc.date_received %}empty{% endif %}">
+        {{ doc.date_received or 'Not yet received' }}
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-label">Date Released</div>
+      <div class="field-val {% if not doc.date_released %}empty{% endif %}">
+        {{ doc.date_released or 'Not yet released' }}
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-label">Received By</div>
+      <div class="field-val {% if not doc.received_by %}empty{% endif %}">
+        {{ doc.received_by or '—' }}
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-label">System ID</div>
+      <div class="field-val mono" style="font-size:13px;">{{ doc.id }}</div>
+    </div>
   </div>
 
-  <!-- ── Receiving ── -->
-  <div class="detail-card">
-    <h3>📥 Receiving</h3>
-    <div class="detail-field"><label>Received By</label><div class="val {% if not doc.received_by %}empty{% endif %}">{{ doc.received_by or '—' }}</div></div>
-    <div class="detail-field"><label>Date Received</label><div class="val {% if not doc.date_received %}empty{% endif %}">{{ doc.date_received or '—' }}</div></div>
-    <div class="detail-field"><label>Date Released</label><div class="val {% if not doc.date_released %}empty{% endif %}">{{ doc.date_released or '—' }}</div></div>
+  <!-- Source / Sender -->
+  <div class="info-card">
+    <div class="info-card-title">📤 Source / Sender</div>
+    <div class="field">
+      <div class="field-label">Unit / Office / School</div>
+      <div class="field-val {% if not doc.sender_org %}empty{% endif %}">
+        {{ doc.sender_org or '—' }}
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-label">Sender Name &amp; Designation</div>
+      <div class="field-val {% if not doc.sender_name %}empty{% endif %}">
+        {{ doc.sender_name or '—' }}
+      </div>
+    </div>
+    {% if doc.sender_contact %}
+    <div class="field">
+      <div class="field-label">Contact / Address</div>
+      <div class="field-val">{{ doc.sender_contact }}</div>
+    </div>
+    {% endif %}
+    {% if doc.submitted_by %}
+    <div class="field">
+      <div class="field-label">Client Account</div>
+      <div class="field-val mono" style="font-size:14px;">
+        {{ doc.submitted_by_name or doc.submitted_by }}
+        <span style="font-weight:400;color:var(--muted);font-size:13px;">({{ doc.submitted_by }})</span>
+      </div>
+    </div>
+    {% endif %}
+    {% if doc.logged_by %}
+    <div class="field">
+      <div class="field-label">Logged By</div>
+      <div class="field-val mono" style="font-size:14px;">{{ doc.logged_by }}</div>
+    </div>
+    {% endif %}
   </div>
 
-  <!-- ── Routing ── -->
-  <div class="detail-card">
-    <h3>📍 Routing</h3>
-    <div class="detail-field"><label>Referred To</label><div class="val {% if not doc.referred_to %}empty{% endif %}">{{ doc.referred_to or '—' }}</div></div>
-    <div class="detail-field"><label>Forwarded To</label><div class="val {% if not doc.forwarded_to %}empty{% endif %}">{{ doc.forwarded_to or '—' }}</div></div>
-    <div class="detail-field"><label>Recipient / Addressee</label><div class="val {% if not doc.recipient_name %}empty{% endif %}">{{ doc.recipient_name or '—' }}{% if doc.recipient_org %}<br><span style="font-size:12px;color:var(--muted)">{{ doc.recipient_org }}</span>{% endif %}</div></div>
+  <!-- Routing / Destination -->
+  <div class="info-card">
+    <div class="info-card-title">📍 Routing &amp; Destination</div>
+    {% if doc.target_office_name %}
+    <div class="field">
+      <div class="field-label">Target Office (from QR Scan)</div>
+      <div class="field-val" style="color:#5B21B6;font-weight:700;">
+        🏢 {{ doc.target_office_name }}
+      </div>
+    </div>
+    {% endif %}
+    <div class="field">
+      <div class="field-label">Referred To</div>
+      <div class="field-val {% if not doc.referred_to %}empty{% endif %}">
+        {{ doc.referred_to or '—' }}
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-label">Forwarded To</div>
+      <div class="field-val {% if not doc.forwarded_to %}empty{% endif %}">
+        {{ doc.forwarded_to or '—' }}
+      </div>
+    </div>
+    {% if doc.recipient_name %}
+    <div class="field">
+      <div class="field-label">Recipient / Addressee</div>
+      <div class="field-val">
+        {{ doc.recipient_name }}
+        {% if doc.recipient_org %}
+        <br/><span style="font-size:13px;color:var(--muted);">{{ doc.recipient_org }}</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
   </div>
 
-  <!-- ── Notes ── -->
-  {% if doc.notes %}
-  <div class="detail-card" style="grid-column:1/-1">
-    <h3>📝 Remarks / Notes</h3>
-    <div style="font-size:14px;line-height:1.7;white-space:pre-line;">{{ doc.notes }}</div>
-  </div>
-  {% endif %}
-
-  <!-- ── Travel Log ── -->
-  <div class="detail-card" style="grid-column:1/-1">
-    <h3>🗺️ Travel Log — {{ doc.travel_log|length }} Entr{% if doc.travel_log|length == 1 %}y{% else %}ies{% endif %}</h3>
+  <!-- Travel Log — full width -->
+  <div class="info-card full">
+    <div class="info-card-title">
+      🗺️ Travel Log
+      <span style="font-size:13px;font-weight:600;color:var(--muted);margin-left:auto;">
+        {{ doc.travel_log|length }} entr{{ 'y' if doc.travel_log|length==1 else 'ies' }}
+      </span>
+    </div>
     {% if doc.travel_log %}
     <div style="overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <table class="tlog-table">
         <thead>
-          <tr style="background:var(--surface);">
-            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);border-bottom:1.5px solid var(--border);">#</th>
-            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);border-bottom:1.5px solid var(--border);">Office / Unit</th>
-            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);border-bottom:1.5px solid var(--border);">Action</th>
-            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);border-bottom:1.5px solid var(--border);">Officer / Staff</th>
-            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);border-bottom:1.5px solid var(--border);">Date &amp; Time</th>
-            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);border-bottom:1.5px solid var(--border);">Remarks</th>
+          <tr>
+            <th>#</th>
+            <th>Office / Unit</th>
+            <th>Action</th>
+            <th>Officer / Staff</th>
+            <th>Date &amp; Time</th>
+            <th>Remarks</th>
           </tr>
         </thead>
         <tbody>
           {% for entry in doc.travel_log %}
-          <tr class="log-row{% if loop.last %} last{% endif %}">
-            <td style="padding:10px 14px;color:var(--muted);font-weight:600;">{{ loop.index }}</td>
-            <td style="padding:10px 14px;font-weight:700;color:var(--navy);">{{ entry.office }}</td>
-            <td style="padding:10px 14px;">
-              <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;background:#EFF6FF;color:var(--accent);">{{ entry.action }}</span>
-              {% if entry.get('via') %}<span style="font-size:10px;color:var(--muted);margin-left:4px;">via {{ entry.via }}</span>{% endif %}
+          <tr>
+            <td class="tlog-num">{{ loop.index }}</td>
+            <td class="tlog-office">{{ entry.office }}</td>
+            <td>
+              {% set act = entry.action | lower %}
+              {% if 'received' in act %}
+                <span class="tlog-action-badge received">📥 {{ entry.action }}</span>
+              {% elif 'released' in act or 'picked up' in act %}
+                <span class="tlog-action-badge released">✅ {{ entry.action }}</span>
+              {% elif 'submitted' in act %}
+                <span class="tlog-action-badge submitted">📱 {{ entry.action }}</span>
+              {% elif 'logged' in act %}
+                <span class="tlog-action-badge logged">🖊️ {{ entry.action }}</span>
+              {% else %}
+                <span class="tlog-action-badge">{{ entry.action }}</span>
+              {% endif %}
             </td>
-            <td style="padding:10px 14px;color:var(--text);">{{ entry.officer or '—' }}</td>
-            <td style="padding:10px 14px;color:var(--muted);font-size:12px;white-space:nowrap;">{{ entry.timestamp }}</td>
-            <td style="padding:10px 14px;color:var(--text);font-size:12px;">{{ entry.remarks or '—' }}</td>
+            <td style="color:var(--text);">{{ entry.officer or '—' }}</td>
+            <td class="tlog-ts">{{ entry.timestamp }}</td>
+            <td style="font-size:13px;color:var(--muted);">{{ entry.remarks or '—' }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     {% else %}
-    <p style="color:var(--muted);font-size:14px;">No travel log entries yet. Print the QR code and attach it to the document.</p>
+    <p style="color:var(--muted);font-size:15px;padding:8px 0;">
+      No travel log entries yet. Attach the QR code to the document and scan at each office.
+    </p>
     {% endif %}
   </div>
 
-  <!-- ── QR Code ── -->
-  <div class="detail-card" style="grid-column:1/-1">
-    <h3>📱 QR Code</h3>
-    <div style="display:flex;align-items:flex-start;gap:28px;flex-wrap:wrap;">
-      <div>
-        <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code"
-             style="width:180px;height:180px;border-radius:10px;border:2px solid var(--border);display:block;" />
-        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:6px;">Scan to log receipt</div>
-      </div>
-      <div style="padding-top:4px;max-width:400px;">
-        <div style="font-size:14px;color:var(--text);line-height:1.7;margin-bottom:14px;">
-          Print this QR code and attach it to the physical document. Any office that receives the document scans this code to log their receipt — instantly updating the travel log.
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary btn-sm">⬇️ Download QR PNG</a>
-          <a href="/receive/{{ doc.id }}" class="btn btn-primary btn-sm" target="_blank">🔗 Open Scan Page</a>
+  <!-- QR Code — full width -->
+  <div class="info-card full">
+    <div class="info-card-title">📱 QR Code</div>
+    <div class="qr-section">
+      <img src="data:image/png;base64,{{ qr_b64 }}"
+           alt="Document QR Code" class="qr-img"/>
+      <div class="qr-info">
+        <p>
+          Print and attach this QR code to the physical document.
+          Each office that handles it scans this code — instantly adding an entry
+          to the travel log above with the officer's name and timestamp.
+        </p>
+        <div class="qr-btns">
+          <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ Download QR PNG</a>
+          <a href="/receive/{{ doc.id }}" class="btn btn-primary" target="_blank">🔗 Open Scan Page</a>
         </div>
       </div>
     </div>
   </div>
 
 </div>
-<style>
-@media(max-width:600px){
-  .detail-grid{grid-template-columns:1fr;}
-  .detail-actions{flex-wrap:wrap;}
-  .detail-actions .btn{flex:1;min-width:130px;justify-content:center;}
-  .val{font-size:15px;}
-}
-@media(max-width:480px){
-  .detail-actions .btn{width:100%;flex:none;}
-  td{font-size:14px;padding:10px;}
-}
-</style>
 {% endblock %}
