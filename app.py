@@ -1780,8 +1780,8 @@ def office_qr_png(action):
     qr_size = qr_img.size[0]  # square
 
     # ── Canvas layout — tall top + bottom bars for big text ──
-    bar_h   = 130   # top bar  (was 80)
-    foot_h  = 110   # bottom bar (was 70)
+    bar_h   = 80   # top bar  (was 80)
+    foot_h  = 70   # bottom bar (was 70)
     pad     = 14
     total_w = qr_size + pad * 2
     total_h = bar_h + qr_size + pad * 2 + foot_h
