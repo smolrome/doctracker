@@ -1244,14 +1244,13 @@ def client_track(doc_id):
 # ─────────────────────────────────────────────
 
 @app.route("/office-action/<action>", methods=["GET","POST"])
-@login_required
 def office_action(action):
     """
-    Staff scans office QR → page to enter doc ID → auto-updates status.
+    Anyone can scan office QR — client or staff.
+    Clients must be logged in to update their own doc.
     action = 'receive' or 'release'
     """
     if action not in ("receive","release"):
-        flash("Invalid action.", "error")
         return redirect(url_for("index"))
     result = None
     if request.method == "POST":
@@ -1260,25 +1259,33 @@ def office_action(action):
         if not doc:
             result = {"ok": False, "msg": "Document not found. Check the ID and try again."}
         else:
-            if action == "receive":
-                doc["status"] = "Received"
-                doc["date_received"] = now_str()[:10]
-                log_action = "Document Received at Office"
-                log_remark = "Marked Received via office entrance QR scan."
+            # Clients can only update their own submitted documents
+            role = session.get("role","guest")
+            if role == "client" and doc.get("submitted_by") != session.get("username"):
+                result = {"ok": False, "msg": "You can only update status of documents you submitted."}
+            elif role == "guest" or not is_logged_in():
+                result = {"ok": False, "msg": "Please log in to update document status.", "login_required": True}
             else:
-                doc["status"] = "Released"
-                doc["date_released"] = now_str()[:10]
-                log_action = "Document Released from Office"
-                log_remark = "Marked Released via office exit QR scan."
-            doc.setdefault("travel_log", []).append({
-                "office": "DepEd Leyte Division Office",
-                "action": log_action,
-                "officer": session.get("full_name") or session.get("username"),
-                "timestamp": now_str(),
-                "remarks": log_remark,
-            })
-            save_doc(doc)
-            result = {"ok": True, "doc": doc, "action": action}
+                if action == "receive":
+                    doc["status"] = "Received"
+                    doc["date_received"] = now_str()[:10]
+                    log_action = "Document Received at Office"
+                    log_remark = "Marked Received via office entrance QR scan."
+                else:
+                    doc["status"] = "Released"
+                    doc["date_released"] = now_str()[:10]
+                    log_action = "Document Released from Office"
+                    log_remark = "Marked Released via office exit QR scan."
+                actor = session.get("full_name") or session.get("username") or "Client"
+                doc.setdefault("travel_log", []).append({
+                    "office": "DepEd Leyte Division Office",
+                    "action": log_action,
+                    "officer": actor,
+                    "timestamp": now_str(),
+                    "remarks": log_remark,
+                })
+                save_doc(doc)
+                result = {"ok": True, "doc": doc, "action": action}
     return render_template("office_action.html", action=action, result=result)
 
 @app.route("/office-qr/<action>.png")
