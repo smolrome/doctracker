@@ -10,7 +10,18 @@
     body{font-family:'Source Sans 3',sans-serif;min-height:100vh;background:linear-gradient(135deg,#0A4D68 0%,#0E7490 50%,#059669 100%);display:flex;align-items:center;justify-content:center;padding:20px;}
     .wrap{width:100%;max-width:460px;}
     .header{text-align:center;margin-bottom:28px;}
-    .header-logo-img{width:110px;height:110px;border-radius:50%;margin:0 auto 16px;display:block;object-fit:cover;border:4px solid rgba(255,255,255,.5);box-shadow:0 8px 32px rgba(0,0,0,.3);background:#fff;}
+    .header-logo-img{
+      width:110px;height:110px;
+      border-radius:50%;
+      object-fit:cover;object-position:center;
+      display:block;margin:0 auto 16px;
+      border:4px solid rgba(255,255,255,.5);
+      box-shadow:0 8px 28px rgba(0,0,0,.35);
+      background:#fff;
+      /* Clip the black background from the logo PNG */
+      overflow:hidden;
+    }
+    
     .header-title{font-family:'Outfit',sans-serif;font-size:26px;font-weight:900;color:#fff;margin-bottom:4px;}
     .header-sub{font-size:15px;color:rgba(255,255,255,.8);line-height:1.5;}
     .card{background:#fff;border-radius:20px;padding:36px;box-shadow:0 24px 80px rgba(0,0,0,.3);}
