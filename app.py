@@ -1795,15 +1795,15 @@ def office_qr_png(action):
     # ── Load fonts — bigger sizes ──
     font_loaded = False
     try:
-        font_big  = ImageFont.truetype("arial.ttf", 58)
-        font_med  = ImageFont.truetype("arial.ttf", 28)
-        font_sm   = ImageFont.truetype("arial.ttf", 22)
+        font_big  = ImageFont.truetype("arial.ttf", 100)
+        font_med  = ImageFont.truetype("arial.ttf", 48)
+        font_sm   = ImageFont.truetype("arial.ttf", 36)
         font_loaded = True
     except:
         try:
-            font_big  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 58)
-            font_med  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
-            font_sm   = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
+            font_big  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 100)
+            font_med  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48)
+            font_sm   = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
             font_loaded = True
         except:
             pass
