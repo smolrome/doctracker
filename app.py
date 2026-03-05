@@ -1738,7 +1738,6 @@ def office_qr_png(action):
     """Generate office QR code PNG with label text — REG / REC / REL."""
     from PIL import Image, ImageDraw, ImageFont
     base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
-    # Embed signed URL so QR codes can be verified and expired
     signed_action = sign_office_action(action)
     url = base + "/office-action/" + signed_action
 
@@ -1768,85 +1767,89 @@ def office_qr_png(action):
         office_display = action.replace("-", " ").title()
         sub_label = "OFFICE QR"
 
-    # Generate QR module (larger box_size for clearer QR)
+    # ── QR code — smaller box_size so QR is compact ──
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=14, border=3
+        box_size=9,   # was 14 — smaller QR modules
+        border=3
     )
     qr.add_data(url)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="#0A2540", back_color="white").convert("RGB")
     qr_size = qr_img.size[0]  # square
 
-    # Build canvas: QR + header bar + footer bar
-    bar_h    = 80   # top bar height (larger for bigger text)
-    foot_h   = 70   # bottom bar height (larger for bigger text)
-    pad      = 12
-    total_w  = qr_size + pad * 2
-    total_h  = bar_h + qr_size + pad * 2 + foot_h
+    # ── Canvas layout — tall top + bottom bars for big text ──
+    bar_h   = 130   # top bar  (was 80)
+    foot_h  = 110   # bottom bar (was 70)
+    pad     = 14
+    total_w = qr_size + pad * 2
+    total_h = bar_h + qr_size + pad * 2 + foot_h
 
     canvas = Image.new("RGB", (total_w, total_h), "white")
     draw   = ImageDraw.Draw(canvas)
 
-    # ── TOP BAR (colored background with short label) ──
+    # ── TOP BAR ──
     draw.rectangle([0, 0, total_w, bar_h], fill=bg_color)
 
-    # Try to load fonts - try Windows fonts first, then DejaVu, then default
+    # ── Load fonts — bigger sizes ──
     font_loaded = False
     try:
-        # Try Windows fonts (Arial, Calibri, etc.)
-        font_big  = ImageFont.truetype("arial.ttf", 36)
-        font_med  = ImageFont.truetype("arial.ttf", 18)
-        font_sm   = ImageFont.truetype("arial.ttf", 14)
+        font_big  = ImageFont.truetype("arial.ttf", 58)
+        font_med  = ImageFont.truetype("arial.ttf", 28)
+        font_sm   = ImageFont.truetype("arial.ttf", 22)
         font_loaded = True
     except:
         try:
-            # Try DejaVu fonts (Linux)
-            font_big  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 36)
-            font_med  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
-            font_sm   = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+            font_big  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 58)
+            font_med  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+            font_sm   = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
             font_loaded = True
         except:
             pass
-    
-    if not font_loaded:
-        # Fall back to default but use larger size workaround
-        font_big  = ImageFont.load_default()
-        font_med  = ImageFont.load_default()
-        font_sm   = ImageFont.load_default()
 
-    # Draw short label centered in top bar (adjusted position for larger text)
+    if not font_loaded:
+        font_big = font_med = font_sm = ImageFont.load_default()
+
+    # Short label centered in top bar
     bbox = draw.textbbox((0, 0), short_label, font=font_big)
-    lw   = bbox[2] - bbox[0]
-    lh   = bbox[3] - bbox[1]
-    draw.text(((total_w - lw) / 2, (bar_h - lh) / 2 - 6), short_label, font=font_big, fill=label_color)
+    lw = bbox[2] - bbox[0]
+    lh = bbox[3] - bbox[1]
+    draw.text(
+        ((total_w - lw) / 2, (bar_h - lh) / 2),
+        short_label, font=font_big, fill=label_color
+    )
 
     # ── QR CODE ──
     canvas.paste(qr_img, (pad, bar_h + pad))
 
-    # ── BOTTOM BAR (white with office name + sub label) ──
+    # ── BOTTOM BAR ──
     foot_y = bar_h + qr_size + pad * 2
 
-    # Sub label (REC / REL / REG description) - adjusted position for larger bar
+    # Sub-label (e.g. "RECEIVE DOCUMENT") — centered, bold
     bbox2 = draw.textbbox((0, 0), sub_label, font=font_med)
     sw = bbox2[2] - bbox2[0]
-    draw.text(((total_w - sw) / 2, foot_y + 10), sub_label, font=font_med, fill=label_color)
+    draw.text(
+        ((total_w - sw) / 2, foot_y + 14),
+        sub_label, font=font_med, fill=label_color
+    )
 
-    # Office name - adjusted position for larger bar
-    # Truncate if too long
+    # Office name — centered below sub-label, truncate if too wide
     office_text = office_display
     while True:
         bbox3 = draw.textbbox((0, 0), office_text, font=font_sm)
-        if bbox3[2] - bbox3[0] <= total_w - 16 or len(office_text) < 5:
+        if bbox3[2] - bbox3[0] <= total_w - 20 or len(office_text) < 5:
             break
         office_text = office_text[:-4] + "..."
     bbox3 = draw.textbbox((0, 0), office_text, font=font_sm)
     ow = bbox3[2] - bbox3[0]
-    draw.text(((total_w - ow) / 2, foot_y + 38), office_text, font=font_sm, fill="#5A7A91")
+    draw.text(
+        ((total_w - ow) / 2, foot_y + 56),
+        office_text, font=font_sm, fill="#5A7A91"
+    )
 
-    # Thin colored line at bottom
-    draw.rectangle([0, total_h - 4, total_w, total_h], fill=label_color)
+    # Thick colored stripe at very bottom
+    draw.rectangle([0, total_h - 8, total_w, total_h], fill=label_color)
 
     buf = BytesIO()
     canvas.save(buf, format="PNG")
