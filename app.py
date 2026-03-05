@@ -380,7 +380,10 @@ def init_db():
                     prepared_by TEXT,
                     doc_ids JSONB NOT NULL,
                     created_at TIMESTAMP DEFAULT NOW(),
-                    notes TEXT
+                    notes TEXT,
+                    slip_date TEXT,
+                    time_from TEXT,
+                    time_to TEXT
                 )
             """)
             # Office traffic log — counts clients in/out per office per day
@@ -2569,14 +2572,20 @@ def save_routing_slip(slip):
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
-                        """INSERT INTO routing_slips (id,slip_no,destination,prepared_by,doc_ids,notes)
-                            VALUES (%s,%s,%s,%s,%s,%s)
+                        """INSERT INTO routing_slips
+                            (id,slip_no,destination,prepared_by,doc_ids,notes,slip_date,time_from,time_to)
+                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                             ON CONFLICT (id) DO UPDATE SET
                             destination=EXCLUDED.destination,
                             doc_ids=EXCLUDED.doc_ids,
-                            notes=EXCLUDED.notes""",
+                            notes=EXCLUDED.notes,
+                            slip_date=EXCLUDED.slip_date,
+                            time_from=EXCLUDED.time_from,
+                            time_to=EXCLUDED.time_to""",
                         (slip["id"], slip["slip_no"], slip["destination"],
-                         slip["prepared_by"], json.dumps(slip["doc_ids"]), slip.get("notes",""))
+                         slip["prepared_by"], json.dumps(slip["doc_ids"]),
+                         slip.get("notes",""), slip.get("slip_date",""),
+                         slip.get("time_from",""), slip.get("time_to",""))
                     )
                 conn.commit()
         except Exception as e:
@@ -2630,6 +2639,9 @@ def create_routing_slip():
         flash("No valid document IDs selected.", "error")
         return redirect(url_for("index"))
 
+    slip_date  = request.form.get("slip_date","").strip()  or now_str()[:10]
+    time_from  = request.form.get("time_from","").strip()
+    time_to    = request.form.get("time_to","").strip()
     actor = session.get("full_name") or session.get("username") or "Staff"
     slip  = {
         "id":          str(uuid.uuid4())[:8].upper(),
@@ -2638,6 +2650,9 @@ def create_routing_slip():
         "prepared_by": actor,
         "doc_ids":     doc_ids,
         "notes":       notes,
+        "slip_date":   slip_date,
+        "time_from":   time_from,
+        "time_to":     time_to,
         "created_at":  now_str(),
     }
     save_routing_slip(slip)
