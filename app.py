@@ -1588,7 +1588,7 @@ def client_submitted(doc_id):
         return redirect(url_for("client_portal"))
     qr_b64 = generate_qr_b64(doc, request.host_url)
     return render_template("client_submitted.html", docs=[doc],
-                           qr_list=[(doc, qr_b64)], batch=False)
+                           qr_list=[(doc, qr_b64, None)], batch=False)
 
 @app.route("/client/submitted-batch")
 def client_submitted_batch():
