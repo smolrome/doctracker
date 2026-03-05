@@ -1,11 +1,56 @@
-import os, uuid, base64, json, re, hashlib
+import os, uuid, base64, json, re, hashlib, hmac, time, secrets, threading
 import urllib.request, urllib.error, urllib.parse
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, session, abort
 import urllib.request
 import qrcode
+
+# ── bcrypt for secure password hashing ──
+try:
+    import bcrypt
+    BCRYPT_OK = True
+except ImportError:
+    BCRYPT_OK = False
+
+# ─────────────────────────────────────────────
+#  RATE LIMITING  (in-memory, thread-safe)
+#  5 failed logins → 15-min lockout per IP
+# ─────────────────────────────────────────────
+_rate_lock  = threading.Lock()
+_rate_store = {}  # key → {count, window_start, locked_until}
+
+RATE_LIMITS = {
+    "login":    {"max": 5,  "window": 300,  "lockout": 900},
+    "register": {"max": 5,  "window": 3600, "lockout": 3600},
+}
+
+def get_client_ip():
+    return (request.headers.get("X-Forwarded-For","").split(",")[0].strip()
+            or request.remote_addr or "unknown")
+
+def check_rate_limit(action, identifier):
+    cfg = RATE_LIMITS.get(action, {"max": 20, "window": 60, "lockout": 120})
+    key = f"{action}:{identifier}"
+    now = time.time()
+    with _rate_lock:
+        e = _rate_store.get(key, {"count": 0, "window_start": now, "locked_until": 0})
+        if e["locked_until"] > now:
+            return False, int(e["locked_until"] - now)
+        if now - e["window_start"] > cfg["window"]:
+            e = {"count": 0, "window_start": now, "locked_until": 0}
+        e["count"] += 1
+        if e["count"] > cfg["max"]:
+            e["locked_until"] = now + cfg["lockout"]
+            _rate_store[key] = e
+            return False, int(cfg["lockout"])
+        _rate_store[key] = e
+        return True, 0
+
+def reset_rate_limit(action, identifier):
+    with _rate_lock:
+        _rate_store.pop(f"{action}:{identifier}", None)
 
 # ── PostgreSQL via psycopg2 (Railway) or fallback to JSON file (local) ──
 try:
@@ -36,7 +81,23 @@ except Exception:
     AI_OK = False
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "doctracker-deped-leyte-2025")
+
+# ── Secret key — MUST be set in Railway env vars for production ──
+_secret = os.environ.get("SECRET_KEY", "")
+if not _secret:
+    _secret = "doctracker-dev-CHANGE-ME-in-production"
+    print("WARNING: SECRET_KEY not set — using insecure default. Set it in Railway Variables!")
+app.secret_key = _secret
+
+# ── Secure session cookie settings ──
+app.config.update(
+    SESSION_COOKIE_HTTPONLY  = True,   # JS cannot read cookie
+    SESSION_COOKIE_SAMESITE  = "Lax",  # CSRF mitigation
+    SESSION_COOKIE_SECURE    = os.environ.get("RAILWAY_ENVIRONMENT") == "production",
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=8),
+    MAX_CONTENT_LENGTH       = 10 * 1024 * 1024,  # 10 MB upload limit
+)
+
 DATA_FILE = os.environ.get("DATA_FILE", "documents.json")
 
 # ─────────────────────────────────────────────
@@ -243,9 +304,20 @@ def init_db():
                     password_hash TEXT NOT NULL,
                     full_name TEXT,
                     role TEXT DEFAULT 'staff',
+                    active BOOLEAN DEFAULT TRUE,
+                    last_login TIMESTAMP,
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
+            # Safe migrations for existing installs
+            for col_sql in [
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT TRUE",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP",
+            ]:
+                try:
+                    cur.execute(col_sql)
+                except Exception:
+                    pass
             # Safe migration — create invite_tokens if not already present
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS invite_tokens (
@@ -288,6 +360,17 @@ def init_db():
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
+            # Activity / audit log — login, logout, deletions
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS activity_log (
+                    id SERIAL PRIMARY KEY,
+                    username TEXT,
+                    action TEXT NOT NULL,
+                    ip_address TEXT,
+                    detail TEXT,
+                    ts TIMESTAMP DEFAULT NOW()
+                )
+            """)
             # Seed default receive/release QR codes if not present
             cur.execute("""
                 INSERT INTO office_qr_codes (id, action, label)
@@ -311,9 +394,27 @@ if USE_DB:
 def internal_error(e):
     import traceback
     tb = traceback.format_exc()
-    print(f"500 ERROR:\n{tb}")
-    # Always show detailed error so we can debug
-    return f"<pre style='padding:20px;font-size:13px;'><b>500 Internal Server Error:</b>\n\n{tb}</pre>", 500
+    print(f"500 ERROR:\n{tb}")  # visible in Railway logs only
+    is_dev = os.environ.get("FLASK_DEBUG") == "1"
+    if is_dev:
+        return f"<pre style='padding:20px;font-size:13px;'><b>500 Internal Server Error:</b>\n\n{tb}</pre>", 500
+    # Production: show friendly page, log the error
+    try:
+        audit_log("500_error", str(e)[:300])
+    except Exception:
+        pass
+    return render_template("500.html"), 500
+
+@app.errorhandler(429)
+def too_many_requests(e):
+    return render_template("500.html",
+        error_title="Too Many Attempts",
+        error_msg="Too many login attempts. Please wait a few minutes before trying again."), 429
+
+@app.errorhandler(403)
+def forbidden(e):
+    flash("You do not have permission to access that page.", "error")
+    return redirect(url_for("index"))
 
 
 @app.route("/logo.png")
@@ -361,14 +462,62 @@ def inject_auth():
         current_full_name=session.get("full_name","")
     )
 
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to every response."""
+    response.headers["X-Content-Type-Options"]  = "nosniff"
+    response.headers["X-Frame-Options"]          = "SAMEORIGIN"
+    response.headers["X-XSS-Protection"]         = "1; mode=block"
+    response.headers["Referrer-Policy"]           = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"]        = "geolocation=(), microphone=(), camera=(self)"
+    # Session expiry check
+    if is_logged_in():
+        last_active = session.get("last_active", 0)
+        now = time.time()
+        if last_active and now - last_active > 8 * 3600:  # 8 hour timeout
+            session.clear()
+            flash("Your session expired. Please log in again.", "error")
+        else:
+            session["last_active"] = now
+    return response
+
+@app.before_request
+def check_session_active():
+    """Block requests from disabled user accounts mid-session."""
+    if is_logged_in() and session.get("role") != "admin":
+        username = session.get("username","")
+        if username and USE_DB:
+            try:
+                with get_conn() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT active FROM users WHERE username=%s", (username,))
+                        row = cur.fetchone()
+                        if row and not row["active"]:
+                            session.clear()
+                            flash("Your account has been disabled. Contact the administrator.", "error")
+                            return redirect(url_for("login"))
+            except Exception:
+                pass
+
 # ─────────────────────────────────────────────
 #  USER HELPERS
 # ─────────────────────────────────────────────
 
-import hashlib
-
 def hash_password(password):
+    """Hash with bcrypt if available, SHA-256 fallback."""
+    if BCRYPT_OK:
+        return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12)).decode()
     return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(plain, stored_hash):
+    """Verify password against stored hash — handles both bcrypt and SHA-256."""
+    if BCRYPT_OK and stored_hash.startswith("$2"):
+        try:
+            return bcrypt.checkpw(plain.encode(), stored_hash.encode())
+        except Exception:
+            return False
+    # Legacy SHA-256 fallback
+    return hashlib.sha256(plain.encode()).hexdigest() == stored_hash
 
 def create_user(username, password, full_name="", role="staff"):
     if USE_DB:
@@ -401,28 +550,47 @@ def create_user(username, password, full_name="", role="staff"):
         return True, None
 
 def verify_user(username, password):
-    """Returns (full_name, role) if valid, else None."""
-    # Check env-var admin first (always works)
-    if username.strip() == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+    """Returns (full_name, role) if valid, else (None, None)."""
+    uname = username.strip().lower()
+
+    # ── Admin via env var — constant-time compare to prevent timing attacks ──
+    admin_ok = (secrets.compare_digest(uname, ADMIN_USERNAME.lower())
+                and secrets.compare_digest(password, ADMIN_PASSWORD))
+    if admin_ok:
         return ADMIN_USERNAME, "admin"
+
     if USE_DB:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
+                    # Fetch hash first, verify outside SQL to use bcrypt
                     cur.execute(
-                        "SELECT full_name, role FROM users WHERE username=%s AND password_hash=%s",
-                        (username.lower().strip(), hash_password(password))
+                        "SELECT full_name, role, password_hash FROM users WHERE username=%s AND active=TRUE",
+                        (uname,)
                     )
                     row = cur.fetchone()
-                    if row:
-                        return row["full_name"] or username, row["role"]
+                    if row and verify_password(password, row["password_hash"]):
+                        # Re-hash with bcrypt if still stored as SHA-256
+                        if BCRYPT_OK and not row["password_hash"].startswith("$2"):
+                            new_hash_val = hash_password(password)
+                            try:
+                                with get_conn() as conn2:
+                                    with conn2.cursor() as cur2:
+                                        cur2.execute(
+                                            "UPDATE users SET password_hash=%s WHERE username=%s",
+                                            (new_hash_val, uname)
+                                        )
+                                    conn2.commit()
+                            except Exception:
+                                pass
+                        return row["full_name"] or uname, row["role"]
         except Exception as e:
             print(f"verify_user error: {e}")
     else:
         users = load_users_json()
         for u in users:
-            if u["username"] == username.lower().strip() and u["password_hash"] == hash_password(password):
-                return u.get("full_name") or username, u.get("role","staff")
+            if u["username"] == uname and verify_password(password, u.get("password_hash","")):
+                return u.get("full_name") or uname, u.get("role","staff")
     return None, None
 
 def load_users_json():
@@ -456,6 +624,45 @@ def delete_user(username):
         users = [u for u in load_users_json() if u["username"] != username]
         with open("users.json","w") as f:
             json.dump(users, f, indent=2)
+
+def audit_log(action, detail=""):
+    """Record an event in the activity_log table."""
+    username = session.get("username", "anonymous") if session else "system"
+    ip = get_client_ip()
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "INSERT INTO activity_log (username, action, ip_address, detail) VALUES (%s,%s,%s,%s)",
+                        (username, action, ip, detail[:500] if detail else "")
+                    )
+                conn.commit()
+        except Exception as e:
+            print(f"audit_log error: {e}")
+    else:
+        # JSON fallback
+        path = "activity_log.json"
+        logs = []
+        if os.path.exists(path):
+            with open(path) as f_log:
+                logs = json.load(f_log)
+        logs.append({"username": username, "action": action, "ip": ip,
+                     "detail": detail, "ts": datetime.now().isoformat()})
+        logs = logs[-500:]  # keep last 500
+        with open(path, "w") as f_log:
+            json.dump(logs, f_log, indent=2)
+
+def update_last_login(username):
+    """Stamp last_login timestamp on successful auth."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE users SET last_login=NOW() WHERE username=%s", (username,))
+                conn.commit()
+        except Exception as e:
+            print(f"update_last_login error: {e}")
 
 # ─────────────────────────────────────────────
 #  CLIENT REGISTRATION — public QR code flow
@@ -677,24 +884,40 @@ def login():
     if is_logged_in():
         return redirect(url_for("index"))
     error = None
+    lockout_remaining = 0
     if request.method == "POST":
         username = request.form.get("username","").strip()
         password = request.form.get("password","").strip()
-        full_name, role = verify_user(username, password)
-        if full_name:
-            session["logged_in"] = True
-            session["username"]  = username.lower().strip()
-            session["full_name"] = full_name
-            session["role"]      = role
-            if role == "client":
-                flash(f"Welcome, {full_name}!", "success")
-                return redirect(url_for("client_portal"))
-            next_url = request.args.get("next") or url_for("index")
-            flash(f"Welcome, {full_name}!", "success")
-            return redirect(next_url)
+        ip = get_client_ip()
+        # Rate limit by IP + username combo
+        allowed, wait = check_rate_limit("login", f"{ip}:{username.lower()}")
+        if not allowed:
+            mins = max(1, wait // 60)
+            error = f"Too many failed attempts. Try again in {mins} minute{'s' if mins!=1 else ''}."
+            lockout_remaining = wait
+            audit_log("login_blocked", f"username={username}")
         else:
-            error = "Invalid username or password."
-    return render_template("login.html", error=error)
+            full_name, role = verify_user(username, password)
+            if full_name:
+                reset_rate_limit("login", f"{ip}:{username.lower()}")
+                session.clear()
+                session["logged_in"]   = True
+                session["username"]    = username.lower().strip()
+                session["full_name"]   = full_name
+                session["role"]        = role
+                session["last_active"] = time.time()
+                session.permanent      = True
+                update_last_login(username.lower().strip())
+                audit_log("login_ok", f"role={role}")
+                if role == "client":
+                    return redirect(url_for("client_portal"))
+                next_url = request.args.get("next") or url_for("index")
+                flash(f"Welcome, {full_name}!", "success")
+                return redirect(next_url)
+            else:
+                error = "Invalid username or password."
+                audit_log("login_fail", f"username={username}")
+    return render_template("login.html", error=error, lockout_remaining=lockout_remaining)
 
 @app.route("/register", methods=["GET","POST"])
 def register():
@@ -716,8 +939,10 @@ def register():
             confirm  = request.form.get("confirm_password","").strip()
             if not username or not password:
                 error = "Username and password are required."
-            elif len(password) < 6:
-                error = "Password must be at least 6 characters."
+            elif len(password) < 8:
+                error = "Password must be at least 8 characters."
+            elif not re.search(r'[0-9]', password):
+                error = "Password must contain at least one number."
             elif password != confirm:
                 error = "Passwords do not match."
             else:
@@ -735,6 +960,7 @@ def register():
 
 @app.route("/logout")
 def logout():
+    audit_log("logout", "")
     session.clear()
     flash("You have been logged out.", "success")
     return redirect(url_for("index"))
@@ -809,6 +1035,7 @@ def delete_user_route(username):
         flash("Cannot delete your own account.", "error")
     else:
         delete_user(username)
+        audit_log("user_deleted", f"deleted_user={username}")
         flash(f"User '{username}' deleted.", "success")
     return redirect(url_for("manage_users"))
 
@@ -1187,21 +1414,37 @@ def client_login():
         role = session.get("role")
         return redirect(url_for("client_portal") if role == "client" else url_for("index"))
     error = None
+    lockout_remaining = 0
     if request.method == "POST":
         username = request.form.get("username","").strip()
         password = request.form.get("password","").strip()
-        full_name, role = verify_user(username, password)
-        if full_name:
-            session["logged_in"] = True
-            session["username"]  = username.lower().strip()
-            session["full_name"] = full_name
-            session["role"]      = role
-            if role == "client":
-                return redirect(url_for("client_portal"))
-            return redirect(url_for("index"))
+        ip = get_client_ip()
+        allowed, wait = check_rate_limit("login", f"{ip}:{username.lower()}")
+        if not allowed:
+            mins = max(1, wait // 60)
+            error = f"Too many failed attempts. Try again in {mins} minute{'s' if mins!=1 else ''}."
+            lockout_remaining = wait
+            audit_log("client_login_blocked", f"username={username}")
         else:
-            error = "Invalid username or password."
-    return render_template("client_login.html", error=error)
+            full_name, role = verify_user(username, password)
+            if full_name:
+                reset_rate_limit("login", f"{ip}:{username.lower()}")
+                session.clear()
+                session["logged_in"]   = True
+                session["username"]    = username.lower().strip()
+                session["full_name"]   = full_name
+                session["role"]        = role
+                session["last_active"] = time.time()
+                session.permanent      = True
+                update_last_login(username.lower().strip())
+                audit_log("client_login_ok", f"role={role}")
+                if role == "client":
+                    return redirect(url_for("client_portal"))
+                return redirect(url_for("index"))
+            else:
+                error = "Invalid username or password."
+                audit_log("client_login_fail", f"username={username}")
+    return render_template("client_login.html", error=error, lockout_remaining=lockout_remaining)
 
 @app.route("/client/register", methods=["GET","POST"])
 def client_register():
