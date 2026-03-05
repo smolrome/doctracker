@@ -2,438 +2,109 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0"/>
-  <title>Login — DocTracker DepEd Leyte</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Staff Login — DepEd Leyte DocTracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      font-family:'Source Sans 3',sans-serif;min-height:100vh;
+      background: linear-gradient(135deg, #0A4D68 0%, #0E7490 50%, #059669 100%);
+      display:flex; align-items:center; justify-content:center; padding:20px;
+    }
+    .wrap{width:100%;max-width:460px;}
 
-    :root {
-      --grad-start:  #0d4f7c;
-      --grad-end:    #0f8a72;
-      --navy:        #0d2d3d;
-      --surface:     #f0f6f9;
-      --card:        #ffffff;
-      --border:      #cce0ea;
-      --text:        #0d2d3d;
-      --sub:         #3d6070;
-      --muted:       #6a8fa0;
-      --accent:      #0f8a72;
-      --accent-dark: #0a6b58;
-      --danger-bg:   #fde8e8;
-      --danger-text: #7a1010;
-      --danger-bdr:  #f5a0a0;
-      --success-bg:  #e6f9f2;
-      --success-txt: #0a5c3a;
-      --success-bdr: #7dd4b0;
-      --radius:      14px;
+    /* Header */
+    .header{text-align:center;margin-bottom:28px;}
+    .header-logo{
+      width:80px;height:80px;border-radius:20px;margin:0 auto 16px;
+      background:rgba(255,255,255,.15);border:3px solid rgba(255,255,255,.3);
+      display:flex;align-items:center;justify-content:center;font-size:40px;
     }
+    .header-title{font-family:'Outfit',sans-serif;font-size:28px;font-weight:900;color:#fff;margin-bottom:4px;}
+    .header-sub{font-size:15px;color:rgba(255,255,255,.8);line-height:1.5;}
 
-    html { -webkit-text-size-adjust: 100%; }
+    /* Card */
+    .card{background:#fff;border-radius:20px;padding:36px;box-shadow:0 24px 80px rgba(0,0,0,.3);}
+    .card-title{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#0A2540;margin-bottom:6px;}
+    .card-sub{font-size:15px;color:#5A7A91;margin-bottom:24px;}
 
-    body {
-      font-family: 'DM Sans', sans-serif;
-      background: linear-gradient(150deg, var(--grad-start) 0%, #0d6b72 55%, var(--grad-end) 100%);
-      min-height: 100dvh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: clamp(16px, 4vw, 32px);
-      position: relative;
-      overflow-x: hidden;
-    }
+    .error-box{background:#FEE2E2;border:2px solid #FCA5A5;border-radius:10px;padding:14px 16px;font-size:15px;color:#7F1D1D;margin-bottom:20px;display:flex;align-items:center;gap:10px;}
 
-    /* Subtle background pattern */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image:
-        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.06) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.04) 0%, transparent 50%);
-      pointer-events: none;
+    .form-group{margin-bottom:18px;}
+    .form-group label{display:block;font-size:15px;font-weight:700;color:#2D4A63;margin-bottom:8px;}
+    .form-group input{
+      width:100%;padding:15px 18px;
+      border:2px solid #C8DDE8;border-radius:10px;
+      font-family:inherit;font-size:18px;color:#0A2540;background:#F0F7FA;
+      outline:none;min-height:58px;transition:border .15s,box-shadow .15s;
     }
+    .form-group input:focus{border-color:#0E7490;background:#fff;box-shadow:0 0 0 4px rgba(14,116,144,.15);}
 
-    .login-wrap {
-      width: 100%;
-      max-width: 460px;
-      position: relative;
-      z-index: 1;
+    .btn{
+      width:100%;padding:17px;border-radius:10px;border:none;cursor:pointer;
+      font-family:inherit;font-size:18px;font-weight:700;min-height:58px;
+      background:linear-gradient(135deg,#0A4D68,#0E7490);color:#fff;
+      box-shadow:0 6px 20px rgba(10,77,104,.4);transition:all .2s;
     }
+    .btn:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(10,77,104,.5);}
 
-    /* ── HEADER ── */
-    .login-header {
-      text-align: center;
-      margin-bottom: clamp(20px, 4vw, 32px);
-    }
-    .login-logo {
-      width: 72px;
-      height: 72px;
-      background: rgba(255,255,255,0.15);
-      backdrop-filter: blur(8px);
-      border: 2px solid rgba(255,255,255,0.25);
-      border-radius: 20px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 36px;
-      margin-bottom: 14px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-    }
-    .login-title {
-      font-size: clamp(24px, 5vw, 30px);
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: -0.5px;
-      margin-bottom: 5px;
-    }
-    .login-sub {
-      font-size: clamp(13px, 2vw, 15px);
-      color: rgba(255,255,255,0.75);
-      line-height: 1.4;
-    }
+    .footer-links{display:flex;justify-content:center;gap:20px;margin-top:20px;flex-wrap:wrap;}
+    .footer-links a{font-size:14px;color:rgba(255,255,255,.85);text-decoration:none;font-weight:600;}
+    .footer-links a:hover{color:#fff;text-decoration:underline;}
 
-    /* ── CARD ── */
-    .login-card {
-      background: var(--card);
-      border-radius: 20px;
-      padding: clamp(24px, 5vw, 40px) clamp(20px, 5vw, 36px);
-      box-shadow: 0 24px 64px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.1);
-      border: 1px solid rgba(255,255,255,0.6);
-    }
-
-    .card-title {
-      font-size: clamp(18px, 3vw, 22px);
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 4px;
-    }
-    .card-desc {
-      font-size: clamp(14px, 2vw, 15px);
-      color: var(--muted);
-      margin-bottom: clamp(20px, 3vw, 28px);
-      line-height: 1.45;
-    }
-
-    /* ── ALERTS ── */
-    .alert {
-      border-radius: 10px;
-      padding: 13px 16px;
-      font-size: clamp(14px, 2vw, 15px);
-      font-weight: 500;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      line-height: 1.4;
-    }
-    .alert-error   { background: var(--danger-bg);  border: 1.5px solid var(--danger-bdr);  color: var(--danger-text); }
-    .alert-success { background: var(--success-bg); border: 1.5px solid var(--success-bdr); color: var(--success-txt); }
-    .alert-icon    { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
-
-    /* ── FORM ── */
-    .form-group { margin-bottom: clamp(16px, 2.5vw, 20px); }
-
-    .form-group label {
-      display: block;
-      font-size: clamp(13px, 1.8vw, 14px);
-      font-weight: 700;
-      color: var(--sub);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 7px;
-    }
-
-    .input-wrap {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-    .input-icon {
-      position: absolute;
-      left: 15px;
-      font-size: 18px;
-      pointer-events: none;
-      opacity: 0.55;
-    }
-
-    .form-group input {
-      width: 100%;
-      padding: 0 16px 0 44px;
-      height: 52px;
-      border: 1.5px solid var(--border);
-      border-radius: 11px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: clamp(15px, 2.2vw, 16px);
-      color: var(--text);
-      background: var(--surface);
-      outline: none;
-      transition: border-color .2s, box-shadow .2s, background .2s;
-      -webkit-appearance: none;
-      appearance: none;
-    }
-    .form-group input:focus {
-      border-color: var(--accent);
-      background: #ffffff;
-      box-shadow: 0 0 0 3px rgba(15,138,114,0.18);
-    }
-    .form-group input::placeholder { color: var(--muted); opacity: 0.8; }
-
-    /* Password toggle */
-    .pwd-toggle {
-      position: absolute;
-      right: 14px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 18px;
-      color: var(--muted);
-      padding: 4px;
-      line-height: 1;
-      transition: color .15s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .pwd-toggle:hover { color: var(--accent); }
-
-    /* ── BUTTONS ── */
-    .btn-login {
-      width: 100%;
-      height: 54px;
-      background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
-      color: #fff;
-      border: none;
-      border-radius: 11px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: clamp(15px, 2.2vw, 17px);
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 8px;
-      box-shadow: 0 4px 14px rgba(13,79,124,0.3);
-      transition: opacity .15s, transform .15s, box-shadow .15s;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-      letter-spacing: 0.2px;
-    }
-    .btn-login:hover  { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(13,79,124,0.35); }
-    .btn-login:active { transform: scale(0.98); }
-
-    /* ── DIVIDER ── */
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: clamp(16px, 3vw, 22px) 0;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .divider::before, .divider::after {
-      content: '';
-      flex: 1;
-      height: 1.5px;
-      background: var(--border);
-      border-radius: 1px;
-    }
-
-    /* ── SECONDARY BUTTONS ── */
-    .btn-secondary {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 9px;
-      width: 100%;
-      height: 50px;
-      border-radius: 11px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: clamp(14px, 2vw, 15px);
-      font-weight: 600;
-      text-decoration: none;
-      cursor: pointer;
-      border: 1.5px solid var(--border);
-      background: var(--surface);
-      color: var(--sub);
-      transition: all .15s;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-      margin-bottom: 10px;
-    }
-    .btn-secondary:last-child { margin-bottom: 0; }
-    .btn-secondary:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-      background: #e8f7f4;
-    }
-    .btn-secondary.register {
-      border-color: #7dd4b0;
-      color: var(--success-txt);
-      background: var(--success-bg);
-    }
-    .btn-secondary.register:hover {
-      border-color: var(--accent);
-      background: #d0f2e8;
-    }
-
-    /* ── FOOTER NOTE ── */
-    .login-note {
-      text-align: center;
-      margin-top: clamp(16px, 3vw, 22px);
-      font-size: clamp(12px, 1.8vw, 13px);
-      color: rgba(255,255,255,0.6);
-      line-height: 1.5;
-    }
-
-    /* ── LOADING OVERLAY ── */
-    #loading-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(13,27,42,0.65);
-      backdrop-filter: blur(4px);
-      z-index: 999;
-      align-items: center;
-      justify-content: center;
-    }
-    #loading-overlay.active { display: flex; }
-
-    .loading-box {
-      background: #fff;
-      border-radius: 18px;
-      padding: clamp(24px, 4vw, 36px) clamp(28px, 5vw, 48px);
-      text-align: center;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-    }
-    .loading-spinner {
-      width: 48px;
-      height: 48px;
-      border: 4px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-      margin: 0 auto 14px;
-    }
-    .loading-text {
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--navy);
-    }
-    .loading-sub {
-      font-size: 13px;
-      color: var(--muted);
-      margin-top: 4px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── RESPONSIVE ── */
-    @media (max-width: 400px) {
-      .login-logo { width: 60px; height: 60px; font-size: 28px; }
-    }
+    #loading-overlay{display:none;position:fixed;inset:0;background:rgba(10,37,64,.65);backdrop-filter:blur(4px);z-index:999;align-items:center;justify-content:center;}
+    #loading-overlay.active{display:flex;}
+    .loading-box{background:#fff;border-radius:20px;padding:36px 48px;text-align:center;}
+    .loading-spinner{width:52px;height:52px;border:5px solid #C8DDE8;border-top-color:#0E7490;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 16px;}
+    .loading-text{font-family:'Outfit',sans-serif;font-size:18px;font-weight:700;color:#0A2540;}
+    @keyframes spin{to{transform:rotate(360deg);}}
   </style>
 </head>
 <body>
-
-<div class="login-wrap">
-
-  <!-- Header -->
-  <div class="login-header">
-    <div class="login-logo">🏫</div>
-    <div class="login-title">DocTracker</div>
-    <div class="login-sub">DepEd Leyte Division Office<br>Document Routing System</div>
+<div class="wrap">
+  <div class="header">
+    <div class="header-logo">📂</div>
+    <div class="header-title">DocTracker</div>
+    <div class="header-sub">DepEd Leyte Division<br/>Document Tracking System</div>
   </div>
 
-  <!-- Card -->
-  <div class="login-card">
-    <div class="card-title">Staff Login</div>
-    <div class="card-desc">Sign in to manage documents, log receipts, and track routing.</div>
+  <div class="card">
+    <div class="card-title">Staff Sign In</div>
+    <div class="card-sub">Enter your credentials to access the system.</div>
 
     {% if error %}
-    <div class="alert alert-error">
-      <span class="alert-icon">⚠️</span>
-      <span>{{ error }}</span>
-    </div>
+    <div class="error-box">❌ {{ error }}</div>
     {% endif %}
 
-    <form method="post" id="login-form" autocomplete="on">
-
+    <form method="post" id="login-form">
       <div class="form-group">
         <label for="username">Username</label>
-        <div class="input-wrap">
-          <span class="input-icon">👤</span>
-          <input type="text" id="username" name="username"
-                 placeholder="Enter your username"
-                 autocomplete="username" autofocus required />
-        </div>
+        <input type="text" id="username" name="username" placeholder="Enter your username" autocomplete="username" autofocus required/>
       </div>
-
       <div class="form-group">
         <label for="password">Password</label>
-        <div class="input-wrap">
-          <span class="input-icon">🔒</span>
-          <input type="password" id="password" name="password"
-                 placeholder="Enter your password"
-                 autocomplete="current-password" required />
-          <button type="button" class="pwd-toggle" id="pwd-toggle"
-                  aria-label="Show or hide password">👁</button>
-        </div>
+        <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required/>
       </div>
-
-      <button type="submit" class="btn-login">
-        🔐 Sign In
-      </button>
-
+      <button type="submit" class="btn">🔐 Sign In</button>
     </form>
-
-    <div class="divider">or</div>
-
-    <a href="/register" class="btn-secondary register">
-      📝 Register as Staff <span style="font-size:12px;opacity:0.75;">(Invite Code Required)</span>
-    </a>
-
-    <a href="/" class="btn-secondary">
-      👁 View Dashboard (Read Only)
-    </a>
-
   </div>
 
-  <div class="login-note">
-    Trouble signing in? Contact your system administrator<br>for login credentials or account access.
+  <div class="footer-links">
+    <a href="/client/login">📱 Client Portal</a>
+    <a href="/">👁 View Dashboard</a>
   </div>
-
 </div>
 
-<!-- Loading Overlay -->
 <div id="loading-overlay">
   <div class="loading-box">
     <div class="loading-spinner"></div>
-    <div class="loading-text">Signing in…</div>
-    <div class="loading-sub">Please wait</div>
+    <div class="loading-text">Signing in...</div>
   </div>
 </div>
-
 <script>
-  // Show loading on submit
-  document.getElementById('login-form').addEventListener('submit', function () {
-    document.getElementById('loading-overlay').classList.add('active');
-  });
-  // Hide if back-navigated (bfcache)
-  window.addEventListener('pageshow', function (e) {
-    if (e.persisted) document.getElementById('loading-overlay').classList.remove('active');
-  });
-
-  // Password visibility toggle
-  const pwdInput  = document.getElementById('password');
-  const pwdToggle = document.getElementById('pwd-toggle');
-  pwdToggle.addEventListener('click', function () {
-    const show = pwdInput.type === 'password';
-    pwdInput.type        = show ? 'text' : 'password';
-    pwdToggle.textContent = show ? '🙈' : '👁';
-    pwdToggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-  });
+document.getElementById('login-form').addEventListener('submit',()=>document.getElementById('loading-overlay').classList.add('active'));
+window.addEventListener('pageshow',e=>{if(e.persisted)document.getElementById('loading-overlay').classList.remove('active');});
 </script>
 </body>
 </html>

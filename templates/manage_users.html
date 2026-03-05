@@ -1,495 +1,63 @@
 {% extends "base.html" %}
 {% block content %}
 
+<div class="page-header">
+  <a href="/" class="page-back">← Dashboard</a>
+  <div class="page-title">👥 Manage Staff Accounts</div>
+</div>
+
 <style>
-  /* ── DESIGN TOKENS (match system) ── */
-  :root {
-    --teal-deep:    #0A4D68;
-    --teal-mid:     #088395;
-    --teal-bright:  #05BFDB;
-    --green-bright: #00E5A0;
-    --green-mid:    #00C187;
-    --text-white:   #FFFFFF;
-    --text-light:   #D0F5F0;
-    --text-muted:   #A0D8D5;
-    --surface-glass:        rgba(255,255,255,0.10);
-    --surface-glass-strong: rgba(255,255,255,0.16);
-    --border-glass:         rgba(255,255,255,0.22);
-    --shadow-card:  0 6px 32px rgba(0,0,0,0.25);
-  }
+  .users-card { background:#fff; border:1.5px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:20px; }
+  .users-head { padding:16px 20px; border-bottom:1.5px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+  .users-head h3 { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:var(--navy); }
+  .user-row { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--border); gap:12px; flex-wrap:wrap; }
+  .user-row:last-child { border-bottom:none; }
+  .user-info { display:flex; align-items:center; gap:12px; }
+  .user-avatar { width:40px; height:40px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:16px; flex-shrink:0; }
+  .user-avatar.admin { background:var(--navy); }
+  .user-name { font-weight:700; font-size:14px; color:var(--navy); }
+  .user-username { font-size:12px; color:var(--muted); font-family:monospace; }
+  .role-badge { padding:2px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+  .role-admin { background:#FEF3C7; color:#92400E; }
+  .role-staff { background:#DBEAFE; color:#1D4ED8; }
+  .role-client { background:#D1FAE5; color:#065F46; }
+  .user-date { font-size:12px; color:var(--muted); }
 
-  /* ── PAGE HEADER ── */
-  .staff-page-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 28px;
-    flex-wrap: wrap;
-  }
+  .invite-info { background:#EFF6FF; border:1.5px solid var(--accent); border-radius:12px; padding:18px 20px; margin-bottom:20px; }
+  .invite-info h3 { font-family:'Syne',sans-serif; font-size:14px; font-weight:800; color:var(--navy); margin-bottom:8px; }
+  .invite-code { font-family:monospace; font-size:16px; font-weight:700; color:var(--accent); background:#fff; border:1.5px dashed var(--accent); padding:8px 16px; border-radius:8px; display:inline-block; margin:6px 0; letter-spacing:0.05em; }
+  .invite-info p { font-size:13px; color:var(--muted); margin-top:6px; }
 
-  .staff-page-header .back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    color: var(--text-light);
-    font-size: 14px;
-    font-weight: 700;
-    text-decoration: none;
-    background: var(--surface-glass);
-    border: 1.5px solid var(--border-glass);
-    padding: 8px 16px;
-    border-radius: 10px;
-    transition: background 0.2s, transform 0.15s;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .staff-page-header .back-link:hover { background: var(--surface-glass-strong); transform: translateX(-2px); }
-
-  .staff-page-header .page-title-wrap { display: flex; flex-direction: column; gap: 3px; }
-  .staff-page-header h1 {
-    font-family: 'Nunito', sans-serif;
-    font-size: clamp(20px, 5vw, 28px);
-    font-weight: 900;
-    color: var(--text-white);
-    letter-spacing: -0.01em;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .staff-page-header h1 .h1-icon {
-    width: 40px; height: 40px;
-    background: linear-gradient(135deg, var(--teal-bright), var(--green-bright));
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px; flex-shrink: 0;
-    box-shadow: 0 2px 12px rgba(0,229,160,0.35);
-  }
-  .staff-page-header .page-sub {
-    font-size: 14px;
-    color: var(--text-muted);
-    font-weight: 600;
-    margin-left: 50px;
-  }
-
-  /* ── INVITE CODE BANNER ── */
-  .invite-banner {
-    background: rgba(5,191,219,0.12);
-    border: 2px solid rgba(5,191,219,0.35);
-    border-radius: 18px;
-    padding: 20px 24px;
-    margin-bottom: 24px;
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    flex-wrap: wrap;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-  }
-
-  .invite-icon {
-    width: 46px; height: 46px;
-    background: rgba(5,191,219,0.22);
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px; flex-shrink: 0;
-  }
-
-  .invite-body { flex: 1; min-width: 200px; }
-  .invite-body h3 {
-    font-family: 'Nunito', sans-serif;
-    font-size: clamp(15px, 4vw, 17px);
-    font-weight: 800;
-    color: var(--text-white);
-    margin-bottom: 8px;
-  }
-
-  .invite-code-wrap {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
-  }
-
-  .invite-code {
-    font-family: 'Courier New', monospace;
-    font-size: clamp(16px, 4vw, 20px);
-    font-weight: 700;
-    color: var(--green-bright);
-    background: rgba(0,0,0,0.25);
-    border: 1.5px dashed rgba(0,229,160,0.45);
-    padding: 10px 18px;
-    border-radius: 10px;
-    letter-spacing: 0.08em;
-    word-break: break-all;
-  }
-
-  .copy-btn {
-    display: flex; align-items: center; gap: 6px;
-    background: rgba(0,229,160,0.18);
-    border: 1.5px solid rgba(0,229,160,0.35);
-    border-radius: 8px;
-    color: var(--green-bright);
-    font-family: 'Nunito', sans-serif;
-    font-size: 13px; font-weight: 800;
-    padding: 8px 14px;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.15s;
-    white-space: nowrap;
-  }
-  .copy-btn:hover  { background: rgba(0,229,160,0.28); }
-  .copy-btn:active { transform: scale(0.95); }
-  .copy-btn svg    { width: 16px; height: 16px; }
-
-  .invite-body p {
-    font-size: clamp(13px, 3vw, 14px);
-    color: var(--text-muted);
-    font-weight: 600;
-    line-height: 1.6;
-  }
-  .invite-body p code {
-    font-family: 'Courier New', monospace;
-    background: rgba(255,255,255,0.12);
-    padding: 2px 7px;
-    border-radius: 5px;
-    font-size: 12px;
-    color: var(--teal-bright);
-  }
-
-  /* ── STAFF CARD ── */
-  .staff-card {
-    background: var(--surface-glass);
-    border: 1.5px solid var(--border-glass);
-    border-radius: 18px;
-    overflow: hidden;
-    margin-bottom: 24px;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow: var(--shadow-card);
-  }
-
-  .staff-card-head {
-    padding: 18px 22px;
-    border-bottom: 1.5px solid rgba(255,255,255,0.12);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .staff-card-head-left { display: flex; align-items: center; gap: 10px; }
-  .staff-card-head-icon {
-    width: 36px; height: 36px;
-    background: rgba(0,229,160,0.18);
-    border-radius: 9px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; flex-shrink: 0;
-  }
-  .staff-card-head h3 {
-    font-family: 'Nunito', sans-serif;
-    font-size: clamp(15px, 3.5vw, 16px);
-    font-weight: 800;
-    color: var(--text-white);
-  }
-  .staff-count-badge {
-    background: rgba(5,191,219,0.20);
-    border: 1px solid rgba(5,191,219,0.35);
-    border-radius: 99px;
-    padding: 3px 10px;
-    font-family: 'Nunito', sans-serif;
-    font-size: 12px; font-weight: 800;
-    color: var(--teal-bright);
-    white-space: nowrap;
-  }
-
-  .head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-
-  /* ── USER ROW ── */
-  .user-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 22px;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    gap: 12px;
-    flex-wrap: wrap;
-    transition: background 0.15s;
-  }
-  .user-row:last-child { border-bottom: none; }
-  .user-row:hover { background: rgba(255,255,255,0.05); }
-
-  .user-info { display: flex; align-items: center; gap: 14px; min-width: 0; }
-
-  .user-avatar {
-    width: 46px; height: 46px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--teal-mid), var(--teal-bright));
-    color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Nunito', sans-serif;
-    font-weight: 900; font-size: 18px;
-    flex-shrink: 0;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-  }
-  .user-avatar.admin-av {
-    background: linear-gradient(135deg, #1e3a5f, #2563EB);
-  }
-
-  .user-details { min-width: 0; }
-  .user-name {
-    font-family: 'Nunito', sans-serif;
-    font-size: clamp(15px, 3.5vw, 16px);
-    font-weight: 800;
-    color: var(--text-white);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    margin-bottom: 3px;
-  }
-  .user-username {
-    font-family: 'Courier New', monospace;
-    font-size: 12px; font-weight: 600;
-    color: var(--text-muted);
-    white-space: nowrap;
-  }
-
-  .user-meta {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    flex-shrink: 0;
-  }
-
-  .role-badge {
-    padding: 4px 12px;
-    border-radius: 99px;
-    font-family: 'Nunito', sans-serif;
-    font-size: 12px; font-weight: 800;
-    white-space: nowrap;
-    display: flex; align-items: center; gap: 5px;
-  }
-  .role-admin {
-    background: rgba(37,99,235,0.20);
-    border: 1.5px solid rgba(37,99,235,0.40);
-    color: #93C5FD;
-  }
-  .role-staff {
-    background: rgba(0,229,160,0.15);
-    border: 1.5px solid rgba(0,229,160,0.30);
-    color: var(--green-bright);
-  }
-
-  .user-date {
-    font-size: 12px; font-weight: 600;
-    color: var(--text-muted);
-    white-space: nowrap;
-  }
-
-  /* ── EMPTY STATE ── */
-  .empty-users {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 52px 24px;
-    text-align: center;
-    gap: 12px;
-  }
-  .empty-icon {
-    width: 72px; height: 72px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 34px;
-    margin-bottom: 4px;
-  }
-  .empty-title {
-    font-family: 'Nunito', sans-serif;
-    font-size: 18px; font-weight: 800;
-    color: var(--text-white);
-  }
-  .empty-sub {
-    font-size: 14px; font-weight: 600;
-    color: var(--text-muted);
-    max-width: 300px;
-    line-height: 1.6;
-  }
-
-  /* ── BUTTONS ── */
-  .btn-sm {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 10px 16px;
-    border-radius: 10px;
-    font-family: 'Nunito', sans-serif;
-    font-size: 14px; font-weight: 800;
-    cursor: pointer; text-decoration: none;
-    border: none;
-    min-height: 42px;
-    transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
-    white-space: nowrap;
-  }
-  .btn-sm:active { transform: scale(0.97); }
-  .btn-sm svg { width: 16px; height: 16px; flex-shrink: 0; }
-
-  .btn-primary-sm {
-    background: linear-gradient(135deg, var(--green-mid), var(--teal-bright));
-    color: #fff;
-    box-shadow: 0 2px 12px rgba(0,193,135,0.35);
-  }
-  .btn-primary-sm:hover { box-shadow: 0 4px 20px rgba(0,193,135,0.50); transform: translateY(-1px); }
-
-  .btn-outline-sm {
-    background: var(--surface-glass-strong);
-    color: var(--text-white);
-    border: 1.5px solid var(--border-glass);
-  }
-  .btn-outline-sm:hover { background: rgba(255,255,255,0.22); }
-
-  .btn-danger-sm {
-    background: rgba(239,68,68,0.15);
-    color: #FCA5A5;
-    border: 1.5px solid rgba(239,68,68,0.30);
-  }
-  .btn-danger-sm:hover { background: rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.50); }
-
-  /* Confirm dialog styling injected via JS */
-  .confirm-overlay {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(4,28,40,0.80);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 9999;
-    align-items: center; justify-content: center;
-    padding: 20px;
-  }
-  .confirm-overlay.active { display: flex; }
-  .confirm-box {
-    background: rgba(10,77,104,0.98);
-    border: 2px solid var(--border-glass);
-    border-radius: 20px;
-    padding: 32px 28px;
-    max-width: 380px; width: 100%;
-    text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.55);
-  }
-  .confirm-box .c-icon { font-size: 42px; margin-bottom: 14px; }
-  .confirm-box h3 {
-    font-family: 'Nunito', sans-serif;
-    font-size: 20px; font-weight: 900;
-    color: var(--text-white); margin-bottom: 10px;
-  }
-  .confirm-box p {
-    font-size: 15px; font-weight: 600;
-    color: var(--text-muted); line-height: 1.6; margin-bottom: 24px;
-  }
-  .confirm-box p strong { color: #FCA5A5; }
-  .confirm-btns { display: flex; gap: 10px; }
-  .confirm-btns button, .confirm-btns a {
-    flex: 1; padding: 14px; border-radius: 11px;
-    font-family: 'Nunito', sans-serif;
-    font-size: 15px; font-weight: 800;
-    cursor: pointer; border: none; text-align: center;
-    text-decoration: none; display: flex;
-    align-items: center; justify-content: center;
-    transition: transform 0.15s;
-  }
-  .confirm-btns button:active, .confirm-btns a:active { transform: scale(0.97); }
-  .confirm-cancel { background: var(--surface-glass-strong); color: var(--text-white); border: 1.5px solid var(--border-glass) !important; }
-  .confirm-cancel:hover { background: rgba(255,255,255,0.22) !important; }
-  .confirm-remove { background: rgba(239,68,68,0.85); color: #fff; }
-  .confirm-remove:hover { background: rgba(239,68,68,1); }
-
-  @media (max-width: 480px) {
-    .staff-page-header .page-sub { margin-left: 0; }
-    .user-row { padding: 14px 16px; }
-    .staff-card-head { padding: 14px 16px; }
-    .invite-banner { padding: 16px; }
-  }
+  .empty-users { text-align:center; padding:40px 20px; color:var(--muted); }
 </style>
 
-<!-- Confirm Modal -->
-<div class="confirm-overlay" id="confirm-overlay">
-  <div class="confirm-box">
-    <div class="c-icon">⚠️</div>
-    <h3>Remove Staff Member?</h3>
-    <p>You are about to remove <strong id="confirm-username"></strong>. They will lose access immediately.</p>
-    <div class="confirm-btns">
-      <button class="confirm-cancel" onclick="closeConfirm()">Cancel</button>
-      <button class="confirm-remove" id="confirm-submit-btn">Yes, Remove</button>
-    </div>
-  </div>
+<!-- Invite Code Info -->
+<div class="invite-info">
+  <h3>🔑 Staff Invite Code</h3>
+  <div class="invite-code" id="invite-display">Set via INVITE_CODE env variable</div>
+  <p>Share this code privately with staff members so they can register. Change it anytime in Railway → Variables → <code>INVITE_CODE</code>.</p>
 </div>
 
-<!-- Page Header -->
-<div class="staff-page-header">
-  <a href="/" class="back-link">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px">
-      <path d="M19 12H5M12 5l-7 7 7 7"/>
-    </svg>
-    Dashboard
-  </a>
-  <div class="page-title-wrap">
-    <h1>
-      <div class="h1-icon">👥</div>
-      Manage Staff Accounts
-    </h1>
-    <div class="page-sub">Add, view, and remove staff members with system access</div>
-  </div>
-</div>
-
-<!-- Invite Code Banner -->
-<div class="invite-banner">
-  <div class="invite-icon">🔑</div>
-  <div class="invite-body">
-    <h3>Staff Invite Code</h3>
-    <div class="invite-code-wrap">
-      <div class="invite-code" id="invite-display">Set via INVITE_CODE env variable</div>
-      <button class="copy-btn" onclick="copyInvite()" id="copy-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-        </svg>
-        Copy Code
-      </button>
-    </div>
-    <p>Share this code privately with staff so they can register. Change it anytime in Railway → Variables → <code>INVITE_CODE</code>.</p>
-  </div>
-</div>
-
-<!-- Staff Card -->
-<div class="staff-card">
-  <div class="staff-card-head">
-    <div class="staff-card-head-left">
-      <div class="staff-card-head-icon">👤</div>
-      <h3>Registered Staff</h3>
-      <span class="staff-count-badge">{{ users|length + 1 }} total (incl. admin)</span>
-    </div>
-    <div class="head-actions">
-      <a href="/send-invite" class="btn-sm btn-primary-sm">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
-        </svg>
-        Send Invite
-      </a>
-      <a href="/register" class="btn-sm btn-outline-sm">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        Add Staff
-      </a>
+<!-- User List -->
+<div class="users-card">
+  <div class="users-head">
+    <h3>Registered Staff ({{ users|length + 1 }} total incl. admin)</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <a href="/send-invite" class="btn btn-primary btn-sm">📧 Send Invite</a>
+      <a href="/register" class="btn btn-secondary btn-sm">+ Add Staff</a>
     </div>
   </div>
 
-  <!-- Admin Row (always shown) -->
+  <!-- Admin account (always shown) -->
   <div class="user-row">
     <div class="user-info">
-      <div class="user-avatar admin-av">A</div>
-      <div class="user-details">
+      <div class="user-avatar admin">A</div>
+      <div>
         <div class="user-name">Administrator</div>
         <div class="user-username">@{{ admin_username }}</div>
       </div>
     </div>
-    <div class="user-meta">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span class="role-badge role-admin">🔐 Admin</span>
       <span class="user-date">Built-in account</span>
     </div>
@@ -500,93 +68,28 @@
     <div class="user-row">
       <div class="user-info">
         <div class="user-avatar">{{ (user.full_name or user.username or 'U')[0].upper() }}</div>
-        <div class="user-details">
+        <div>
           <div class="user-name">{{ user.full_name or user.username }}</div>
           <div class="user-username">@{{ user.username }}</div>
         </div>
       </div>
-      <div class="user-meta">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <span class="role-badge role-staff">👤 Staff</span>
-        <span class="user-date">
-          {% if user.created_at %}
-            Joined {{ user.created_at.strftime('%b %d, %Y') }}
-          {% else %}—{% endif %}
-        </span>
-        <form method="post" action="/delete-user/{{ user.username }}" id="del-form-{{ user.username }}" style="display:inline;">
-          <button type="button" class="btn-sm btn-danger-sm"
-            onclick="openConfirm('{{ user.username }}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
-            </svg>
-            Remove
-          </button>
+        <span class="user-date">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}</span>
+        <form method="post" action="/delete-user/{{ user.username }}"
+              onsubmit="return confirm('Remove {{ user.username }}? They will lose access immediately.')"
+              style="display:inline;">
+          <button type="submit" class="btn btn-danger btn-sm">🗑 Remove</button>
         </form>
       </div>
     </div>
     {% endfor %}
   {% else %}
     <div class="empty-users">
-      <div class="empty-icon">👤</div>
-      <div class="empty-title">No Staff Accounts Yet</div>
-      <div class="empty-sub">Share the invite code above so staff members can register and get access.</div>
-      <a href="/register" class="btn-sm btn-primary-sm" style="margin-top:8px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        Add First Staff Member
-      </a>
+      <div style="font-size:36px;margin-bottom:10px;">👤</div>
+      <p>No staff accounts yet. Share the invite code so staff can register.</p>
     </div>
   {% endif %}
 </div>
-
-<script>
-  // ── Copy invite code ──
-  function copyInvite() {
-    const code = document.getElementById('invite-display').textContent.trim();
-    navigator.clipboard.writeText(code).then(() => {
-      const btn = document.getElementById('copy-btn');
-      btn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px">
-          <polyline points="20 6 9 17 4 12"/>
-        </svg> Copied!`;
-      btn.style.background = 'rgba(0,229,160,0.30)';
-      setTimeout(() => {
-        btn.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px">
-            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-          </svg> Copy Code`;
-        btn.style.background = '';
-      }, 2200);
-    }).catch(() => {
-      // Fallback for older browsers
-      alert('Invite code: ' + code);
-    });
-  }
-
-  // ── Confirm remove modal ──
-  let pendingUsername = null;
-
-  function openConfirm(username) {
-    pendingUsername = username;
-    document.getElementById('confirm-username').textContent = '@' + username;
-    document.getElementById('confirm-overlay').classList.add('active');
-  }
-
-  function closeConfirm() {
-    pendingUsername = null;
-    document.getElementById('confirm-overlay').classList.remove('active');
-  }
-
-  document.getElementById('confirm-submit-btn').addEventListener('click', () => {
-    if (pendingUsername) {
-      document.getElementById('del-form-' + pendingUsername).submit();
-    }
-  });
-
-  // Close overlay on background click
-  document.getElementById('confirm-overlay').addEventListener('click', function(e) {
-    if (e.target === this) closeConfirm();
-  });
-</script>
 
 {% endblock %}

@@ -2,363 +2,82 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
   <title>Document — DocTracker</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--teal:#0E7490;--dark:#0A4D68;--blue:#3B82F6;--navy:#0D1B2A;--surface:#F4F7FB;--border:#DDE3EE;--muted:#6B7FA3;--danger:#EF4444;}
+    body{font-family:'Source Sans 3',sans-serif;background:var(--surface);min-height:100vh;}
+    .topbar{background:var(--navy);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+    .topbar-brand{font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;color:#fff;}
+    .topbar a{color:#8EA8C3;font-size:13px;font-weight:600;text-decoration:none;}
+    .page{max-width:500px;margin:0 auto;padding:24px 16px;}
 
-    :root {
-      --grad-start:  #0d4f7c;
-      --grad-end:    #0f8a72;
-      --bg:          #f0f6f9;
-      --surface:     #ffffff;
-      --border:      #cce0ea;
-      --text:        #0d2d3d;
-      --sub:         #3d6070;
-      --muted:       #6a8fa0;
-      --accent:      #0f8a72;
-      --radius:      14px;
-      --shadow:      0 2px 12px rgba(13,47,70,0.10);
-      --shadow-lg:   0 8px 28px rgba(13,47,70,0.16);
-    }
+    /* Not found */
+    .not-found{text-align:center;padding:48px 20px;background:#fff;border-radius:16px;border:1.5px solid var(--border);}
 
-    html { -webkit-text-size-adjust: 100%; }
+    /* Status hero */
+    .status-hero{border-radius:16px;padding:28px 20px;text-align:center;margin-bottom:16px;}
+    .s-Pending{background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:2px solid #F59E0B;}
+    .s-Received{background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:2px solid var(--blue);}
+    .s-Released{background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border:2px solid var(--teal);}
+    .s-other{background:var(--surface);border:2px solid var(--border);}
+    .status-icon{font-size:52px;margin-bottom:8px;}
+    .status-label{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px;}
+    .s-Pending .status-label{color:#92400E;}
+    .s-Received .status-label{color:#1D4ED8;}
+    .s-Released .status-label{color:#0A3D2E;}
+    .status-name{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px;}
+    .status-ref{font-family:monospace;font-size:12px;color:var(--muted);}
 
-    body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      font-size: clamp(15px, 2vw, 17px);
-      line-height: 1.55;
-      min-height: 100dvh;
-    }
+    /* Doc card */
+    .doc-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px;}
+    .doc-card h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;}
+    .meta-row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;}
+    .meta-row .label{color:var(--muted);}
+    .meta-row .value{font-weight:600;color:var(--navy);text-align:right;max-width:60%;}
 
-    /* ══ TOPBAR ══ */
-    .topbar {
-      background: linear-gradient(135deg, var(--grad-start) 0%, var(--grad-end) 100%);
-      padding: 0 clamp(16px, 4vw, 28px);
-      height: 58px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      box-shadow: 0 2px 10px rgba(13,47,70,0.2);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    .topbar-brand {
-      font-size: clamp(16px, 2.5vw, 18px);
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: -0.2px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .topbar a {
-      color: rgba(255,255,255,0.85);
-      font-size: clamp(13px, 1.8vw, 14px);
-      font-weight: 600;
-      text-decoration: none;
-      background: rgba(255,255,255,0.15);
-      border: 1px solid rgba(255,255,255,0.22);
-      border-radius: 8px;
-      padding: 7px 14px;
-      transition: background .15s;
-      white-space: nowrap;
-    }
-    .topbar a:hover { background: rgba(255,255,255,0.25); }
+    /* Action buttons */
+    .action-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px;}
+    .action-card h3{font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:14px;}
+    .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;border-radius:12px;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;border:none;margin-bottom:10px;min-height:56px;}
+    .btn:last-child{margin-bottom:0;}
+    .btn-receive{background:var(--blue);color:#fff;}
+    .btn-receive:hover{background:#2563EB;}
+    .btn-release{background:var(--teal);color:#fff;}
+    .btn-release:hover{background:#059669;}
+    .btn-outline{background:var(--surface);color:var(--muted);border:1.5px solid var(--border);}
+    .btn-outline:hover{border-color:var(--teal);color:var(--dark);}
+    .btn:disabled{opacity:.5;cursor:not-allowed;}
 
-    /* ══ PAGE LAYOUT ══ */
-    .page {
-      max-width: 520px;
-      margin: 0 auto;
-      padding: clamp(16px, 4vw, 28px) clamp(14px, 4vw, 20px) clamp(32px, 6vw, 48px);
-      display: flex;
-      flex-direction: column;
-      gap: clamp(12px, 2.5vw, 16px);
-    }
+    /* Result */
+    .result-ok{background:#D1FAE5;border:2px solid var(--teal);border-radius:14px;padding:20px;margin-bottom:14px;text-align:center;}
+    .result-ok h3{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:#0A3D2E;margin-bottom:6px;}
+    .result-ok p{font-size:14px;color:#0A3D2E;}
+    .result-err{background:#FEE2E2;border:2px solid var(--danger);border-radius:12px;padding:16px;margin-bottom:14px;}
+    .result-err p{font-size:14px;color:#7F1D1D;font-weight:600;margin-bottom:8px;}
 
-    /* ══ NOT FOUND ══ */
-    .not-found {
-      text-align: center;
-      padding: clamp(36px, 8vw, 56px) 24px;
-      background: var(--surface);
-      border-radius: 18px;
-      border: 1.5px solid var(--border);
-      box-shadow: var(--shadow);
-    }
-    .not-found .nf-icon { font-size: clamp(44px, 10vw, 60px); margin-bottom: 14px; }
-    .not-found h2 { font-size: clamp(18px, 3vw, 22px); font-weight: 700; color: var(--text); margin-bottom: 8px; }
-    .not-found p  { font-size: clamp(14px, 2vw, 15px); color: var(--muted); }
+    /* Login prompt */
+    .login-card{background:#FFF3CD;border:1.5px solid #F59E0B;border-radius:14px;padding:18px;margin-bottom:14px;text-align:center;}
+    .login-card p{font-size:13px;color:#92400E;margin-bottom:14px;line-height:1.5;}
+    .login-btns{display:flex;gap:8px;flex-wrap:wrap;}
+    .login-btns a{flex:1;display:flex;align-items:center;justify-content:center;padding:12px;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;min-height:46px;}
+    .lb-client{background:var(--teal);color:#fff;}
+    .lb-staff{background:var(--navy);color:#fff;}
 
-    /* ══ STATUS HERO ══ */
-    .status-hero {
-      border-radius: 18px;
-      padding: clamp(22px, 5vw, 32px) clamp(18px, 4vw, 28px);
-      text-align: center;
-      border: 2px solid transparent;
-      box-shadow: var(--shadow-lg);
-      position: relative;
-      overflow: hidden;
-    }
-    .status-hero::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      opacity: 0.05;
-      background-image: radial-gradient(circle at 70% 20%, #fff 0%, transparent 60%);
-      pointer-events: none;
-    }
-
-    /* Status color variants */
-    .s-Pending    { background: linear-gradient(135deg, #fff8e8, #fef0c0); border-color: #f5b942; }
-    .s-Received,
-    .s-In\ Review,
-    .s-In\ Transit { background: linear-gradient(135deg, #e8f3ff, #cce2ff); border-color: #3d82d4; }
-    .s-Released   { background: linear-gradient(135deg, #e6f9f2, #c8f0e0); border-color: #0f8a72; }
-    .s-On\ Hold   { background: linear-gradient(135deg, #fff0f0, #ffd6d6); border-color: #e05050; }
-    .s-other      { background: linear-gradient(135deg, #f0f6f9, #e4eef4); border-color: var(--border); }
-
-    .status-icon {
-      font-size: clamp(44px, 10vw, 60px);
-      margin-bottom: 10px;
-      display: block;
-    }
-    .status-label {
-      font-size: clamp(22px, 5vw, 28px);
-      font-weight: 700;
-      margin-bottom: 6px;
-      letter-spacing: -0.3px;
-    }
-    .s-Pending .status-label      { color: #7a4500; }
-    .s-Released .status-label     { color: #0a4a28; }
-    .s-On\ Hold .status-label     { color: #7a1010; }
-    .s-other .status-label,
-    .s-Received .status-label,
-    .s-In\ Review .status-label,
-    .s-In\ Transit .status-label  { color: var(--text); }
-
-    .status-docname {
-      font-size: clamp(14px, 2.2vw, 16px);
-      font-weight: 600;
-      color: var(--sub);
-      margin-bottom: 6px;
-      line-height: 1.4;
-    }
-    .status-ref {
-      font-family: 'DM Mono', monospace;
-      font-size: clamp(11px, 1.6vw, 13px);
-      color: var(--muted);
-      background: rgba(255,255,255,0.6);
-      border-radius: 6px;
-      padding: 3px 10px;
-      display: inline-block;
-      margin-top: 2px;
-    }
-
-    /* ══ CARDS (shared) ══ */
-    .card {
-      background: var(--surface);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      box-shadow: var(--shadow);
-    }
-    .card-header {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      padding: clamp(12px, 2vw, 15px) clamp(14px, 2.5vw, 20px);
-      background: linear-gradient(90deg, rgba(13,79,124,0.06), rgba(15,138,114,0.04));
-      border-bottom: 1.5px solid var(--border);
-    }
-    .card-header-icon {
-      font-size: 16px;
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .card-header h3 {
-      font-size: clamp(13px, 2vw, 15px);
-      font-weight: 700;
-      color: var(--text);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .card-body {
-      padding: clamp(14px, 2.5vw, 20px);
-    }
-
-    /* ══ META ROWS ══ */
-    .meta-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 9px 0;
-      border-bottom: 1px solid var(--border);
-      font-size: clamp(14px, 2vw, 15px);
-    }
-    .meta-row:last-child { border-bottom: none; padding-bottom: 0; }
-    .meta-row:first-child { padding-top: 0; }
-    .meta-label {
-      color: var(--muted);
-      font-weight: 500;
-      flex-shrink: 0;
-      min-width: 100px;
-    }
-    .meta-value {
-      font-weight: 600;
-      color: var(--text);
-      text-align: right;
-      word-break: break-word;
-    }
-
-    /* ══ RESULT BANNERS ══ */
-    .result-ok {
-      background: linear-gradient(135deg, #e6f9f2, #c8f0e0);
-      border: 2px solid #0f8a72;
-      border-radius: var(--radius);
-      padding: clamp(16px, 3vw, 22px) clamp(16px, 3vw, 22px);
-      text-align: center;
-    }
-    .result-ok h3 { font-size: clamp(17px, 2.8vw, 20px); font-weight: 700; color: #0a4a28; margin-bottom: 6px; }
-    .result-ok p  { font-size: clamp(13px, 1.8vw, 15px); color: #0a5c38; }
-
-    .result-err {
-      background: #fde8e8;
-      border: 2px solid #f5a0a0;
-      border-radius: var(--radius);
-      padding: clamp(14px, 2.5vw, 18px);
-    }
-    .result-err p { font-size: clamp(13px, 1.8vw, 15px); color: #7a1010; font-weight: 600; margin-bottom: 10px; }
-
-    /* ══ LOGIN PROMPT ══ */
-    .login-prompt {
-      background: linear-gradient(135deg, #fff8e8, #fef0c0);
-      border: 2px solid #f5b942;
-      border-radius: var(--radius);
-      padding: clamp(16px, 3vw, 22px);
-      text-align: center;
-    }
-    .login-prompt p {
-      font-size: clamp(14px, 2vw, 15px);
-      color: #7a4500;
-      margin-bottom: 14px;
-      line-height: 1.5;
-      font-weight: 500;
-    }
-
-    .login-btns {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .login-btns a {
-      flex: 1;
-      min-width: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      padding: 13px 16px;
-      border-radius: 10px;
-      font-size: clamp(14px, 2vw, 15px);
-      font-weight: 700;
-      text-decoration: none;
-      min-height: 50px;
-      transition: opacity .15s, transform .15s;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .login-btns a:hover  { opacity: 0.9; transform: translateY(-1px); }
-    .login-btns a:active { transform: scale(0.98); }
-    .lb-client { background: linear-gradient(135deg, var(--grad-start), var(--grad-end)); color: #fff; }
-    .lb-staff  { background: var(--text); color: #fff; }
-
-    /* ══ ACTION BUTTONS ══ */
-    .btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 9px;
-      width: 100%;
-      min-height: 56px;
-      padding: 14px 20px;
-      border-radius: 11px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: clamp(15px, 2.2vw, 17px);
-      font-weight: 700;
-      cursor: pointer;
-      text-decoration: none;
-      border: none;
-      transition: opacity .15s, transform .15s, box-shadow .15s;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-      letter-spacing: 0.1px;
-    }
-    .btn + .btn { margin-top: 10px; }
-    .btn:hover  { opacity: 0.91; transform: translateY(-1px); }
-    .btn:active { transform: scale(0.98); }
-    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
-
-    .btn-receive {
-      background: linear-gradient(135deg, #1456a0, #2a80d0);
-      color: #fff;
-      box-shadow: 0 4px 14px rgba(20,86,160,0.28);
-    }
-    .btn-release {
-      background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
-      color: #fff;
-      box-shadow: 0 4px 14px rgba(13,79,124,0.28);
-    }
-    .btn-outline {
-      background: var(--surface);
-      color: var(--sub);
-      border: 1.5px solid var(--border) !important;
-      box-shadow: none;
-      font-size: clamp(14px, 2vw, 15px);
-      min-height: 50px;
-    }
-    .btn-outline:hover { border-color: var(--accent) !important; color: var(--accent); background: #e8f7f4; }
-
-    /* ══ DONE NOTE ══ */
-    .done-note {
-      background: var(--bg);
-      border: 1.5px solid var(--border);
-      border-radius: 9px;
-      padding: 10px 14px;
-      font-size: clamp(13px, 1.8vw, 14px);
-      color: var(--muted);
-      text-align: center;
-      line-height: 1.45;
-    }
-    .done-note + .btn { margin-top: 10px; }
-
-    /* ══ RESPONSIVE ══ */
-    @media (max-width: 400px) {
-      .login-btns { flex-direction: column; }
-      .login-btns a { min-width: 0; }
-    }
+    /* Already done */
+    .done-note{background:#F3F4F6;border-radius:10px;padding:12px 14px;font-size:14px;color:var(--muted);text-align:center;margin-bottom:10px;}
   </style>
 </head>
 <body>
-
-<!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-brand">📋 DocTracker</div>
   {% if logged_in %}
     {% if current_role == 'client' %}
-      <a href="/client">My Documents</a>
+    <a href="/client">My Documents</a>
     {% else %}
-      <a href="/">Dashboard</a>
+    <a href="/">Dashboard</a>
     {% endif %}
   {% endif %}
 </div>
@@ -366,37 +85,36 @@
 <div class="page">
 
   {% if not doc %}
-  <!-- NOT FOUND -->
   <div class="not-found">
-    <div class="nf-icon">❓</div>
-    <h2>Document Not Found</h2>
-    <p>This QR code doesn't match any document in the system.</p>
+    <div style="font-size:48px;margin-bottom:12px;">❓</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:var(--navy);margin-bottom:8px;">Document Not Found</div>
+    <p style="font-size:14px;color:var(--muted);">This QR code doesn't match any document in the system.</p>
   </div>
 
   {% else %}
 
   {% set status = doc.status %}
-  {% set hero_class = 's-' + status if status in ['Pending','Received','Released','In Review','In Transit','On Hold'] else 's-other' %}
-  {% set icons = {'Pending':'⏳','Received':'📥','Released':'✅','In Review':'🔍','In Transit':'🚚','On Hold':'⏸'} %}
+  {% set hero_class = 's-' + status if status in ['Pending','Received','Released'] else 's-other' %}
+  {% set icons = {'Pending':'⏳','Received':'📥','Released':'✅'} %}
 
-  <!-- STATUS HERO -->
+  <!-- Status Hero -->
   <div class="status-hero {{ hero_class }}">
-    <span class="status-icon">{{ icons.get(status, '📄') }}</span>
+    <div class="status-icon">{{ icons.get(status, '📄') }}</div>
     <div class="status-label">{{ status }}</div>
-    <div class="status-docname">{{ doc.doc_name }}</div>
+    <div class="status-name">{{ doc.doc_name }}</div>
     <div class="status-ref">{{ doc.doc_id }} · {{ doc.id }}</div>
   </div>
 
-  <!-- RESULT FEEDBACK -->
+  <!-- Result feedback -->
   {% if result %}
     {% if result.ok %}
     <div class="result-ok">
-      <h3>{% if result.action == 'receive' %}📥 Marked as Received!{% else %}✅ Marked as Released!{% endif %}</h3>
+      <h3>{% if result.action=='receive' %}📥 Marked as Received!{% else %}✅ Marked as Released!{% endif %}</h3>
       <p>Status updated to <strong>{{ result.status }}</strong>.</p>
     </div>
     {% else %}
     <div class="result-err">
-      <p>⚠️ {{ result.msg }}</p>
+      <p>❌ {{ result.msg }}</p>
       {% if result.get('login_required') %}
       <div class="login-btns">
         <a href="/client/login?next={{ request.path }}" class="lb-client">👤 Client Login</a>
@@ -407,47 +125,20 @@
     {% endif %}
   {% endif %}
 
-  <!-- DOCUMENT INFO -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-header-icon">📄</div>
-      <h3>Document Info</h3>
-    </div>
-    <div class="card-body">
-      <div class="meta-row">
-        <span class="meta-label">From</span>
-        <span class="meta-value">{{ doc.sender_org or doc.sender_name or '—' }}</span>
-      </div>
-      <div class="meta-row">
-        <span class="meta-label">Referred To</span>
-        <span class="meta-value">{{ doc.referred_to or '—' }}</span>
-      </div>
-      <div class="meta-row">
-        <span class="meta-label">Type</span>
-        <span class="meta-value">{{ doc.category or '—' }}</span>
-      </div>
-      <div class="meta-row">
-        <span class="meta-label">Submitted</span>
-        <span class="meta-value">{{ doc.created_at[:10] if doc.created_at else '—' }}</span>
-      </div>
-      {% if doc.date_received %}
-      <div class="meta-row">
-        <span class="meta-label">Received</span>
-        <span class="meta-value">{{ doc.date_received }}</span>
-      </div>
-      {% endif %}
-      {% if doc.date_released %}
-      <div class="meta-row">
-        <span class="meta-label">Released</span>
-        <span class="meta-value">{{ doc.date_released }}</span>
-      </div>
-      {% endif %}
-    </div>
+  <!-- Doc info -->
+  <div class="doc-card">
+    <h3>📄 Document Info</h3>
+    <div class="meta-row"><span class="label">From</span><span class="value">{{ doc.sender_org or doc.sender_name or '—' }}</span></div>
+    <div class="meta-row"><span class="label">Referred To</span><span class="value">{{ doc.referred_to or '—' }}</span></div>
+    <div class="meta-row"><span class="label">Type</span><span class="value">{{ doc.category or '—' }}</span></div>
+    <div class="meta-row"><span class="label">Submitted</span><span class="value">{{ doc.created_at[:10] if doc.created_at else '—' }}</span></div>
+    {% if doc.date_received %}<div class="meta-row"><span class="label">Received</span><span class="value">{{ doc.date_received }}</span></div>{% endif %}
+    {% if doc.date_released %}<div class="meta-row"><span class="label">Released</span><span class="value">{{ doc.date_released }}</span></div>{% endif %}
   </div>
 
-  <!-- NOT LOGGED IN -->
+  <!-- Action buttons — only show if logged in and not already done -->
   {% if not logged_in and not result %}
-  <div class="login-prompt">
+  <div class="login-card">
     <p>Log in to update this document's status at the office.</p>
     <div class="login-btns">
       <a href="/client/login?next={{ request.path }}" class="lb-client">👤 Client Login</a>
@@ -455,50 +146,44 @@
     </div>
   </div>
 
-  <!-- LOGGED IN — ACTION CARD -->
   {% elif logged_in and not (result and result.ok) %}
-  <div class="card">
-    <div class="card-header">
-      <div class="card-header-icon">⚡</div>
-      <h3>Update Status</h3>
-    </div>
-    <div class="card-body">
+  <div class="action-card">
+    <h3>⚡ Update Status</h3>
 
-      {% if status == 'Released' %}
-        <div class="done-note">✅ This document has already been released.</div>
+    {% if status == 'Released' %}
+    <div class="done-note">✅ This document has already been released.</div>
+    {% else %}
+    <form method="post">
+      {% if status == 'Pending' %}
+      <!-- Next logical step: Receive -->
+      <button type="submit" name="action" value="receive" class="btn btn-receive">
+        📥 Mark as Received at Office
+      </button>
+      <div class="done-note" style="font-size:12px;margin-top:4px;">Already received? You can also mark as Released:</div>
+      <button type="submit" name="action" value="release" class="btn btn-release" style="opacity:.8;">
+        ✅ Mark as Released
+      </button>
+
+      {% elif status == 'Received' %}
+      <!-- Already received — next step is release -->
+      <div class="done-note">📥 Document has been received. Mark as released when ready:</div>
+      <button type="submit" name="action" value="release" class="btn btn-release">
+        ✅ Mark as Released from Office
+      </button>
+      <button type="submit" name="action" value="receive" class="btn btn-outline" style="font-size:14px;min-height:44px;">
+        📥 Re-mark as Received
+      </button>
 
       {% else %}
-      <form method="post">
-        {% if status == 'Pending' %}
-          <button type="submit" name="action" value="receive" class="btn btn-receive">
-            📥 Mark as Received at Office
-          </button>
-          <div class="done-note" style="margin-top:10px;">Already received? Mark as Released directly:</div>
-          <button type="submit" name="action" value="release" class="btn btn-release" style="opacity:0.85;">
-            ✅ Mark as Released
-          </button>
-
-        {% elif status == 'Received' or status == 'In Review' or status == 'In Transit' %}
-          <div class="done-note">📥 Document received. Mark as released when ready:</div>
-          <button type="submit" name="action" value="release" class="btn btn-release">
-            ✅ Mark as Released from Office
-          </button>
-          <button type="submit" name="action" value="receive" class="btn btn-outline">
-            📥 Re-mark as Received
-          </button>
-
-        {% else %}
-          <button type="submit" name="action" value="receive" class="btn btn-receive">📥 Mark as Received</button>
-          <button type="submit" name="action" value="release" class="btn btn-release">✅ Mark as Released</button>
-        {% endif %}
-      </form>
+      <button type="submit" name="action" value="receive" class="btn btn-receive">📥 Mark as Received</button>
+      <button type="submit" name="action" value="release" class="btn btn-release">✅ Mark as Released</button>
       {% endif %}
-
-    </div>
+    </form>
+    {% endif %}
   </div>
   {% endif %}
 
-  <!-- BOTTOM LINK -->
+  <!-- Track link for clients -->
   {% if current_role == 'client' %}
   <a href="/client/track/{{ doc.id }}" class="btn btn-outline">🔍 Full Tracking Details</a>
   {% elif logged_in %}
