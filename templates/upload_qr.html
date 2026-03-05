@@ -1,390 +1,927 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="page-header">
-  <a href="/" class="page-back">← Back</a>
-  <div class="page-title">📤 Upload QR Code</div>
-</div>
-
 <style>
-  .upload-wrap { max-width: 680px; margin: 0 auto; }
+  :root {
+    --teal-deep:   #0A3D4A;
+    --teal-dark:   #0E5C72;
+    --teal-mid:    #0B8BA8;
+    --teal-bright: #0FB8D4;
+    --green-mid:   #0DA86A;
+    --surface:     #EDF5F8;
+    --card:        #FFFFFF;
+    --border:      #C4DDE6;
+    --text:        #0A2A35;
+    --text-mid:    #1E5A70;
+    --muted:       #4A8A9E;
+    --success:     #0A9E5C;
+    --success-bg:  #D0F5E8;
+    --danger:      #DC2626;
+    --danger-bg:   #FEE2E2;
+    --warning:     #D97706;
+    --warning-bg:  #FEF3C7;
+    --grad-btn:    linear-gradient(135deg, #0B8BA8, #0DA86A);
+    --radius:      14px;
+    --radius-sm:   10px;
+    --shadow-sm:   0 2px 8px rgba(10,61,74,.10);
+    --shadow-md:   0 4px 20px rgba(10,61,74,.14);
+  }
+
+  .upload-wrap { max-width: 680px; }
+
+  /* ── PAGE HEADER ── */
+  .qr-page-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 26px;
+    padding-bottom: 20px;
+    border-bottom: 1.5px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .page-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'Lexend', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-mid);
+    text-decoration: none;
+    transition: all .18s;
+    min-height: 44px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .page-back-btn:hover { border-color: var(--teal-mid); color: var(--teal-dark); background: #EAF6FA; }
+  .page-title-icon {
+    width: 44px; height: 44px;
+    background: var(--grad-btn);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+    box-shadow: 0 3px 12px rgba(11,139,168,.3);
+  }
+  .page-title-text { font-size: 22px; font-weight: 800; color: var(--teal-deep); }
+  .page-title-sub  { font-size: 14px; color: var(--muted); font-weight: 500; margin-top: 3px; }
 
   /* ── STEP INDICATOR ── */
-  .steps { display:flex; align-items:center; gap:0; margin-bottom:32px; }
-  .step  { display:flex; align-items:center; gap:10px; flex:1; }
-  .step-num {
-    width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    font-weight:800; font-size:14px; font-family:'Syne',sans-serif; flex-shrink:0;
-    background:var(--border); color:var(--muted);
+  .steps-bar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 28px;
   }
-  .step.active .step-num  { background:var(--accent); color:#fff; }
-  .step.done   .step-num  { background:var(--success); color:#fff; }
-  .step-label { font-size:13px; font-weight:600; color:var(--muted); }
-  .step.active .step-label, .step.done .step-label { color:var(--text); }
-  .step-line  { flex:1; height:2px; background:var(--border); margin:0 8px; }
-  .step-line.done { background:var(--success); }
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .step-bubble {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    flex-shrink: 0;
+    border: 2.5px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    transition: all .2s;
+  }
+  .step-item.active .step-bubble {
+    background: var(--grad-btn);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(11,139,168,.35);
+  }
+  .step-item.done .step-bubble {
+    background: var(--success);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(10,158,92,.3);
+  }
+  .step-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .step-item.active .step-label,
+  .step-item.done  .step-label { color: var(--text-mid); }
+  .step-connector {
+    flex: 1;
+    height: 2.5px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 10px;
+    min-width: 20px;
+    transition: background .2s;
+  }
+  .step-connector.done { background: linear-gradient(to right, var(--success), var(--teal-mid)); }
 
-  /* ── UPLOAD ZONE ── */
-  .upload-zone {
-    border:2.5px dashed var(--border); border-radius:16px; padding:48px 32px;
-    text-align:center; background:var(--surface); cursor:pointer; transition:all 0.2s;
-    position:relative;
+  /* ── ALERT BANNERS ── */
+  .alert-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.6;
   }
-  .upload-zone:hover, .upload-zone.drag-over {
-    border-color:var(--accent); background:#EFF6FF;
+  .alert-banner .ab-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+  .alert-banner strong   { font-weight: 800; display: block; margin-bottom: 2px; }
+  .alert-warn { background: var(--warning-bg); border: 2px solid #FCD34D; color: #78350F; }
+  .alert-err  { background: var(--danger-bg);  border: 2px solid #FCA5A5; border-left: 5px solid var(--danger); color: #7F1D1D; }
+  .alert-warn code {
+    background: rgba(0,0,0,.08);
+    border-radius: 5px;
+    padding: 2px 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
   }
-  .upload-zone input[type=file] {
-    position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
-  }
-  .upload-icon { font-size:56px; margin-bottom:14px; display:block; }
-  .upload-zone h3 { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--navy); margin-bottom:6px; }
-  .upload-zone p  { font-size:13px; color:var(--muted); }
-  .upload-zone .file-name { font-size:13px; color:var(--accent); font-weight:600; margin-top:10px; display:none; }
 
-  /* ── PREVIEW ── */
-  #qr-preview-wrap { display:none; text-align:center; margin-top:16px; }
-  #qr-preview { max-width:200px; border-radius:10px; border:2px solid var(--border); }
-
-  /* ── WARN BOX ── */
-  .warn-box {
-    background:#FFFBEB; border:1.5px solid #FCD34D; border-radius:10px;
-    padding:14px 16px; font-size:13px; color:#92400E; margin-bottom:20px;
-    display:flex; gap:10px; align-items:flex-start;
+  /* ── SECTION CARDS ── */
+  .qr-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow-sm);
   }
+  .qr-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .qr-card-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(11,139,168,.12), rgba(13,168,106,.12));
+    border: 1.5px solid var(--border);
+  }
+  .qr-card-title { font-size: 17px; font-weight: 800; color: var(--teal-deep); }
+  .qr-card-sub   { font-size: 14px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+
+  /* ── DROP ZONE ── */
+  .drop-zone {
+    border: 2.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    background: #F7FBFC;
+    transition: border-color .2s, background .2s, box-shadow .2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--teal-mid);
+    background: #EAF6FA;
+    box-shadow: 0 0 0 4px rgba(11,139,168,.1);
+  }
+  .drop-zone.has-file {
+    border-color: var(--green-mid);
+    border-style: solid;
+    background: linear-gradient(135deg, rgba(11,139,168,.04), rgba(13,168,106,.04));
+  }
+  .drop-zone input[type=file] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+  .drop-icon {
+    width: 72px; height: 72px;
+    background: var(--grad-btn);
+    border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+    margin: 0 auto 18px;
+    box-shadow: 0 4px 18px rgba(11,139,168,.28);
+    transition: transform .2s;
+  }
+  .drop-zone:hover .drop-icon { transform: scale(1.05); }
+  .drop-main-text { font-size: 18px; font-weight: 800; color: var(--teal-deep); margin-bottom: 6px; }
+  .drop-sub-text  { font-size: 14px; color: var(--muted); font-weight: 500; line-height: 1.5; }
+  .drop-badges {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .drop-badge {
+    padding: 4px 12px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-mid);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+
+  /* File selected bar */
+  .file-sel-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: var(--success-bg);
+    border: 1.5px solid #6EE7B7;
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    margin-top: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #065F46;
+  }
+  .file-sel-bar.visible { display: flex; }
+  .file-sel-icon { font-size: 22px; }
+  .file-sel-name { flex: 1; word-break: break-all; }
+
+  /* QR Preview */
+  .qr-preview-wrap {
+    display: none;
+    text-align: center;
+    margin-top: 18px;
+    padding: 16px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border);
+  }
+  .qr-preview-wrap.visible { display: block; }
+  #qr-preview {
+    max-width: 180px;
+    border-radius: 10px;
+    border: 2.5px solid var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+  .qr-preview-label { font-size: 13px; color: var(--muted); margin-top: 8px; font-weight: 500; }
+
+  /* ── HOW IT WORKS ── */
+  .how-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .how-item {
+    text-align: center;
+    padding: 18px 12px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border);
+  }
+  .how-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    margin: 0 auto 12px;
+    background: linear-gradient(135deg, rgba(11,139,168,.10), rgba(13,168,106,.10));
+    border: 1.5px solid var(--border);
+  }
+  .how-label { font-size: 14px; font-weight: 700; color: var(--teal-deep); margin-bottom: 4px; }
+  .how-desc  { font-size: 13px; color: var(--muted); font-weight: 500; line-height: 1.5; }
 
   /* ── DOC FOUND CARD ── */
   .doc-found {
-    background:#fff; border:2px solid var(--accent); border-radius:14px;
-    padding:22px 24px; margin-bottom:20px;
+    background: var(--card);
+    border: 2px solid var(--teal-mid);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 0 4px rgba(11,139,168,.08);
   }
   .doc-found-header {
-    display:flex; align-items:flex-start; justify-content:space-between;
-    margin-bottom:16px; padding-bottom:14px; border-bottom:1.5px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1.5px solid var(--border);
+    gap: 12px;
   }
-  .doc-found-title { font-family:'Syne',sans-serif; font-weight:800; font-size:20px; color:var(--navy); }
-  .doc-found-ref   { font-size:12px; color:var(--muted); font-family:monospace; margin-top:3px; }
-  .doc-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .doc-meta-item label { display:block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:2px; }
-  .doc-meta-item span  { font-size:13px; font-weight:500; color:var(--text); }
+  .doc-found-title { font-size: 20px; font-weight: 800; color: var(--teal-deep); line-height: 1.3; }
+  .doc-found-ref {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+    background: var(--surface);
+    padding: 2px 8px;
+    border-radius: 5px;
+    display: inline-block;
+  }
+
+  /* Status badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .badge-in-transit { background: #DBEAFE; color: #1D4ED8; }
+  .badge-pending    { background: var(--warning-bg); color: var(--warning); }
+  .badge-released   { background: var(--success-bg); color: var(--success); }
+  .badge-on-hold    { background: var(--danger-bg);  color: var(--danger);  }
+  .badge-review     { background: #EDE9FE; color: #5B21B6; }
+
+  /* Doc meta grid */
+  .doc-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .doc-meta-item label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); margin-bottom: 3px; }
+  .doc-meta-item span  { font-size: 15px; font-weight: 600; color: var(--text); }
+
+  /* Sub-section within doc card */
+  .doc-subsection {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1.5px solid var(--border);
+  }
+  .doc-subsection-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  /* Routing bar */
+  .routing-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .r-stop {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--surface);
+    color: var(--muted);
+    border: 1.5px solid var(--border);
+  }
+  .r-stop.done { background: var(--success-bg); color: var(--success); border-color: #6EE7B7; }
+  .r-arrow { color: var(--muted); font-size: 15px; font-weight: 700; }
+
+  /* Travel log mini */
+  .log-mini { list-style: none; padding-left: 24px; position: relative; }
+  .log-mini::before {
+    content: '';
+    position: absolute;
+    left: 8px; top: 8px; bottom: 8px;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--teal-bright), var(--green-mid));
+    border-radius: 2px;
+  }
+  .log-mini li { position: relative; padding-bottom: 14px; }
+  .log-mini li:last-child { padding-bottom: 0; }
+  .log-mini li::before {
+    content: '';
+    position: absolute;
+    left: -19px; top: 5px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--teal-mid);
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px var(--teal-mid);
+  }
+  .log-mini li:first-child::before { background: var(--success); box-shadow: 0 0 0 2px var(--success); }
+  .log-office     { font-size: 15px; font-weight: 700; color: var(--teal-deep); display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .log-action-tag { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 10px; background: #DBEAFE; color: #1E40AF; }
+  .log-meta       { font-size: 13px; color: var(--muted); margin-top: 2px; font-weight: 500; }
 
   /* ── LOG FORM ── */
-  .log-form-card { background:#fff; border:1.5px solid var(--border); border-radius:14px; padding:24px; }
-  .log-form-card h3 { font-family:'Syne',sans-serif; font-size:16px; font-weight:800; color:var(--navy); margin-bottom:4px; }
-  .log-form-card p  { font-size:13px; color:var(--muted); margin-bottom:20px; }
-  .form-group { margin-bottom:16px; }
-  .form-group label { display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:5px; }
-  .form-group label .req { color:var(--danger); }
-  .form-group input, .form-group select, .form-group textarea {
-    width:100%; padding:10px 13px; border:1.5px solid var(--border); border-radius:9px;
-    font-family:inherit; font-size:14px; color:var(--text); background:var(--surface); outline:none; transition:border 0.15s;
+  .fg { margin-bottom: 16px; }
+  .fg label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--text-mid);
+    margin-bottom: 7px;
   }
-  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--accent); background:#fff; }
-
-  .action-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
-  .action-btn  {
-    padding:10px 8px; border:2px solid var(--border); border-radius:9px;
-    font-family:inherit; font-size:13px; font-weight:700; cursor:pointer;
-    background:var(--surface); color:var(--muted); text-align:center; transition:all 0.15s; display:block;
+  .fg label .req { color: var(--danger); margin-left: 3px; }
+  .fg input, .fg select, .fg textarea {
+    width: 100%;
+    padding: 13px 15px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'Lexend', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+    background: #F7FBFC;
+    outline: none;
+    transition: border .18s, box-shadow .18s, background .18s;
+    min-height: 52px;
   }
-  .action-btn:hover, .action-btn.active { border-color:var(--accent); background:#EFF6FF; color:var(--accent); }
-
-  .btn-submit {
-    width:100%; padding:13px; background:var(--accent); color:#fff; border:none;
-    border-radius:9px; font-family:inherit; font-size:15px; font-weight:700;
-    cursor:pointer; transition:background 0.15s; margin-top:4px;
+  .fg input:focus, .fg select:focus, .fg textarea:focus {
+    border-color: var(--teal-mid);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(11,139,168,.15);
   }
-  .btn-submit:hover { background:#2563EB; }
+  .fg input::placeholder, .fg textarea::placeholder { color: #A0BFC8; font-weight: 400; }
+  .fg textarea { resize: vertical; min-height: 90px; }
 
-  /* ── SUCCESS ── */
-  .success-card {
-    background:#D1FAE5; border:2px solid var(--success); border-radius:14px;
-    padding:32px; text-align:center; margin-bottom:24px;
+  /* Action buttons */
+  .action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 6px; }
+  .action-btn {
+    padding: 13px 8px 11px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    font-family: 'Lexend', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    background: #F7FBFC;
+    color: var(--muted);
+    text-align: center;
+    transition: all .18s;
+    min-height: 66px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    user-select: none;
   }
-  .success-icon { font-size:52px; margin-bottom:12px; }
-  .success-card h2 { font-family:'Syne',sans-serif; color:#065F46; font-size:22px; margin-bottom:6px; }
-  .success-card p  { color:#065F46; font-size:14px; margin-bottom:3px; }
-  .success-ts { font-size:12px; color:#047857; margin-top:10px; font-weight:600; }
+  .action-btn .act-icon { font-size: 20px; line-height: 1; }
+  .action-btn:hover { border-color: var(--teal-mid); background: #EAF6FA; color: var(--teal-dark); }
+  .action-btn.active {
+    border-color: var(--teal-mid);
+    background: linear-gradient(135deg, rgba(11,139,168,.12), rgba(13,168,106,.12));
+    color: var(--teal-dark);
+    box-shadow: 0 0 0 3px rgba(11,139,168,.18);
+  }
 
-  /* routing mini bar */
-  .routing-bar { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
-  .r-stop { padding:3px 11px; border-radius:20px; font-size:11px; font-weight:700; background:var(--surface); color:var(--muted); border:1.5px solid var(--border); }
-  .r-stop.done { background:#D1FAE5; color:#065F46; border-color:#A7F3D0; }
-  .r-arrow { color:var(--muted); font-size:13px; }
+  /* Buttons */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 15px 26px;
+    background: var(--grad-btn);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Lexend', sans-serif;
+    font-size: 17px;
+    font-weight: 800;
+    cursor: pointer;
+    min-height: 54px;
+    box-shadow: 0 4px 16px rgba(11,139,168,.38);
+    transition: opacity .18s, transform .12s, box-shadow .18s;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .btn-primary:hover  { opacity: .92; transform: translateY(-1px); box-shadow: 0 6px 22px rgba(11,139,168,.5); }
+  .btn-primary:active { opacity: 1; transform: translateY(0); }
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 15px 22px;
+    background: var(--card);
+    color: var(--text-mid);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    font-family: 'Lexend', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    min-height: 54px;
+    transition: all .18s;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .btn-secondary:hover { border-color: var(--teal-mid); color: var(--teal-dark); background: #EAF6FA; }
 
-  /* travel log mini */
-  .log-mini { list-style:none; padding-left:20px; position:relative; }
-  .log-mini::before { content:''; position:absolute; left:6px; top:6px; bottom:6px; width:2px; background:var(--border); }
-  .log-mini li { position:relative; margin-bottom:12px; }
-  .log-mini li::before { content:''; position:absolute; left:-17px; top:4px; width:10px; height:10px; border-radius:50%; background:var(--accent); border:2px solid #fff; box-shadow:0 0 0 2px var(--accent); }
-  .log-mini li:first-child::before { background:var(--success); box-shadow:0 0 0 2px var(--success); }
-  .log-office { font-weight:700; font-size:13px; color:var(--navy); }
-  .log-action-tag { font-size:11px; font-weight:700; padding:1px 7px; border-radius:10px; background:#EFF6FF; color:var(--accent); margin-left:5px; }
-  .log-meta { font-size:11px; color:var(--muted); margin-top:1px; }
+  .btn-full {
+    width: 100%;
+    margin-top: 6px;
+  }
+
+  /* Action row */
+  .action-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+
+  /* ── SUCCESS CARD ── */
+  .success-banner {
+    background: linear-gradient(135deg, #065F46, #047857);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    text-align: center;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+  }
+  .success-banner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+  .success-checkmark {
+    width: 64px; height: 64px;
+    background: rgba(255,255,255,.15);
+    border: 3px solid rgba(255,255,255,.35);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px;
+    margin: 0 auto 14px;
+  }
+  .success-banner h2 { color: #fff; font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+  .success-banner p  { color: rgba(255,255,255,.88); font-size: 16px; margin-bottom: 3px; }
+  .success-ts        { font-size: 13px; color: rgba(255,255,255,.6); margin-top: 10px; font-weight: 600; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 540px) {
+    .how-grid    { grid-template-columns: 1fr; }
+    .doc-meta-grid { grid-template-columns: 1fr; }
+    .action-grid   { grid-template-columns: 1fr 1fr; }
+    .steps-bar .step-label { display: none; }
+    .action-row { flex-direction: column; }
+    .btn-primary, .btn-secondary { width: 100%; }
+    .qr-card { padding: 18px; }
+  }
+  @media (max-width: 380px) {
+    .drop-zone { padding: 36px 14px; }
+    .drop-main-text { font-size: 16px; }
+  }
+
+  /* ── ANIMATION ── */
+  .qr-card, .doc-found, .success-banner {
+    animation: fadeUp .3s ease both;
+  }
+  .qr-card:nth-child(2) { animation-delay: .06s; }
+  .qr-card:nth-child(3) { animation-delay: .12s; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 </style>
 
 <div class="upload-wrap">
 
+  <!-- ── PAGE HEADER ── -->
+  <div class="qr-page-header">
+    <a href="/" class="page-back-btn">← Back</a>
+    <div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="page-title-icon">📤</div>
+        <div class="page-title-text">Upload QR Code</div>
+      </div>
+      <div class="page-title-sub">Scan a QR code image to identify and log a document</div>
+    </div>
+  </div>
+
+  <!-- ── QR LIBRARY WARNING ── -->
   {% if not qr_read_ok %}
-  <div class="warn-box">
-    ⚠️ <div><strong>QR reading library not installed.</strong><br>
-    Run <code>pip install opencv-python numpy Pillow</code> in your terminal, then restart the app.</div>
+  <div class="alert-banner alert-warn">
+    <div class="ab-icon">⚠️</div>
+    <div>
+      <strong>QR reading library not installed</strong>
+      Run <code>pip install opencv-python numpy Pillow</code> in your terminal, then restart the app.
+    </div>
   </div>
   {% endif %}
 
-  <!-- ── SUCCESS STATE ── -->
+  <!-- ════════════════════════════
+       SUCCESS STATE
+  ════════════════════════════ -->
   {% if success_entry %}
-    <div class="success-card">
-      <div class="success-icon">✅</div>
-      <h2>Log Entry Saved!</h2>
-      <p><strong>{{ success_entry.office }}</strong> — {{ success_entry.action }}</p>
-      {% if success_entry.officer %}<p>Logged by: {{ success_entry.officer }}</p>{% endif %}
-      {% if success_entry.remarks %}<p>Remarks: {{ success_entry.remarks }}</p>{% endif %}
-      <div class="success-ts">{{ success_entry.timestamp }} · via QR Upload</div>
+
+  <div class="success-banner">
+    <div class="success-checkmark">✅</div>
+    <h2>Log Entry Saved!</h2>
+    <p><strong>{{ success_entry.office }}</strong> — {{ success_entry.action }}</p>
+    {% if success_entry.officer %}<p>Logged by: {{ success_entry.officer }}</p>{% endif %}
+    {% if success_entry.remarks %}<p>Remarks: {{ success_entry.remarks }}</p>{% endif %}
+    <div class="success-ts">{{ success_entry.timestamp }} · via QR Upload</div>
+  </div>
+
+  {% if doc %}
+  <div class="doc-found">
+    <div class="doc-found-header">
+      <div>
+        <div class="doc-found-title">{{ doc.doc_name }}</div>
+        {% if doc.doc_id %}<div class="doc-found-ref">{{ doc.doc_id }}</div>{% endif %}
+      </div>
+      <span class="badge badge-{{ doc.status.lower().replace(' ','-') }}">{{ doc.status }}</span>
+    </div>
+    {% if doc.travel_log %}
+    <div class="doc-subsection-label">Travel Log</div>
+    <ul class="log-mini">
+      {% for e in doc.travel_log | reverse %}
+      <li>
+        <div class="log-office">{{ e.office }}<span class="log-action-tag">{{ e.action }}</span>{% if e.get('via') %}<span style="font-size:12px;color:var(--muted);">· {{ e.via }}</span>{% endif %}</div>
+        <div class="log-meta">{% if e.officer %}{{ e.officer }} · {% endif %}{{ e.timestamp }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="action-row">
+    <a href="/upload-qr" class="btn-primary">📤 Upload Another QR</a>
+    {% if doc %}<a href="/view/{{ doc.id }}" class="btn-secondary">📄 View Document</a>{% endif %}
+    <a href="/" class="btn-secondary">← Dashboard</a>
+  </div>
+
+  <!-- ════════════════════════════
+       STEP 2: Doc found → Log form
+  ════════════════════════════ -->
+  {% elif doc %}
+
+  <!-- Step indicator -->
+  <div class="steps-bar">
+    <div class="step-item done">
+      <div class="step-bubble">✓</div>
+      <div class="step-label">Upload QR</div>
+    </div>
+    <div class="step-connector done"></div>
+    <div class="step-item done">
+      <div class="step-bubble">✓</div>
+      <div class="step-label">Doc Found</div>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step-item active">
+      <div class="step-bubble">3</div>
+      <div class="step-label">Log Entry</div>
+    </div>
+  </div>
+
+  <!-- Doc summary -->
+  <div class="doc-found">
+    <div class="doc-found-header">
+      <div>
+        <div class="doc-found-title">{{ doc.doc_name }}</div>
+        {% if doc.doc_id %}<div class="doc-found-ref">Ref: {{ doc.doc_id }}</div>{% endif %}
+      </div>
+      <span class="badge badge-{{ doc.status.lower().replace(' ','-') }}">{{ doc.status }}</span>
+    </div>
+    <div class="doc-meta-grid">
+      <div class="doc-meta-item"><label>From</label><span>{{ doc.sender_name or '—' }}{% if doc.sender_org %}, {{ doc.sender_org }}{% endif %}</span></div>
+      <div class="doc-meta-item"><label>To</label><span>{{ doc.recipient_name or '—' }}{% if doc.recipient_org %}, {{ doc.recipient_org }}{% endif %}</span></div>
+      <div class="doc-meta-item"><label>Category</label><span>{{ doc.category or '—' }}</span></div>
+      <div class="doc-meta-item"><label>Date Received</label><span>{{ doc.date_received or '—' }}</span></div>
     </div>
 
-    {% if doc %}
-    <div class="doc-found">
-      <div class="doc-found-header">
-        <div>
-          <div class="doc-found-title">{{ doc.doc_name }}</div>
-          {% if doc.doc_id %}<div class="doc-found-ref">{{ doc.doc_id }}</div>{% endif %}
-        </div>
-        <span class="badge badge-{{ doc.status.lower().replace(' ','-') }}">{{ doc.status }}</span>
+    {% if doc.routing %}
+    {% set visited = doc.travel_log | map(attribute='office') | list %}
+    <div class="doc-subsection">
+      <div class="doc-subsection-label">📍 Routing Chain</div>
+      <div class="routing-bar">
+        {% for stop in doc.routing %}
+          <span class="r-stop {% if stop in visited %}done{% endif %}">{% if stop in visited %}✓ {% endif %}{{ stop }}</span>
+          {% if not loop.last %}<span class="r-arrow">→</span>{% endif %}
+        {% endfor %}
       </div>
-      {% if doc.travel_log %}
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin-bottom:10px;">Travel Log</div>
+    </div>
+    {% endif %}
+
+    {% if doc.travel_log %}
+    <div class="doc-subsection">
+      <div class="doc-subsection-label">📋 Travel Log ({{ doc.travel_log|length }} entries)</div>
       <ul class="log-mini">
         {% for e in doc.travel_log | reverse %}
         <li>
-          <div class="log-office">{{ e.office }} <span class="log-action-tag">{{ e.action }}</span>{% if e.get('via') %} <span style="font-size:10px;color:var(--muted)">· {{ e.via }}</span>{% endif %}</div>
+          <div class="log-office">{{ e.office }}<span class="log-action-tag">{{ e.action }}</span></div>
           <div class="log-meta">{% if e.officer %}{{ e.officer }} · {% endif %}{{ e.timestamp }}</div>
         </li>
         {% endfor %}
       </ul>
-      {% endif %}
     </div>
     {% endif %}
+  </div>
 
-    <div style="display:flex;gap:12px;">
-      <a href="/upload-qr" class="btn btn-primary">📤 Upload Another QR</a>
-      {% if doc %}<a href="/view/{{ doc.id }}" class="btn btn-secondary">📄 View Document</a>{% endif %}
-      <a href="/" class="btn btn-secondary">← Dashboard</a>
-    </div>
-
-  <!-- ── STEP 2: Document found, show log form ── -->
-  {% elif doc %}
-
-    <div class="steps">
-      <div class="step done"><div class="step-num">✓</div><div class="step-label">Upload QR</div></div>
-      <div class="step-line done"></div>
-      <div class="step done"><div class="step-num">✓</div><div class="step-label">Document Found</div></div>
-      <div class="step-line"></div>
-      <div class="step active"><div class="step-num">3</div><div class="step-label">Log Entry</div></div>
-    </div>
-
-    <!-- Doc info summary -->
-    <div class="doc-found" style="margin-bottom:20px;">
-      <div class="doc-found-header">
-        <div>
-          <div class="doc-found-title">{{ doc.doc_name }}</div>
-          {% if doc.doc_id %}<div class="doc-found-ref">Ref: {{ doc.doc_id }}</div>{% endif %}
-        </div>
-        <span class="badge badge-{{ doc.status.lower().replace(' ','-') }}">{{ doc.status }}</span>
+  <!-- Log entry form -->
+  <div class="qr-card">
+    <div class="qr-card-header">
+      <div class="qr-card-icon">📝</div>
+      <div>
+        <div class="qr-card-title">Log Your Entry</div>
+        <div class="qr-card-sub">Document identified — confirm receipt or update status</div>
       </div>
-      <div class="doc-meta-grid">
-        <div class="doc-meta-item"><label>From</label><span>{{ doc.sender_name or '—' }}{% if doc.sender_org %}, {{ doc.sender_org }}{% endif %}</span></div>
-        <div class="doc-meta-item"><label>To</label><span>{{ doc.recipient_name or '—' }}{% if doc.recipient_org %}, {{ doc.recipient_org }}{% endif %}</span></div>
-        <div class="doc-meta-item"><label>Category</label><span>{{ doc.category or '—' }}</span></div>
-        <div class="doc-meta-item"><label>Date Received</label><span>{{ doc.date_received or '—' }}</span></div>
+    </div>
+    <form method="post">
+      <input type="hidden" name="doc_id_confirm" value="{{ doc.id }}" />
+      <div class="fg">
+        <label>Office / Department <span class="req">*</span></label>
+        <input type="text" name="office" placeholder="e.g. Records Office, Finance Dept…" required autocomplete="organization"/>
       </div>
-
-      {% if doc.routing %}
-      {% set visited = doc.travel_log | map(attribute='office') | list %}
-      <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid var(--border);">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Routing Chain</div>
-        <div class="routing-bar">
-          {% for stop in doc.routing %}
-            <span class="r-stop {% if stop in visited %}done{% endif %}">{% if stop in visited %}✓ {% endif %}{{ stop }}</span>
-            {% if not loop.last %}<span class="r-arrow">→</span>{% endif %}
+      <div class="fg">
+        <label>Received By (Your Name)</label>
+        <input type="text" name="officer" placeholder="Full name" autocomplete="name"/>
+      </div>
+      <div class="fg">
+        <span style="display:block;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-mid);margin-bottom:10px;">Action Taken</span>
+        <div class="action-grid">
+          {% for act in action_options %}
+          <label class="action-btn" onclick="setAction('{{ act }}', this)">
+            <span class="act-icon">{% if act=='Received' %}📥{% elif act=='Released' %}📤{% elif act=='On Hold' %}⏸{% elif act=='Returned' %}↩{% else %}✅{% endif %}</span>
+            {{ act }}
+          </label>
           {% endfor %}
         </div>
+        <input type="hidden" name="action" id="action-input" value="Received"/>
       </div>
-      {% endif %}
-
-      {% if doc.travel_log %}
-      <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid var(--border);">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Travel Log ({{ doc.travel_log|length }} entries)</div>
-        <ul class="log-mini">
-          {% for e in doc.travel_log | reverse %}
-          <li>
-            <div class="log-office">{{ e.office }} <span class="log-action-tag">{{ e.action }}</span></div>
-            <div class="log-meta">{% if e.officer %}{{ e.officer }} · {% endif %}{{ e.timestamp }}</div>
-          </li>
-          {% endfor %}
-        </ul>
+      <div class="fg">
+        <label>Remarks <span style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted);font-size:12px;">(optional)</span></label>
+        <textarea name="remarks" rows="2" placeholder="Any notes or conditions…"></textarea>
       </div>
-      {% endif %}
-    </div>
+      <button type="submit" class="btn-primary btn-full">✅ Save Log Entry</button>
+    </form>
+  </div>
 
-    <!-- Log Entry Form -->
-    <div class="log-form-card">
-      <h3>📝 Log Your Entry</h3>
-      <p>Document identified. Fill in your details to confirm receipt or update status.</p>
-      <form method="post">
-        <input type="hidden" name="doc_id_confirm" value="{{ doc.id }}" />
-        <div class="form-group">
-          <label>Office / Department <span class="req">*</span></label>
-          <input type="text" name="office" placeholder="e.g. Records Office, Finance Dept..." required />
-        </div>
-        <div class="form-group">
-          <label>Received By (Your Name)</label>
-          <input type="text" name="officer" placeholder="Full name" />
-        </div>
-        <div class="form-group">
-          <label>Action</label>
-          <div class="action-grid">
-            {% for act in action_options %}
-            <label class="action-btn" onclick="setAction('{{ act }}', this)">
-              {% if act=='Received' %}📥{% elif act=='Released' %}📤{% elif act=='On Hold' %}⏸️{% elif act=='Returned' %}↩️{% else %}✅{% endif %}
-              {{ act }}
-            </label>
-            {% endfor %}
-          </div>
-          <input type="hidden" name="action" id="action-input" value="Received" />
-        </div>
-        <div class="form-group">
-          <label>Remarks (optional)</label>
-          <textarea name="remarks" rows="2" placeholder="Any notes or conditions..."></textarea>
-        </div>
-        <button type="submit" class="btn-submit">✅ Save Log Entry</button>
-      </form>
-    </div>
-
-  <!-- ── STEP 1: Upload QR Image ── -->
+  <!-- ════════════════════════════
+       STEP 1: Upload QR Image
+  ════════════════════════════ -->
   {% else %}
 
-    <div class="steps">
-      <div class="step active"><div class="step-num">1</div><div class="step-label">Upload QR</div></div>
-      <div class="step-line"></div>
-      <div class="step"><div class="step-num">2</div><div class="step-label">Document Found</div></div>
-      <div class="step-line"></div>
-      <div class="step"><div class="step-num">3</div><div class="step-label">Log Entry</div></div>
+  <!-- Step indicator -->
+  <div class="steps-bar">
+    <div class="step-item active">
+      <div class="step-bubble">1</div>
+      <div class="step-label">Upload QR</div>
     </div>
-
-    {% if error %}
-    <div style="background:#FEE2E2;border:1.5px solid var(--danger);border-radius:10px;padding:14px 16px;font-size:14px;color:#7F1D1D;margin-bottom:20px;border-left:4px solid var(--danger);">
-      ❌ {{ error }}
+    <div class="step-connector"></div>
+    <div class="step-item">
+      <div class="step-bubble">2</div>
+      <div class="step-label">Doc Found</div>
     </div>
-    {% endif %}
-
-    <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:24px;margin-bottom:20px;">
-      <h3 style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--navy);margin-bottom:4px;">Upload a QR Code Image</h3>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">
-        Upload a photo or screenshot of the document's QR code. The system will automatically identify the document and let you log receipt.
-      </p>
-
-      <form method="post" enctype="multipart/form-data" id="upload-form">
-        <div class="upload-zone" id="drop-zone">
-          <input type="file" name="qr_image" id="qr-file" accept="image/*" onchange="previewFile(this)" />
-          <span class="upload-icon">📷</span>
-          <h3>Drop QR image here or click to browse</h3>
-          <p>Supports JPG, PNG, GIF, WebP — take a photo of the printed QR or upload a screenshot</p>
-          <div class="file-name" id="file-name-display"></div>
-        </div>
-
-        <div id="qr-preview-wrap">
-          <img id="qr-preview" src="" alt="QR Preview" />
-          <p style="font-size:12px;color:var(--muted);margin-top:6px;">QR image ready to scan</p>
-        </div>
-
-        <button type="submit" class="btn-submit" style="margin-top:20px;">
-          🔍 Read QR Code &amp; Find Document
-        </button>
-      </form>
+    <div class="step-connector"></div>
+    <div class="step-item">
+      <div class="step-bubble">3</div>
+      <div class="step-label">Log Entry</div>
     </div>
+  </div>
 
-    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:18px 20px;">
-      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin-bottom:10px;">How it works</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;text-align:center;">
-        <div>
-          <div style="font-size:28px;margin-bottom:6px;">📷</div>
-          <div style="font-size:12px;font-weight:600;color:var(--navy);">Upload QR Image</div>
-          <div style="font-size:11px;color:var(--muted);">Photo or screenshot of the printed QR</div>
-        </div>
-        <div>
-          <div style="font-size:28px;margin-bottom:6px;">🔍</div>
-          <div style="font-size:12px;font-weight:600;color:var(--navy);">Auto-Identify</div>
-          <div style="font-size:11px;color:var(--muted);">System reads QR and finds the document</div>
-        </div>
-        <div>
-          <div style="font-size:28px;margin-bottom:6px;">✅</div>
-          <div style="font-size:12px;font-weight:600;color:var(--navy);">Log Receipt</div>
-          <div style="font-size:11px;color:var(--muted);">Enter your office and confirm receipt</div>
-        </div>
+  {% if error %}
+  <div class="alert-banner alert-err">
+    <div class="ab-icon">❌</div>
+    <div>{{ error }}</div>
+  </div>
+  {% endif %}
+
+  <!-- Upload card -->
+  <div class="qr-card">
+    <div class="qr-card-header">
+      <div class="qr-card-icon">📷</div>
+      <div>
+        <div class="qr-card-title">Upload a QR Code Image</div>
+        <div class="qr-card-sub">Photo, screenshot, or scanned image of the document QR</div>
       </div>
     </div>
 
-  {% endif %}
+    <form method="post" enctype="multipart/form-data" id="upload-form">
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" name="qr_image" id="qr-file" accept="image/*"/>
+        <div class="drop-icon">📷</div>
+        <div class="drop-main-text">Drop image here or tap to browse</div>
+        <div class="drop-sub-text">Take a photo of the printed QR code<br>or upload a screenshot</div>
+        <div class="drop-badges">
+          <span class="drop-badge">JPG</span>
+          <span class="drop-badge">PNG</span>
+          <span class="drop-badge">GIF</span>
+          <span class="drop-badge">WebP</span>
+        </div>
+      </div>
 
-</div>
+      <div class="file-sel-bar" id="file-sel-bar">
+        <span class="file-sel-icon">📎</span>
+        <span class="file-sel-name" id="file-sel-name"></span>
+      </div>
+
+      <div class="qr-preview-wrap" id="qr-preview-wrap">
+        <img id="qr-preview" src="" alt="QR Preview"/>
+        <div class="qr-preview-label">QR image ready to scan</div>
+      </div>
+
+      <button type="submit" class="btn-primary btn-full" style="margin-top:20px;" id="scan-btn">
+        🔍 Read QR Code &amp; Find Document
+      </button>
+    </form>
+  </div>
+
+  <!-- How it works -->
+  <div class="qr-card" style="padding-top:20px;">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:16px;">How it works</div>
+    <div class="how-grid">
+      <div class="how-item">
+        <div class="how-icon">📷</div>
+        <div class="how-label">Upload QR Image</div>
+        <div class="how-desc">Photo or screenshot of the printed QR code</div>
+      </div>
+      <div class="how-item">
+        <div class="how-icon">🔍</div>
+        <div class="how-label">Auto-Identify</div>
+        <div class="how-desc">System reads QR and finds the matching document</div>
+      </div>
+      <div class="how-item">
+        <div class="how-icon">✅</div>
+        <div class="how-label">Log Receipt</div>
+        <div class="how-desc">Enter your office and confirm receipt</div>
+      </div>
+    </div>
+  </div>
+
+  {% endif %}
+</div><!-- /upload-wrap -->
 
 <script>
-async function regenRef() {
-  const res = await fetch('/api/gen-ref');
-  const data = await res.json();
-  document.getElementById('doc-ref-input').value = data.ref;
-}
-
 function setAction(val, el) {
   document.getElementById('action-input').value = val;
   document.querySelectorAll('.action-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
 }
+
 document.addEventListener('DOMContentLoaded', () => {
+  // Init first action button
   const btns = document.querySelectorAll('.action-btn');
   if (btns.length) btns[0].classList.add('active');
 
-  // Drag and drop
-  const zone = document.getElementById('drop-zone');
+  const zone    = document.getElementById('drop-zone');
+  const input   = document.getElementById('qr-file');
+  const selBar  = document.getElementById('file-sel-bar');
+  const selName = document.getElementById('file-sel-name');
+  const scanBtn = document.getElementById('scan-btn');
+
+  function showFile(file) {
+    if (!file) return;
+    selName.textContent = file.name;
+    selBar.classList.add('visible');
+    zone.classList.add('has-file');
+    // Preview
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('qr-preview').src = e.target.result;
+      document.getElementById('qr-preview-wrap').classList.add('visible');
+    };
+    reader.readAsDataURL(file);
+  }
+
   if (zone) {
-    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', ()  => zone.classList.remove('drag-over'));
     zone.addEventListener('drop', e => {
-      e.preventDefault(); zone.classList.remove('drag-over');
-      const file = e.dataTransfer.files[0];
-      if (file) {
-        document.getElementById('qr-file').files = e.dataTransfer.files;
-        previewFile(document.getElementById('qr-file'));
-      }
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const f = e.dataTransfer.files[0];
+      if (f) { input.files = e.dataTransfer.files; showFile(f); }
     });
+    if (input) input.addEventListener('change', () => { if (input.files[0]) showFile(input.files[0]); });
   }
 
   // Loading on form submit
   document.querySelectorAll('form').forEach(form => {
     form.addEventListener('submit', () => {
-      const hasImage = document.getElementById('qr-file') && document.getElementById('qr-file').files.length > 0;
-      if (hasImage) {
-        showLoading('Reading QR Code...', 'Scanning and finding document');
-      } else {
-        showLoading('Saving Log Entry...', 'Updating travel log');
+      const hasImage = input && input.files && input.files.length > 0;
+      if (hasImage && scanBtn) {
+        scanBtn.innerHTML = '⏳ Reading QR Code…';
+        scanBtn.disabled = true;
       }
     });
   });
 
-  window.addEventListener('pageshow', e => { if (e.persisted) hideLoading(); });
+  window.addEventListener('pageshow', e => {
+    if (e.persisted && scanBtn) {
+      scanBtn.innerHTML = '🔍 Read QR Code &amp; Find Document';
+      scanBtn.disabled = false;
+    }
+  });
 });
-
-function previewFile(input) {
-  const file = input.files[0];
-  if (!file) return;
-  document.getElementById('file-name-display').style.display = 'block';
-  document.getElementById('file-name-display').textContent = file.name;
-  const reader = new FileReader();
-  reader.onload = e => {
-    document.getElementById('qr-preview').src = e.target.result;
-    document.getElementById('qr-preview-wrap').style.display = 'block';
-  };
-  reader.readAsDataURL(file);
-}
 </script>
+
 {% endblock %}

@@ -1,140 +1,616 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="page-header">
-  <a href="/manage-users" class="page-back">← Manage Users</a>
-  <div class="page-title">📧 Send Staff Invitation</div>
-</div>
-
 <style>
-  .invite-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
-  .inv-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:24px;}
-  .inv-card h3{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:16px;padding-bottom:10px;border-bottom:1.5px solid var(--border);}
-  .result-box{border-radius:10px;padding:14px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;font-size:14px;font-weight:500;}
-  .result-ok{background:#D1FAE5;border:1.5px solid var(--success);color:#065F46;}
-  .result-err{background:#FEE2E2;border:1.5px solid var(--danger);color:#7F1D1D;}
-  .warn-box{background:#FFFBEB;border:1.5px solid var(--warning);border-radius:10px;padding:14px 16px;font-size:13px;color:#92400E;margin-bottom:20px;display:flex;gap:10px;}
-  .generated-link-box{background:#EFF6FF;border:2px solid var(--accent);border-radius:10px;padding:16px;margin-top:16px;}
-  .generated-link-box label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px;}
-  .link-text{font-size:12px;font-family:monospace;color:var(--text);word-break:break-all;background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px;line-height:1.5;}
-  .setup-steps{list-style:none;counter-reset:step;}
-  .setup-steps li{counter-increment:step;display:flex;gap:12px;margin-bottom:14px;align-items:flex-start;}
-  .setup-steps li::before{content:counter(step);min-width:26px;height:26px;background:var(--accent);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;margin-top:1px;}
-  .setup-steps li p{font-size:13px;color:var(--text);line-height:1.5;margin:0;}
-  /* Tokens table */
-  .tokens-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;}
-  .tokens-head{padding:14px 18px;border-bottom:1.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
-  .tokens-head h3{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--navy);}
-  .token-row{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;font-size:13px;}
-  .token-row:last-child{border-bottom:none;}
-  .token-email{font-weight:600;color:var(--navy);}
-  .token-name{font-size:12px;color:var(--muted);}
-  .tok-used{background:#E2E3E5;color:#383D41;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
-  .tok-valid{background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
-  .tok-expired{background:#FEE2E2;color:#7F1D1D;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
-  @media(max-width:700px){.invite-grid{grid-template-columns:1fr;}}
+  :root {
+    --teal-deep:   #0A3D4A;
+    --teal-dark:   #0E5C72;
+    --teal-mid:    #0B8BA8;
+    --teal-bright: #0FB8D4;
+    --green-mid:   #0DA86A;
+    --surface:     #EDF5F8;
+    --card:        #FFFFFF;
+    --border:      #C4DDE6;
+    --text:        #0A2A35;
+    --text-mid:    #1E5A70;
+    --muted:       #4A8A9E;
+    --success:     #0A9E5C;
+    --success-bg:  #D0F5E8;
+    --danger:      #DC2626;
+    --danger-bg:   #FEE2E2;
+    --warning:     #D97706;
+    --warning-bg:  #FEF3C7;
+    --grad-btn:    linear-gradient(135deg, #0B8BA8, #0DA86A);
+    --radius:      14px;
+    --radius-sm:   10px;
+    --shadow-sm:   0 2px 8px rgba(10,61,74,.10);
+    --shadow-md:   0 4px 20px rgba(10,61,74,.14);
+  }
+
+  /* ── PAGE HEADER ── */
+  .inv-page-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 26px;
+    padding-bottom: 20px;
+    border-bottom: 1.5px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .page-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'Lexend', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-mid);
+    text-decoration: none;
+    transition: all .18s;
+    min-height: 44px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .page-back-btn:hover { border-color: var(--teal-mid); color: var(--teal-dark); background: #EAF6FA; }
+
+  .page-title-wrap {}
+  .page-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .page-title-icon {
+    width: 44px; height: 44px;
+    background: var(--grad-btn);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+    box-shadow: 0 3px 12px rgba(11,139,168,.3);
+  }
+  .page-title-text {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--teal-deep);
+  }
+  .page-title-sub {
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 500;
+    margin-top: 3px;
+  }
+
+  /* ── ALERT BANNERS ── */
+  .alert-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.6;
+  }
+  .alert-banner .ab-icon { font-size: 24px; flex-shrink: 0; margin-top: 1px; }
+  .alert-banner strong   { font-weight: 800; display: block; margin-bottom: 2px; }
+  .alert-warn  { background: var(--warning-bg); border: 2px solid #FCD34D; color: #78350F; }
+  .alert-ok    { background: var(--success-bg); border: 2px solid #6EE7B7; color: #065F46; }
+  .alert-err   { background: var(--danger-bg);  border: 2px solid #FCA5A5; color: #7F1D1D; }
+  .alert-warn code {
+    display: inline;
+    background: rgba(0,0,0,.08);
+    border-radius: 5px;
+    padding: 1px 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* ── GENERATED LINK BOX ── */
+  .gen-link-card {
+    background: linear-gradient(135deg, rgba(11,139,168,.06), rgba(13,168,106,.06));
+    border: 2px solid var(--teal-mid);
+    border-radius: var(--radius);
+    padding: 22px;
+    margin-bottom: 22px;
+    box-shadow: var(--shadow-sm);
+  }
+  .gen-link-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--teal-mid);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .gen-link-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+    word-break: break-all;
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    line-height: 1.7;
+  }
+  .btn-copy {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    background: var(--grad-btn);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Lexend', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: opacity .18s, transform .12s;
+    min-height: 52px;
+    box-shadow: 0 3px 14px rgba(11,139,168,.35);
+  }
+  .btn-copy:hover  { opacity: .9; transform: translateY(-1px); }
+  .btn-copy:active { opacity: 1; transform: translateY(0); }
+  .gen-link-note {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 10px;
+    font-weight: 500;
+  }
+
+  /* ── MAIN GRID ── */
+  .invite-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  /* ── SECTION CARDS ── */
+  .inv-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+  }
+  .inv-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .inv-card-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(11,139,168,.12), rgba(13,168,106,.12));
+    border: 1.5px solid var(--border);
+  }
+  .inv-card-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--teal-deep);
+  }
+
+  /* ── FORM ── */
+  .fg { margin-bottom: 16px; }
+  .fg label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--text-mid);
+    margin-bottom: 7px;
+  }
+  .fg label .req { color: var(--danger); margin-left: 3px; }
+  .fg input {
+    width: 100%;
+    padding: 13px 15px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'Lexend', sans-serif;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--text);
+    background: #F7FBFC;
+    outline: none;
+    transition: border .18s, box-shadow .18s, background .18s;
+    min-height: 54px;
+  }
+  .fg input:focus {
+    border-color: var(--teal-mid);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(11,139,168,.15);
+  }
+  .fg input::placeholder { color: #A0BFC8; font-weight: 400; }
+  .fg .hint {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 5px;
+    font-weight: 500;
+  }
+
+  .btn-submit {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 15px;
+    background: var(--grad-btn);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Lexend', sans-serif;
+    font-size: 17px;
+    font-weight: 800;
+    cursor: pointer;
+    min-height: 56px;
+    box-shadow: 0 4px 16px rgba(11,139,168,.38);
+    transition: opacity .18s, transform .12s, box-shadow .18s;
+    margin-top: auto;
+  }
+  .btn-submit:hover  { opacity: .92; transform: translateY(-1px); box-shadow: 0 6px 22px rgba(11,139,168,.5); }
+  .btn-submit:active { opacity: 1; transform: translateY(0); }
+  .btn-submit-note {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 10px;
+    font-weight: 500;
+  }
+
+  /* ── SETUP STEPS ── */
+  .setup-desc {
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 500;
+    margin-bottom: 18px;
+    line-height: 1.55;
+  }
+  .setup-steps { list-style: none; counter-reset: step; }
+  .setup-steps li {
+    counter-increment: step;
+    display: flex;
+    gap: 14px;
+    margin-bottom: 16px;
+    align-items: flex-start;
+  }
+  .setup-steps li:last-child { margin-bottom: 0; }
+  .step-num {
+    min-width: 30px; height: 30px;
+    background: var(--grad-btn);
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    flex-shrink: 0;
+    margin-top: 2px;
+    box-shadow: 0 2px 8px rgba(11,139,168,.3);
+  }
+  .step-content {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.6;
+    font-weight: 500;
+  }
+  .step-content strong { color: var(--teal-dark); font-weight: 700; }
+  .env-block {
+    margin-top: 10px;
+    background: var(--teal-deep);
+    border-radius: 9px;
+    padding: 14px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 2.2;
+    color: #9ECFDB;
+  }
+  .env-block .env-key   { color: #7DD3FC; }
+  .env-block .env-val   { color: #86EFAC; }
+  .env-block .env-eq    { color: #CBD5E1; }
+
+  /* ── TOKENS TABLE ── */
+  .tokens-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .tokens-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 22px;
+    border-bottom: 1.5px solid var(--border);
+    background: linear-gradient(135deg, rgba(11,139,168,.04), rgba(13,168,106,.04));
+  }
+  .tokens-card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--teal-deep);
+  }
+  .tokens-count {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    color: var(--muted);
+  }
+
+  .token-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 10px;
+    transition: background .15s;
+  }
+  .token-row:last-child { border-bottom: none; }
+  .token-row:hover { background: #F4FAFB; }
+
+  .token-info {}
+  .token-email {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--teal-deep);
+    margin-bottom: 2px;
+  }
+  .token-name {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .token-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* Status pills */
+  .tok-pill {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .tok-used    { background: #E2E8F0; color: #475569; }
+  .tok-valid   { background: var(--success-bg); color: var(--success); }
+  .tok-expired { background: var(--danger-bg); color: var(--danger); }
+
+  .tok-date {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* empty state */
+  .tokens-empty {
+    padding: 40px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .tokens-empty-icon { font-size: 36px; margin-bottom: 10px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 700px) {
+    .invite-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 480px) {
+    .inv-page-header { gap: 12px; }
+    .page-title-text { font-size: 18px; }
+    .inv-card { padding: 18px; }
+    .token-row { padding: 12px 16px; }
+    .tokens-card-header { padding: 14px 16px; }
+  }
+
+  /* ── ANIMATION ── */
+  .inv-card, .tokens-card, .gen-link-card, .alert-banner {
+    animation: fadeUp .32s ease both;
+  }
+  .inv-card:nth-of-type(2) { animation-delay: .06s; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 </style>
 
+<!-- ── PAGE HEADER ── -->
+<div class="inv-page-header">
+  <a href="/manage-users" class="page-back-btn">← Manage Users</a>
+  <div class="page-title-wrap">
+    <div class="page-title-row">
+      <div class="page-title-icon">📧</div>
+      <div class="page-title-text">Send Staff Invitation</div>
+    </div>
+    <div class="page-title-sub">Invite staff members to create their DocTracker account</div>
+  </div>
+</div>
+
+<!-- ── EMAIL NOT SET UP WARNING ── -->
 {% if not mail_enabled %}
-<div class="warn-box">
-  <span style="font-size:20px;">⚠️</span>
-  <div><strong>Email not set up.</strong> You can still generate invite links and share them manually. To enable auto-email, add <code>MAIL_SENDER</code>, <code>MAIL_PASSWORD</code>, and <code>APP_URL</code> in Railway → Variables.</div>
+<div class="alert-banner alert-warn">
+  <div class="ab-icon">⚠️</div>
+  <div>
+    <strong>Email not configured</strong>
+    You can still generate invite links to share manually. To enable automatic email sending, add <code>MAIL_SENDER</code>, <code>MAIL_PASSWORD</code>, and <code>APP_URL</code> in Railway → Variables.
+  </div>
 </div>
 {% endif %}
 
+<!-- ── RESULT MESSAGE ── -->
 {% if result %}
-<div class="result-box {{ 'result-ok' if result.ok else 'result-err' }}">
-  <span style="font-size:20px;">{{ '✅' if result.ok else '❌' }}</span>
-  <span>{{ result.msg }}</span>
+<div class="alert-banner {{ 'alert-ok' if result.ok else 'alert-err' }}">
+  <div class="ab-icon">{{ '✅' if result.ok else '❌' }}</div>
+  <div>{{ result.msg }}</div>
 </div>
 {% endif %}
 
+<!-- ── GENERATED LINK ── -->
 {% if generated_link %}
-<div class="generated-link-box">
-  <label>🔗 One-Time Invite Link (expires in 48 hours)</label>
-  <div class="link-text" id="gen-link-text">{{ generated_link }}</div>
-  <button onclick="copyGenLink()" class="btn btn-primary btn-sm" style="width:100%;justify-content:center;">
+<div class="gen-link-card">
+  <div class="gen-link-label">🔗 One-Time Invite Link — expires in 48 hours</div>
+  <div class="gen-link-text" id="gen-link-text">{{ generated_link }}</div>
+  <button onclick="copyGenLink(this)" class="btn-copy">
     📋 Copy Invite Link
   </button>
-  <p style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center;">Share this link with the staff member. It can only be used once.</p>
+  <div class="gen-link-note">Share this link with the staff member. It can only be used once.</div>
 </div>
 {% endif %}
 
+<!-- ── INVITE FORM + SETUP GUIDE ── -->
 <div class="invite-grid">
-  <!-- Send Form -->
+
+  <!-- Send / Generate Form -->
   <div class="inv-card">
-    <h3>📨 Send or Generate Invite</h3>
+    <div class="inv-card-header">
+      <div class="inv-card-icon">📨</div>
+      <div class="inv-card-title">{% if mail_enabled %}Send Invite Email{% else %}Generate Invite Link{% endif %}</div>
+    </div>
     <form method="post">
-      <div class="form-group">
-        <label>Recipient Email <span style="color:var(--danger)">*</span></label>
-        <input type="email" name="email" placeholder="e.g. staff@deped.gov.ph" required style="font-size:16px;min-height:48px;" />
+      <div class="fg">
+        <label>Recipient Email <span class="req">*</span></label>
+        <input type="email" name="email" placeholder="e.g. staff@deped.gov.ph" required autocomplete="email"/>
       </div>
-      <div class="form-group">
-        <label>Recipient Name (optional)</label>
-        <input type="text" name="name" placeholder="e.g. Maria Santos" style="font-size:16px;min-height:48px;" />
+      <div class="fg">
+        <label>Recipient Name <span style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted);font-size:12px;">(optional)</span></label>
+        <input type="text" name="name" placeholder="e.g. Maria Santos" autocomplete="name"/>
+        <div class="hint">Pre-fills the name on the registration form.</div>
       </div>
-      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;min-height:48px;">
+      <button type="submit" class="btn-submit">
         {% if mail_enabled %}📧 Send Invite Email{% else %}🔗 Generate Invite Link{% endif %}
       </button>
       {% if not mail_enabled %}
-      <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px;">Will generate a link you can copy and share manually.</p>
+      <div class="btn-submit-note">A one-time link will appear above — copy and share manually.</div>
       {% endif %}
     </form>
   </div>
 
-  <!-- Setup Guide -->
+  <!-- Gmail Setup Guide -->
   <div class="inv-card">
-    <h3>⚙️ Gmail Email Setup</h3>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">To auto-send emails, set up Gmail App Password:</p>
+    <div class="inv-card-header">
+      <div class="inv-card-icon">⚙️</div>
+      <div class="inv-card-title">Gmail Email Setup</div>
+    </div>
+    <div class="setup-desc">Follow these steps to enable automatic email sending via Gmail:</div>
     <ol class="setup-steps">
-      <li><p>Go to <strong>myaccount.google.com</strong> → Security → Enable <strong>2-Step Verification</strong></p></li>
-      <li><p>Search <strong>"App Passwords"</strong> in Google account settings</p></li>
-      <li><p>Click <strong>Create</strong>, name it "DocTracker" → copy the <strong>16-character password</strong></p></li>
       <li>
-        <p>Add to Railway → Variables:</p>
-        <div style="margin-top:6px;background:var(--surface);border-radius:6px;padding:10px;font-size:12px;font-family:monospace;line-height:2.2;">
-          MAIL_SENDER = your@gmail.com<br/>
-          MAIL_PASSWORD = xxxx xxxx xxxx xxxx<br/>
-          APP_URL = https://docktracker.up.railway.app
+        <div class="step-num">1</div>
+        <div class="step-content">Go to <strong>myaccount.google.com</strong> → Security → Enable <strong>2-Step Verification</strong></div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div class="step-content">Search <strong>"App Passwords"</strong> in your Google account settings</div>
+      </li>
+      <li>
+        <div class="step-num">3</div>
+        <div class="step-content">Click <strong>Create</strong>, name it "DocTracker", then copy the <strong>16-character password</strong></div>
+      </li>
+      <li>
+        <div class="step-num">4</div>
+        <div class="step-content">
+          Add these to Railway → Variables:
+          <div class="env-block">
+            <div><span class="env-key">MAIL_SENDER</span> <span class="env-eq">=</span> <span class="env-val">your@gmail.com</span></div>
+            <div><span class="env-key">MAIL_PASSWORD</span> <span class="env-eq">=</span> <span class="env-val">xxxx xxxx xxxx xxxx</span></div>
+            <div><span class="env-key">APP_URL</span> <span class="env-eq">=</span> <span class="env-val">https://yourapp.railway.app</span></div>
+          </div>
         </div>
       </li>
     </ol>
   </div>
+
 </div>
 
-<!-- Recent Invites -->
+<!-- ── RECENT INVITATIONS ── -->
 {% if tokens %}
 <div class="tokens-card">
-  <div class="tokens-head">
-    <h3>📋 Recent Invitations (last 50)</h3>
+  <div class="tokens-card-header">
+    <div class="tokens-card-title">
+      📋 Recent Invitations
+    </div>
+    <span class="tokens-count">Last 50</span>
   </div>
+
   {% for t in tokens %}
   <div class="token-row">
-    <div>
+    <div class="token-info">
       <div class="token-email">{{ t.email }}</div>
       {% if t.name %}<div class="token-name">{{ t.name }}</div>{% endif %}
     </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <div class="token-meta">
       {% if t.used %}
-        <span class="tok-used">✓ Used</span>
+        <span class="tok-pill tok-used">✓ Used</span>
       {% elif t.expires_at and t.expires_at < now %}
-        <span class="tok-expired">Expired</span>
+        <span class="tok-pill tok-expired">✗ Expired</span>
       {% else %}
-        <span class="tok-valid">⏳ Pending</span>
+        <span class="tok-pill tok-valid">⏳ Pending</span>
       {% endif %}
-      <span style="font-size:11px;color:var(--muted);">{{ t.created_at.strftime('%b %d, %I:%M %p') if t.created_at else '' }}</span>
+      <span class="tok-date">{{ t.created_at.strftime('%b %d, %I:%M %p') if t.created_at else '' }}</span>
     </div>
   </div>
   {% endfor %}
+
+</div>
+{% else %}
+<div class="tokens-card">
+  <div class="tokens-card-header">
+    <div class="tokens-card-title">📋 Recent Invitations</div>
+  </div>
+  <div class="tokens-empty">
+    <div class="tokens-empty-icon">📭</div>
+    No invitations sent yet. Send your first invite above!
+  </div>
 </div>
 {% endif %}
 
 <script>
-function copyGenLink() {
+function copyGenLink(btn) {
   const link = document.getElementById('gen-link-text').textContent.trim();
   navigator.clipboard.writeText(link).then(() => {
-    event.target.textContent = '✅ Copied!';
-    setTimeout(() => event.target.textContent = '📋 Copy Invite Link', 2000);
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✅ Copied to Clipboard!';
+    setTimeout(() => btn.innerHTML = orig, 2500);
+  }).catch(() => {
+    btn.innerHTML = '⚠️ Copy manually above';
+    setTimeout(() => btn.innerHTML = '📋 Copy Invite Link', 2500);
   });
 }
 </script>

@@ -2,91 +2,573 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-  <title>Document Submitted — DocTracker</title>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Document Submitted — DepEd Leyte DocTracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
   <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    :root{--green:#10B981;--dark:#064E3B;--navy:#0D1B2A;--surface:#F4F7FB;--border:#DDE3EE;--muted:#6B7FA3;}
-    body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#064E3B 0%,#065F46 60%,#10B981 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
-    .wrap{width:100%;max-width:460px;}
-    .card{background:#fff;border-radius:20px;padding:32px;box-shadow:0 24px 64px rgba(0,0,0,.25);text-align:center;}
-    .success-icon{font-size:56px;margin-bottom:12px;}
-    .success-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--dark);margin-bottom:6px;}
-    .success-sub{font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.5;}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* QR section */
-    .qr-box{background:var(--surface);border:2px dashed var(--border);border-radius:14px;padding:20px;margin-bottom:20px;}
-    .qr-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;}
-    .qr-img{width:200px;height:200px;border-radius:10px;margin:0 auto 12px;}
-    .qr-instruction{font-size:13px;color:var(--muted);line-height:1.6;}
+    :root {
+      --teal-deep:    #0A4D68;
+      --teal-mid:     #088395;
+      --teal-bright:  #05BFDB;
+      --green-bright: #00E5A0;
+      --green-mid:    #00C187;
+      --green-deep:   #007A55;
+      --text-white:   #FFFFFF;
+      --text-light:   #D0F5F0;
+      --text-muted:   #A0D8D5;
+      --surface-glass:        rgba(255,255,255,0.10);
+      --surface-glass-strong: rgba(255,255,255,0.16);
+      --border-glass:         rgba(255,255,255,0.22);
+      --shadow-deep:  0 12px 48px rgba(0,0,0,0.35);
+    }
 
-    /* How to use */
-    .steps{text-align:left;margin-bottom:20px;}
-    .steps h3{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;}
-    .step{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;}
-    .step-num{width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-    .step-text{font-size:13px;color:#1A2B45;line-height:1.5;padding-top:4px;}
+    body {
+      font-family: 'Nunito Sans', sans-serif;
+      min-height: 100vh;
+      min-height: 100dvh;
+      background: linear-gradient(145deg, #062F40 0%, #0A5C75 35%, #0A8060 70%, #055E45 100%);
+      background-attachment: fixed;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
 
-    /* Doc info */
-    .doc-info{background:#ECFDF5;border:1.5px solid var(--green);border-radius:10px;padding:14px;margin-bottom:20px;text-align:left;}
-    .doc-info-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dark);margin-bottom:6px;}
-    .doc-info-name{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:3px;}
-    .doc-info-ref{font-family:monospace;font-size:12px;color:var(--muted);}
+    /* Ambient orbs */
+    body::before, body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::before {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(0,229,160,0.13) 0%, transparent 70%);
+      top: -150px; right: -150px;
+      animation: orb 9s ease-in-out infinite alternate;
+    }
+    body::after {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(5,191,219,0.10) 0%, transparent 70%);
+      bottom: -100px; left: -100px;
+      animation: orb 12s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes orb {
+      from { transform: scale(1); opacity: 0.6; }
+      to   { transform: scale(1.25) translate(20px, 15px); opacity: 1; }
+    }
 
-    /* Buttons */
-    .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;margin-bottom:8px;border:none;}
-    .btn-green{background:var(--green);color:#fff;}
-    .btn-green:hover{background:#059669;}
-    .btn-outline{background:#fff;color:var(--muted);border:1.5px solid var(--border);}
-    .btn-outline:hover{border-color:var(--green);color:var(--dark);}
+    /* ── TOP BAR ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(6,25,35,0.60);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1.5px solid var(--border-glass);
+      padding: 0 20px; height: 64px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .topbar-badge {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--teal-bright), var(--green-bright));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+      box-shadow: 0 2px 12px rgba(0,229,160,0.35);
+    }
+    .topbar-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .topbar-brand {
+      font-family: 'Nunito', sans-serif;
+      font-size: 15px; font-weight: 900; color: var(--text-white);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .topbar-sub {
+      font-size: 11px; font-weight: 600; color: var(--text-muted);
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .back-btn {
+      display: flex; align-items: center; gap: 7px;
+      color: var(--text-white); font-size: 14px; font-weight: 700;
+      text-decoration: none;
+      background: var(--surface-glass);
+      border: 1.5px solid var(--border-glass);
+      padding: 8px 16px; border-radius: 10px;
+      transition: background 0.2s, transform 0.15s;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .back-btn:hover  { background: var(--surface-glass-strong); transform: translateX(-2px); }
+    .back-btn:active { transform: scale(0.97); }
+    .back-btn svg    { width: 16px; height: 16px; }
+
+    /* ── MAIN LAYOUT ── */
+    .main {
+      position: relative; z-index: 1;
+      flex: 1;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 32px 16px 48px;
+    }
+
+    .content-wrap {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── SUCCESS HERO ── */
+    .success-hero {
+      text-align: center;
+      padding: 36px 24px 32px;
+      background: var(--surface-glass);
+      border: 2px solid rgba(0,229,160,0.35);
+      border-radius: 22px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-deep), 0 0 0 1px rgba(0,229,160,0.10);
+      animation: hero-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes hero-in {
+      from { opacity: 0; transform: translateY(24px) scale(0.97); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .checkmark-ring {
+      width: 88px; height: 88px;
+      margin: 0 auto 20px;
+      position: relative;
+    }
+    .checkmark-ring svg {
+      width: 100%; height: 100%;
+      animation: ring-pop 0.5s cubic-bezier(0.22,1,0.36,1) 0.1s both;
+    }
+    @keyframes ring-pop {
+      from { transform: scale(0.5); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+
+    .success-title {
+      font-family: 'Nunito', sans-serif;
+      font-size: clamp(24px, 6vw, 32px);
+      font-weight: 900;
+      color: var(--text-white);
+      margin-bottom: 10px;
+      letter-spacing: -0.01em;
+    }
+    .success-sub {
+      font-size: clamp(14px, 3.5vw, 16px);
+      color: var(--text-light);
+      font-weight: 600;
+      line-height: 1.65;
+      max-width: 380px;
+      margin: 0 auto;
+    }
+
+    /* ── DOC INFO BANNER ── */
+    .doc-info {
+      background: rgba(0,229,160,0.12);
+      border: 2px solid rgba(0,229,160,0.35);
+      border-radius: 14px;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      animation: slide-in 0.5s cubic-bezier(0.22,1,0.36,1) 0.15s both;
+    }
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateX(-16px); }
+      to   { opacity: 1; transform: none; }
+    }
+    .doc-info-icon {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--teal-bright), var(--green-mid));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+      box-shadow: 0 3px 14px rgba(0,193,135,0.35);
+    }
+    .doc-info-text { min-width: 0; }
+    .doc-info-label {
+      font-size: 11px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--green-bright);
+      margin-bottom: 4px;
+    }
+    .doc-info-name {
+      font-family: 'Nunito', sans-serif;
+      font-size: clamp(15px, 4vw, 18px);
+      font-weight: 800; color: var(--text-white);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+    .doc-info-ref {
+      font-size: 13px; font-weight: 600;
+      color: var(--text-muted);
+      font-family: 'Courier New', monospace;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── QR CARD ── */
+    .qr-card {
+      background: var(--surface-glass);
+      border: 1.5px solid var(--border-glass);
+      border-radius: 20px;
+      padding: 24px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-deep);
+      animation: slide-in 0.5s cubic-bezier(0.22,1,0.36,1) 0.25s both;
+    }
+
+    .qr-card-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1.5px solid rgba(255,255,255,0.12);
+    }
+    .qr-card-icon {
+      width: 40px; height: 40px;
+      background: rgba(5,191,219,0.20);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .qr-card-header-text h3 {
+      font-family: 'Nunito', sans-serif;
+      font-size: clamp(15px, 4vw, 17px); font-weight: 800;
+      color: var(--text-white);
+    }
+    .qr-card-header-text p {
+      font-size: 12px; font-weight: 600;
+      color: var(--text-muted); margin-top: 2px;
+    }
+
+    .qr-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .qr-frame {
+      position: relative;
+      padding: 14px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 6px 30px rgba(0,0,0,0.30), 0 0 0 3px rgba(0,229,160,0.25);
+    }
+    .qr-frame img {
+      display: block;
+      width: clamp(160px, 45vw, 210px);
+      height: clamp(160px, 45vw, 210px);
+      border-radius: 8px;
+    }
+    /* Glowing corners on QR frame */
+    .qr-corner {
+      position: absolute;
+      width: 20px; height: 20px;
+      border-color: var(--green-bright);
+      border-style: solid;
+    }
+    .qr-corner.tl { top: 5px; left: 5px;   border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+    .qr-corner.tr { top: 5px; right: 5px;  border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+    .qr-corner.bl { bottom: 5px; left: 5px;  border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+    .qr-corner.br { bottom: 5px; right: 5px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+    .qr-instruction {
+      font-size: clamp(13px, 3.2vw, 15px);
+      color: var(--text-light);
+      font-weight: 600;
+      text-align: center;
+      line-height: 1.65;
+      max-width: 340px;
+    }
+
+    /* ── HOW TO USE ── */
+    .how-card {
+      background: var(--surface-glass);
+      border: 1.5px solid var(--border-glass);
+      border-radius: 20px;
+      padding: 24px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-deep);
+      animation: slide-in 0.5s cubic-bezier(0.22,1,0.36,1) 0.35s both;
+    }
+
+    .how-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 18px;
+    }
+    .how-header-icon {
+      width: 36px; height: 36px;
+      background: rgba(0,229,160,0.18);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .how-header h3 {
+      font-family: 'Nunito', sans-serif;
+      font-size: clamp(14px, 3.5vw, 16px);
+      font-weight: 800; color: var(--text-white);
+    }
+
+    .step-list { display: flex; flex-direction: column; gap: 14px; }
+
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .step-num {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--teal-bright), var(--green-mid));
+      color: #fff;
+      font-family: 'Nunito', sans-serif;
+      font-size: 15px; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 10px rgba(0,193,135,0.35);
+    }
+    .step-body {
+      padding-top: 5px;
+      font-size: clamp(14px, 3.5vw, 15px);
+      color: var(--text-light);
+      font-weight: 600;
+      line-height: 1.6;
+    }
+    .step-body strong {
+      color: var(--text-white);
+      font-weight: 800;
+    }
+    .step-body em {
+      font-style: normal;
+      color: var(--green-bright);
+      font-weight: 700;
+    }
+
+    /* ── ACTION BUTTONS ── */
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      animation: slide-in 0.5s cubic-bezier(0.22,1,0.36,1) 0.45s both;
+    }
+
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; padding: 18px 20px;
+      border-radius: 14px;
+      font-family: 'Nunito', sans-serif;
+      font-size: clamp(16px, 4vw, 18px); font-weight: 800;
+      cursor: pointer; text-decoration: none; border: none;
+      min-height: 60px;
+      transition: transform 0.15s, box-shadow 0.2s;
+      letter-spacing: 0.01em;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn svg { width: 22px; height: 22px; flex-shrink: 0; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--green-mid), var(--teal-bright));
+      color: #fff;
+      box-shadow: 0 4px 22px rgba(0,193,135,0.45);
+    }
+    .btn-primary:hover { box-shadow: 0 6px 32px rgba(0,193,135,0.60); transform: translateY(-1px); }
+
+    .btn-secondary {
+      background: var(--surface-glass-strong);
+      color: var(--text-white);
+      border: 2px solid var(--border-glass);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.22); }
+
+    /* ── FOOTER ── */
+    .footer {
+      position: relative; z-index: 1;
+      text-align: center;
+      padding: 8px 20px 24px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.30);
+      font-weight: 600; letter-spacing: 0.04em;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 400px) {
+      .topbar { height: 58px; }
+      .topbar-sub { display: none; }
+      .main { padding: 20px 12px 36px; }
+      .success-hero { padding: 28px 16px 24px; }
+      .qr-card, .how-card { padding: 18px 14px; }
+    }
+
+    @media (min-width: 600px) {
+      .main { padding: 40px 24px 56px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.1ms !important;
+      }
+    }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <div class="success-icon">🎉</div>
-    <div class="success-title">Document Submitted!</div>
-    <div class="success-sub">Your document has been logged in the system. Save or screenshot your QR code — you'll use it at the office.</div>
 
-    <div class="doc-info">
-      <div class="doc-info-label">📄 Submitted Document</div>
-      <div class="doc-info-name">{{ doc.doc_name }}</div>
-      <div class="doc-info-ref">Ref: {{ doc.doc_id }} &nbsp;·&nbsp; ID: {{ doc.id }}</div>
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-badge">📋</div>
+    <div class="topbar-text">
+      <div class="topbar-brand">DocTracker</div>
+      <div class="topbar-sub">DepEd Leyte Division</div>
     </div>
-
-    <!-- QR Code -->
-    <div class="qr-box">
-      <div class="qr-label">📱 Your Document QR Code</div>
-      <img src="data:image/png;base64,{{ qr_b64 }}" class="qr-img" alt="Document QR Code"/>
-      <div class="qr-instruction">Show this QR code to the office staff when dropping off or picking up your document.</div>
-    </div>
-
-    <!-- How to use -->
-    <div class="steps">
-      <h3>How to use your QR code</h3>
-      <div class="step">
-        <div class="step-num">1</div>
-        <div class="step-text"><strong>Screenshot or save</strong> this QR code on your phone now.</div>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div class="step-text">When you <strong>arrive at the office</strong>, scan or show the QR → tap <em>Mark as Received</em>.</div>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div class="step-text">When your document is <strong>ready for pickup</strong>, scan again → tap <em>Mark as Released</em>.</div>
-      </div>
-      <div class="step">
-        <div class="step-num">4</div>
-        <div class="step-text">Track your document status anytime from <strong>My Documents</strong>.</div>
-      </div>
-    </div>
-
-    <a href="/qr/{{ doc.id }}.png" download class="btn btn-outline">⬇️ Download QR as PNG</a>
-    <a href="/client/track/{{ doc.id }}" class="btn btn-outline">🔍 Track This Document</a>
-    <a href="/client" class="btn btn-green">📋 My Documents</a>
   </div>
-</div>
+  <a href="/client" class="back-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 12H5M12 5l-7 7 7 7"/>
+    </svg>
+    My Documents
+  </a>
+</header>
+
+<main class="main">
+  <div class="content-wrap">
+
+    <!-- Success Hero -->
+    <div class="success-hero">
+      <div class="checkmark-ring">
+        <svg viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="44" cy="44" r="42" stroke="rgba(0,229,160,0.25)" stroke-width="4"/>
+          <circle cx="44" cy="44" r="42" stroke="url(#ring-grad)" stroke-width="4"
+            stroke-dasharray="264" stroke-dashoffset="0" stroke-linecap="round"
+            style="animation: draw-ring 0.6s ease 0.2s both"
+          />
+          <circle cx="44" cy="44" r="34" fill="rgba(0,229,160,0.12)"/>
+          <polyline points="28,45 40,57 60,35" stroke="url(#check-grad)"
+            stroke-width="5" stroke-linecap="round" stroke-linejoin="round"
+            style="animation: draw-check 0.4s ease 0.55s both; stroke-dasharray:50; stroke-dashoffset:50"/>
+          <defs>
+            <linearGradient id="ring-grad" x1="0" y1="0" x2="88" y2="88" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#05BFDB"/>
+              <stop offset="100%" stop-color="#00E5A0"/>
+            </linearGradient>
+            <linearGradient id="check-grad" x1="28" y1="35" x2="60" y2="57" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#05BFDB"/>
+              <stop offset="100%" stop-color="#00E5A0"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="success-title">Document Submitted!</div>
+      <div class="success-sub">Your document has been logged in the system. Save or screenshot your QR code below — you'll need it at the office.</div>
+    </div>
+
+    <!-- Doc Info Banner -->
+    <div class="doc-info">
+      <div class="doc-info-icon">📄</div>
+      <div class="doc-info-text">
+        <div class="doc-info-label">Submitted Document</div>
+        <div class="doc-info-name">{{ doc.doc_name }}</div>
+        <div class="doc-info-ref">Ref: {{ doc.doc_id }} &nbsp;·&nbsp; ID: {{ doc.id }}</div>
+      </div>
+    </div>
+
+    <!-- QR Code Card -->
+    <div class="qr-card">
+      <div class="qr-card-header">
+        <div class="qr-card-icon">📱</div>
+        <div class="qr-card-header-text">
+          <h3>Your Document QR Code</h3>
+          <p>Show this at the office or scan it to track status</p>
+        </div>
+      </div>
+      <div class="qr-center">
+        <div class="qr-frame">
+          <div class="qr-corner tl"></div>
+          <div class="qr-corner tr"></div>
+          <div class="qr-corner bl"></div>
+          <div class="qr-corner br"></div>
+          <img src="data:image/png;base64,{{ qr_b64 }}" alt="Document QR Code"/>
+        </div>
+        <p class="qr-instruction">
+          Show this QR code to office staff when dropping off or picking up your document. Screenshot it now so you have it ready.
+        </p>
+      </div>
+    </div>
+
+    <!-- How to Use -->
+    <div class="how-card">
+      <div class="how-header">
+        <div class="how-header-icon">💡</div>
+        <h3>How to Use Your QR Code</h3>
+      </div>
+      <div class="step-list">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-body"><strong>Screenshot or save</strong> this QR code on your phone right now.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-body">When you <strong>arrive at the office</strong>, scan or show the QR code → tap <em>Mark as Received</em>.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-body">When your document is <strong>ready for pickup</strong>, scan again → tap <em>Mark as Released</em>.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">4</div>
+          <div class="step-body">Check your document status anytime from <strong>My Documents</strong>.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="actions">
+      <a href="/client" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        Go to My Documents
+      </a>
+      <a href="/client/track/{{ doc.id }}" class="btn btn-secondary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        Track This Document
+      </a>
+      <a href="/qr/{{ doc.id }}.png" download class="btn btn-secondary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download QR Code as PNG
+      </a>
+    </div>
+
+  </div>
+</main>
+
+<footer class="footer">DepEd Leyte Division Office · Document Tracker System</footer>
+
+<style>
+  @keyframes draw-ring {
+    from { stroke-dashoffset: 264; }
+    to   { stroke-dashoffset: 0; }
+  }
+  @keyframes draw-check {
+    from { stroke-dashoffset: 50; }
+    to   { stroke-dashoffset: 0; }
+  }
+</style>
 </body>
 </html>

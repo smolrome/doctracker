@@ -2,70 +2,384 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0"/>
   <title>My Documents — DocTracker</title>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    :root{--green:#10B981;--dark:#064E3B;--navy:#0D1B2A;--surface:#F4F7FB;--border:#DDE3EE;--text:#1A2B45;--muted:#6B7FA3;}
-    body{font-family:'DM Sans',sans-serif;background:var(--surface);min-height:100vh;}
-    .topbar{background:var(--dark);padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:100;}
-    .topbar-brand{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:#fff;}
-    .topbar-brand span{color:#6EE7B7;font-size:12px;font-weight:400;margin-left:6px;}
-    .topbar-actions{display:flex;align-items:center;gap:8px;}
-    .topbar-user{font-size:12px;color:#A7F3D0;}
-    .topbar-btn{padding:7px 14px;background:rgba(255,255,255,.1);color:#fff;border-radius:7px;font-size:13px;font-weight:600;text-decoration:none;border:none;cursor:pointer;font-family:inherit;}
-    .topbar-btn:hover{background:rgba(255,255,255,.2);}
-    .topbar-btn.primary{background:var(--green);}
-    .topbar-btn.primary:hover{background:#059669;}
-    .page{max-width:760px;margin:0 auto;padding:24px 16px;}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* Stats */
-    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
-    .stat-card{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px;text-align:center;}
-    .stat-num{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--navy);}
-    .stat-label{font-size:12px;color:var(--muted);margin-top:2px;}
+    :root {
+      --grad-start:  #0d4f7c;
+      --grad-end:    #0f8a72;
+      --bg:          #f0f6f9;
+      --surface:     #ffffff;
+      --border:      #cce0ea;
+      --text:        #0d2d3d;
+      --sub:         #3d6070;
+      --muted:       #6a8fa0;
+      --accent:      #0f8a72;
+      --radius:      14px;
+      --shadow:      0 2px 12px rgba(13,47,70,0.10);
+      --shadow-lg:   0 6px 28px rgba(13,47,70,0.15);
 
-    /* Doc cards */
-    .section-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--navy);margin-bottom:12px;}
-    .doc-card{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none;transition:border .15s,box-shadow .15s;flex-wrap:wrap;}
-    .doc-card:hover{border-color:var(--green);box-shadow:0 4px 16px rgba(16,185,129,.1);}
-    .doc-info{flex:1;min-width:0;}
-    .doc-name{font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .doc-meta{font-size:12px;color:var(--muted);}
-    .doc-id{font-family:monospace;font-size:11px;color:var(--muted);}
-    .status-badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0;}
-    .s-Pending{background:#FEF3C7;color:#92400E;}
-    .s-Received{background:#DBEAFE;color:#1D4ED8;}
-    .s-Released{background:#D1FAE5;color:#065F46;}
-    .s-default{background:#F3F4F6;color:#374151;}
-
-    .empty{text-align:center;padding:48px 20px;color:var(--muted);}
-    .empty-icon{font-size:48px;margin-bottom:12px;}
-
-    @media(max-width:480px){
-      .stats{grid-template-columns:1fr 1fr;}
-      .stat-card:last-child{grid-column:span 2;}
+      --badge-pending:  #fff3cd; --badge-pending-t:  #7a4500;
+      --badge-review:   #cce8ff; --badge-review-t:   #0d3f70;
+      --badge-transit:  #e0d4ff; --badge-transit-t:  #3a1f80;
+      --badge-released: #d1f5e0; --badge-released-t: #0a4a20;
+      --badge-hold:     #ffd6d6; --badge-hold-t:     #7a1010;
+      --badge-archived: #e5e5e5; --badge-archived-t: #333333;
     }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: clamp(15px, 2vw, 17px);
+      line-height: 1.55;
+      min-height: 100dvh;
+    }
+
+    /* ══ TOPBAR ══ */
+    .topbar {
+      background: linear-gradient(135deg, var(--grad-start) 0%, var(--grad-end) 100%);
+      padding: 0 clamp(14px, 4vw, 28px);
+      height: clamp(56px, 8vw, 64px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(13,47,70,0.2);
+    }
+
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: clamp(15px, 2.2vw, 17px);
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.2px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .topbar-brand-pill {
+      font-size: clamp(10px, 1.4vw, 11px);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 20px;
+      padding: 3px 10px;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      overflow: hidden;
+    }
+    .topbar-user {
+      font-size: clamp(12px, 1.6vw, 13px);
+      color: rgba(255,255,255,0.8);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: clamp(80px, 15vw, 160px);
+    }
+    .topbar-btn {
+      height: 36px;
+      padding: 0 14px;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.22);
+      color: #fff;
+      border-radius: 8px;
+      font-size: clamp(12px, 1.6vw, 13px);
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: background .15s;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+    .topbar-btn:hover { background: rgba(255,255,255,0.25); }
+    .topbar-btn.primary {
+      background: rgba(255,255,255,0.22);
+      border-color: rgba(255,255,255,0.4);
+      font-weight: 700;
+    }
+    .topbar-btn.primary:hover { background: rgba(255,255,255,0.32); }
+
+    /* Hide username on very small screens */
+    @media (max-width: 480px) {
+      .topbar-user { display: none; }
+    }
+    @media (max-width: 360px) {
+      .topbar-btn.hide-xs { display: none; }
+    }
+
+    /* ══ PAGE ══ */
+    .page {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: clamp(16px, 3vw, 28px) clamp(14px, 4vw, 24px) clamp(32px, 5vw, 48px);
+    }
+
+    /* ══ FLASH MESSAGES ══ */
+    .flash {
+      border-radius: 10px;
+      padding: 13px 16px;
+      margin-bottom: 16px;
+      font-size: clamp(14px, 1.9vw, 15px);
+      font-weight: 500;
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      line-height: 1.4;
+    }
+    .flash-success { background: #d1f5e0; border: 1.5px solid #7dd4b0; color: #0a4a20; }
+    .flash-error   { background: #fde8e8; border: 1.5px solid #f5a0a0; color: #7a1010; }
+
+    /* ══ STATS ══ */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: clamp(10px, 2vw, 16px);
+      margin-bottom: clamp(20px, 3.5vw, 28px);
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: clamp(14px, 2.5vw, 20px) clamp(12px, 2vw, 18px);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .stat-card:nth-child(1)::before { background: linear-gradient(90deg, var(--grad-start), var(--grad-end)); }
+    .stat-card:nth-child(2)::before { background: linear-gradient(90deg, #1456a0, #2a80d0); }
+    .stat-card:nth-child(3)::before { background: linear-gradient(90deg, #1a7a3c, #2eb868); }
+
+    .stat-num {
+      font-size: clamp(28px, 5vw, 38px);
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -1px;
+      line-height: 1;
+      margin-bottom: 5px;
+    }
+    .stat-num.blue  { color: #1456a0; }
+    .stat-num.green { color: #1a7a3c; }
+    .stat-label {
+      font-size: clamp(11px, 1.5vw, 13px);
+      font-weight: 700;
+      color: var(--sub);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    @media (max-width: 400px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+      .stat-card:nth-child(1) { grid-column: span 2; }
+    }
+
+    /* ══ SECTION HEADER ══ */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: clamp(12px, 2vw, 16px);
+    }
+    .section-title {
+      font-size: clamp(15px, 2.2vw, 18px);
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-count {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 12px;
+    }
+
+    /* ══ DOC CARDS ══ */
+    .doc-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: clamp(14px, 2.5vw, 18px) clamp(14px, 2.5vw, 20px);
+      margin-bottom: clamp(10px, 1.5vw, 12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      text-decoration: none;
+      transition: border-color .15s, box-shadow .15s, background .15s;
+      box-shadow: var(--shadow);
+      flex-wrap: wrap;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .doc-card:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow-lg);
+      background: linear-gradient(90deg, rgba(13,79,124,0.02), rgba(15,138,114,0.02));
+    }
+    .doc-card:active { background: rgba(15,138,114,0.04); }
+
+    .doc-info { flex: 1; min-width: 0; }
+
+    .doc-name {
+      font-size: clamp(14px, 2vw, 16px);
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .doc-route {
+      font-size: clamp(12px, 1.6vw, 13px);
+      color: var(--sub);
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .doc-ref {
+      font-family: 'DM Mono', monospace;
+      font-size: clamp(11px, 1.4vw, 12px);
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 2px 7px;
+      display: inline-block;
+    }
+
+    .doc-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    /* ══ BADGES ══ */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 13px;
+      border-radius: 20px;
+      font-size: clamp(12px, 1.5vw, 13px);
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+    }
+    .badge-pending  { background: var(--badge-pending);  color: var(--badge-pending-t); }
+    .badge-received,
+    .badge-in-review,
+    .badge-in-transit { background: var(--badge-review); color: var(--badge-review-t); }
+    .badge-released { background: var(--badge-released); color: var(--badge-released-t); }
+    .badge-on-hold  { background: var(--badge-hold);     color: var(--badge-hold-t); }
+    .badge-archived,
+    .badge-default  { background: var(--badge-archived); color: var(--badge-archived-t); }
+
+    .doc-arrow {
+      font-size: 16px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* ══ EMPTY STATE ══ */
+    .empty {
+      text-align: center;
+      padding: clamp(36px, 8vw, 60px) clamp(20px, 5vw, 32px);
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .empty-icon { font-size: clamp(40px, 9vw, 56px); margin-bottom: 14px; }
+    .empty h3   { font-size: clamp(17px, 2.8vw, 20px); font-weight: 700; color: var(--text); margin-bottom: 7px; }
+    .empty p    { font-size: clamp(14px, 1.9vw, 15px); color: var(--muted); margin-bottom: 20px; }
+    .btn-submit-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+      color: #fff;
+      padding: 0 28px;
+      height: 52px;
+      border-radius: 11px;
+      font-size: clamp(14px, 2vw, 16px);
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 4px 14px rgba(13,79,124,0.28);
+      transition: opacity .15s, transform .15s;
+    }
+    .btn-submit-cta:hover { opacity: 0.9; transform: translateY(-1px); }
   </style>
 </head>
 <body>
+
+<!-- ════════════ TOPBAR ════════════ -->
 <div class="topbar">
-  <div class="topbar-brand">📋 DocTracker <span>Client Portal</span></div>
+  <div class="topbar-brand">
+    📋 DocTracker
+    <span class="topbar-brand-pill">Client Portal</span>
+  </div>
   <div class="topbar-actions">
     <span class="topbar-user">👤 {{ current_full_name or current_user }}</span>
-    <a href="/client/scan" class="topbar-btn" style="background:#065F46;">📷 Scan QR</a>
-    <a href="/client/submit" class="topbar-btn primary">+ Submit</a>
+    <a href="/client/scan" class="topbar-btn hide-xs">📷 Scan QR</a>
+    <a href="/client/submit" class="topbar-btn primary">＋ Submit</a>
     <a href="/logout" class="topbar-btn">Logout</a>
   </div>
 </div>
 
+<!-- ════════════ PAGE ════════════ -->
 <div class="page">
+
+  <!-- Flash Messages -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}
-      <div style="background:{% if cat=='success' %}#D1FAE5{% else %}#FEE2E2{% endif %};border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:14px;color:{% if cat=='success' %}#065F46{% else %}#7F1D1D{% endif %};">
-        {{ '✅' if cat=='success' else '❌' }} {{ msg }}
-      </div>
+    <div class="flash {% if cat == 'success' %}flash-success{% else %}flash-error{% endif %}">
+      <span>{{ '✅' if cat == 'success' else '⚠️' }}</span>
+      <span>{{ msg }}</span>
+    </div>
     {% endfor %}
   {% endwith %}
 
@@ -76,38 +390,52 @@
       <div class="stat-label">Total Submitted</div>
     </div>
     <div class="stat-card">
-      <div class="stat-num" style="color:#1D4ED8;">{{ docs|selectattr('status','equalto','Received')|list|length }}</div>
+      <div class="stat-num blue">{{ docs|selectattr('status','equalto','Received')|list|length }}</div>
       <div class="stat-label">Received</div>
     </div>
     <div class="stat-card">
-      <div class="stat-num" style="color:#065F46;">{{ docs|selectattr('status','equalto','Released')|list|length }}</div>
+      <div class="stat-num green">{{ docs|selectattr('status','equalto','Released')|list|length }}</div>
       <div class="stat-label">Released</div>
     </div>
   </div>
 
-  <div class="section-title">My Submitted Documents</div>
+  <!-- Section Header -->
+  <div class="section-header">
+    <div class="section-title">📄 My Submitted Documents</div>
+    {% if docs %}<div class="section-count">{{ docs|length }} record{% if docs|length != 1 %}s{% endif %}</div>{% endif %}
+  </div>
 
+  <!-- Document List -->
   {% if docs %}
     {% for doc in docs %}
+    {% set s = doc.status %}
+    {% set slug = s | lower | replace(' ', '-') %}
     <a href="/client/track/{{ doc.id }}" class="doc-card">
       <div class="doc-info">
         <div class="doc-name">{{ doc.doc_name or '(No name)' }}</div>
-        <div class="doc-meta">{{ doc.sender_org or '' }}{% if doc.referred_to %} → {{ doc.referred_to }}{% endif %}</div>
-        <div class="doc-id">{{ doc.doc_id }} · {{ doc.created_at[:10] if doc.created_at else '' }}</div>
+        {% if doc.sender_org or doc.referred_to %}
+        <div class="doc-route">
+          {{ doc.sender_org or '' }}{% if doc.sender_org and doc.referred_to %} → {% endif %}{{ doc.referred_to or '' }}
+        </div>
+        {% endif %}
+        <div class="doc-ref">{{ doc.doc_id }}{% if doc.created_at %} · {{ doc.created_at[:10] }}{% endif %}</div>
       </div>
-      <span class="status-badge s-{{ doc.status|replace(' ','-') }} {{ '' if doc.status in ['Pending','Received','Released'] else 's-default' }}">
-        {{ doc.status }}
-      </span>
+      <div class="doc-right">
+        <span class="badge badge-{{ slug if slug in ['pending','received','released','in-review','in-transit','on-hold','archived'] else 'default' }}">{{ s }}</span>
+        <span class="doc-arrow">→</span>
+      </div>
     </a>
     {% endfor %}
+
   {% else %}
-    <div class="empty">
-      <div class="empty-icon">📭</div>
-      <p style="font-weight:700;color:#1A2B45;margin-bottom:6px;">No documents yet</p>
-      <p>Submit your first document to start tracking it.</p>
-      <a href="/client/submit" style="display:inline-block;margin-top:16px;background:var(--green);color:#fff;padding:12px 24px;border-radius:10px;font-weight:700;text-decoration:none;">+ Submit a Document</a>
-    </div>
+  <div class="empty">
+    <div class="empty-icon">📭</div>
+    <h3>No documents yet</h3>
+    <p>Submit your first document to start tracking it.</p>
+    <a href="/client/submit" class="btn-submit-cta">＋ Submit a Document</a>
+  </div>
   {% endif %}
+
 </div>
 </body>
 </html>

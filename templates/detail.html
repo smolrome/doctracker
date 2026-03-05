@@ -2,210 +2,617 @@
 {% block content %}
 
 <style>
-  .badge-transit { background:#DBEAFE;color:#1D4ED8; }
-  .log-row { border-bottom:1px solid var(--border); }
-  .log-row.last { border-bottom:none; }
-  .deped-banner {
-    background:linear-gradient(135deg,#0D1B2A 0%,#1B4F8A 100%);
-    border-radius:12px; padding:14px 20px; margin-bottom:22px;
-    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --grad-start:  #0d4f7c;
+    --grad-end:    #0f8a72;
+    --bg:          #f0f6f9;
+    --surface:     #ffffff;
+    --border:      #cce0ea;
+    --text:        #0d2d3d;
+    --sub:         #3d6070;
+    --muted:       #6a8fa0;
+    --accent:      #0f8a72;
+    --radius:      14px;
+    --shadow:      0 2px 12px rgba(13,47,70,0.09);
+    --shadow-lg:   0 6px 28px rgba(13,47,70,0.14);
+
+    --badge-pending:  #fff3cd; --badge-pending-t:  #7a4500;
+    --badge-review:   #cce8ff; --badge-review-t:   #0d3f70;
+    --badge-transit:  #e0d4ff; --badge-transit-t:  #3a1f80;
+    --badge-released: #d1f5e0; --badge-released-t: #0a4a20;
+    --badge-hold:     #ffd6d6; --badge-hold-t:     #7a1010;
+    --badge-archived: #e5e5e5; --badge-archived-t: #333333;
   }
-  .db-left { display:flex; align-items:center; gap:12px; }
-  .db-label { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:#8EA8C3; text-transform:uppercase; letter-spacing:0.07em; }
-  .db-ref   { font-family:monospace; font-size:16px; font-weight:700; color:#fff; }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); font-size: clamp(15px, 2vw, 17px); line-height: 1.55; }
+
+  /* ══ PAGE HEADER ══ */
+  .page-header {
+    background: linear-gradient(135deg, var(--grad-start) 0%, var(--grad-end) 100%);
+    padding: clamp(14px, 3vw, 20px) clamp(16px, 4vw, 32px);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    border-bottom: 3px solid rgba(255,255,255,0.12);
+  }
+  .page-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255,255,255,0.85);
+    text-decoration: none;
+    font-size: clamp(13px, 1.8vw, 14px);
+    font-weight: 600;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 8px;
+    padding: 7px 14px;
+    transition: background .15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .page-back:hover { background: rgba(255,255,255,0.25); }
+  .page-title-wrap { flex: 1; min-width: 0; }
+  .page-title {
+    font-size: clamp(17px, 2.8vw, 21px);
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.2px;
+    line-height: 1.3;
+    word-break: break-word;
+  }
+  .page-subtitle {
+    font-size: clamp(12px, 1.6vw, 13px);
+    color: rgba(255,255,255,0.72);
+    margin-top: 3px;
+  }
+
+  /* ══ CONTENT WRAP ══ */
+  .content-wrap {
+    padding: clamp(16px, 3vw, 24px) clamp(16px, 4vw, 32px) clamp(32px, 5vw, 48px);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(14px, 2.5vw, 20px);
+  }
+
+  /* ══ BANNER ══ */
+  .deped-banner {
+    background: linear-gradient(135deg, var(--grad-start) 0%, var(--grad-end) 100%);
+    border-radius: var(--radius);
+    padding: clamp(14px, 2.5vw, 20px) clamp(16px, 3vw, 24px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    box-shadow: var(--shadow-lg);
+  }
+  .db-left { display: flex; align-items: center; gap: 12px; }
+  .db-icon {
+    font-size: clamp(24px, 4vw, 32px);
+    background: rgba(255,255,255,0.15);
+    border: 1.5px solid rgba(255,255,255,0.2);
+    border-radius: 10px;
+    width: clamp(44px, 6vw, 54px);
+    height: clamp(44px, 6vw, 54px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .db-label { font-size: clamp(11px, 1.5vw, 12px); font-weight: 700; color: rgba(255,255,255,0.65); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px; }
+  .db-ref   { font-family: 'DM Mono', monospace; font-size: clamp(14px, 2.2vw, 17px); font-weight: 700; color: #fff; }
+
+  /* ══ BADGES ══ */
+  .badge {
+    display: inline-flex; align-items: center; padding: 6px 14px;
+    border-radius: 20px; font-size: clamp(13px, 1.8vw, 14px);
+    font-weight: 700; letter-spacing: 0.2px; white-space: nowrap; gap: 5px;
+  }
+  .badge-pending  { background: var(--badge-pending);  color: var(--badge-pending-t); }
+  .badge-review   { background: var(--badge-review);   color: var(--badge-review-t); }
+  .badge-transit  { background: var(--badge-transit);  color: var(--badge-transit-t); }
+  .badge-released { background: var(--badge-released); color: var(--badge-released-t); }
+  .badge-hold     { background: var(--badge-hold);     color: var(--badge-hold-t); }
+  .badge-archived { background: var(--badge-archived); color: var(--badge-archived-t); }
+
+  /* ══ ACTION ROW ══ */
+  .detail-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 46px; padding: 0 20px;
+    border-radius: 10px; font-family: 'DM Sans', sans-serif;
+    font-size: clamp(14px, 1.8vw, 15px); font-weight: 700;
+    cursor: pointer; text-decoration: none; border: none;
+    transition: all .15s; white-space: nowrap;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+    color: #fff; box-shadow: 0 3px 10px rgba(13,79,124,0.25);
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-secondary {
+    background: var(--surface); color: var(--sub);
+    border: 1.5px solid var(--border) !important;
+  }
+  .btn-secondary:hover { border-color: var(--accent) !important; color: var(--accent); background: #e8f7f4; }
+  .btn-danger {
+    background: #fde8e8; color: #7a1010;
+    border: 1.5px solid #f5a0a0 !important;
+  }
+  .btn-danger:hover { background: #fbd0d0; border-color: #e05050 !important; }
+  .btn:active { transform: scale(0.97); }
+
+  @media (max-width: 600px) {
+    .detail-actions .btn { flex: 1 1 calc(50% - 5px); }
+  }
+  @media (max-width: 380px) {
+    .detail-actions .btn { flex: 1 1 100%; }
+  }
+
+  /* ══ QUICK STATUS ══ */
+  .quick-status-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .quick-status-header {
+    display: flex; align-items: center; gap: 9px;
+    padding: clamp(11px, 2vw, 14px) clamp(14px, 2.5vw, 20px);
+    background: linear-gradient(90deg, rgba(13,79,124,0.06), rgba(15,138,114,0.04));
+    border-bottom: 1.5px solid var(--border);
+  }
+  .qs-icon {
+    font-size: 15px; width: 30px; height: 30px;
+    background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+    border-radius: 7px; display: flex; align-items: center; justify-content: center;
+  }
+  .quick-status-header span {
+    font-size: clamp(12px, 1.6vw, 13px); font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em; color: var(--sub);
+  }
+  .quick-status-body {
+    padding: clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 20px);
+  }
+  .qs-form {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  }
+  .qs-form select {
+    flex: 1; min-width: 160px; height: 46px;
+    padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-family: 'DM Sans', sans-serif; font-size: clamp(14px, 2vw, 15px);
+    color: var(--text); background: var(--bg); outline: none; cursor: pointer;
+    -webkit-appearance: none; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236a8fa0' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .qs-form select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,138,114,0.16); }
+  .qs-form button { height: 46px; padding: 0 22px; flex-shrink: 0; }
+
+  /* ══ ROUTING CHAIN ══ */
+  .routing-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .routing-header {
+    display: flex; align-items: center; gap: 9px;
+    padding: clamp(11px, 2vw, 14px) clamp(14px, 2.5vw, 20px);
+    background: linear-gradient(90deg, rgba(13,79,124,0.06), rgba(15,138,114,0.04));
+    border-bottom: 1.5px solid var(--border);
+  }
+  .routing-icon {
+    font-size: 15px; width: 30px; height: 30px;
+    background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+    border-radius: 7px; display: flex; align-items: center; justify-content: center;
+  }
+  .routing-header span {
+    font-size: clamp(12px, 1.6vw, 13px); font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em; color: var(--sub);
+  }
+  .routing-body {
+    padding: clamp(12px, 2vw, 18px) clamp(14px, 2.5vw, 20px);
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  }
+  .route-stop {
+    padding: 7px 16px; border-radius: 20px;
+    font-size: clamp(12px, 1.6vw, 13px); font-weight: 700;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .route-stop.done    { background: var(--badge-released); color: var(--badge-released-t); border: 1.5px solid #7dd4b0; }
+  .route-stop.pending { background: var(--bg); color: var(--muted); border: 1.5px solid var(--border); }
+  .route-arrow { color: var(--muted); font-size: 18px; font-weight: 700; }
+
+  /* ══ DETAIL GRID ══ */
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(14px, 2.5vw, 20px);
+  }
+
+  /* ══ DETAIL CARDS ══ */
+  .detail-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .detail-card-header {
+    display: flex; align-items: center; gap: 9px;
+    padding: clamp(11px, 2vw, 14px) clamp(14px, 2.5vw, 20px);
+    background: linear-gradient(90deg, rgba(13,79,124,0.06), rgba(15,138,114,0.04));
+    border-bottom: 1.5px solid var(--border);
+  }
+  .detail-card-icon {
+    font-size: 14px; width: 30px; height: 30px;
+    background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+    border-radius: 7px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .detail-card-header h3 {
+    font-size: clamp(13px, 1.8vw, 15px); font-weight: 700;
+    color: var(--text); text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .detail-card-body { padding: clamp(14px, 2.5vw, 20px); }
+
+  .detail-field {
+    padding: clamp(9px, 1.5vw, 11px) 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-field:last-child { border-bottom: none; padding-bottom: 0; }
+  .detail-field:first-child { padding-top: 0; }
+
+  .detail-field label {
+    display: block;
+    font-size: clamp(11px, 1.4vw, 12px); font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); margin-bottom: 4px;
+  }
+  .detail-field .val {
+    font-size: clamp(14px, 1.9vw, 15px); font-weight: 600;
+    color: var(--text); line-height: 1.5;
+    word-break: break-word;
+  }
+  .detail-field .val.empty { color: var(--muted); font-weight: 400; }
+  .detail-field .val.mono  { font-family: 'DM Mono', monospace; font-size: clamp(12px, 1.6vw, 13px); }
+
+  /* full-width cards */
+  .col-full { grid-column: 1 / -1; }
+
+  /* ══ NOTES CARD ══ */
+  .notes-text {
+    font-size: clamp(14px, 1.9vw, 15px);
+    line-height: 1.75;
+    white-space: pre-line;
+    color: var(--text);
+  }
+
+  /* ══ TRAVEL LOG TABLE ══ */
+  .log-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .log-scroll::-webkit-scrollbar { height: 5px; }
+  .log-scroll::-webkit-scrollbar-track { background: var(--bg); }
+  .log-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .log-table { width: 100%; border-collapse: collapse; font-size: clamp(13px, 1.7vw, 14px); min-width: 600px; }
+  .log-table thead { background: linear-gradient(135deg, var(--grad-start), var(--grad-end)); }
+  .log-table thead th {
+    color: #fff; font-size: clamp(11px, 1.3vw, 12px); font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 12px 14px; text-align: left; white-space: nowrap;
+  }
+  .log-table tbody tr { border-bottom: 1px solid var(--border); }
+  .log-table tbody tr:last-child { border-bottom: none; }
+  .log-table tbody tr:hover { background: rgba(13,79,124,0.03); }
+  .log-table td { padding: 11px 14px; color: var(--text); vertical-align: middle; }
+  .log-num   { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .log-office { font-weight: 700; color: var(--text); }
+  .log-action-chip {
+    font-size: 11px; font-weight: 700; padding: 3px 10px;
+    border-radius: 10px; background: var(--badge-review); color: var(--badge-review-t);
+    white-space: nowrap;
+  }
+  .log-via   { font-size: 11px; color: var(--muted); margin-left: 5px; }
+  .log-time  { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .log-empty { padding: clamp(20px, 4vw, 28px); font-size: clamp(13px, 1.8vw, 14px); color: var(--muted); text-align: center; }
+
+  /* ══ QR CARD ══ */
+  .qr-layout { display: flex; align-items: flex-start; gap: clamp(16px, 3vw, 28px); flex-wrap: wrap; }
+  .qr-img-wrap { flex-shrink: 0; text-align: center; }
+  .qr-img {
+    width: clamp(140px, 20vw, 190px); height: clamp(140px, 20vw, 190px);
+    border-radius: 10px; border: 2px solid var(--border); display: block;
+  }
+  .qr-caption { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; }
+  .qr-info { flex: 1; min-width: 220px; padding-top: 4px; }
+  .qr-desc {
+    font-size: clamp(14px, 1.9vw, 15px); color: var(--sub);
+    line-height: 1.7; margin-bottom: 16px;
+  }
+  .qr-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+  .qr-btns .btn { height: 42px; font-size: clamp(13px, 1.7vw, 14px); }
+
+  /* ══ RESPONSIVE ══ */
+  @media (max-width: 768px) {
+    .detail-grid { grid-template-columns: 1fr; }
+    .col-full    { grid-column: 1; }
+  }
+
+  @media (max-width: 500px) {
+    .qs-form { flex-direction: column; }
+    .qs-form select, .qs-form button { width: 100%; }
+    .qr-layout { flex-direction: column; align-items: center; text-align: center; }
+    .qr-btns { justify-content: center; }
+  }
 </style>
 
-<!-- DepEd Banner -->
-<div class="deped-banner">
-  <div class="db-left">
-    <span style="font-size:28px;">🏫</span>
-    <div>
-      <div class="db-label">DepEd Leyte Division — Document Record</div>
-      <div class="db-ref">{{ doc.doc_id or doc.id }}</div>
-    </div>
-  </div>
-  {% set s = doc.status %}
-  {% if s == 'In Transit' %}<span class="badge badge-transit">🚌 {{ s }}</span>
-  {% elif s == 'Pending' %}<span class="badge badge-pending">⏳ {{ s }}</span>
-  {% elif s == 'In Review' %}<span class="badge badge-review">🔍 {{ s }}</span>
-  {% elif s == 'Released' %}<span class="badge badge-released">✅ {{ s }}</span>
-  {% elif s == 'On Hold' %}<span class="badge badge-hold">⏸ {{ s }}</span>
-  {% else %}<span class="badge badge-archived">📦 {{ s }}</span>{% endif %}
-</div>
-
-<div class="page-header" style="margin-bottom:16px;">
+<!-- ════════════ PAGE HEADER ════════════ -->
+<div class="page-header">
   <a href="/" class="page-back">← Dashboard</a>
-  <div>
+  <div class="page-title-wrap">
     <div class="page-title">{{ doc.doc_name }}</div>
-    {% if doc.category %}<div style="font-size:13px;color:var(--muted);margin-top:2px;">{{ doc.category }}</div>{% endif %}
+    {% if doc.category %}<div class="page-subtitle">{{ doc.category }}</div>{% endif %}
   </div>
 </div>
 
-<div class="detail-actions">
-  {% if logged_in %}
-  <a href="/edit/{{ doc.id }}" class="btn btn-primary">✏️ Edit</a>
-  <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
-  <form method="post" action="/delete/{{ doc.id }}" onsubmit="return confirm('Delete this document?')" style="display:inline;">
-    <button type="submit" class="btn btn-danger">🗑 Delete</button>
-  </form>
-  {% else %}
-  <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
-  <a href="/login" class="btn btn-primary">🔐 Login to Edit</a>
-  {% endif %}
-</div>
+<div class="content-wrap">
 
-{% if logged_in %}
-<div style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:18px;margin-top:16px;">
-  <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;">⚡ Quick Status Update</div>
-  <form method="post" action="/update-status/{{ doc.id }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-    <select name="status" style="flex:1;min-width:160px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface);">
-      {% for s in ['Pending','Received','In Review','In Transit','Released','On Hold','Archived'] %}
-      <option value="{{ s }}" {% if doc.status == s %}selected{% endif %}>{{ s }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit" class="btn btn-primary btn-sm" style="min-height:42px;">Update Status</button>
-  </form>
-</div>
-{% endif %}
-
-<!-- ── ROUTING CHAIN ── -->
-{% if doc.routing %}
-{% set visited = doc.travel_log | map(attribute='office') | list %}
-<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;">
-  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:10px;">📍 Office Route</div>
-  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
-    {% for stop in doc.routing %}
-      {% if stop in visited %}
-        <span style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;background:#D1FAE5;color:#065F46;border:1.5px solid #A7F3D0;">✓ {{ stop }}</span>
-      {% else %}
-        <span style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;background:var(--surface);color:var(--muted);border:1.5px solid var(--border);">{{ stop }}</span>
-      {% endif %}
-      {% if not loop.last %}<span style="color:var(--muted);font-size:16px;">→</span>{% endif %}
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
-
-<div class="detail-grid">
-
-  <!-- ── Document Info ── -->
-  <div class="detail-card">
-    <h3>📄 Document Info</h3>
-    <div class="detail-field"><label>Title / Subject</label><div class="val">{{ doc.doc_name }}</div></div>
-    <div class="detail-field"><label>Reference No.</label><div class="val {% if not doc.doc_id %}empty{% endif %}">{{ doc.doc_id or '—' }}</div></div>
-    <div class="detail-field"><label>Document Type</label><div class="val {% if not doc.category %}empty{% endif %}">{{ doc.category or '—' }}</div></div>
-    <div class="detail-field"><label>Document Date</label><div class="val {% if not doc.doc_date %}empty{% endif %}">{{ doc.doc_date or '—' }}</div></div>
-    <div class="detail-field"><label>Content / Particulars</label><div class="val {% if not doc.description %}empty{% endif %}" style="line-height:1.6;">{{ doc.description or '—' }}</div></div>
-  </div>
-
-  <!-- ── Dates ── -->
-  <div class="detail-card">
-    <h3>📅 Status &amp; Timeline</h3>
-    <div class="detail-field"><label>Current Status</label>
-      <div class="val">
-        {% set s = doc.status %}
-        {% if s == 'In Transit' %}<span class="badge badge-transit">{{ s }}</span>
-        {% elif s == 'Pending' %}<span class="badge badge-pending">{{ s }}</span>
-        {% elif s == 'In Review' %}<span class="badge badge-review">{{ s }}</span>
-        {% elif s == 'Released' %}<span class="badge badge-released">{{ s }}</span>
-        {% elif s == 'On Hold' %}<span class="badge badge-hold">{{ s }}</span>
-        {% else %}<span class="badge badge-archived">{{ s }}</span>{% endif %}
+  <!-- ════════════ BANNER ════════════ -->
+  <div class="deped-banner">
+    <div class="db-left">
+      <div class="db-icon">🏫</div>
+      <div>
+        <div class="db-label">DepEd Leyte Division — Document Record</div>
+        <div class="db-ref">{{ doc.doc_id or doc.id }}</div>
       </div>
     </div>
-    <div class="detail-field"><label>Record Created</label><div class="val">{{ doc.created_at }}</div></div>
-    <div class="detail-field"><label>System ID</label><div class="val" style="font-family:monospace;font-size:12px;">{{ doc.id }}</div></div>
-  </div>
-
-  <!-- ── Source / Sender ── -->
-  <div class="detail-card">
-    <h3>📤 Source / Sender</h3>
-    <div class="detail-field"><label>Unit / Office / School / District</label><div class="val {% if not doc.sender_org %}empty{% endif %}">{{ doc.sender_org or '—' }}</div></div>
-    <div class="detail-field"><label>Sender (Name &amp; Designation)</label><div class="val {% if not doc.sender_name %}empty{% endif %}">{{ doc.sender_name or '—' }}</div></div>
-    <div class="detail-field"><label>Contact / Address</label><div class="val {% if not doc.sender_contact %}empty{% endif %}">{{ doc.sender_contact or '—' }}</div></div>
-  </div>
-
-  <!-- ── Receiving ── -->
-  <div class="detail-card">
-    <h3>📥 Receiving</h3>
-    <div class="detail-field"><label>Received By</label><div class="val {% if not doc.received_by %}empty{% endif %}">{{ doc.received_by or '—' }}</div></div>
-    <div class="detail-field"><label>Date Received</label><div class="val {% if not doc.date_received %}empty{% endif %}">{{ doc.date_received or '—' }}</div></div>
-    <div class="detail-field"><label>Date Released</label><div class="val {% if not doc.date_released %}empty{% endif %}">{{ doc.date_released or '—' }}</div></div>
-  </div>
-
-  <!-- ── Routing ── -->
-  <div class="detail-card">
-    <h3>📍 Routing</h3>
-    <div class="detail-field"><label>Referred To</label><div class="val {% if not doc.referred_to %}empty{% endif %}">{{ doc.referred_to or '—' }}</div></div>
-    <div class="detail-field"><label>Forwarded To</label><div class="val {% if not doc.forwarded_to %}empty{% endif %}">{{ doc.forwarded_to or '—' }}</div></div>
-    <div class="detail-field"><label>Recipient / Addressee</label><div class="val {% if not doc.recipient_name %}empty{% endif %}">{{ doc.recipient_name or '—' }}{% if doc.recipient_org %}<br><span style="font-size:12px;color:var(--muted)">{{ doc.recipient_org }}</span>{% endif %}</div></div>
-  </div>
-
-  <!-- ── Notes ── -->
-  {% if doc.notes %}
-  <div class="detail-card" style="grid-column:1/-1">
-    <h3>📝 Remarks / Notes</h3>
-    <div style="font-size:14px;line-height:1.7;white-space:pre-line;">{{ doc.notes }}</div>
-  </div>
-  {% endif %}
-
-  <!-- ── Travel Log ── -->
-  <div class="detail-card" style="grid-column:1/-1">
-    <h3>🗺️ Travel Log — {{ doc.travel_log|length }} Entr{% if doc.travel_log|length == 1 %}y{% else %}ies{% endif %}</h3>
-    {% if doc.travel_log %}
-    <div style="overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;">
-        <thead>
-          <tr style="background:var(--surface);">
-            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);border-bottom:1.5px solid var(--border);">#</th>
-            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);border-bottom:1.5px solid var(--border);">Office / Unit</th>
-            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);border-bottom:1.5px solid var(--border);">Action</th>
-            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);border-bottom:1.5px solid var(--border);">Officer / Staff</th>
-            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);border-bottom:1.5px solid var(--border);">Date &amp; Time</th>
-            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);border-bottom:1.5px solid var(--border);">Remarks</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for entry in doc.travel_log %}
-          <tr class="log-row{% if loop.last %} last{% endif %}">
-            <td style="padding:10px 14px;color:var(--muted);font-weight:600;">{{ loop.index }}</td>
-            <td style="padding:10px 14px;font-weight:700;color:var(--navy);">{{ entry.office }}</td>
-            <td style="padding:10px 14px;">
-              <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;background:#EFF6FF;color:var(--accent);">{{ entry.action }}</span>
-              {% if entry.get('via') %}<span style="font-size:10px;color:var(--muted);margin-left:4px;">via {{ entry.via }}</span>{% endif %}
-            </td>
-            <td style="padding:10px 14px;color:var(--text);">{{ entry.officer or '—' }}</td>
-            <td style="padding:10px 14px;color:var(--muted);font-size:12px;white-space:nowrap;">{{ entry.timestamp }}</td>
-            <td style="padding:10px 14px;color:var(--text);font-size:12px;">{{ entry.remarks or '—' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <p style="color:var(--muted);font-size:14px;">No travel log entries yet. Print the QR code and attach it to the document.</p>
+    {% set s = doc.status %}
+    {% if s == 'In Transit' %}<span class="badge badge-transit">🚌 {{ s }}</span>
+    {% elif s == 'Pending' %}<span class="badge badge-pending">⏳ {{ s }}</span>
+    {% elif s == 'In Review' %}<span class="badge badge-review">🔍 {{ s }}</span>
+    {% elif s == 'Released' %}<span class="badge badge-released">✅ {{ s }}</span>
+    {% elif s == 'On Hold' %}<span class="badge badge-hold">⏸ {{ s }}</span>
+    {% else %}<span class="badge badge-archived">📦 {{ s }}</span>
     {% endif %}
   </div>
 
-  <!-- ── QR Code ── -->
-  <div class="detail-card" style="grid-column:1/-1">
-    <h3>📱 QR Code</h3>
-    <div style="display:flex;align-items:flex-start;gap:28px;flex-wrap:wrap;">
-      <div>
-        <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code"
-             style="width:180px;height:180px;border-radius:10px;border:2px solid var(--border);display:block;" />
-        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:6px;">Scan to log receipt</div>
+  <!-- ════════════ ACTION BUTTONS ════════════ -->
+  <div class="detail-actions">
+    {% if logged_in %}
+      <a href="/edit/{{ doc.id }}" class="btn btn-primary">✏️ Edit</a>
+      <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
+      <form method="post" action="/delete/{{ doc.id }}"
+            onsubmit="return confirm('Delete this document?')" style="display:contents;">
+        <button type="submit" class="btn btn-danger">🗑 Delete</button>
+      </form>
+    {% else %}
+      <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
+      <a href="/login" class="btn btn-primary">🔐 Login to Edit</a>
+    {% endif %}
+  </div>
+
+  <!-- ════════════ QUICK STATUS ════════════ -->
+  {% if logged_in %}
+  <div class="quick-status-card">
+    <div class="quick-status-header">
+      <div class="qs-icon">⚡</div>
+      <span>Quick Status Update</span>
+    </div>
+    <div class="quick-status-body">
+      <form method="post" action="/update-status/{{ doc.id }}" class="qs-form">
+        <select name="status">
+          {% for s in ['Pending','Received','In Review','In Transit','Released','On Hold','Archived'] %}
+          <option value="{{ s }}" {% if doc.status == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary">Update Status</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ════════════ ROUTING CHAIN ════════════ -->
+  {% if doc.routing %}
+  {% set visited = doc.travel_log | map(attribute='office') | list %}
+  <div class="routing-card">
+    <div class="routing-header">
+      <div class="routing-icon">📍</div>
+      <span>Office Route</span>
+    </div>
+    <div class="routing-body">
+      {% for stop in doc.routing %}
+        <span class="route-stop {% if stop in visited %}done{% else %}pending{% endif %}">
+          {% if stop in visited %}✓{% endif %} {{ stop }}
+        </span>
+        {% if not loop.last %}<span class="route-arrow">→</span>{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ════════════ DETAIL GRID ════════════ -->
+  <div class="detail-grid">
+
+    <!-- Document Info -->
+    <div class="detail-card">
+      <div class="detail-card-header">
+        <div class="detail-card-icon">📄</div>
+        <h3>Document Info</h3>
       </div>
-      <div style="padding-top:4px;max-width:400px;">
-        <div style="font-size:14px;color:var(--text);line-height:1.7;margin-bottom:14px;">
-          Print this QR code and attach it to the physical document. Any office that receives the document scans this code to log their receipt — instantly updating the travel log.
+      <div class="detail-card-body">
+        <div class="detail-field"><label>Title / Subject</label><div class="val">{{ doc.doc_name }}</div></div>
+        <div class="detail-field"><label>Reference No.</label><div class="val mono {% if not doc.doc_id %}empty{% endif %}">{{ doc.doc_id or '—' }}</div></div>
+        <div class="detail-field"><label>Document Type</label><div class="val {% if not doc.category %}empty{% endif %}">{{ doc.category or '—' }}</div></div>
+        <div class="detail-field"><label>Document Date</label><div class="val {% if not doc.doc_date %}empty{% endif %}">{{ doc.doc_date or '—' }}</div></div>
+        <div class="detail-field"><label>Content / Particulars</label><div class="val {% if not doc.description %}empty{% endif %}">{{ doc.description or '—' }}</div></div>
+      </div>
+    </div>
+
+    <!-- Status & Timeline -->
+    <div class="detail-card">
+      <div class="detail-card-header">
+        <div class="detail-card-icon">📅</div>
+        <h3>Status &amp; Timeline</h3>
+      </div>
+      <div class="detail-card-body">
+        <div class="detail-field">
+          <label>Current Status</label>
+          <div class="val">
+            {% set s = doc.status %}
+            {% if s == 'In Transit' %}<span class="badge badge-transit">{{ s }}</span>
+            {% elif s == 'Pending' %}<span class="badge badge-pending">{{ s }}</span>
+            {% elif s == 'In Review' %}<span class="badge badge-review">{{ s }}</span>
+            {% elif s == 'Released' %}<span class="badge badge-released">{{ s }}</span>
+            {% elif s == 'On Hold' %}<span class="badge badge-hold">{{ s }}</span>
+            {% else %}<span class="badge badge-archived">{{ s }}</span>
+            {% endif %}
+          </div>
         </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary btn-sm">⬇️ Download QR PNG</a>
-          <a href="/receive/{{ doc.id }}" class="btn btn-primary btn-sm" target="_blank">🔗 Open Scan Page</a>
+        <div class="detail-field"><label>Record Created</label><div class="val">{{ doc.created_at }}</div></div>
+        <div class="detail-field"><label>System ID</label><div class="val mono" style="font-size:12px;">{{ doc.id }}</div></div>
+      </div>
+    </div>
+
+    <!-- Source / Sender -->
+    <div class="detail-card">
+      <div class="detail-card-header">
+        <div class="detail-card-icon">📤</div>
+        <h3>Source / Sender</h3>
+      </div>
+      <div class="detail-card-body">
+        <div class="detail-field"><label>Unit / Office / School</label><div class="val {% if not doc.sender_org %}empty{% endif %}">{{ doc.sender_org or '—' }}</div></div>
+        <div class="detail-field"><label>Sender Name &amp; Designation</label><div class="val {% if not doc.sender_name %}empty{% endif %}">{{ doc.sender_name or '—' }}</div></div>
+        <div class="detail-field"><label>Contact / Address</label><div class="val {% if not doc.sender_contact %}empty{% endif %}">{{ doc.sender_contact or '—' }}</div></div>
+      </div>
+    </div>
+
+    <!-- Receiving -->
+    <div class="detail-card">
+      <div class="detail-card-header">
+        <div class="detail-card-icon">📥</div>
+        <h3>Receiving</h3>
+      </div>
+      <div class="detail-card-body">
+        <div class="detail-field"><label>Received By</label><div class="val {% if not doc.received_by %}empty{% endif %}">{{ doc.received_by or '—' }}</div></div>
+        <div class="detail-field"><label>Date Received</label><div class="val {% if not doc.date_received %}empty{% endif %}">{{ doc.date_received or '—' }}</div></div>
+        <div class="detail-field"><label>Date Released</label><div class="val {% if not doc.date_released %}empty{% endif %}">{{ doc.date_released or '—' }}</div></div>
+      </div>
+    </div>
+
+    <!-- Routing -->
+    <div class="detail-card">
+      <div class="detail-card-header">
+        <div class="detail-card-icon">📍</div>
+        <h3>Routing</h3>
+      </div>
+      <div class="detail-card-body">
+        <div class="detail-field"><label>Referred To</label><div class="val {% if not doc.referred_to %}empty{% endif %}">{{ doc.referred_to or '—' }}</div></div>
+        <div class="detail-field"><label>Forwarded To</label><div class="val {% if not doc.forwarded_to %}empty{% endif %}">{{ doc.forwarded_to or '—' }}</div></div>
+        <div class="detail-field">
+          <label>Recipient / Addressee</label>
+          <div class="val {% if not doc.recipient_name %}empty{% endif %}">
+            {{ doc.recipient_name or '—' }}
+            {% if doc.recipient_org %}<br><span style="font-size:12px;color:var(--muted);font-weight:400;">{{ doc.recipient_org }}</span>{% endif %}
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-</div>
+    <!-- Remarks / Notes (full width) -->
+    {% if doc.notes %}
+    <div class="detail-card col-full">
+      <div class="detail-card-header">
+        <div class="detail-card-icon">📝</div>
+        <h3>Remarks / Notes</h3>
+      </div>
+      <div class="detail-card-body">
+        <div class="notes-text">{{ doc.notes }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Travel Log (full width) -->
+    <div class="detail-card col-full">
+      <div class="detail-card-header">
+        <div class="detail-card-icon">🗺️</div>
+        <h3>Travel Log — {{ doc.travel_log|length }} Entr{% if doc.travel_log|length == 1 %}y{% else %}ies{% endif %}</h3>
+      </div>
+      {% if doc.travel_log %}
+      <div class="log-scroll">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Office / Unit</th>
+              <th>Action</th>
+              <th>Officer / Staff</th>
+              <th>Date &amp; Time</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in doc.travel_log %}
+            <tr>
+              <td class="log-num">{{ loop.index }}</td>
+              <td class="log-office">{{ entry.office }}</td>
+              <td>
+                <span class="log-action-chip">{{ entry.action }}</span>
+                {% if entry.get('via') %}<span class="log-via">via {{ entry.via }}</span>{% endif %}
+              </td>
+              <td>{{ entry.officer or '—' }}</td>
+              <td class="log-time">{{ entry.timestamp }}</td>
+              <td style="font-size:13px;">{{ entry.remarks or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="log-empty">📭 No travel log entries yet. Print the QR code and attach it to the document.</div>
+      {% endif %}
+    </div>
+
+    <!-- QR Code (full width) -->
+    <div class="detail-card col-full">
+      <div class="detail-card-header">
+        <div class="detail-card-icon">📱</div>
+        <h3>QR Code</h3>
+      </div>
+      <div class="detail-card-body">
+        <div class="qr-layout">
+          <div class="qr-img-wrap">
+            <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code" class="qr-img" />
+            <div class="qr-caption">Scan to log receipt</div>
+          </div>
+          <div class="qr-info">
+            <p class="qr-desc">Print this QR code and attach it to the physical document. Any office that receives the document scans this code to log their receipt — instantly updating the travel log.</p>
+            <div class="qr-btns">
+              <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ Download QR PNG</a>
+              <a href="/receive/{{ doc.id }}" class="btn btn-primary" target="_blank">🔗 Open Scan Page</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.detail-grid -->
+
+</div><!-- /.content-wrap -->
+
 {% endblock %}

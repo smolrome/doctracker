@@ -2,164 +2,368 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0"/>
   <title>Track Document — DocTracker</title>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    :root{--green:#10B981;--dark:#064E3B;--navy:#0D1B2A;--surface:#F4F7FB;--border:#DDE3EE;--text:#1A2B45;--muted:#6B7FA3;}
-    body{font-family:'DM Sans',sans-serif;background:var(--surface);min-height:100vh;}
-    .topbar{background:var(--dark);padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;}
-    .topbar-brand{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:#fff;}
-    .topbar a{color:#A7F3D0;font-size:13px;font-weight:600;text-decoration:none;}
-    .page{max-width:560px;margin:0 auto;padding:20px 16px;}
-    .card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:20px;margin-bottom:14px;}
-    .card h3{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid var(--border);}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* Status hero */
-    .status-hero{text-align:center;padding:24px 20px;border-radius:14px;margin-bottom:14px;}
-    .s-Pending{background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:2px solid #F59E0B;}
-    .s-Received{background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:2px solid #3B82F6;}
-    .s-Released{background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border:2px solid var(--green);}
-    .s-default{background:var(--surface);border:2px solid var(--border);}
-    .status-icon{font-size:44px;margin-bottom:8px;}
-    .status-label{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:3px;}
-    .s-Pending .status-label{color:#92400E;}
-    .s-Received .status-label{color:#1D4ED8;}
-    .s-Released .status-label{color:#065F46;}
-    .status-sub{font-size:13px;color:var(--muted);}
+    :root {
+      --grad-start:  #0d4f7c;
+      --grad-end:    #0f8a72;
+      --bg:          #f0f6f9;
+      --surface:     #ffffff;
+      --border:      #cce0ea;
+      --text:        #0d2d3d;
+      --sub:         #3d6070;
+      --muted:       #6a8fa0;
+      --accent:      #0f8a72;
+      --radius:      14px;
+      --shadow:      0 2px 12px rgba(13,47,70,0.10);
+      --shadow-lg:   0 6px 28px rgba(13,47,70,0.15);
+    }
 
-    /* QR section */
-    .qr-section{text-align:center;}
-    .qr-img{width:180px;height:180px;border-radius:10px;border:3px solid var(--border);margin:0 auto 12px;display:block;}
-    .qr-hint{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:12px;}
-    .qr-actions{display:flex;gap:8px;}
-    .btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;border-radius:9px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;border:none;min-height:42px;}
-    .btn-green{background:var(--green);color:#fff;flex:1;}
-    .btn-outline{background:var(--surface);color:var(--muted);border:1.5px solid var(--border);flex:1;}
-    .btn-outline:hover{border-color:var(--green);color:var(--dark);}
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: clamp(15px, 2vw, 17px);
+      line-height: 1.55;
+      min-height: 100dvh;
+    }
 
-    /* Meta */
-    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-    .meta-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:2px;}
-    .meta-value{font-size:13px;color:var(--text);font-weight:500;}
-    .meta-value.mono{font-family:monospace;}
+    /* ══ TOPBAR ══ */
+    .topbar {
+      background: linear-gradient(135deg, var(--grad-start) 0%, var(--grad-end) 100%);
+      padding: 0 clamp(14px, 4vw, 28px);
+      height: 58px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 12px rgba(13,47,70,0.2);
+    }
+    .topbar-brand {
+      font-size: clamp(15px, 2.2vw, 17px); font-weight: 700;
+      color: #fff; display: flex; align-items: center; gap: 8px;
+    }
+    .topbar a {
+      color: rgba(255,255,255,0.85); font-size: clamp(13px, 1.8vw, 14px);
+      font-weight: 600; text-decoration: none;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 8px; padding: 7px 14px;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: background .15s; white-space: nowrap;
+    }
+    .topbar a:hover { background: rgba(255,255,255,0.25); }
 
-    /* Timeline */
-    .timeline{list-style:none;}
-    .tl-item{display:flex;gap:12px;margin-bottom:14px;position:relative;}
-    .tl-item:not(:last-child)::after{content:'';position:absolute;left:16px;top:34px;bottom:-6px;width:2px;background:var(--border);}
-    .tl-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:var(--surface);border:2px solid var(--border);}
-    .tl-dot.receive{background:#DBEAFE;border-color:#3B82F6;}
-    .tl-dot.release{background:#D1FAE5;border-color:var(--green);}
-    .tl-dot.create{background:#FEF3C7;border-color:#F59E0B;}
-    .tl-action{font-weight:700;font-size:13px;color:var(--navy);}
-    .tl-meta{font-size:11px;color:var(--muted);margin-top:2px;}
-    .tl-remark{font-size:12px;color:var(--text);margin-top:4px;background:var(--surface);padding:5px 9px;border-radius:6px;}
+    /* ══ PAGE ══ */
+    .page {
+      max-width: 580px; margin: 0 auto;
+      padding: clamp(16px, 3vw, 28px) clamp(14px, 4vw, 20px) clamp(32px, 5vw, 48px);
+      display: flex; flex-direction: column;
+      gap: clamp(12px, 2.5vw, 16px);
+    }
 
-    @media(max-width:400px){.meta-grid{grid-template-columns:1fr;}}
+    /* ══ STATUS HERO ══ */
+    .status-hero {
+      border-radius: 18px;
+      padding: clamp(22px, 5vw, 32px) clamp(18px, 4vw, 28px);
+      text-align: center; border: 2px solid transparent;
+      box-shadow: var(--shadow-lg);
+      position: relative; overflow: hidden;
+    }
+    .status-hero::before {
+      content: ''; position: absolute; inset: 0; opacity: 0.05;
+      background-image: radial-gradient(circle at 70% 20%, #fff 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .s-Pending    { background: linear-gradient(135deg,#fff8e8,#fef0c0); border-color: #f5b942; }
+    .s-Received,
+    .s-In\ Review,
+    .s-In\ Transit { background: linear-gradient(135deg,#e8f3ff,#cce2ff); border-color: #3d82d4; }
+    .s-Released   { background: linear-gradient(135deg,#e6f9f2,#c8f0e0); border-color: #0f8a72; }
+    .s-On\ Hold   { background: linear-gradient(135deg,#fff0f0,#ffd6d6); border-color: #e05050; }
+    .s-default    { background: linear-gradient(135deg,#f0f6f9,#e4eef4); border-color: var(--border); }
+
+    .status-icon  { font-size: clamp(40px, 9vw, 56px); margin-bottom: 10px; display: block; }
+    .status-label {
+      font-size: clamp(22px, 5vw, 28px); font-weight: 700;
+      letter-spacing: -0.3px; margin-bottom: 6px;
+    }
+    .s-Pending .status-label     { color: #7a4500; }
+    .s-Released .status-label    { color: #0a4a28; }
+    .s-On\ Hold .status-label    { color: #7a1010; }
+    .s-default .status-label,
+    .s-Received .status-label,
+    .s-In\ Review .status-label,
+    .s-In\ Transit .status-label { color: var(--text); }
+
+    .status-sub {
+      font-size: clamp(13px, 1.8vw, 15px); color: var(--sub); line-height: 1.45;
+    }
+
+    /* ══ CARDS ══ */
+    .card {
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+    }
+    .card-header {
+      display: flex; align-items: center; gap: 9px;
+      padding: clamp(12px, 2vw, 15px) clamp(14px, 2.5vw, 20px);
+      background: linear-gradient(90deg, rgba(13,79,124,0.06), rgba(15,138,114,0.04));
+      border-bottom: 1.5px solid var(--border);
+    }
+    .card-header-icon {
+      font-size: 15px; width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .card-header h3 {
+      font-size: clamp(13px, 1.8vw, 15px); font-weight: 700; color: var(--text);
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .card-body { padding: clamp(14px, 2.5vw, 20px); }
+
+    /* ══ QR SECTION ══ */
+    .qr-section { text-align: center; }
+    .qr-img {
+      width: clamp(150px, 35vw, 190px); height: clamp(150px, 35vw, 190px);
+      border-radius: 12px; border: 2px solid var(--border);
+      margin: 0 auto 12px; display: block;
+      box-shadow: var(--shadow);
+    }
+    .qr-hint {
+      font-size: clamp(13px, 1.8vw, 14px); color: var(--sub);
+      line-height: 1.5; margin-bottom: 14px;
+    }
+    .qr-actions { display: flex; gap: 10px; }
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      height: 48px; padding: 0 18px; border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: clamp(13px, 1.8vw, 14px); font-weight: 700;
+      cursor: pointer; text-decoration: none; border: none;
+      transition: all .15s; flex: 1;
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      white-space: nowrap;
+    }
+    .btn:hover  { opacity: 0.9; transform: translateY(-1px); }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+      color: #fff; box-shadow: 0 3px 10px rgba(13,79,124,0.25);
+    }
+    .btn-outline {
+      background: var(--bg); color: var(--sub);
+      border: 1.5px solid var(--border) !important;
+    }
+    .btn-outline:hover { border-color: var(--accent) !important; color: var(--accent); background: #e8f7f4; }
+
+    /* ══ META GRID ══ */
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(10px, 2vw, 14px); }
+    .meta-field { display: flex; flex-direction: column; gap: 3px; }
+    .meta-field.full { grid-column: span 2; }
+    .meta-label {
+      font-size: clamp(11px, 1.4vw, 12px); font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+    }
+    .meta-value {
+      font-size: clamp(14px, 1.9vw, 15px); font-weight: 600; color: var(--text); line-height: 1.4;
+    }
+    .meta-value.mono { font-family: 'DM Mono', monospace; font-size: clamp(12px, 1.6vw, 13px); }
+    .meta-value.title { font-size: clamp(15px, 2vw, 16px); }
+
+    @media (max-width: 420px) {
+      .meta-grid { grid-template-columns: 1fr; }
+      .meta-field.full { grid-column: 1; }
+    }
+
+    /* ══ TIMELINE ══ */
+    .timeline { list-style: none; display: flex; flex-direction: column; gap: 0; }
+
+    .tl-item {
+      display: flex; gap: 14px;
+      padding: clamp(12px, 2vw, 16px) 0;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+    .tl-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .tl-item:first-child { padding-top: 0; }
+
+    /* Vertical connector line */
+    .tl-item:not(:last-child) .tl-dot-wrap::after {
+      content: '';
+      position: absolute;
+      left: calc(clamp(14px, 2.5vw, 20px) + 18px);
+      top: calc(clamp(12px, 2vw, 16px) + 36px);
+      bottom: 0;
+      width: 2px;
+      background: var(--border);
+      border-radius: 1px;
+    }
+
+    .tl-dot-wrap { position: relative; flex-shrink: 0; }
+    .tl-dot {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; border: 2px solid var(--border); background: var(--bg);
+      flex-shrink: 0;
+    }
+    .tl-dot.receive { background: #cce8ff; border-color: #3d82d4; }
+    .tl-dot.release { background: var(--badge-released, #d1f5e0); border-color: var(--accent); }
+    .tl-dot.create  { background: #fff3cd; border-color: #f5b942; }
+
+    .tl-content { flex: 1; min-width: 0; }
+    .tl-action {
+      font-size: clamp(14px, 1.9vw, 15px); font-weight: 700; color: var(--text);
+      margin-bottom: 3px;
+    }
+    .tl-meta {
+      font-size: clamp(12px, 1.5vw, 13px); color: var(--muted); line-height: 1.4;
+    }
+    .tl-remark {
+      font-size: clamp(12px, 1.5vw, 13px); color: var(--sub);
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 7px; padding: 7px 10px; margin-top: 7px; line-height: 1.45;
+    }
   </style>
 </head>
 <body>
+
+<!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-brand">📋 DocTracker</div>
   <a href="/client">← My Documents</a>
 </div>
 
 <div class="page">
-  {% set status = doc.status %}
-  {% set hero_class = 's-' + status if status in ['Pending','Received','Released'] else 's-default' %}
-  {% set icons = {'Pending':'⏳','Received':'📥','Released':'✅'} %}
 
-  <!-- Status Hero -->
+  {% set status = doc.status %}
+  {% set hero_class = 's-' + status if status in ['Pending','Received','Released','In Review','In Transit','On Hold'] else 's-default' %}
+  {% set icons = {'Pending':'⏳','Received':'📥','Released':'✅','In Review':'🔍','In Transit':'🚚','On Hold':'⏸'} %}
+
+  <!-- STATUS HERO -->
   <div class="status-hero {{ hero_class }}">
-    <div class="status-icon">{{ icons.get(status,'📄') }}</div>
+    <span class="status-icon">{{ icons.get(status, '📄') }}</span>
     <div class="status-label">{{ status }}</div>
     <div class="status-sub">
-      {% if status=='Pending' %}Submitted — awaiting processing at the office.
-      {% elif status=='Received' %}Received at DepEd Leyte Division Office.
-      {% elif status=='Released' %}Processed and released from the office.
+      {% if status == 'Pending' %}Submitted — awaiting processing at the office.
+      {% elif status == 'Received' %}Received at DepEd Leyte Division Office.
+      {% elif status == 'In Review' %}Currently under review at the office.
+      {% elif status == 'In Transit' %}Document is being forwarded between offices.
+      {% elif status == 'Released' %}Processed and released from the office.
+      {% elif status == 'On Hold' %}Processing is currently on hold. Please follow up.
       {% else %}{{ status }}{% endif %}
     </div>
   </div>
 
-  <!-- QR Code Card -->
+  <!-- QR CODE CARD -->
   <div class="card">
-    <h3>📱 Your Document QR Code</h3>
-    <div class="qr-section">
-      <img src="data:image/png;base64,{{ qr_b64 }}" class="qr-img" alt="Document QR"/>
-      <div class="qr-hint">Show or scan this QR at the office to update your document's status automatically.</div>
-      <div class="qr-actions">
-        <a href="/qr/{{ doc.id }}.png" download class="btn btn-outline">⬇️ Download</a>
-        <a href="/receive/{{ doc.id }}" class="btn btn-green">⚡ Update Status</a>
+    <div class="card-header">
+      <div class="card-header-icon">📱</div>
+      <h3>Your Document QR Code</h3>
+    </div>
+    <div class="card-body">
+      <div class="qr-section">
+        <img src="data:image/png;base64,{{ qr_b64 }}" class="qr-img" alt="Document QR Code"/>
+        <div class="qr-hint">Show or scan this QR at the office to update your document's status automatically.</div>
+        <div class="qr-actions">
+          <a href="/qr/{{ doc.id }}.png" download class="btn btn-outline">⬇️ Download</a>
+          <a href="/receive/{{ doc.id }}" class="btn btn-primary">⚡ Update Status</a>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Document Details -->
+  <!-- DOCUMENT INFO CARD -->
   <div class="card">
-    <h3>📄 Document Information</h3>
-    <div class="meta-grid">
-      <div>
-        <div class="meta-label">Reference No.</div>
-        <div class="meta-value mono">{{ doc.doc_id or doc.id }}</div>
+    <div class="card-header">
+      <div class="card-header-icon">📄</div>
+      <h3>Document Information</h3>
+    </div>
+    <div class="card-body">
+      <div class="meta-grid">
+
+        <div class="meta-field">
+          <span class="meta-label">Reference No.</span>
+          <span class="meta-value mono">{{ doc.doc_id or doc.id }}</span>
+        </div>
+        <div class="meta-field">
+          <span class="meta-label">Submitted</span>
+          <span class="meta-value">{{ doc.created_at[:10] if doc.created_at else '—' }}</span>
+        </div>
+
+        <div class="meta-field full">
+          <span class="meta-label">Content / Particulars</span>
+          <span class="meta-value title">{{ doc.doc_name }}</span>
+        </div>
+
+        <div class="meta-field">
+          <span class="meta-label">Type</span>
+          <span class="meta-value">{{ doc.category or '—' }}</span>
+        </div>
+        <div class="meta-field">
+          <span class="meta-label">Referred To</span>
+          <span class="meta-value">{{ doc.referred_to or '—' }}</span>
+        </div>
+
+        <div class="meta-field">
+          <span class="meta-label">From Unit / Office</span>
+          <span class="meta-value">{{ doc.sender_org or '—' }}</span>
+        </div>
+
+        {% if doc.date_received %}
+        <div class="meta-field">
+          <span class="meta-label">Date Received</span>
+          <span class="meta-value">{{ doc.date_received }}</span>
+        </div>
+        {% endif %}
+
+        {% if doc.date_released %}
+        <div class="meta-field">
+          <span class="meta-label">Date Released</span>
+          <span class="meta-value">{{ doc.date_released }}</span>
+        </div>
+        {% endif %}
+
       </div>
-      <div>
-        <div class="meta-label">Submitted</div>
-        <div class="meta-value">{{ doc.created_at[:10] if doc.created_at else '—' }}</div>
-      </div>
-      <div style="grid-column:span 2;">
-        <div class="meta-label">Content / Particulars</div>
-        <div class="meta-value" style="font-weight:700;">{{ doc.doc_name }}</div>
-      </div>
-      <div>
-        <div class="meta-label">Type</div>
-        <div class="meta-value">{{ doc.category or '—' }}</div>
-      </div>
-      <div>
-        <div class="meta-label">Referred To</div>
-        <div class="meta-value">{{ doc.referred_to or '—' }}</div>
-      </div>
-      <div>
-        <div class="meta-label">From Unit/Office</div>
-        <div class="meta-value">{{ doc.sender_org or '—' }}</div>
-      </div>
-      {% if doc.date_received %}
-      <div>
-        <div class="meta-label">Date Received</div>
-        <div class="meta-value">{{ doc.date_received }}</div>
-      </div>
-      {% endif %}
-      {% if doc.date_released %}
-      <div>
-        <div class="meta-label">Date Released</div>
-        <div class="meta-value">{{ doc.date_released }}</div>
-      </div>
-      {% endif %}
     </div>
   </div>
 
-  <!-- Travel Log -->
+  <!-- TIMELINE CARD -->
   {% if doc.travel_log %}
   <div class="card">
-    <h3>🗺️ Document Timeline</h3>
-    <ul class="timeline">
-      {% for log in doc.travel_log|reverse %}
-      {% set dot = 'receive' if 'Receive' in log.action else ('release' if 'Release' in log.action else 'create') %}
-      <li class="tl-item">
-        <div class="tl-dot {{ dot }}">
-          {{ '📥' if 'Receive' in log.action else ('✅' if 'Release' in log.action else '📄') }}
-        </div>
-        <div>
-          <div class="tl-action">{{ log.action }}</div>
-          <div class="tl-meta">{{ log.office }} · {{ log.timestamp[:16].replace('T',' ') if log.timestamp else '' }}</div>
-          {% if log.remarks %}<div class="tl-remark">{{ log.remarks }}</div>{% endif %}
-        </div>
-      </li>
-      {% endfor %}
-    </ul>
+    <div class="card-header">
+      <div class="card-header-icon">🗺️</div>
+      <h3>Document Timeline</h3>
+    </div>
+    <div class="card-body">
+      <ul class="timeline">
+        {% for log in doc.travel_log | reverse %}
+        {% set dot_class = 'receive' if 'Receive' in log.action else ('release' if 'Release' in log.action else 'create') %}
+        <li class="tl-item">
+          <div class="tl-dot-wrap">
+            <div class="tl-dot {{ dot_class }}">
+              {{ '📥' if 'Receive' in log.action else ('✅' if 'Release' in log.action else '📄') }}
+            </div>
+          </div>
+          <div class="tl-content">
+            <div class="tl-action">{{ log.action }}</div>
+            <div class="tl-meta">
+              {{ log.office }}
+              {% if log.timestamp %} · {{ log.timestamp[:16].replace('T',' ') }}{% endif %}
+            </div>
+            {% if log.remarks %}<div class="tl-remark">{{ log.remarks }}</div>{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
   </div>
   {% endif %}
+
 </div>
 </body>
 </html>

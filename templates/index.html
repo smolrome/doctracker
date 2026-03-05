@@ -1,33 +1,550 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="stats-grid">
-  <div class="stat-card"><div class="stat-num">{{ stats.total }}</div><div class="stat-label">Total</div></div>
-  <div class="stat-card yellow"><div class="stat-num">{{ stats.pending }}</div><div class="stat-label">Pending</div></div>
-  <div class="stat-card teal"><div class="stat-num">{{ stats.in_review }}</div><div class="stat-label">In Review</div></div>
-  <div class="stat-card"><div class="stat-num">{{ stats.in_transit }}</div><div class="stat-label">In Transit</div></div>
-  <div class="stat-card green"><div class="stat-num">{{ stats.released }}</div><div class="stat-label">Released</div></div>
-  <div class="stat-card red"><div class="stat-num">{{ stats.on_hold }}</div><div class="stat-label">On Hold</div></div>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --grad-start:  #0d4f7c;
+    --grad-end:    #0f8a72;
+    --bg:          #f0f6f9;
+    --surface:     #ffffff;
+    --border:      #cce0ea;
+    --text-main:   #0d2d3d;
+    --text-sub:    #3d6070;
+    --text-muted:  #6a8fa0;
+    --accent:      #0f8a72;
+    --accent2:     #0d4f7c;
+    --radius:      14px;
+    --shadow:      0 2px 12px rgba(13,47,70,0.10);
+    --shadow-lg:   0 6px 28px rgba(13,47,70,0.15);
+
+    --badge-pending:  #fff3cd; --badge-pending-t:  #7a4500;
+    --badge-review:   #cce8ff; --badge-review-t:   #0d3f70;
+    --badge-transit:  #e0d4ff; --badge-transit-t:  #3a1f80;
+    --badge-released: #d1f5e0; --badge-released-t: #0a4a20;
+    --badge-hold:     #ffd6d6; --badge-hold-t:     #7a1010;
+    --badge-archived: #e5e5e5; --badge-archived-t: #333333;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text-main);
+    font-size: clamp(15px, 2vw, 17px);
+    line-height: 1.55;
+    min-height: 100dvh;
+  }
+
+  /* ══════════════════════════════
+     PAGE HEADER
+  ══════════════════════════════ */
+  .page-header {
+    background: linear-gradient(135deg, var(--grad-start) 0%, var(--grad-end) 100%);
+    padding: clamp(16px, 3vw, 28px) clamp(16px, 4vw, 32px);
+    color: #fff;
+    border-bottom: 3px solid rgba(255,255,255,0.15);
+  }
+  .page-header h1 {
+    font-size: clamp(20px, 3.5vw, 26px);
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .page-header p {
+    font-size: clamp(13px, 2vw, 15px);
+    opacity: 0.85;
+    margin-top: 4px;
+  }
+
+  /* ══════════════════════════════
+     STATS GRID
+  ══════════════════════════════ */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: clamp(10px, 2vw, 16px);
+    padding: clamp(16px, 3vw, 28px) clamp(16px, 4vw, 32px) 0;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: clamp(14px, 2vw, 20px) clamp(12px, 2vw, 20px) clamp(12px, 1.5vw, 18px);
+    border: 1.5px solid var(--border);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    position: relative;
+    overflow: hidden;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--grad-start), var(--grad-end));
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .stat-card.yellow::before  { background: linear-gradient(90deg, #e07b00, #f5b942); }
+  .stat-card.teal::before    { background: linear-gradient(90deg, #0f8a72, #2ec4a5); }
+  .stat-card.transit::before { background: linear-gradient(90deg, #4a2d9a, #7b5dd6); }
+  .stat-card.green::before   { background: linear-gradient(90deg, #1a7a3c, #2eb868); }
+  .stat-card.red::before     { background: linear-gradient(90deg, #b02020, #e05050); }
+
+  .stat-num {
+    font-size: clamp(24px, 3.5vw, 36px);
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: clamp(11px, 1.5vw, 13px);
+    font-weight: 700;
+    color: var(--text-sub);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ══════════════════════════════
+     FILTERS
+  ══════════════════════════════ */
+  .filters-wrap {
+    padding: clamp(14px, 2.5vw, 24px) clamp(16px, 4vw, 32px) 0;
+  }
+  .filters {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: clamp(14px, 2vw, 18px) clamp(14px, 2vw, 20px);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    box-shadow: var(--shadow);
+  }
+
+  .filter-row-top,
+  .filter-row-bottom {
+    display: flex;
+    width: 100%;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .filters input[type="text"],
+  .filters select {
+    height: 48px;
+    padding: 0 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(14px, 2vw, 16px);
+    color: var(--text-main);
+    background: var(--bg);
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .filters input[type="text"] { flex: 1; min-width: 180px; }
+  .filters select {
+    flex: 0 1 180px;
+    min-width: 140px;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236a8fa0' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+  }
+  .filters input[type="text"]:focus,
+  .filters select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(15,138,114,0.15);
+  }
+
+  .filter-type-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn-filter {
+    height: 48px;
+    padding: 0 18px;
+    border-radius: 10px;
+    font-size: clamp(14px, 2vw, 15px);
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text-sub);
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all .15s;
+    white-space: nowrap;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-filter:hover  { border-color: var(--accent); color: var(--accent); background: #e8f7f4; }
+  .btn-filter.active {
+    background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 2px 8px rgba(13,47,70,0.25);
+  }
+
+  .btn-search {
+    height: 48px;
+    padding: 0 24px;
+    border-radius: 10px;
+    font-size: clamp(14px, 2vw, 15px);
+    font-weight: 700;
+    font-family: 'DM Sans', sans-serif;
+    color: #fff;
+    background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(13,47,70,0.25);
+    transition: opacity .15s, transform .15s;
+    white-space: nowrap;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-search:hover  { opacity: 0.9; transform: translateY(-1px); }
+  .btn-search:active { transform: scale(0.97); }
+
+  /* ══════════════════════════════
+     TABLE CARD
+  ══════════════════════════════ */
+  .table-wrap {
+    margin: clamp(14px, 2.5vw, 24px) clamp(16px, 4vw, 32px) clamp(24px, 4vw, 40px);
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .table-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: clamp(14px, 2vw, 18px) clamp(16px, 2.5vw, 24px);
+    border-bottom: 1.5px solid var(--border);
+    background: linear-gradient(90deg, rgba(13,79,124,0.06), rgba(15,138,114,0.04));
+  }
+  .table-title {
+    font-size: clamp(16px, 2.5vw, 18px);
+    font-weight: 700;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .table-count {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 14px;
+    white-space: nowrap;
+  }
+
+  /* ── Desktop table ── */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-scroll::-webkit-scrollbar { height: 6px; }
+  .table-scroll::-webkit-scrollbar-track { background: var(--bg); }
+  .table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: clamp(13px, 1.8vw, 15px);
+    min-width: 700px;
+  }
+
+  thead {
+    background: linear-gradient(135deg, var(--grad-start) 0%, var(--grad-end) 100%);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  thead th {
+    color: #fff;
+    font-size: clamp(11px, 1.4vw, 13px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 13px 14px;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    border-bottom: 1.5px solid var(--border);
+    cursor: pointer;
+    transition: background .12s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: linear-gradient(90deg, rgba(13,79,124,0.04), rgba(15,138,114,0.03)); }
+  tbody tr:active { background: rgba(13,79,124,0.08); }
+
+  tbody td {
+    padding: 13px 14px;
+    color: var(--text-main);
+    vertical-align: middle;
+    line-height: 1.4;
+  }
+
+  .doc-name {
+    font-weight: 600;
+    font-size: clamp(13px, 1.8vw, 15px);
+    color: var(--text-main);
+    margin-bottom: 2px;
+  }
+  .doc-id {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1px 6px;
+    display: inline-block;
+    margin-top: 3px;
+  }
+  .doc-category {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 3px;
+  }
+
+  /* ── MOBILE CARD VIEW (replaces table on small screens) ── */
+  .mobile-cards { display: none; }
+
+  .doc-card {
+    padding: 16px;
+    border-bottom: 1.5px solid var(--border);
+    cursor: pointer;
+    transition: background .12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .doc-card:last-child { border-bottom: none; }
+  .doc-card:active { background: rgba(13,79,124,0.06); }
+
+  .doc-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .doc-card-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.35;
+    flex: 1;
+  }
+  .doc-card-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 12px;
+  }
+  .doc-card-field {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .doc-card-field-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+  }
+  .doc-card-field-value {
+    font-size: 14px;
+    color: var(--text-main);
+    font-weight: 500;
+  }
+  .doc-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .doc-card-date {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ══════════════════════════════
+     BADGES
+  ══════════════════════════════ */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+  }
+  .badge-pending  { background: var(--badge-pending);  color: var(--badge-pending-t); }
+  .badge-review   { background: var(--badge-review);   color: var(--badge-review-t); }
+  .badge-transit  { background: var(--badge-transit);  color: var(--badge-transit-t); }
+  .badge-released { background: var(--badge-released); color: var(--badge-released-t); }
+  .badge-hold     { background: var(--badge-hold);     color: var(--badge-hold-t); }
+  .badge-archived { background: var(--badge-archived); color: var(--badge-archived-t); }
+
+  /* ══════════════════════════════
+     EMPTY STATE
+  ══════════════════════════════ */
+  .empty {
+    text-align: center;
+    padding: clamp(40px, 8vw, 64px) clamp(20px, 5vw, 32px);
+    color: var(--text-muted);
+  }
+  .empty-icon { font-size: clamp(40px, 8vw, 56px); margin-bottom: 14px; }
+  .empty h3   { font-size: clamp(18px, 3vw, 22px); font-weight: 700; color: var(--text-sub); margin-bottom: 8px; }
+  .empty p    { font-size: clamp(14px, 2vw, 16px); }
+  .empty a    { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .empty a:hover { text-decoration: underline; }
+
+  /* ══════════════════════════════
+     BREAKPOINTS
+  ══════════════════════════════ */
+
+  /* Tablet: 4-col stats, filters wrap nicely */
+  @media (max-width: 1024px) {
+    .stats-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* Small tablet / large phone landscape */
+  @media (max-width: 768px) {
+    .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .filter-row-top { flex-wrap: wrap; }
+    .filters input[type="text"] { min-width: 0; width: 100%; flex: 1 1 100%; }
+    .filters select { flex: 1 1 calc(50% - 5px); min-width: 0; }
+    .btn-search     { flex: 1 1 calc(50% - 5px); }
+    .filter-type-group { width: 100%; }
+    .filter-type-group .btn-filter { flex: 1; }
+  }
+
+  /* Mobile: switch table to cards */
+  @media (max-width: 600px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stat-num   { font-size: 28px; }
+    .table-scroll { display: none; }
+    .mobile-cards { display: block; }
+    .filters select { flex: 1 1 100%; }
+    .btn-search     { flex: 1 1 100%; height: 52px; font-size: 16px; }
+    .filter-type-group .btn-filter { height: 44px; font-size: 14px; }
+  }
+
+  /* Very small phones */
+  @media (max-width: 380px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .stat-card  { padding: 12px; }
+    .stat-num   { font-size: 24px; }
+    .stat-label { font-size: 10px; }
+    .page-header h1 { font-size: 18px; }
+    .page-header p  { font-size: 12px; }
+  }
+
+  /* High-DPI / zoomed-in displays */
+  @media (min-resolution: 192dpi), (min-resolution: 2dppx) {
+    .stat-card, .filters, .table-wrap { border-width: 1px; }
+  }
+</style>
+
+<!-- ═══════════════════ PAGE HEADER ═══════════════════ -->
+<div class="page-header">
+  <h1>📄 Document Tracker</h1>
+  <p>DepEd Leyte Division Office — Records Management System</p>
 </div>
 
-<form method="get" action="/">
-  <div class="filters">
-    <input type="text" name="search" value="{{ search }}" placeholder="🔍 Search name, ID, sender..." />
-    <select name="status" onchange="this.form.submit()">
-      {% for s in status_options %}
-        <option value="{{ s }}" {% if filter_status == s %}selected{% endif %}>{{ s }}</option>
-      {% endfor %}
-    </select>
-    <a href="/?type=All&search={{ search }}&status={{ filter_status }}"
-       class="btn-filter {% if filter_type=='All' %}active{% endif %}">All</a>
-    <a href="/?type=Received&search={{ search }}&status={{ filter_status }}"
-       class="btn-filter {% if filter_type=='Received' %}active{% endif %}">Received</a>
-    <a href="/?type=Released&search={{ search }}&status={{ filter_status }}"
-       class="btn-filter {% if filter_type=='Released' %}active{% endif %}">Released</a>
-    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+<!-- ═══════════════════ STATS ═══════════════════ -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-num">{{ stats.total }}</div>
+    <div class="stat-label">Total</div>
   </div>
-</form>
+  <div class="stat-card yellow">
+    <div class="stat-num">{{ stats.pending }}</div>
+    <div class="stat-label">Pending</div>
+  </div>
+  <div class="stat-card teal">
+    <div class="stat-num">{{ stats.in_review }}</div>
+    <div class="stat-label">In Review</div>
+  </div>
+  <div class="stat-card transit">
+    <div class="stat-num">{{ stats.in_transit }}</div>
+    <div class="stat-label">In Transit</div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-num">{{ stats.released }}</div>
+    <div class="stat-label">Released</div>
+  </div>
+  <div class="stat-card red">
+    <div class="stat-num">{{ stats.on_hold }}</div>
+    <div class="stat-label">On Hold</div>
+  </div>
+</div>
 
+<!-- ═══════════════════ FILTERS ═══════════════════ -->
+<div class="filters-wrap">
+  <form method="get" action="/">
+    <div class="filters">
+      <div class="filter-row-top">
+        <input type="text" name="search" value="{{ search }}" placeholder="🔍  Search name, ID, sender…" />
+        <select name="status" onchange="this.form.submit()">
+          {% for s in status_options %}
+            <option value="{{ s }}" {% if filter_status == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn-search">🔍 Search</button>
+      </div>
+      <div class="filter-type-group">
+        <a href="/?type=All&search={{ search }}&status={{ filter_status }}"
+           class="btn-filter {% if filter_type=='All' %}active{% endif %}">All</a>
+        <a href="/?type=Received&search={{ search }}&status={{ filter_status }}"
+           class="btn-filter {% if filter_type=='Received' %}active{% endif %}">Received</a>
+        <a href="/?type=Released&search={{ search }}&status={{ filter_status }}"
+           class="btn-filter {% if filter_type=='Released' %}active{% endif %}">Released</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- ═══════════════════ TABLE ═══════════════════ -->
 <div class="table-wrap">
   <div class="table-head">
     <div class="table-title">📋 Documents</div>
@@ -35,6 +552,8 @@
   </div>
 
   {% if docs %}
+
+  <!-- Desktop/Tablet: scrollable table -->
   <div class="table-scroll">
     <table>
       <thead>
@@ -55,14 +574,14 @@
           <td>
             <div class="doc-name">{{ doc.doc_name }}</div>
             {% if doc.doc_id %}<div class="doc-id">{{ doc.doc_id }}</div>{% endif %}
-            {% if doc.category %}<div style="font-size:11px;color:var(--muted);margin-top:2px;">{{ doc.category }}</div>{% endif %}
+            {% if doc.category %}<div class="doc-category">{{ doc.category }}</div>{% endif %}
           </td>
           <td>{{ doc.sender_org or '—' }}</td>
           <td>{{ doc.sender_name or '—' }}</td>
           <td>{{ doc.received_by or '—' }}</td>
           <td>{{ doc.referred_to or '—' }}</td>
           <td>{{ doc.forwarded_to or '—' }}</td>
-          <td style="white-space:nowrap;">{{ doc.date_received or '—' }}</td>
+          <td style="white-space:nowrap;font-variant-numeric:tabular-nums;">{{ doc.date_received or '—' }}</td>
           <td>
             {% set s = doc.status %}
             {% if s=='Pending' %}<span class="badge badge-pending">{{ s }}</span>
@@ -70,18 +589,79 @@
             {% elif s=='In Transit' %}<span class="badge badge-transit">{{ s }}</span>
             {% elif s=='Released' %}<span class="badge badge-released">{{ s }}</span>
             {% elif s=='On Hold' %}<span class="badge badge-hold">{{ s }}</span>
-            {% else %}<span class="badge badge-archived">{{ s }}</span>{% endif %}
+            {% else %}<span class="badge badge-archived">{{ s }}</span>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+
+  <!-- Mobile: card layout -->
+  <div class="mobile-cards">
+    {% for doc in docs %}
+    <div class="doc-card" onclick="window.location='/view/{{ doc.id }}'">
+      <div class="doc-card-top">
+        <div>
+          <div class="doc-card-name">{{ doc.doc_name }}</div>
+          {% if doc.doc_id %}<div class="doc-id" style="margin-top:4px;">{{ doc.doc_id }}</div>{% endif %}
+          {% if doc.category %}<div class="doc-category">{{ doc.category }}</div>{% endif %}
+        </div>
+        {% set s = doc.status %}
+        {% if s=='Pending' %}<span class="badge badge-pending">{{ s }}</span>
+        {% elif s=='In Review' %}<span class="badge badge-review">{{ s }}</span>
+        {% elif s=='In Transit' %}<span class="badge badge-transit">{{ s }}</span>
+        {% elif s=='Released' %}<span class="badge badge-released">{{ s }}</span>
+        {% elif s=='On Hold' %}<span class="badge badge-hold">{{ s }}</span>
+        {% else %}<span class="badge badge-archived">{{ s }}</span>
+        {% endif %}
+      </div>
+      <div class="doc-card-meta">
+        {% if doc.sender_org %}
+        <div class="doc-card-field">
+          <span class="doc-card-field-label">Unit / Office</span>
+          <span class="doc-card-field-value">{{ doc.sender_org }}</span>
+        </div>
+        {% endif %}
+        {% if doc.sender_name %}
+        <div class="doc-card-field">
+          <span class="doc-card-field-label">Sender</span>
+          <span class="doc-card-field-value">{{ doc.sender_name }}</span>
+        </div>
+        {% endif %}
+        {% if doc.received_by %}
+        <div class="doc-card-field">
+          <span class="doc-card-field-label">Received By</span>
+          <span class="doc-card-field-value">{{ doc.received_by }}</span>
+        </div>
+        {% endif %}
+        {% if doc.referred_to %}
+        <div class="doc-card-field">
+          <span class="doc-card-field-label">Referred To</span>
+          <span class="doc-card-field-value">{{ doc.referred_to }}</span>
+        </div>
+        {% endif %}
+        {% if doc.forwarded_to %}
+        <div class="doc-card-field">
+          <span class="doc-card-field-label">Forwarded To</span>
+          <span class="doc-card-field-value">{{ doc.forwarded_to }}</span>
+        </div>
+        {% endif %}
+      </div>
+      <div class="doc-card-footer">
+        <span class="doc-card-date">📅 {{ doc.date_received or '—' }}</span>
+        <span style="font-size:13px;color:var(--accent);font-weight:600;">View details →</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
   {% else %}
   <div class="empty">
     <div class="empty-icon">📭</div>
     <h3>No documents found</h3>
-    <p>Try adjusting your filters or <a href="/add" style="color:var(--accent)">add a new document</a>.</p>
+    <p>Try adjusting your filters or <a href="/add">add a new document</a>.</p>
   </div>
   {% endif %}
 </div>
