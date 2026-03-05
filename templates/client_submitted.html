@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>Document Submitted — DocTracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--green:#10B981;--dark:#064E3B;--navy:#0D1B2A;--surface:#F4F7FB;--border:#DDE3EE;--muted:#6B7FA3;}
+    body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#064E3B 0%,#065F46 60%,#10B981 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+    .wrap{width:100%;max-width:460px;}
+    .card{background:#fff;border-radius:20px;padding:32px;box-shadow:0 24px 64px rgba(0,0,0,.25);text-align:center;}
+    .success-icon{font-size:56px;margin-bottom:12px;}
+    .success-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--dark);margin-bottom:6px;}
+    .success-sub{font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.5;}
+
+    /* QR section */
+    .qr-box{background:var(--surface);border:2px dashed var(--border);border-radius:14px;padding:20px;margin-bottom:20px;}
+    .qr-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;}
+    .qr-img{width:200px;height:200px;border-radius:10px;margin:0 auto 12px;}
+    .qr-instruction{font-size:13px;color:var(--muted);line-height:1.6;}
+
+    /* How to use */
+    .steps{text-align:left;margin-bottom:20px;}
+    .steps h3{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;}
+    .step{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;}
+    .step-num{width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .step-text{font-size:13px;color:#1A2B45;line-height:1.5;padding-top:4px;}
+
+    /* Doc info */
+    .doc-info{background:#ECFDF5;border:1.5px solid var(--green);border-radius:10px;padding:14px;margin-bottom:20px;text-align:left;}
+    .doc-info-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dark);margin-bottom:6px;}
+    .doc-info-name{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:3px;}
+    .doc-info-ref{font-family:monospace;font-size:12px;color:var(--muted);}
+
+    /* Buttons */
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;margin-bottom:8px;border:none;}
+    .btn-green{background:var(--green);color:#fff;}
+    .btn-green:hover{background:#059669;}
+    .btn-outline{background:#fff;color:var(--muted);border:1.5px solid var(--border);}
+    .btn-outline:hover{border-color:var(--green);color:var(--dark);}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="success-icon">🎉</div>
+    <div class="success-title">Document Submitted!</div>
+    <div class="success-sub">Your document has been logged in the system. Save or screenshot your QR code — you'll use it at the office.</div>
+
+    <div class="doc-info">
+      <div class="doc-info-label">📄 Submitted Document</div>
+      <div class="doc-info-name">{{ doc.doc_name }}</div>
+      <div class="doc-info-ref">Ref: {{ doc.doc_id }} &nbsp;·&nbsp; ID: {{ doc.id }}</div>
+    </div>
+
+    <!-- QR Code -->
+    <div class="qr-box">
+      <div class="qr-label">📱 Your Document QR Code</div>
+      <img src="data:image/png;base64,{{ qr_b64 }}" class="qr-img" alt="Document QR Code"/>
+      <div class="qr-instruction">Show this QR code to the office staff when dropping off or picking up your document.</div>
+    </div>
+
+    <!-- How to use -->
+    <div class="steps">
+      <h3>How to use your QR code</h3>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text"><strong>Screenshot or save</strong> this QR code on your phone now.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">When you <strong>arrive at the office</strong>, scan or show the QR → tap <em>Mark as Received</em>.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">When your document is <strong>ready for pickup</strong>, scan again → tap <em>Mark as Released</em>.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">Track your document status anytime from <strong>My Documents</strong>.</div>
+      </div>
+    </div>
+
+    <a href="/qr/{{ doc.id }}.png" download class="btn btn-outline">⬇️ Download QR as PNG</a>
+    <a href="/client/track/{{ doc.id }}" class="btn btn-outline">🔍 Track This Document</a>
+    <a href="/client" class="btn btn-green">📋 My Documents</a>
+  </div>
+</div>
+</body>
+</html>

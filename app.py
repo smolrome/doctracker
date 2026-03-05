@@ -892,38 +892,50 @@ def view_doc(doc_id):
 
 # ─────────────────────────────────────────────
 #  QR SCAN LANDING — /receive/<id>
-#  Mobile page shown when camera scans the code
+#  Smart page: client scans doc QR to update status
 # ─────────────────────────────────────────────
 
 @app.route("/receive/<doc_id>", methods=["GET","POST"])
-@login_required
 def receive(doc_id):
     doc = get_doc(doc_id)
     if not doc:
-        return render_template("receive.html", doc=None,
+        return render_template("doc_scan.html", doc=None,
                                error="Document not found in the system.")
-    success_entry = None
+    result = None
     if request.method == "POST":
-        office  = request.form.get("office","").strip()
-        officer = request.form.get("officer","").strip()
-        action  = request.form.get("action","Received")
-        remarks = request.form.get("remarks","").strip()
-        if not office:
-            flash("Office / Department name is required.", "error")
+        action = request.form.get("action","").strip()
+        if not is_logged_in():
+            result = {"ok": False, "msg": "Please log in first.", "login_required": True}
+        elif action not in ("receive","release"):
+            result = {"ok": False, "msg": "Invalid action."}
         else:
-            entry = {"office": office, "action": action,
-                     "officer": officer, "timestamp": now_str(), "remarks": remarks}
-            doc.setdefault("travel_log", []).append(entry)
-            doc["status"] = {
-                "Received":"In Transit","Released":"Released",
-                "On Hold":"On Hold","Returned":"In Transit","Completed":"Released",
-            }.get(action, "In Transit")
-            if action in ("Released","Completed") and not doc.get("date_released"):
-                doc["date_released"] = datetime.now().strftime("%Y-%m-%d")
-            save_doc(doc)
-            success_entry = entry
-    return render_template("receive.html", doc=doc, success_entry=success_entry,
-        action_options=["Received","Released","On Hold","Returned","Completed"])
+            role = session.get("role","guest")
+            # Clients can only update their own docs
+            if role == "client" and doc.get("submitted_by") != session.get("username"):
+                result = {"ok": False, "msg": "You can only update your own documents."}
+            else:
+                actor = session.get("full_name") or session.get("username")
+                if action == "receive":
+                    doc["status"] = "Received"
+                    doc["date_received"] = now_str()[:10]
+                    log_action = "Document Received at Office"
+                    log_remark = "Marked Received by scanning document QR code."
+                else:
+                    doc["status"] = "Released"
+                    doc["date_released"] = now_str()[:10]
+                    log_action = "Document Released from Office"
+                    log_remark = "Marked Released by scanning document QR code."
+                doc.setdefault("travel_log", []).append({
+                    "office": "DepEd Leyte Division Office",
+                    "action": log_action,
+                    "officer": actor,
+                    "timestamp": now_str(),
+                    "remarks": log_remark,
+                })
+                save_doc(doc)
+                doc = get_doc(doc_id)  # reload fresh
+                result = {"ok": True, "action": action, "status": doc["status"]}
+    return render_template("doc_scan.html", doc=doc, result=result)
 
 # ─────────────────────────────────────────────
 #  UPLOAD QR CODE IMAGE → auto-log
@@ -1120,6 +1132,18 @@ def scan():
 #  CLIENT PORTAL
 # ─────────────────────────────────────────────
 
+
+@app.route("/client/submitted/<doc_id>")
+def client_submitted(doc_id):
+    """Show QR code immediately after client submits a document."""
+    if not is_logged_in() or session.get("role") != "client":
+        return redirect(url_for("client_login"))
+    doc = get_doc(doc_id)
+    if not doc or doc.get("submitted_by") != session.get("username"):
+        return redirect(url_for("client_portal"))
+    qr_b64 = generate_qr_b64(doc, request.host_url)
+    return render_template("client_submitted.html", doc=doc, qr_b64=qr_b64)
+
 @app.route("/client")
 def client_portal():
     """Client dashboard — shows only their own submitted documents."""
@@ -1224,8 +1248,7 @@ def client_submit():
             "remarks": "Submitted via client portal.",
         })
         insert_doc(doc)
-        flash("Document submitted successfully! Track it below.", "success")
-        return redirect(url_for("client_portal"))
+        return redirect(url_for("client_submitted", doc_id=doc["id"]))
     return render_template("client_submit.html", doc={})
 
 @app.route("/client/track/<doc_id>")
