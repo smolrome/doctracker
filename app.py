@@ -49,10 +49,10 @@ DATA_FILE = os.environ.get("DATA_FILE", "documents.json")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "deped2025")
 
-# ── Email config — Resend API (no SMTP, works on Railway) ──
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-MAIL_SENDER    = os.environ.get("MAIL_SENDER", "onboarding@resend.dev")
-MAIL_ENABLED   = bool(RESEND_API_KEY)
+# ── Email config — Brevo API (works on Railway) ──
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
+MAIL_SENDER   = os.environ.get("MAIL_SENDER", "")  # must be a verified sender in Brevo
+MAIL_ENABLED  = bool(BREVO_API_KEY and MAIL_SENDER)
 
 # ─────────────────────────────────────────────
 #  INVITE TOKEN HELPERS
@@ -150,9 +150,9 @@ def _save_tokens_json(tokens):
         json.dump(tokens, f, indent=2)
 
 def send_invite_email(to_email, to_name=""):
-    """Send invite via Resend HTTP API - no SMTP, works on Railway."""
+    """Send invite via Brevo (Sendinblue) API - works on Railway."""
     if not MAIL_ENABLED:
-        return False, "Email not configured. Set RESEND_API_KEY in Railway Variables."
+        return False, "Email not configured. Set BREVO_API_KEY in Railway Variables."
     try:
         token = generate_invite_token(to_email, to_name)
         base_url = os.environ.get("APP_URL", "https://your-app.up.railway.app").rstrip("/")
@@ -161,10 +161,10 @@ def send_invite_email(to_email, to_name=""):
 
         html_body = (
             "<div style='font-family:Arial,sans-serif;max-width:520px;margin:0 auto;'>"
-            "<div style='background:#0D1B2A;padding:28px;text-align:center;'>"
+            "<div style='background:#0D1B2A;padding:28px;text-align:center;border-radius:12px 12px 0 0;'>"
             "<div style='font-size:22px;font-weight:800;color:#fff;'>DocTracker - DepEd Leyte</div>"
             "</div>"
-            "<div style='background:#fff;padding:32px;'>"
+            "<div style='background:#fff;padding:32px;border-radius:0 0 12px 12px;'>"
             "<p>" + greeting + "</p>"
             "<p>You have been invited to join the <strong>DepEd Leyte Division Document Tracker</strong>.</p>"
             "<div style='text-align:center;margin:24px 0;'>"
@@ -178,34 +178,33 @@ def send_invite_email(to_email, to_name=""):
             "</div></div>"
         )
 
-        text_body = greeting + "\n\nYou are invited to join DepEd Leyte DocTracker.\n\nRegister here (expires 48hrs):\n" + register_link
-
         payload_dict = {
-            "from": "DepEd DocTracker <" + MAIL_SENDER + ">",
-            "to": [to_email],
+            "sender": {"name": "DepEd DocTracker", "email": MAIL_SENDER},
+            "to": [{"email": to_email, "name": to_name or to_email}],
             "subject": "You're Invited - DepEd Leyte DocTracker",
-            "html": html_body,
-            "text": text_body
+            "htmlContent": html_body,
+            "textContent": greeting + "\n\nRegister here (expires 48hrs):\n" + register_link
         }
         payload = json.dumps(payload_dict).encode("utf-8")
 
         headers = {
-            "Authorization": "Bearer " + RESEND_API_KEY,
-            "Content-Type": "application/json"
+            "api-key": BREVO_API_KEY,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
         }
         req = urllib.request.Request(
-            "https://api.resend.com/emails",
+            "https://api.brevo.com/v3/smtp/email",
             data=payload,
             headers=headers,
             method="POST"
         )
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:
             resp.read()
         return True, token
 
     except urllib.error.HTTPError as e:
         body = e.read().decode()
-        return False, "Resend error " + str(e.code) + ": " + body
+        return False, "Brevo error " + str(e.code) + ": " + body
     except Exception as e:
         return False, "Email error: " + str(e)
 def is_logged_in():
@@ -296,6 +295,7 @@ def debug_error():
         "USE_DB": USE_DB,
         "DB_URL_SET": bool(os.environ.get("DATABASE_URL")),
         "MAIL_ENABLED": MAIL_ENABLED,
+            "BREVO_CONFIGURED": bool(os.environ.get("BREVO_API_KEY")),
         "APP_URL": os.environ.get("APP_URL","not set"),
         "ADMIN_USERNAME": ADMIN_USERNAME,
     }
