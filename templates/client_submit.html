@@ -2,101 +2,187 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Submit Document — DocTracker</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    :root{--teal:#0E7490;--emerald:var(--emerald);--navy:#0A2540;--surface:#F0F7FA;--border:#C8DDE8;--text:#0A2540;--muted:#5A7A91;}
-    body{font-family:'DM Sans',sans-serif;background:var(--surface);min-height:100vh;}
-    .topbar{background:var(--dark-green);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
-    .topbar-title{font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;color:#fff;}
-    .topbar a{color:#A7F3D0;font-size:13px;font-weight:600;text-decoration:none;}
-    .page{max-width:600px;margin:0 auto;padding:24px 16px;}
-    .page-title{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:var(--navy);margin-bottom:20px;}
-    .card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:24px;margin-bottom:20px;}
-    .card h3{font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:16px;padding-bottom:10px;border-bottom:1.5px solid var(--border);}
+    html{font-size:16px;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+    :root{
+      --teal:#0E7490;--dark:#0A4D68;--emerald:#059669;
+      --navy:#0A2540;--surface:#F0F7FA;--border:#C8DDE8;
+      --text:#0A2540;--muted:#5A7A91;--danger:#DC2626;
+    }
+    body{font-family:'Source Sans 3',sans-serif;background:var(--surface);min-height:100vh;color:var(--text);}
+
+    /* ── TOPBAR ── */
+    .topbar{
+      background:linear-gradient(135deg,#0A4D68 0%,#0E7490 55%,#059669 100%);
+      height:60px;display:flex;align-items:center;padding:0 16px;
+      justify-content:space-between;gap:12px;position:sticky;top:0;z-index:100;
+      box-shadow:0 4px 20px rgba(10,45,100,.3);
+    }
+    .topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+      background:linear-gradient(90deg,#22D3EE,#34D399,#22D3EE);}
+    .topbar-brand{display:flex;align-items:center;gap:10px;flex-shrink:1;min-width:0;}
+    .topbar-brand img{width:38px;height:38px;border-radius:50%;object-fit:cover;
+      border:2px solid rgba(255,255,255,.45);background:#fff;flex-shrink:0;}
+    .topbar-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:900;
+      color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .topbar-back{color:rgba(255,255,255,.9);font-size:15px;font-weight:700;
+      text-decoration:none;white-space:nowrap;flex-shrink:0;
+      padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.12);
+      border:1.5px solid rgba(255,255,255,.25);}
+
+    /* ── PAGE ── */
+    .page{max-width:600px;margin:0 auto;padding:20px 14px 40px;}
+    .page-title{font-family:'Outfit',sans-serif;font-size:22px;font-weight:900;
+      color:var(--navy);margin-bottom:18px;display:flex;align-items:center;gap:10px;}
+
+    /* ── CARDS ── */
+    .card{background:#fff;border:2px solid var(--border);border-radius:16px;
+      padding:20px;margin-bottom:16px;box-shadow:0 2px 12px rgba(10,45,100,.06);}
+    .card-title{font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;
+      text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+      margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--border);
+      display:flex;align-items:center;gap:8px;}
+
+    /* ── FORM ── */
     .form-group{margin-bottom:16px;}
-    .form-group label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:5px;}
-    .form-group label .req{color:#EF4444;margin-left:2px;}
-    .form-group input,.form-group select,.form-group textarea{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:17px;color:var(--text);background:var(--surface);outline:none;min-height:54px;transition:border .15s;}
+    .form-group:last-child{margin-bottom:0;}
+    .form-group label{display:block;font-size:16px;font-weight:700;
+      color:var(--navy);margin-bottom:8px;}
+    .req{color:var(--danger);margin-left:3px;}
+    .form-group input,
+    .form-group select,
+    .form-group textarea{
+      width:100%;padding:14px 16px;
+      border:2px solid var(--border);border-radius:10px;
+      font-family:inherit;font-size:17px;
+      color:var(--text);background:var(--surface);
+      outline:none;min-height:54px;
+      transition:border-color .15s,box-shadow .15s;
+      -webkit-appearance:none;appearance:none;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus{
+      border-color:var(--teal);background:#fff;
+      box-shadow:0 0 0 4px rgba(14,116,144,.15);}
     .form-group textarea{min-height:90px;resize:vertical;}
-    .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 3px rgba(16,185,129,.15);}
-    .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;min-height:52px;}
-    .btn:hover{background:var(--emerald);}
-    .btn-cancel{background:#F4F7FB;color:var(--muted);border:1.5px solid var(--border);margin-bottom:10px;}
-    .btn-cancel:hover{background:#E5E7EB;}
-    #loading-overlay{display:none;position:fixed;inset:0;background:rgba(6,78,59,.6);backdrop-filter:blur(3px);z-index:999;align-items:center;justify-content:center;}
+
+    /* ── BUTTONS ── */
+    .btn{
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      width:100%;padding:16px;border-radius:12px;font-family:inherit;
+      font-size:18px;font-weight:700;cursor:pointer;
+      text-decoration:none;border:none;min-height:56px;
+      margin-bottom:10px;transition:all .2s;
+    }
+    .btn:last-child{margin-bottom:0;}
+    .btn-submit{
+      background:linear-gradient(135deg,var(--dark),var(--teal));
+      color:#fff;box-shadow:0 6px 20px rgba(10,77,104,.35);}
+    .btn-submit:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(10,77,104,.5);}
+    .btn-cancel{background:var(--surface);color:var(--muted);border:2px solid var(--border);}
+    .btn-cancel:hover{border-color:var(--teal);color:var(--dark);}
+
+    /* ── LOADING ── */
+    #loading-overlay{display:none;position:fixed;inset:0;
+      background:rgba(10,37,64,.65);backdrop-filter:blur(4px);
+      z-index:9999;align-items:center;justify-content:center;}
     #loading-overlay.active{display:flex;}
-    .loading-box{background:#fff;border-radius:16px;padding:32px 40px;text-align:center;}
-    .loading-spinner{width:44px;height:44px;border:4px solid #DDE3EE;border-top-color:var(--teal);border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 14px;}
-    .loading-text{font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;color:var(--dark-green);}
+    .loading-box{background:#fff;border-radius:20px;padding:32px 40px;
+      text-align:center;box-shadow:0 24px 80px rgba(0,0,0,.3);}
+    .loading-spinner{width:50px;height:50px;border:5px solid var(--border);
+      border-top-color:var(--teal);border-radius:50%;
+      animation:spin .75s linear infinite;margin:0 auto 16px;}
+    .loading-text{font-family:'Outfit',sans-serif;font-size:18px;
+      font-weight:700;color:var(--navy);}
     @keyframes spin{to{transform:rotate(360deg);}}
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:600px){
+      .page{padding:14px 12px 36px;}
+      .card{padding:16px;}
+      .page-title{font-size:20px;}
+      .form-group label{font-size:15px;}
+      .form-group input,.form-group select,.form-group textarea{font-size:16px;min-height:52px;}
+      .btn{font-size:17px;min-height:54px;}
+    }
+    @media(max-width:380px){
+      .topbar-title{font-size:15px;}
+      .page-title{font-size:18px;}
+    }
   </style>
 </head>
 <body>
 <div class="topbar">
-  <div class="topbar-title">📋 Submit Document</div>
-  <a href="/client">← My Documents</a>
+  <div class="topbar-brand">
+    <img src="/logo.png" alt="DepEd Leyte Logo"/>
+    <span class="topbar-title">Submit Document</span>
+  </div>
+  <a href="/client" class="topbar-back">← My Docs</a>
 </div>
+
 <div class="page">
   <div class="page-title">📄 New Document Submission</div>
-  <form method="post" id="submit-form">
 
+  <form method="post" id="submit-form">
     <div class="card">
-      <h3>📍 Source Information</h3>
+      <div class="card-title">📍 Source Information</div>
       <div class="form-group">
         <label>Unit / Office / School / District <span class="req">*</span></label>
-        <input type="text" name="unit_office" placeholder="e.g. Ormoc City Schools Division" value="{{ doc.get('sender_org','') }}" required/>
+        <input type="text" name="unit_office" placeholder="e.g. Ormoc City Schools Division"
+               value="{{ doc.get('sender_org','') if doc else '' }}" required/>
       </div>
       <div class="form-group">
         <label>Source / Sender Name <span class="req">*</span></label>
-        <input type="text" name="sender_display" placeholder="Name of person/office sending the document" value="{{ doc.get('sender_name','') }}" required/>
+        <input type="text" name="sender_display" placeholder="Name of person or office sending the document"
+               value="{{ doc.get('sender_name','') if doc else '' }}" required/>
       </div>
     </div>
 
     <div class="card">
-      <h3>📄 Document Details</h3>
+      <div class="card-title">📄 Document Details</div>
       <div class="form-group">
         <label>Content / Particulars <span class="req">*</span></label>
-        <input type="text" name="doc_name" placeholder="e.g. Plantilla of Personnel, Leave Application" value="{{ doc.get('doc_name','') }}" required/>
+        <input type="text" name="doc_name" placeholder="e.g. Plantilla of Personnel, Leave Application"
+               value="{{ doc.get('doc_name','') if doc else '' }}" required/>
       </div>
       <div class="form-group">
         <label>Document Type / Category</label>
         <select name="category">
           <option value="">— Select type —</option>
-          <option value="Letter" {% if doc.get('category')=='Letter' %}selected{% endif %}>Letter</option>
-          <option value="Memorandum" {% if doc.get('category')=='Memorandum' %}selected{% endif %}>Memorandum</option>
-          <option value="Report" {% if doc.get('category')=='Report' %}selected{% endif %}>Report</option>
-          <option value="Application" {% if doc.get('category')=='Application' %}selected{% endif %}>Application</option>
-          <option value="Voucher" {% if doc.get('category')=='Voucher' %}selected{% endif %}>Voucher</option>
-          <option value="Plantilla" {% if doc.get('category')=='Plantilla' %}selected{% endif %}>Plantilla</option>
-          <option value="Payroll" {% if doc.get('category')=='Payroll' %}selected{% endif %}>Payroll</option>
-          <option value="Other" {% if doc.get('category')=='Other' %}selected{% endif %}>Other</option>
+          {% for cat in ['Letter','Memorandum','Report','Application','Voucher','Plantilla','Payroll','Other'] %}
+          <option value="{{ cat }}" {% if doc and doc.get('category')==cat %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
         </select>
       </div>
       <div class="form-group">
         <label>Additional Description / Remarks</label>
-        <textarea name="description" placeholder="Any additional details about the document...">{{ doc.get('description','') }}</textarea>
+        <textarea name="description" placeholder="Any additional details about the document...">{{ doc.get('description','') if doc else '' }}</textarea>
       </div>
     </div>
 
     <div class="card">
-      <h3>📬 Routing</h3>
+      <div class="card-title">📬 Routing</div>
       <div class="form-group">
         <label>Referred To <span class="req">*</span></label>
-        <input type="text" name="referred_to" placeholder="e.g. Schools Division Superintendent, Budget Officer" value="{{ doc.get('referred_to','') }}" required/>
+        <input type="text" name="referred_to" placeholder="e.g. Schools Division Superintendent, Budget Officer"
+               value="{{ doc.get('referred_to','') if doc else '' }}" required/>
       </div>
       <div class="form-group">
         <label>Additional Notes</label>
-        <textarea name="notes" placeholder="Any special instructions or notes...">{{ doc.get('notes','') }}</textarea>
+        <textarea name="notes" placeholder="Any special instructions or notes...">{{ doc.get('notes','') if doc else '' }}</textarea>
       </div>
     </div>
 
-    <a href="/client" class="btn btn-cancel">Cancel</a>
-    <button type="submit" class="btn">📤 Submit Document</button>
+    <a href="/client" class="btn btn-cancel">✕ Cancel</a>
+    <button type="submit" class="btn btn-submit">📤 Submit Document</button>
   </form>
 </div>
+
 <div id="loading-overlay">
   <div class="loading-box">
     <div class="loading-spinner"></div>
@@ -104,8 +190,11 @@
   </div>
 </div>
 <script>
-document.getElementById('submit-form').addEventListener('submit',()=>document.getElementById('loading-overlay').classList.add('active'));
-window.addEventListener('pageshow',e=>{if(e.persisted)document.getElementById('loading-overlay').classList.remove('active');});
+document.getElementById('submit-form').addEventListener('submit', () =>
+  document.getElementById('loading-overlay').classList.add('active'));
+window.addEventListener('pageshow', e => {
+  if (e.persisted) document.getElementById('loading-overlay').classList.remove('active');
+});
 </script>
 </body>
 </html>

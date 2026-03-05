@@ -2,161 +2,222 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Scan QR — DocTracker</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    :root{--teal:#0E7490;--dark:#0A4D68;--navy:#0D1B2A;--surface:#F4F7FB;--border:#DDE3EE;--muted:#6B7FA3;}
-    body{font-family:'Source Sans 3',sans-serif;background:var(--navy);min-height:100vh;display:flex;flex-direction:column;}
-    .topbar{background:var(--dark);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-    .topbar-brand{font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;color:#fff;}
-    .topbar a{color:#A7F3D0;font-size:13px;font-weight:600;text-decoration:none;}
+    html{font-size:16px;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+    body{font-family:'Source Sans 3',sans-serif;background:#0A2540;min-height:100vh;
+      display:flex;flex-direction:column;overflow:hidden;}
 
-    /* Scanner area */
-    .scanner-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:16px;}
-    .scanner-box{position:relative;width:100%;max-width:360px;aspect-ratio:1;border-radius:16px;overflow:hidden;background:#000;}
+    /* ── TOPBAR ── */
+    .topbar{
+      background:linear-gradient(135deg,#0A4D68 0%,#0E7490 55%,#059669 100%);
+      height:60px;display:flex;align-items:center;padding:0 16px;
+      justify-content:space-between;gap:12px;flex-shrink:0;
+      box-shadow:0 4px 20px rgba(10,45,100,.4);
+      position:relative;z-index:10;
+    }
+    .topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+      background:linear-gradient(90deg,#22D3EE,#34D399,#22D3EE);}
+    .topbar-brand{display:flex;align-items:center;gap:10px;}
+    .topbar-brand img{width:36px;height:36px;border-radius:50%;object-fit:cover;
+      border:2px solid rgba(255,255,255,.4);background:#fff;flex-shrink:0;}
+    .topbar-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:900;color:#fff;}
+    .topbar-back{color:rgba(255,255,255,.9);font-size:15px;font-weight:700;
+      text-decoration:none;padding:8px 12px;border-radius:8px;
+      background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);}
+
+    /* ── SCANNER BODY ── */
+    .scanner-body{
+      flex:1;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;padding:20px 16px;gap:16px;
+      /* Prevent scroll bouncing on iOS */
+      overflow:hidden;
+    }
+
+    /* ── CAMERA BOX ── */
+    .camera-box{
+      position:relative;
+      width:min(360px, calc(100vw - 32px));
+      aspect-ratio:1/1;
+      border-radius:18px;overflow:hidden;background:#000;
+      box-shadow:0 12px 40px rgba(0,0,0,.5);
+      flex-shrink:0;
+    }
     #qr-video{width:100%;height:100%;object-fit:cover;display:block;}
-    .scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
-    .scan-frame{width:220px;height:220px;border:3px solid var(--teal);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.45);position:relative;}
-    .scan-corner{position:absolute;width:24px;height:24px;border-color:var(--teal);border-style:solid;}
-    .scan-corner.tl{top:-3px;left:-3px;border-width:4px 0 0 4px;border-radius:4px 0 0 0;}
-    .scan-corner.tr{top:-3px;right:-3px;border-width:4px 4px 0 0;border-radius:0 4px 0 0;}
-    .scan-corner.bl{bottom:-3px;left:-3px;border-width:0 0 4px 4px;border-radius:0 0 0 4px;}
-    .scan-corner.br{bottom:-3px;right:-3px;border-width:0 4px 4px 0;border-radius:0 0 4px 0;}
-    .scan-line{position:absolute;left:4px;right:4px;height:2px;background:linear-gradient(90deg,transparent,var(--teal),transparent);animation:scanline 2s ease-in-out infinite;}
-    @keyframes scanline{0%{top:8px;opacity:0;}10%{opacity:1;}90%{opacity:1;}100%{top:calc(100% - 8px);opacity:0;}}
+    .scan-overlay{position:absolute;inset:0;display:flex;align-items:center;
+      justify-content:center;pointer-events:none;}
+    .scan-frame{
+      width:min(220px, calc(100vw - 100px));
+      height:min(220px, calc(100vw - 100px));
+      border-radius:14px;
+      box-shadow:0 0 0 9999px rgba(0,0,0,.5);
+      position:relative;
+    }
+    /* Corner brackets */
+    .sc{position:absolute;width:28px;height:28px;border-color:#22D3EE;border-style:solid;}
+    .sc.tl{top:-3px;left:-3px;border-width:4px 0 0 4px;border-radius:5px 0 0 0;}
+    .sc.tr{top:-3px;right:-3px;border-width:4px 4px 0 0;border-radius:0 5px 0 0;}
+    .sc.bl{bottom:-3px;left:-3px;border-width:0 0 4px 4px;border-radius:0 0 0 5px;}
+    .sc.br{bottom:-3px;right:-3px;border-width:0 4px 4px 0;border-radius:0 0 5px 0;}
+    .scan-line{
+      position:absolute;left:4px;right:4px;height:3px;
+      background:linear-gradient(90deg,transparent,#22D3EE,transparent);
+      animation:scanline 2s ease-in-out infinite;
+      box-shadow:0 0 8px rgba(34,211,238,.8);
+    }
+    @keyframes scanline{
+      0%  {top:8px;opacity:0;}
+      10% {opacity:1;}
+      90% {opacity:1;}
+      100%{top:calc(100% - 8px);opacity:0;}
+    }
 
-    .scanner-label{font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;color:#fff;text-align:center;}
-    .scanner-sub{font-size:13px;color:#8EA8C3;text-align:center;max-width:300px;line-height:1.5;}
+    /* ── LABELS ── */
+    .scan-title{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;
+      color:#fff;text-align:center;}
+    .scan-sub{font-size:16px;color:rgba(255,255,255,.65);text-align:center;
+      max-width:320px;line-height:1.5;}
 
-    /* Status */
-    .scan-status{padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;text-align:center;width:100%;max-width:360px;}
-    .scan-status.scanning{background:rgba(255,255,255,.08);color:#8EA8C3;}
-    .scan-status.found{background:rgba(16,185,129,.2);color:#6EE7B7;border:1.5px solid rgba(16,185,129,.4);}
-    .scan-status.error{background:rgba(239,68,68,.15);color:#FCA5A5;border:1.5px solid rgba(239,68,68,.3);}
+    /* ── STATUS BAR ── */
+    .scan-status{
+      width:min(380px,calc(100vw - 32px));
+      padding:14px 18px;border-radius:12px;
+      font-size:16px;font-weight:700;text-align:center;
+    }
+    .status-idle   {background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);}
+    .status-found  {background:rgba(34,211,238,.2);color:#A5F3FC;
+      border:2px solid rgba(34,211,238,.4);}
+    .status-error  {background:rgba(239,68,68,.15);color:#FCA5A5;
+      border:2px solid rgba(239,68,68,.35);}
 
-    /* Bottom controls */
-    .controls{width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px;}
-    .btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:10px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;border:none;min-height:50px;}
-    .btn-green{background:var(--teal);color:#fff;}
-    .btn-outline{background:rgba(255,255,255,.08);color:#fff;border:1.5px solid rgba(255,255,255,.15);}
+    /* ── BUTTONS ── */
+    .btn-group{width:min(380px,calc(100vw - 32px));display:flex;flex-direction:column;gap:10px;}
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;
+      padding:16px;border-radius:12px;font-family:inherit;font-size:17px;
+      font-weight:700;cursor:pointer;text-decoration:none;border:none;min-height:54px;
+      transition:all .2s;}
+    .btn-found{background:linear-gradient(135deg,#059669,#0E7490);color:#fff;
+      box-shadow:0 5px 18px rgba(5,150,105,.4);}
+    .btn-back{background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);
+      border:1.5px solid rgba(255,255,255,.2);}
 
-    /* Camera permission denied */
-    .perm-denied{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);border-radius:14px;padding:24px;text-align:center;width:100%;max-width:360px;}
-    .perm-denied h3{font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;color:#fff;margin-bottom:8px;}
-    .perm-denied p{font-size:13px;color:#8EA8C3;line-height:1.6;margin-bottom:16px;}
+    /* ── PERMISSION DENIED ── */
+    .perm-box{
+      width:min(380px,calc(100vw - 32px));
+      background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.12);
+      border-radius:16px;padding:28px 22px;text-align:center;
+    }
+    .perm-box h3{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;
+      color:#fff;margin-bottom:10px;}
+    .perm-box p{font-size:16px;color:rgba(255,255,255,.65);line-height:1.6;margin-bottom:18px;}
+
+    @media(max-width:380px){
+      .scan-title{font-size:18px;}
+      .scan-sub{font-size:15px;}
+      .btn{font-size:16px;min-height:50px;}
+    }
   </style>
 </head>
 <body>
 <div class="topbar">
-  <div class="topbar-brand" style="display:flex;align-items:center;gap:8px;"><img src="/logo.png" alt="Logo" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.4);background:#fff;"/> 📷 Scan QR</div>
-  <a href="/client">← Back</a>
+  <div class="topbar-brand">
+    <img src="/logo.png" alt="DepEd Leyte Logo"/>
+    <span class="topbar-title">📷 Scan QR Code</span>
+  </div>
+  <a href="/client" class="topbar-back">← Back</a>
 </div>
 
-<div class="scanner-wrap">
-  <div class="scanner-box" id="scanner-box">
+<div class="scanner-body">
+  <div class="camera-box" id="camera-box">
     <video id="qr-video" playsinline autoplay muted></video>
     <div class="scan-overlay">
       <div class="scan-frame">
-        <div class="scan-corner tl"></div>
-        <div class="scan-corner tr"></div>
-        <div class="scan-corner bl"></div>
-        <div class="scan-corner br"></div>
+        <div class="sc tl"></div><div class="sc tr"></div>
+        <div class="sc bl"></div><div class="sc br"></div>
         <div class="scan-line"></div>
       </div>
     </div>
   </div>
 
-  <div class="scanner-label">Point camera at document QR</div>
-  <div class="scanner-sub">Scan the QR code on your document to quickly update its status.</div>
+  <div class="scan-title">Point camera at document QR</div>
+  <div class="scan-sub">Scan any document QR code to view and update its status.</div>
 
-  <div class="scan-status scanning" id="scan-status">📷 Starting camera...</div>
+  <div class="scan-status status-idle" id="scan-status">📷 Starting camera...</div>
 
-  <div class="controls">
-    <div id="result-area" style="display:none;">
-      <a href="#" id="result-btn" class="btn btn-green">⚡ Open Document</a>
-    </div>
-    <a href="/client" class="btn btn-outline">← My Documents</a>
+  <div class="btn-group">
+    <a href="#" id="result-btn" class="btn btn-found" style="display:none;">⚡ Open Document</a>
+    <a href="/client" class="btn btn-back">← My Documents</a>
   </div>
 </div>
 
-<!-- jsQR library for QR decoding -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
 <script>
-const video = document.getElementById('qr-video');
-const statusEl = document.getElementById('scan-status');
-const resultArea = document.getElementById('result-area');
+const video     = document.getElementById('qr-video');
+const statusEl  = document.getElementById('scan-status');
 const resultBtn = document.getElementById('result-btn');
-const scannerBox = document.getElementById('scanner-box');
-let scanning = true;
-let lastDetected = null;
+const cameraBox = document.getElementById('camera-box');
+let scanning = true, lastDetected = null;
 
-async function startCamera() {
+async function startCamera(){
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}
     });
     video.srcObject = stream;
-    video.play();
-    statusEl.textContent = '📷 Scanning... point at a QR code';
-    statusEl.className = 'scan-status scanning';
+    await video.play();
+    statusEl.textContent = '📷 Scanning — point at a QR code';
+    statusEl.className = 'scan-status status-idle';
     requestAnimationFrame(tick);
   } catch(err) {
-    statusEl.className = 'scan-status error';
+    statusEl.className = 'scan-status status-error';
     statusEl.textContent = '❌ Camera access denied';
-    scannerBox.innerHTML = `
-      <div class="perm-denied" style="margin:0;border-radius:16px;">
-        <h3>📷 Camera Access Needed</h3>
-        <p>Please allow camera access in your browser settings, then refresh the page.</p>
+    cameraBox.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;padding:24px;text-align:center;">
+        <div>
+          <div style="font-size:48px;margin-bottom:12px;">📷</div>
+          <div style="font-family:Outfit,sans-serif;font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;">Camera Access Needed</div>
+          <p style="font-size:15px;color:rgba(255,255,255,.65);line-height:1.6;">
+            Allow camera access in your browser settings, then refresh this page.
+          </p>
+        </div>
       </div>`;
   }
 }
 
-function tick() {
-  if (!scanning) return;
-  if (video.readyState === video.HAVE_ENOUGH_DATA) {
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: 'dontInvert'
-    });
-
-    if (code && code.data !== lastDetected) {
+function tick(){
+  if(!scanning) return;
+  if(video.readyState === video.HAVE_ENOUGH_DATA){
+    const c = document.createElement('canvas');
+    c.width = video.videoWidth; c.height = video.videoHeight;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(video,0,0,c.width,c.height);
+    const img = ctx.getImageData(0,0,c.width,c.height);
+    const code = jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert'});
+    if(code && code.data !== lastDetected){
       lastDetected = code.data;
-      onQRDetected(code.data);
+      onDetected(code.data);
       return;
     }
   }
   requestAnimationFrame(tick);
 }
 
-function onQRDetected(data) {
-  // Extract /receive/<id> URL pattern
-  const match = data.match(/\/receive\/([A-Z0-9]{8})/i);
-  if (match) {
-    const docId = match[1].toUpperCase();
-    const url = '/receive/' + docId;
+function onDetected(data){
+  const m = data.match(/\/receive\/([A-Z0-9]{8})/i);
+  if(m){
+    const url = '/receive/'+m[1].toUpperCase();
     scanning = false;
-
-    statusEl.className = 'scan-status found';
-    statusEl.textContent = '✅ Document found! Tap button below.';
-
+    statusEl.className = 'scan-status status-found';
+    statusEl.textContent = '✅ Document found! Opening...';
     resultBtn.href = url;
-    resultBtn.textContent = '⚡ Open Document ' + docId;
-    resultArea.style.display = 'block';
-
-    // Vibrate on mobile if supported
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-
-    // Auto-redirect after 1.5s
-    setTimeout(() => { window.location.href = url; }, 1500);
+    resultBtn.textContent = '⚡ Open Document '+m[1].toUpperCase();
+    resultBtn.style.display = 'flex';
+    if(navigator.vibrate) navigator.vibrate([100,50,100]);
+    setTimeout(()=>{ window.location.href = url; }, 1200);
   } else {
-    // Not a DocTracker QR — keep scanning
     lastDetected = null;
     requestAnimationFrame(tick);
   }

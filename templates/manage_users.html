@@ -29,6 +29,15 @@
   .invite-info p { font-size:13px; color:var(--muted); margin-top:6px; }
 
   .empty-users { text-align:center; padding:40px 20px; color:var(--muted); }
+  @media(max-width:600px){
+    .user-row{flex-direction:column;align-items:flex-start;gap:8px;}
+    .user-date{font-size:13px;}
+    .invite-code{font-size:14px;}
+  }
+  @media(max-width:480px){
+    .user-info{flex-wrap:wrap;}
+    .user-avatar{width:36px;height:36px;font-size:14px;}
+  }
 </style>
 
 <!-- Invite Code Info -->

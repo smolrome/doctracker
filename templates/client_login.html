@@ -36,6 +36,15 @@
     .loading-spinner{width:52px;height:52px;border:5px solid #C8DDE8;border-top-color:#059669;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 16px;}
     .loading-text{font-family:'Outfit',sans-serif;font-size:18px;font-weight:700;color:#0A2540;}
     @keyframes spin{to{transform:rotate(360deg);}}
+      @media(max-width:480px){
+      body{padding:14px;}
+      .card{padding:28px 20px;}
+      .header-title{font-size:22px;}
+    }
+    @media(max-width:360px){
+      .card{padding:20px 14px;}
+      .form-group input{min-height:52px;}
+    }
   </style>
 </head>
 <body>

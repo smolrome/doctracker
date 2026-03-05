@@ -2,52 +2,88 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Document Submitted — DocTracker</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    :root{--teal:#0E7490;--dark:#0A4D68;--navy:#0D1B2A;--surface:#F4F7FB;--border:#DDE3EE;--muted:#6B7FA3;}
-    body{font-family:'Source Sans 3',sans-serif;background:linear-gradient(135deg,#0A4D68 0%,#0A3D2E 60%,#0E7490 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
-    .wrap{width:100%;max-width:460px;}
-    .card{background:#fff;border-radius:20px;padding:32px;box-shadow:0 24px 64px rgba(0,0,0,.25);text-align:center;}
-    .success-icon{font-size:56px;margin-bottom:12px;}
-    .success-title{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:var(--dark);margin-bottom:6px;}
-    .success-sub{font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.5;}
+    html{font-size:16px;-webkit-text-size-adjust:100%;}
+    :root{--teal:#0E7490;--dark:#0A4D68;--navy:#0A2540;--surface:#F0F7FA;--border:#C8DDE8;--muted:#5A7A91;}
+    body{font-family:'Source Sans 3',sans-serif;min-height:100vh;
+      background:linear-gradient(135deg,#0A4D68 0%,#0E7490 50%,#059669 100%);
+      display:flex;align-items:flex-start;justify-content:center;padding:20px;}
+    .wrap{width:100%;max-width:500px;}
+    .card{background:#fff;border-radius:20px;padding:28px 24px;
+      box-shadow:0 24px 64px rgba(0,0,0,.25);}
 
-    /* QR section */
-    .qr-box{background:var(--surface);border:2px dashed var(--border);border-radius:14px;padding:20px;margin-bottom:20px;}
-    .qr-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;}
-    .qr-img{width:200px;height:200px;border-radius:10px;margin:0 auto 12px;}
-    .qr-instruction{font-size:14px;color:var(--muted);line-height:1.6;}
-
-    /* How to use */
-    .steps{text-align:left;margin-bottom:20px;}
-    .steps h3{font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;}
-    .step{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;}
-    .step-num{width:26px;height:26px;border-radius:50%;background:var(--teal);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-    .step-text{font-size:13px;color:#1A2B45;line-height:1.5;padding-top:4px;}
+    /* Success header */
+    .success-header{text-align:center;margin-bottom:20px;}
+    .success-header img{width:80px;height:80px;border-radius:50%;object-fit:cover;
+      border:4px solid rgba(255,255,255,.5);box-shadow:0 8px 24px rgba(0,0,0,.2);
+      margin-bottom:12px;}
+    .success-icon{font-size:48px;margin-bottom:10px;}
+    .success-title{font-family:'Outfit',sans-serif;font-size:22px;font-weight:900;
+      color:var(--navy);margin-bottom:6px;}
+    .success-sub{font-size:15px;color:var(--muted);line-height:1.55;}
 
     /* Doc info */
-    .doc-info{background:#ECFDF5;border:1.5px solid var(--teal);border-radius:10px;padding:14px;margin-bottom:20px;text-align:left;}
-    .doc-info-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dark);margin-bottom:6px;}
-    .doc-info-name{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:3px;}
-    .doc-info-ref{font-family:monospace;font-size:12px;color:var(--muted);}
+    .doc-info{background:#ECFDF5;border:2px solid #059669;border-radius:12px;
+      padding:14px 16px;margin-bottom:16px;}
+    .doc-info-label{font-size:13px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.07em;color:#0A4D68;margin-bottom:6px;}
+    .doc-info-name{font-family:'Outfit',sans-serif;font-size:17px;font-weight:800;
+      color:var(--navy);margin-bottom:4px;line-height:1.3;}
+    .doc-info-ref{font-family:monospace;font-size:13px;color:var(--muted);}
+
+    /* QR box */
+    .qr-box{background:var(--surface);border:2px dashed var(--border);
+      border-radius:14px;padding:18px;margin-bottom:16px;text-align:center;}
+    .qr-label{font-size:13px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.07em;color:var(--muted);margin-bottom:12px;}
+    .qr-img{width:min(200px, 70vw);height:min(200px, 70vw);
+      border-radius:12px;border:3px solid var(--border);margin:0 auto 12px;display:block;}
+    .qr-hint{font-size:15px;color:var(--muted);line-height:1.55;}
+
+    /* Steps */
+    .steps{margin-bottom:16px;}
+    .steps-title{font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;
+      text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
+      margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+    .step{display:flex;gap:12px;margin-bottom:12px;align-items:flex-start;}
+    .step-num{width:30px;height:30px;border-radius:50%;
+      background:linear-gradient(135deg,#0A4D68,#0E7490);
+      color:#fff;font-size:14px;font-weight:800;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .step-text{font-size:15px;color:var(--navy);line-height:1.55;padding-top:4px;}
 
     /* Buttons */
-    .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;margin-bottom:8px;border:none;}
-    .btn-green{background:var(--teal);color:#fff;}
-    .btn-green:hover{background:#059669;}
-    .btn-outline{background:#fff;color:var(--muted);border:1.5px solid var(--border);}
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;
+      width:100%;padding:15px;border-radius:10px;font-family:inherit;
+      font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;
+      border:none;min-height:52px;margin-bottom:10px;transition:all .2s;}
+    .btn:last-child{margin-bottom:0;}
+    .btn-main{background:linear-gradient(135deg,#0A4D68,#059669);color:#fff;
+      box-shadow:0 5px 16px rgba(10,77,104,.3);}
+    .btn-main:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(10,77,104,.4);}
+    .btn-outline{background:var(--surface);color:var(--muted);border:2px solid var(--border);}
     .btn-outline:hover{border-color:var(--teal);color:var(--dark);}
+
+    @media(max-width:480px){
+      body{padding:12px;}
+      .card{padding:20px 16px;}
+      .success-title{font-size:20px;}
+      .step-text{font-size:14px;}
+    }
   </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
-    <div class="success-icon">🎉</div>
-    <div class="success-title">Document Submitted!</div>
-    <div class="success-sub">Your document has been logged in the system. Save or screenshot your QR code — you'll use it at the office.</div>
+    <div class="success-header">
+      <img src="/logo.png" alt="DepEd Leyte Logo"/>
+      <div class="success-title">🎉 Document Submitted!</div>
+      <div class="success-sub">Your document is logged. Screenshot your QR code — you'll need it at the office.</div>
+    </div>
 
     <div class="doc-info">
       <div class="doc-info-label">📄 Submitted Document</div>
@@ -55,37 +91,35 @@
       <div class="doc-info-ref">Ref: {{ doc.doc_id }} &nbsp;·&nbsp; ID: {{ doc.id }}</div>
     </div>
 
-    <!-- QR Code -->
     <div class="qr-box">
       <div class="qr-label">📱 Your Document QR Code</div>
       <img src="data:image/png;base64,{{ qr_b64 }}" class="qr-img" alt="Document QR Code"/>
-      <div class="qr-instruction">Show this QR code to the office staff when dropping off or picking up your document.</div>
+      <div class="qr-hint">Show this QR at the office to instantly update your document's status.</div>
     </div>
 
-    <!-- How to use -->
     <div class="steps">
-      <h3>How to use your QR code</h3>
+      <div class="steps-title">How to use your QR</div>
       <div class="step">
         <div class="step-num">1</div>
-        <div class="step-text"><strong>Screenshot or save</strong> this QR code on your phone now.</div>
+        <div class="step-text"><strong>Screenshot or save</strong> this QR code right now.</div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
-        <div class="step-text">When you <strong>arrive at the office</strong>, scan or show the QR → tap <em>Mark as Received</em>.</div>
+        <div class="step-text">At the office, scan the QR → tap <strong>Mark as Received</strong>.</div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
-        <div class="step-text">When your document is <strong>ready for pickup</strong>, scan again → tap <em>Mark as Released</em>.</div>
+        <div class="step-text">When ready for pickup, scan again → tap <strong>Mark as Released</strong>.</div>
       </div>
       <div class="step">
         <div class="step-num">4</div>
-        <div class="step-text">Track your document status anytime from <strong>My Documents</strong>.</div>
+        <div class="step-text">Track status anytime from <strong>My Documents</strong>.</div>
       </div>
     </div>
 
     <a href="/qr/{{ doc.id }}.png" download class="btn btn-outline">⬇️ Download QR as PNG</a>
     <a href="/client/track/{{ doc.id }}" class="btn btn-outline">🔍 Track This Document</a>
-    <a href="/client" class="btn btn-green">📋 My Documents</a>
+    <a href="/client" class="btn btn-main">📋 Go to My Documents</a>
   </div>
 </div>
 </body>

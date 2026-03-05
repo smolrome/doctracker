@@ -59,6 +59,17 @@
     .loading-spinner{width:52px;height:52px;border:5px solid #C8DDE8;border-top-color:#0E7490;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 16px;}
     .loading-text{font-family:'Outfit',sans-serif;font-size:18px;font-weight:700;color:#0A2540;}
     @keyframes spin{to{transform:rotate(360deg);}}
+      @media(max-width:480px){
+      body{padding:14px;}
+      .card{padding:28px 20px;}
+      .header-title{font-size:24px;}
+      .btn{font-size:17px;}
+    }
+    @media(max-width:360px){
+      .card{padding:22px 16px;}
+      .header-title{font-size:22px;}
+      .form-group input{font-size:16px;min-height:52px;}
+    }
   </style>
 </head>
 <body>

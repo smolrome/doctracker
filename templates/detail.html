@@ -208,4 +208,16 @@
   </div>
 
 </div>
+<style>
+@media(max-width:600px){
+  .detail-grid{grid-template-columns:1fr;}
+  .detail-actions{flex-wrap:wrap;}
+  .detail-actions .btn{flex:1;min-width:130px;justify-content:center;}
+  .val{font-size:15px;}
+}
+@media(max-width:480px){
+  .detail-actions .btn{width:100%;flex:none;}
+  td{font-size:14px;padding:10px;}
+}
+</style>
 {% endblock %}

@@ -18,21 +18,35 @@
   .action-icon{font-size:52px;margin-bottom:8px;}
   .action-title{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;
     color:{% if action=='receive' %}#1D4ED8{% else %}#0A3D2E{% endif %};margin-bottom:4px;}
-  .action-sub{font-size:14px;color:var(--muted);}
+  .action-sub{font-size:16px;color:var(--muted);}
   .action-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:22px;margin-bottom:14px;}
-  .action-card h3{font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:14px;}
+  .action-card h3{font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:14px;}
   .result-ok{background:#D1FAE5;border:2px solid var(--success);border-radius:14px;padding:20px;margin-bottom:14px;}
   .result-ok h3{font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;color:#0A3D2E;margin-bottom:8px;}
-  .result-ok p{font-size:14px;color:#0A3D2E;}
+  .result-ok p{font-size:16px;color:#0A3D2E;}
   .result-err{background:#FEE2E2;border:2px solid var(--danger);border-radius:14px;padding:18px;margin-bottom:14px;}
-  .result-err p{font-size:14px;color:#7F1D1D;font-weight:600;margin-bottom:10px;}
+  .result-err p{font-size:16px;color:#7F1D1D;font-weight:700;margin-bottom:10px;}
   .doc-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;background:#fff;border-radius:8px;padding:12px;}
-  .dm-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
-  .dm-value{font-size:14px;font-weight:600;color:var(--navy);}
+  .dm-label{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);}
+  .dm-value{font-size:16px;font-weight:600;color:var(--navy);}
   .login-prompt{background:#FFF3CD;border:1.5px solid #F59E0B;border-radius:10px;padding:16px;margin-top:10px;text-align:center;}
-  .login-prompt p{font-size:13px;color:#92400E;margin-bottom:12px;}
+  .login-prompt p{font-size:16px;color:#92400E;margin-bottom:12px;}
   .login-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
-  @media(max-width:480px){.doc-meta{grid-template-columns:1fr;}}
+  @media(max-width:600px){
+    .action-wrap{padding:0;}
+    .action-hero{padding:22px 16px;}
+    .action-title{font-size:20px;}
+    .action-card{padding:18px;}
+    .doc-meta{grid-template-columns:1fr;}
+  }
+  @media(max-width:480px){
+    .doc-meta{grid-template-columns:1fr;}
+    .action-icon{font-size:44px;}
+  }
+  @media(max-width:380px){
+    .login-btns{flex-direction:column;}
+    .login-btns a{min-height:50px;font-size:15px;}
+  }
 </style>
 
 <div class="action-wrap">
@@ -98,8 +112,8 @@
     <h3 style="color:#92400E;">🔐 Login Required</h3>
     <p style="font-size:13px;color:#92400E;margin-bottom:14px;">You must be logged in to update document status. Please log in first.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <a href="/client/login?next=/office-action/{{ action }}" class="btn btn-primary" style="flex:1;justify-content:center;min-height:44px;">👤 Client Login</a>
-      <a href="/login?next=/office-action/{{ action }}" class="btn btn-secondary" style="flex:1;justify-content:center;min-height:44px;">🔐 Staff Login</a>
+      <a href="/client/login?next=/office-action/{{ action }}" class="btn btn-primary" style="flex:1;justify-content:center;min-height:54px;">👤 Client Login</a>
+      <a href="/login?next=/office-action/{{ action }}" class="btn btn-secondary" style="flex:1;justify-content:center;min-height:54px;">🔐 Staff Login</a>
     </div>
   </div>
   {% endif %}
@@ -114,7 +128,7 @@
                placeholder="e.g. A3F9B2C1"
                style="font-size:20px;font-family:monospace;font-weight:700;text-transform:uppercase;letter-spacing:.1em;min-height:58px;"
                autocomplete="off" autofocus required />
-        <div style="font-size:12px;color:var(--muted);margin-top:6px;">
+        <div style="font-size:13px;color:var(--muted);margin-top:6px;">
           The 8-character ID from your document's tracking page or confirmation.
         </div>
       </div>

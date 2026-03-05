@@ -22,7 +22,7 @@
     }
     .topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#22D3EE,#34D399,#22D3EE);}
     .topbar-brand{font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px;}
-    .topbar-sub{font-size:11px;font-weight:500;color:rgba(255,255,255,.7);display:block;text-transform:uppercase;letter-spacing:.04em;}
+    .topbar-sub{font-size:13px;font-weight:500;color:rgba(255,255,255,.7);display:block;text-transform:uppercase;letter-spacing:.04em;}
     .topbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;}
     .tb-btn{padding:9px 16px;border-radius:8px;font-size:15px;font-weight:700;text-decoration:none;border:none;cursor:pointer;font-family:inherit;min-height:42px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
     .tb-primary{background:rgba(255,255,255,.25);color:#fff;border:1.5px solid rgba(255,255,255,.4);}
@@ -63,7 +63,7 @@
     .doc-left{flex:1;min-width:0;}
     .doc-name{font-family:'Outfit',sans-serif;font-weight:700;font-size:17px;color:var(--navy);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .doc-meta{font-size:14px;color:var(--muted);margin-bottom:3px;}
-    .doc-ref{font-family:monospace;font-size:12px;color:var(--muted);}
+    .doc-ref{font-family:monospace;font-size:13px;color:var(--muted);}
     .doc-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}
 
     /* Status badges */
@@ -86,10 +86,22 @@
       .stat-box.total{grid-column:span 2;}
       .topbar-actions .tb-user{display:none;}
       .stat-num{font-size:32px;}
+      .doc-name{font-size:16px;}
+      .doc-meta,.doc-ref{font-size:14px;}
+    }
+    @media(max-width:480px){
+      .topbar{height:56px;padding:0 12px;}
+      .tb-btn{padding:7px 11px;font-size:14px;}
+      .page{padding:14px 12px;}
+      .stat-num{font-size:28px;}
+      .section-title{font-size:18px;}
+      .doc-card{padding:14px 16px;}
     }
     @media(max-width:380px){
       .stats-row{grid-template-columns:1fr;}
       .stat-box.total{grid-column:span 1;}
+      .badge{font-size:13px;padding:5px 10px;}
+      .tb-btn{padding:6px 10px;font-size:13px;}
     }
   </style>
 </head>

@@ -2,110 +2,142 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Document — DocTracker</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    :root{--teal:#0E7490;--dark:#0A4D68;--blue:#3B82F6;--navy:#0D1B2A;--surface:#F4F7FB;--border:#DDE3EE;--muted:#6B7FA3;--danger:#EF4444;}
+    html{font-size:16px;-webkit-text-size-adjust:100%;}
+    :root{
+      --teal:#0E7490;--dark:#0A4D68;--emerald:#059669;
+      --navy:#0A2540;--surface:#F0F7FA;--card:#fff;
+      --border:#C8DDE8;--muted:#5A7A91;--danger:#DC2626;
+    }
     body{font-family:'Source Sans 3',sans-serif;background:var(--surface);min-height:100vh;}
-    .topbar{background:var(--navy);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;}
-    .topbar-brand{font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;color:#fff;}
-    .topbar a{color:#8EA8C3;font-size:13px;font-weight:600;text-decoration:none;}
-    .page{max-width:500px;margin:0 auto;padding:24px 16px;}
 
-    /* Not found */
-    .not-found{text-align:center;padding:48px 20px;background:#fff;border-radius:16px;border:1.5px solid var(--border);}
+    /* Topbar */
+    .topbar{background:linear-gradient(135deg,#0A4D68 0%,#0E7490 55%,#059669 100%);
+      height:60px;display:flex;align-items:center;padding:0 16px;
+      justify-content:space-between;gap:10px;position:sticky;top:0;z-index:100;
+      box-shadow:0 4px 20px rgba(10,45,100,.3);}
+    .topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+      background:linear-gradient(90deg,#22D3EE,#34D399,#22D3EE);}
+    .topbar-brand{display:flex;align-items:center;gap:8px;min-width:0;}
+    .topbar-brand img{width:36px;height:36px;border-radius:50%;object-fit:cover;
+      border:2px solid rgba(255,255,255,.4);background:#fff;flex-shrink:0;}
+    .topbar-brand-name{font-family:'Outfit',sans-serif;font-size:16px;font-weight:900;
+      color:#fff;white-space:nowrap;}
+    .topbar-back{color:rgba(255,255,255,.85);font-size:15px;font-weight:700;
+      text-decoration:none;white-space:nowrap;flex-shrink:0;}
+
+    .page{max-width:540px;margin:0 auto;padding:18px 14px;}
 
     /* Status hero */
-    .status-hero{border-radius:16px;padding:28px 20px;text-align:center;margin-bottom:16px;}
-    .s-Pending{background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:2px solid #F59E0B;}
-    .s-Received{background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:2px solid var(--blue);}
-    .s-Released{background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border:2px solid var(--teal);}
+    .status-hero{border-radius:16px;padding:24px 18px;text-align:center;margin-bottom:14px;}
+    .s-Pending{background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:2px solid #D97706;}
+    .s-Received{background:linear-gradient(135deg,#F0F9FF,#CFFAFE);border:2px solid #0E7490;}
+    .s-Released{background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border:2px solid #059669;}
     .s-other{background:var(--surface);border:2px solid var(--border);}
-    .status-icon{font-size:52px;margin-bottom:8px;}
-    .status-label{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px;}
+    .status-icon{font-size:48px;margin-bottom:8px;}
+    .status-label{font-family:'Outfit',sans-serif;font-size:24px;font-weight:900;margin-bottom:4px;}
     .s-Pending .status-label{color:#92400E;}
-    .s-Received .status-label{color:#1D4ED8;}
-    .s-Released .status-label{color:#0A3D2E;}
-    .status-name{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px;}
-    .status-ref{font-family:monospace;font-size:12px;color:var(--muted);}
+    .s-Received .status-label{color:#155E75;}
+    .s-Released .status-label{color:#065F46;}
+    .status-name{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:3px;}
+    .status-ref{font-family:monospace;font-size:13px;color:var(--muted);}
 
-    /* Doc card */
-    .doc-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px;}
-    .doc-card h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;}
-    .meta-row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;}
-    .meta-row .label{color:var(--muted);}
-    .meta-row .value{font-weight:600;color:var(--navy);text-align:right;max-width:60%;}
+    /* Cards */
+    .card{background:var(--card);border:2px solid var(--border);border-radius:14px;
+      padding:18px;margin-bottom:12px;}
+    .card-title{font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;
+      text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+      margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+    .meta-row{display:flex;justify-content:space-between;align-items:flex-start;
+      margin-bottom:10px;gap:12px;font-size:16px;}
+    .meta-row:last-child{margin-bottom:0;}
+    .meta-label{color:var(--muted);font-weight:600;flex-shrink:0;}
+    .meta-value{font-weight:700;color:var(--navy);text-align:right;word-break:break-word;}
 
-    /* Action buttons */
-    .action-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px;}
-    .action-card h3{font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:14px;}
-    .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;border-radius:12px;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;border:none;margin-bottom:10px;min-height:56px;}
-    .btn:last-child{margin-bottom:0;}
-    .btn-receive{background:var(--blue);color:#fff;}
-    .btn-receive:hover{background:#2563EB;}
-    .btn-release{background:var(--teal);color:#fff;}
-    .btn-release:hover{background:#059669;}
-    .btn-outline{background:var(--surface);color:var(--muted);border:1.5px solid var(--border);}
-    .btn-outline:hover{border-color:var(--teal);color:var(--dark);}
-    .btn:disabled{opacity:.5;cursor:not-allowed;}
-
-    /* Result */
-    .result-ok{background:#D1FAE5;border:2px solid var(--teal);border-radius:14px;padding:20px;margin-bottom:14px;text-align:center;}
-    .result-ok h3{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:#0A3D2E;margin-bottom:6px;}
-    .result-ok p{font-size:14px;color:#0A3D2E;}
-    .result-err{background:#FEE2E2;border:2px solid var(--danger);border-radius:12px;padding:16px;margin-bottom:14px;}
-    .result-err p{font-size:14px;color:#7F1D1D;font-weight:600;margin-bottom:8px;}
+    /* Result boxes */
+    .result-ok{background:#D1FAE5;border:2px solid #059669;border-radius:14px;
+      padding:18px;margin-bottom:12px;text-align:center;}
+    .result-ok h3{font-family:'Outfit',sans-serif;font-size:20px;font-weight:900;
+      color:#065F46;margin-bottom:6px;}
+    .result-ok p{font-size:16px;color:#065F46;}
+    .result-err{background:#FEE2E2;border:2px solid var(--danger);border-radius:14px;
+      padding:16px;margin-bottom:12px;}
+    .result-err p{font-size:16px;color:#7F1D1D;font-weight:700;margin-bottom:10px;}
 
     /* Login prompt */
-    .login-card{background:#FFF3CD;border:1.5px solid #F59E0B;border-radius:14px;padding:18px;margin-bottom:14px;text-align:center;}
-    .login-card p{font-size:13px;color:#92400E;margin-bottom:14px;line-height:1.5;}
-    .login-btns{display:flex;gap:8px;flex-wrap:wrap;}
-    .login-btns a{flex:1;display:flex;align-items:center;justify-content:center;padding:12px;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;min-height:46px;}
-    .lb-client{background:var(--teal);color:#fff;}
-    .lb-staff{background:var(--navy);color:#fff;}
+    .login-card{background:#FFFBEB;border:2px solid #D97706;border-radius:14px;
+      padding:18px;margin-bottom:12px;text-align:center;}
+    .login-card p{font-size:16px;color:#92400E;margin-bottom:14px;line-height:1.5;}
+    .login-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .login-btns a{display:flex;align-items:center;justify-content:center;
+      padding:13px 10px;border-radius:10px;font-size:15px;font-weight:700;
+      text-decoration:none;min-height:50px;}
+    .lb-client{background:linear-gradient(135deg,#059669,#0E7490);color:#fff;}
+    .lb-staff{background:linear-gradient(135deg,#0A4D68,#0A2540);color:#fff;}
 
-    /* Already done */
-    .done-note{background:#F3F4F6;border-radius:10px;padding:12px 14px;font-size:14px;color:var(--muted);text-align:center;margin-bottom:10px;}
+    /* Buttons */
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;
+      width:100%;padding:15px;border-radius:10px;font-family:inherit;
+      font-size:17px;font-weight:700;cursor:pointer;text-decoration:none;
+      border:none;min-height:54px;margin-bottom:10px;transition:all .2s;}
+    .btn:last-child{margin-bottom:0;}
+    .btn-receive{background:linear-gradient(135deg,#1D4ED8,#3B82F6);color:#fff;
+      box-shadow:0 5px 16px rgba(29,78,216,.3);}
+    .btn-release{background:linear-gradient(135deg,#059669,#0E7490);color:#fff;
+      box-shadow:0 5px 16px rgba(5,150,105,.3);}
+    .btn-outline{background:var(--surface);color:var(--muted);border:2px solid var(--border);}
+    .btn-outline:hover{border-color:var(--teal);color:var(--dark);}
+    .done-note{background:#F3F4F6;border-radius:10px;padding:12px 14px;
+      font-size:15px;color:var(--muted);text-align:center;margin-bottom:10px;}
+
+    @media(max-width:480px){
+      .page{padding:12px 10px;}
+      .card{padding:14px;}
+      .login-btns{grid-template-columns:1fr;}
+      .status-label{font-size:20px;}
+      .meta-row{font-size:15px;}
+    }
   </style>
 </head>
 <body>
 <div class="topbar">
-  <div class="topbar-brand" style="display:flex;align-items:center;gap:8px;"><img src="/logo.png" alt="Logo" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.4);background:#fff;"/> DocTracker</div>
+  <div class="topbar-brand">
+    <img src="/logo.png" alt="Logo"/>
+    <span class="topbar-brand-name">DocTracker</span>
+  </div>
   {% if logged_in %}
     {% if current_role == 'client' %}
-    <a href="/client">My Documents</a>
+    <a href="/client" class="topbar-back">← My Docs</a>
     {% else %}
-    <a href="/">Dashboard</a>
+    <a href="/" class="topbar-back">← Dashboard</a>
     {% endif %}
   {% endif %}
 </div>
 
 <div class="page">
-
   {% if not doc %}
-  <div class="not-found">
-    <div style="font-size:48px;margin-bottom:12px;">❓</div>
-    <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:var(--navy);margin-bottom:8px;">Document Not Found</div>
-    <p style="font-size:14px;color:var(--muted);">This QR code doesn't match any document in the system.</p>
+  <div class="card" style="text-align:center;padding:40px 20px;">
+    <div style="font-size:52px;margin-bottom:14px;">❓</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:var(--navy);margin-bottom:8px;">Document Not Found</div>
+    <p style="font-size:16px;color:var(--muted);">This QR code doesn't match any document in the system.</p>
   </div>
 
   {% else %}
-
   {% set status = doc.status %}
   {% set hero_class = 's-' + status if status in ['Pending','Received','Released'] else 's-other' %}
   {% set icons = {'Pending':'⏳','Received':'📥','Released':'✅'} %}
 
-  <!-- Status Hero -->
   <div class="status-hero {{ hero_class }}">
-    <div class="status-icon">{{ icons.get(status, '📄') }}</div>
+    <div class="status-icon">{{ icons.get(status,'📄') }}</div>
     <div class="status-label">{{ status }}</div>
     <div class="status-name">{{ doc.doc_name }}</div>
     <div class="status-ref">{{ doc.doc_id }} · {{ doc.id }}</div>
   </div>
 
-  <!-- Result feedback -->
   {% if result %}
     {% if result.ok %}
     <div class="result-ok">
@@ -125,21 +157,19 @@
     {% endif %}
   {% endif %}
 
-  <!-- Doc info -->
-  <div class="doc-card">
-    <h3>📄 Document Info</h3>
-    <div class="meta-row"><span class="label">From</span><span class="value">{{ doc.sender_org or doc.sender_name or '—' }}</span></div>
-    <div class="meta-row"><span class="label">Referred To</span><span class="value">{{ doc.referred_to or '—' }}</span></div>
-    <div class="meta-row"><span class="label">Type</span><span class="value">{{ doc.category or '—' }}</span></div>
-    <div class="meta-row"><span class="label">Submitted</span><span class="value">{{ doc.created_at[:10] if doc.created_at else '—' }}</span></div>
-    {% if doc.date_received %}<div class="meta-row"><span class="label">Received</span><span class="value">{{ doc.date_received }}</span></div>{% endif %}
-    {% if doc.date_released %}<div class="meta-row"><span class="label">Released</span><span class="value">{{ doc.date_released }}</span></div>{% endif %}
+  <div class="card">
+    <div class="card-title">📄 Document Info</div>
+    <div class="meta-row"><span class="meta-label">From</span><span class="meta-value">{{ doc.sender_org or doc.sender_name or '—' }}</span></div>
+    <div class="meta-row"><span class="meta-label">Referred To</span><span class="meta-value">{{ doc.referred_to or '—' }}</span></div>
+    <div class="meta-row"><span class="meta-label">Type</span><span class="meta-value">{{ doc.category or '—' }}</span></div>
+    <div class="meta-row"><span class="meta-label">Submitted</span><span class="meta-value">{{ doc.created_at[:10] if doc.created_at else '—' }}</span></div>
+    {% if doc.date_received %}<div class="meta-row"><span class="meta-label">Received</span><span class="meta-value">{{ doc.date_received }}</span></div>{% endif %}
+    {% if doc.date_released %}<div class="meta-row"><span class="meta-label">Released</span><span class="meta-value">{{ doc.date_released }}</span></div>{% endif %}
   </div>
 
-  <!-- Action buttons — only show if logged in and not already done -->
   {% if not logged_in and not result %}
   <div class="login-card">
-    <p>Log in to update this document's status at the office.</p>
+    <p>Log in to update this document's status.</p>
     <div class="login-btns">
       <a href="/client/login?next={{ request.path }}" class="lb-client">👤 Client Login</a>
       <a href="/login?next={{ request.path }}" class="lb-staff">🔐 Staff Login</a>
@@ -147,33 +177,20 @@
   </div>
 
   {% elif logged_in and not (result and result.ok) %}
-  <div class="action-card">
-    <h3>⚡ Update Status</h3>
-
+  <div class="card">
+    <div class="card-title">⚡ Update Status</div>
     {% if status == 'Released' %}
     <div class="done-note">✅ This document has already been released.</div>
     {% else %}
     <form method="post">
       {% if status == 'Pending' %}
-      <!-- Next logical step: Receive -->
-      <button type="submit" name="action" value="receive" class="btn btn-receive">
-        📥 Mark as Received at Office
-      </button>
-      <div class="done-note" style="font-size:12px;margin-top:4px;">Already received? You can also mark as Released:</div>
-      <button type="submit" name="action" value="release" class="btn btn-release" style="opacity:.8;">
-        ✅ Mark as Released
-      </button>
-
+      <button type="submit" name="action" value="receive" class="btn btn-receive">📥 Mark as Received at Office</button>
+      <div class="done-note">Already received? Mark as released:</div>
+      <button type="submit" name="action" value="release" class="btn btn-release" style="opacity:.85;">✅ Mark as Released</button>
       {% elif status == 'Received' %}
-      <!-- Already received — next step is release -->
-      <div class="done-note">📥 Document has been received. Mark as released when ready:</div>
-      <button type="submit" name="action" value="release" class="btn btn-release">
-        ✅ Mark as Released from Office
-      </button>
-      <button type="submit" name="action" value="receive" class="btn btn-outline" style="font-size:14px;min-height:44px;">
-        📥 Re-mark as Received
-      </button>
-
+      <div class="done-note">📥 Document received. Mark as released when ready:</div>
+      <button type="submit" name="action" value="release" class="btn btn-release">✅ Mark as Released from Office</button>
+      <button type="submit" name="action" value="receive" class="btn btn-outline" style="font-size:15px;min-height:48px;">📥 Re-mark as Received</button>
       {% else %}
       <button type="submit" name="action" value="receive" class="btn btn-receive">📥 Mark as Received</button>
       <button type="submit" name="action" value="release" class="btn btn-release">✅ Mark as Released</button>
@@ -183,13 +200,11 @@
   </div>
   {% endif %}
 
-  <!-- Track link for clients -->
   {% if current_role == 'client' %}
   <a href="/client/track/{{ doc.id }}" class="btn btn-outline">🔍 Full Tracking Details</a>
   {% elif logged_in %}
   <a href="/view/{{ doc.id }}" class="btn btn-outline">📋 View Full Document</a>
   {% endif %}
-
   {% endif %}
 </div>
 </body>

@@ -192,4 +192,11 @@ async function regenRef() {
   document.getElementById('doc-ref-input').value = data.ref;
 }
 </script>
+<style>
+@media(max-width:600px){
+  .form-row{grid-template-columns:1fr;}
+  .form-actions{flex-direction:column-reverse;}
+  .form-actions .btn{width:100%;justify-content:center;}
+}
+</style>
 {% endblock %}
