@@ -1200,53 +1200,95 @@ def index():
 @app.route("/add", methods=["GET","POST"])
 @login_required
 def add():
+    """Staff logs one or more documents — same cart flow as client submission."""
+    cart  = session.get("staff_cart", [])
+    error = None
+
     if request.method == "POST":
-        docs        = load_docs()
-        routing_raw = request.form.get("routing_offices","").strip()
-        routing     = [r.strip() for r in routing_raw.split(",") if r.strip()]
-        doc = {
-            "id":                str(uuid.uuid4())[:8].upper(),
-            "doc_id":            request.form.get("doc_id","").strip(),
-            "doc_name":          request.form.get("doc_name","").strip(),
-            "category":          request.form.get("category","").strip(),
-            "doc_date":          request.form.get("doc_date","").strip(),
-            "description":       request.form.get("description","").strip(),
-            # Source / Sender
-            "sender_name":       request.form.get("sender_name","").strip(),
-            "sender_org":        request.form.get("sender_org","").strip(),
-            "sender_contact":    request.form.get("sender_contact","").strip(),
-            # Receiving
-            "received_by":       request.form.get("received_by","").strip(),
-            # Routing
-            "referred_to":       request.form.get("referred_to","").strip(),
-            "forwarded_to":      request.form.get("forwarded_to","").strip(),
-            # Recipient
-            "recipient_name":    request.form.get("recipient_name","").strip(),
-            "recipient_org":     request.form.get("recipient_org","").strip(),
-            "recipient_contact": request.form.get("recipient_contact","").strip(),
-            # Dates
-            "date_received":     request.form.get("date_received",""),
-            "date_released":     request.form.get("date_released",""),
-            "status":            "Pending",
-            "notes":             request.form.get("notes","").strip(),
-            "created_at":        now_str(),
-            "routing":           routing,
-            "travel_log":        [],
-        }
-        if not doc["doc_name"]:
-            flash("Document name is required.", "error")
-            return render_template("form.html", doc=doc, action="add",
-                status_options=["Pending","In Review","In Transit","Released","On Hold","Archived"])
-        origin = doc["sender_org"] or doc["sender_name"] or "Origin"
-        doc["travel_log"].append({
-            "office": origin, "action": "Document Created",
-            "officer": doc["sender_name"], "timestamp": doc["created_at"],
-            "remarks": "Document logged into the system.",
-        })
-        insert_doc(doc)
-        flash("Document added and routing chain created.", "success")
-        return redirect(url_for("view_doc", doc_id=doc["id"]))
+        action = request.form.get("_action", "add")
+
+        # ── ADD to cart ──
+        if action == "add":
+            doc_name    = request.form.get("doc_name","").strip()
+            sender_org  = request.form.get("sender_org","").strip()
+            sender_name = request.form.get("sender_name","").strip()
+            referred_to = request.form.get("referred_to","").strip()
+            category    = request.form.get("category","").strip()
+            description = request.form.get("description","").strip()
+            notes       = request.form.get("notes","").strip()
+            if not doc_name:
+                error = "Content / Particulars is required."
+            else:
+                cart.append({
+                    "tmp_id":      uuid.uuid4().hex[:8].upper(),
+                    "doc_name":    doc_name,
+                    "sender_org":  sender_org,
+                    "sender_name": sender_name,
+                    "referred_to": referred_to,
+                    "category":    category,
+                    "description": description,
+                    "notes":       notes,
+                })
+                session["staff_cart"] = cart
+                session.modified = True
+                flash(f"✅ '{doc_name}' added to the log list.", "success")
+
+        # ── REMOVE from cart ──
+        elif action == "remove":
+            tmp_id = request.form.get("tmp_id","")
+            cart = [d for d in cart if d["tmp_id"] != tmp_id]
+            session["staff_cart"] = cart
+            session.modified = True
+
+        # ── LOG ALL ──
+        elif action == "submit_all":
+            if not cart:
+                error = "No documents to log. Add at least one document first."
+            else:
+                logged_ids = []
+                actor = session.get("full_name") or session.get("username") or "Staff"
+                for item in cart:
+                    doc = {
+                        "id":            str(uuid.uuid4())[:8].upper(),
+                        "doc_id":        generate_ref(),
+                        "doc_name":      item["doc_name"],
+                        "category":      item["category"],
+                        "description":   item["description"],
+                        "sender_name":   item["sender_name"],
+                        "sender_org":    item["sender_org"],
+                        "sender_contact":"",
+                        "referred_to":   item["referred_to"],
+                        "forwarded_to":  "",
+                        "recipient_name":"","recipient_org":"","recipient_contact":"",
+                        "received_by":   actor,
+                        "date_received": now_str()[:10],
+                        "date_released": "",
+                        "doc_date":      now_str()[:10],
+                        "status":        "Received",
+                        "notes":         item["notes"],
+                        "created_at":    now_str(),
+                        "routing":       [],
+                        "travel_log":    [],
+                        "logged_by":     session.get("username"),
+                    }
+                    doc["travel_log"].append({
+                        "office":    item["sender_org"] or "Division Office",
+                        "action":    "Document Logged by Staff",
+                        "officer":   actor,
+                        "timestamp": doc["created_at"],
+                        "remarks":   f"Logged into system by {actor}. Batch of {len(cart)}.",
+                    })
+                    insert_doc(doc)
+                    logged_ids.append(doc["id"])
+                session.pop("staff_cart", None)
+                session.modified = True
+                flash(f"✅ {len(logged_ids)} document{'s' if len(logged_ids)!=1 else ''} logged successfully.", "success")
+                return redirect(url_for("index"))
+
+        cart = session.get("staff_cart", [])
+
     return render_template("form.html", doc={}, action="add",
+        cart=cart, error=error,
         auto_ref=generate_ref(),
         status_options=["Pending","In Review","In Transit","Released","On Hold","Archived"])
 
