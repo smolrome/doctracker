@@ -1189,22 +1189,44 @@ def index():
     search        = request.args.get("search","").lower()
     filter_status = request.args.get("status","All")
     filter_type   = request.args.get("type","All")
+    filter_date   = request.args.get("date","").strip()       # YYYY-MM-DD
+    filter_time_from = request.args.get("time_from","").strip()  # HH:MM
+    filter_time_to   = request.args.get("time_to","").strip()    # HH:MM
+
     filtered = docs
+
     if search:
         filtered = [d for d in filtered if search in (
             d.get("doc_name","") + d.get("doc_id","") +
             d.get("sender_name","") + d.get("recipient_name","") +
-            d.get("category","")).lower()]
+            d.get("sender_org","") + d.get("category","")).lower()]
+
     if filter_status != "All":
         filtered = [d for d in filtered if d["status"] == filter_status]
+
     if filter_type == "Received":
         filtered = [d for d in filtered if d.get("date_received") and not d.get("date_released")]
     elif filter_type == "Released":
         filtered = [d for d in filtered if d.get("date_released")]
+
+    # Date filter — match against created_at date portion
+    if filter_date:
+        filtered = [d for d in filtered if (d.get("created_at","") or "")[:10] == filter_date]
+
+    # Time range filter — match against created_at time portion HH:MM
+    if filter_time_from:
+        filtered = [d for d in filtered
+                    if (d.get("created_at","") or "")[11:16] >= filter_time_from]
+    if filter_time_to:
+        filtered = [d for d in filtered
+                    if (d.get("created_at","") or "")[11:16] <= filter_time_to]
+
     saved_offices = load_saved_offices()
     return render_template("index.html",
         docs=filtered, stats=get_stats(docs),
         search=search, filter_status=filter_status, filter_type=filter_type,
+        filter_date=filter_date, filter_time_from=filter_time_from,
+        filter_time_to=filter_time_to,
         status_options=["All","Pending","In Review","In Transit","Released","On Hold","Archived"],
         saved_offices=saved_offices)
 
