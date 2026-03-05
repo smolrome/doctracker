@@ -787,6 +787,8 @@ def send_invite():
         print(traceback.format_exc())
         flash(f"Error: {str(e)}", "error")
         return redirect(url_for("manage_users"))
+
+@app.route("/delete-user/<username>", methods=["POST"])
 @login_required
 def delete_user_route(username):
     if session.get("role") != "admin":
