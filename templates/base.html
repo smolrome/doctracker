@@ -473,7 +473,9 @@
         <a href="/office-qr-page" class="nav-btn">🖨️ QR Codes</a>
       {% endif %}
       {% if current_role == 'admin' %}
-        <a href="/manage-users" class="nav-btn">👥 Users</a>
+        <a href="/manage-users"  class="nav-btn">👥 Users</a>
+        <a href="/activity-log"  class="nav-btn">📋 Audit</a>
+        <a href="/trash"         class="nav-btn">🗑️ Trash</a>
       {% endif %}
       <span class="nav-user">👤 {{ current_full_name or current_user }}</span>
       <a href="/logout" class="nav-btn danger">Logout</a>
@@ -498,7 +500,9 @@
       <a href="/office-qr-page" class="nav-btn" onclick="closeMenu()">🖨️ Office QR Codes</a>
     {% endif %}
     {% if current_role == 'admin' %}
-      <a href="/manage-users" class="nav-btn" onclick="closeMenu()">👥 Manage Users</a>
+      <a href="/manage-users"  class="nav-btn" onclick="closeMenu()">👥 Manage Users</a>
+      <a href="/activity-log"  class="nav-btn" onclick="closeMenu()">📋 Activity Log</a>
+      <a href="/trash"         class="nav-btn" onclick="closeMenu()">🗑️ Trash</a>
     {% endif %}
     <div class="nav-divider"></div>
     <a href="/"            class="nav-btn" onclick="closeMenu()">← Dashboard</a>

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <a href="/" class="page-back">← Dashboard</a>
+  <div class="page-title">🗑️ Document Trash</div>
+</div>
+
+<style>
+  .trash-info{background:#FEF3C7;border:2px solid #D97706;border-radius:14px;
+    padding:16px 18px;margin-bottom:20px;font-size:16px;color:#92400E;
+    display:flex;align-items:flex-start;gap:12px;}
+  .trash-info .icon{font-size:24px;flex-shrink:0;}
+  .trash-table{width:100%;border-collapse:collapse;background:#fff;
+    border-radius:14px;overflow:hidden;border:2px solid var(--border);}
+  .trash-table th{background:var(--surface);padding:14px 16px;text-align:left;
+    font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--muted);border-bottom:2px solid var(--border);}
+  .trash-table td{padding:14px 16px;font-size:16px;border-bottom:1.5px solid var(--border);
+    vertical-align:middle;}
+  .trash-table tr:last-child td{border-bottom:none;}
+  .trash-table tr:hover td{background:#FFF9F0;}
+  .doc-name{font-weight:700;color:var(--navy);}
+  .del-meta{font-size:14px;color:var(--muted);margin-top:3px;}
+  .del-by{font-size:14px;color:#DC2626;}
+  .btn-restore{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;
+    border-radius:9px;background:#D1FAE5;color:#065F46;border:2px solid #059669;
+    font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .btn-restore:hover{background:#059669;color:#fff;}
+  .empty-trash{text-align:center;padding:48px 20px;background:#fff;
+    border:2px solid var(--border);border-radius:16px;}
+  .empty-trash .ei{font-size:56px;margin-bottom:12px;}
+  .empty-trash p{font-size:17px;color:var(--muted);}
+  @media(max-width:600px){
+    .trash-table{display:block;overflow-x:auto;}
+    .trash-table th,.trash-table td{font-size:14px;padding:12px;}
+  }
+</style>
+
+<div class="trash-info">
+  <div class="icon">⚠️</div>
+  <div>
+    <strong>Trash — Deleted Documents</strong><br/>
+    These documents were soft-deleted and are hidden from normal views.
+    You can restore them at any time. Only admins can see this page.
+  </div>
+</div>
+
+{% if docs %}
+<table class="trash-table">
+  <thead>
+    <tr>
+      <th>Document</th>
+      <th>Deleted By</th>
+      <th>Deleted At</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for doc in docs %}
+    <tr>
+      <td>
+        <div class="doc-name">{{ doc.doc_name }}</div>
+        <div class="del-meta">ID: {{ doc.id }} · {{ doc.category or '—' }}</div>
+      </td>
+      <td><span class="del-by">{{ doc.deleted_by or '—' }}</span></td>
+      <td><span style="font-size:14px;">{{ doc.deleted_at or '—' }}</span></td>
+      <td>
+        <form method="post" action="/restore/{{ doc.id }}">
+          <button type="submit" class="btn-restore">↩️ Restore</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-trash">
+  <div class="ei">✅</div>
+  <p>Trash is empty — no deleted documents.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -604,12 +604,32 @@ def get_all_users():
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT username, full_name, role, created_at FROM users ORDER BY created_at DESC")
+                    cur.execute(
+                        "SELECT username, full_name, role, active, last_login, created_at FROM users ORDER BY created_at DESC"
+                    )
                     return [dict(r) for r in cur.fetchall()]
         except Exception as e:
             print(f"get_all_users error: {e}")
             return []
     return load_users_json()
+
+def set_user_active(username, active):
+    """Enable or disable a user account."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE users SET active=%s WHERE username=%s", (active, username))
+                conn.commit()
+        except Exception as e:
+            print(f"set_user_active error: {e}")
+    else:
+        users = load_users_json()
+        for u in users:
+            if u["username"] == username:
+                u["active"] = active
+        with open("users.json","w") as f:
+            json.dump(users, f, indent=2)
 
 def delete_user(username):
     if USE_DB:
@@ -670,6 +690,29 @@ def update_last_login(username):
 
 CLIENT_REG_CODE = os.environ.get("CLIENT_REG_CODE", "client-reg")  # embed in public QR
 
+# ── QR Signing — HMAC-SHA256 so office QR URLs can be verified ──
+QR_SIGN_SECRET = os.environ.get("QR_SIGN_SECRET", app.secret_key)
+QR_SIGN_VALIDITY_DAYS = int(os.environ.get("QR_SIGN_DAYS", "365"))  # rotate annually
+
+def sign_office_action(action):
+    """Return action + expiry + HMAC sig. Expires in QR_SIGN_VALIDITY_DAYS."""
+    expiry = int(time.time()) + QR_SIGN_VALIDITY_DAYS * 86400
+    payload = f"{action}:{expiry}"
+    sig = hmac.new(QR_SIGN_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
+    return f"{action}?exp={expiry}&sig={sig}"
+
+def verify_office_action(action, exp_str, sig):
+    """Verify the HMAC signature and expiry. Returns True if valid."""
+    try:
+        expiry = int(exp_str)
+        if time.time() > expiry:
+            return False  # expired
+        payload = f"{action}:{expiry}"
+        expected = hmac.new(QR_SIGN_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
+        return secrets.compare_digest(expected, sig)
+    except Exception:
+        return False
+
 def get_office_qr_url(action, host_url):
     base = os.environ.get("APP_URL", host_url.rstrip("/"))
     return base + "/office-action/" + action
@@ -678,22 +721,27 @@ def get_office_qr_url(action, host_url):
 #  DATA HELPERS — transparent DB / JSON switch
 # ─────────────────────────────────────────────
 
-def load_docs():
+def load_docs(include_deleted=False):
+    """Load documents. Soft-deleted docs excluded by default."""
     if USE_DB:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute("SELECT data FROM documents ORDER BY created_at DESC")
                     rows = cur.fetchall()
-                    return [row['data'] for row in rows]
+                    docs = [row['data'] for row in rows]
         except Exception as e:
             print(f"DB load error: {e}")
-            return []
+            docs = []
     else:
         if os.path.exists(DATA_FILE):
             with open(DATA_FILE) as f:
-                return json.load(f)
-        return []
+                docs = json.load(f)
+        else:
+            docs = []
+    if not include_deleted:
+        docs = [d for d in docs if not d.get("deleted")]
+    return docs
 
 def save_docs(docs):
     """Save is only used for JSON mode. DB mode saves per-document."""
@@ -743,17 +791,25 @@ def insert_doc(doc):
         docs.insert(0, doc)
         save_docs(docs)
 
-def delete_doc(doc_id):
-    if USE_DB:
-        try:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
-                conn.commit()
-        except Exception as e:
-            print(f"DB delete error: {e}")
-    else:
-        save_docs([d for d in load_docs() if d['id'] != doc_id])
+def delete_doc(doc_id, deleted_by=""):
+    """Soft delete — marks deleted flag in JSON data, never removes from DB."""
+    doc = get_doc(doc_id)
+    if not doc:
+        return
+    doc["deleted"]    = True
+    doc["deleted_by"] = deleted_by or "unknown"
+    doc["deleted_at"] = now_str()
+    save_doc(doc)
+
+def restore_doc(doc_id):
+    """Undo a soft delete."""
+    doc = get_doc(doc_id)
+    if not doc:
+        return
+    doc.pop("deleted", None)
+    doc.pop("deleted_by", None)
+    doc.pop("deleted_at", None)
+    save_doc(doc)
 
 def get_doc(doc_id):
     if USE_DB:
@@ -975,6 +1031,30 @@ def manage_users():
     return render_template("manage_users.html", users=users,
                            admin_username=ADMIN_USERNAME)
 
+@app.route("/activity-log")
+@login_required
+def activity_log_view():
+    if session.get("role") != "admin":
+        flash("Admin access required.", "error")
+        return redirect(url_for("index"))
+    logs = []
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT username, action, ip_address, detail, ts FROM activity_log ORDER BY ts DESC LIMIT 200"
+                    )
+                    logs = [dict(r) for r in cur.fetchall()]
+        except Exception as e:
+            print(f"activity_log_view error: {e}")
+    else:
+        path = "activity_log.json"
+        if os.path.exists(path):
+            with open(path) as f:
+                logs = list(reversed(json.load(f)))[:200]
+    return render_template("activity_log.html", logs=logs)
+
 @app.route("/send-invite", methods=["GET","POST"])
 @login_required
 def send_invite():
@@ -1037,6 +1117,34 @@ def delete_user_route(username):
         delete_user(username)
         audit_log("user_deleted", f"deleted_user={username}")
         flash(f"User '{username}' deleted.", "success")
+    return redirect(url_for("manage_users"))
+
+@app.route("/disable-user/<username>", methods=["POST"])
+@login_required
+def disable_user_route(username):
+    """Disable a user account — they can't log in but data is preserved."""
+    if session.get("role") != "admin":
+        flash("Admin access required.", "error")
+        return redirect(url_for("index"))
+    if username == ADMIN_USERNAME:
+        flash("Cannot disable the main admin account.", "error")
+    elif username == session.get("username"):
+        flash("Cannot disable your own account.", "error")
+    else:
+        set_user_active(username, False)
+        audit_log("user_disabled", f"disabled_user={username}")
+        flash(f"Account '{username}' has been disabled.", "success")
+    return redirect(url_for("manage_users"))
+
+@app.route("/enable-user/<username>", methods=["POST"])
+@login_required
+def enable_user_route(username):
+    if session.get("role") != "admin":
+        flash("Admin access required.", "error")
+        return redirect(url_for("index"))
+    set_user_active(username, True)
+    audit_log("user_enabled", f"enabled_user={username}")
+    flash(f"Account '{username}' has been re-enabled.", "success")
     return redirect(url_for("manage_users"))
 
 # ─────────────────────────────────────────────
@@ -1309,9 +1417,32 @@ def edit(doc_id):
 @app.route("/delete/<doc_id>", methods=["POST"])
 @login_required
 def delete(doc_id):
-    delete_doc(doc_id)
-    flash("Document deleted.", "error")
+    doc = get_doc(doc_id)
+    doc_name = doc.get("doc_name","Unknown") if doc else "Unknown"
+    delete_doc(doc_id, deleted_by=session.get("username",""))
+    audit_log("doc_deleted", f"doc_id={doc_id} name={doc_name}")
+    flash(f"Document '{doc_name}' moved to trash. Admins can restore it.", "success")
     return redirect(url_for("index"))
+
+@app.route("/restore/<doc_id>", methods=["POST"])
+@login_required
+def restore(doc_id):
+    if session.get("role") != "admin":
+        flash("Admin access required.", "error")
+        return redirect(url_for("index"))
+    restore_doc(doc_id)
+    audit_log("doc_restored", f"doc_id={doc_id}")
+    flash("Document restored successfully.", "success")
+    return redirect(url_for("trash"))
+
+@app.route("/trash")
+@login_required
+def trash():
+    if session.get("role") != "admin":
+        flash("Admin access required.", "error")
+        return redirect(url_for("index"))
+    deleted_docs = [d for d in load_docs(include_deleted=True) if d.get("deleted")]
+    return render_template("trash.html", docs=deleted_docs)
 
 # ─────────────────────────────────────────────
 #  QR DOWNLOAD
@@ -1602,7 +1733,9 @@ def office_qr_png(action):
     """Generate office QR code PNG with label text — REG / REC / REL."""
     from PIL import Image, ImageDraw, ImageFont
     base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
-    url = base + "/office-action/" + action
+    # Embed signed URL so QR codes can be verified and expired
+    signed_action = sign_office_action(action)
+    url = base + "/office-action/" + signed_action
 
     # Determine short label and office display name
     if action.endswith("-rec"):
@@ -1721,9 +1854,15 @@ def client_reg_qr():
     buf.seek(0)
     return send_file(buf, mimetype="image/png", download_name="client-registration-qr.png")
 
+def make_office_reg_code(office_slug):
+    """Generate a stable per-office registration code using HMAC."""
+    raw = hmac.new(QR_SIGN_SECRET.encode(), f"reg:{office_slug}".encode(), hashlib.sha256).hexdigest()[:12]
+    return f"reg-{raw}"
+
 def save_office(office_name, created_by):
     """Persist an office name so it shows on any device."""
     office_slug = re.sub(r'\s+', '-', office_name.strip().lower())
+    reg_code = make_office_reg_code(office_slug)
     if USE_DB:
         try:
             with get_conn() as conn:
@@ -1741,11 +1880,12 @@ def save_office(office_name, created_by):
         path = "saved_offices.json"
         offices = {}
         if os.path.exists(path):
-            with open(path) as f:
-                offices = json.load(f)
+            with open(path) as f_off:
+                offices = json.load(f_off)
         offices[office_slug] = {"office_name": office_name.strip(), "created_by": created_by}
-        with open(path, "w") as f:
-            json.dump(offices, f, indent=2)
+        with open(path, "w") as f_off:
+            json.dump(offices, f_off, indent=2)
+    return reg_code
 
 def load_saved_offices():
     """Load all saved offices, newest first."""
