@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Routing Slip {{ slip.slip_no }} — DocTracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Source Sans 3',sans-serif;background:#F0F7FA;
+      color:#0A2540;min-height:100vh;}
+
+    /* ── SCREEN TOPBAR ── */
+    .topbar{background:linear-gradient(135deg,#0A2540,#0E7490);height:58px;
+      display:flex;align-items:center;padding:0 20px;gap:14px;
+      box-shadow:0 4px 16px rgba(10,45,100,.3);}
+    .tb-back{color:rgba(255,255,255,.85);font-size:15px;font-weight:700;
+      text-decoration:none;padding:8px 14px;border-radius:8px;
+      background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);}
+    .tb-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;
+      color:#fff;flex:1;}
+    .btn-print{padding:10px 22px;border-radius:10px;background:#fff;color:#0A2540;
+      border:none;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;
+      display:flex;align-items:center;gap:8px;}
+    .btn-print:hover{background:#E0F2FE;}
+
+    /* ── SLIP CONTAINER ── */
+    .slip-wrap{max-width:860px;margin:28px auto;padding:0 16px 60px;}
+
+    /* Status badge */
+    .slip-status{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;
+      border-radius:20px;font-size:14px;font-weight:800;
+      background:#DBEAFE;color:#1D4ED8;margin-bottom:18px;}
+
+    /* ── THE SLIP ITSELF — white card ── */
+    .slip-doc{background:#fff;border:2px solid #C8DDE8;border-radius:18px;
+      padding:36px 40px;box-shadow:0 4px 24px rgba(10,45,100,.08);}
+
+    /* Official header */
+    .slip-letterhead{display:flex;align-items:center;gap:20px;
+      border-bottom:3px solid #0A2540;padding-bottom:18px;margin-bottom:20px;}
+    .slip-letterhead img{width:72px;height:72px;border-radius:50%;object-fit:cover;
+      border:3px solid #0A2540;flex-shrink:0;}
+    .slip-lh-text{flex:1;}
+    .slip-org{font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;
+      color:#0A2540;line-height:1.3;}
+    .slip-sub-org{font-size:14px;color:#5A7A91;margin-top:2px;}
+    .slip-doc-type{font-family:'Outfit',sans-serif;font-size:22px;font-weight:900;
+      color:#0A2540;text-align:right;flex-shrink:0;}
+
+    /* Slip meta row */
+    .slip-meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;
+      border:2px solid #0A2540;border-radius:10px;overflow:hidden;margin-bottom:20px;}
+    .slip-meta-cell{padding:12px 16px;border-right:2px solid #0A2540;}
+    .slip-meta-cell:last-child{border-right:none;}
+    .smc-label{font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.07em;color:#5A7A91;margin-bottom:4px;}
+    .smc-val{font-family:'Outfit',sans-serif;font-size:16px;font-weight:900;
+      color:#0A2540;word-break:break-word;}
+
+    /* Destination box */
+    .dest-box{background:#EFF6FF;border:2px solid #1D4ED8;border-radius:12px;
+      padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:14px;}
+    .dest-icon{font-size:28px;flex-shrink:0;}
+    .dest-label{font-size:12px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.06em;color:#1D4ED8;margin-bottom:3px;}
+    .dest-val{font-family:'Outfit',sans-serif;font-size:20px;font-weight:900;
+      color:#0A2540;}
+
+    /* ── DOCUMENTS TABLE ── */
+    .docs-title{font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;
+      text-transform:uppercase;letter-spacing:.07em;color:#0A2540;
+      margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+    .docs-count{background:#0A2540;color:#fff;border-radius:20px;
+      padding:2px 12px;font-size:13px;font-weight:800;}
+
+    table.slip-table{width:100%;border-collapse:collapse;font-size:14px;
+      border:2px solid #0A2540;border-radius:8px;overflow:hidden;}
+    .slip-table thead tr{background:#0A2540;}
+    .slip-table th{padding:11px 14px;text-align:left;font-size:12px;font-weight:700;
+      text-transform:uppercase;letter-spacing:.07em;color:#fff;
+      border-right:1.5px solid rgba(255,255,255,.2);}
+    .slip-table th:last-child{border-right:none;}
+    .slip-table td{padding:12px 14px;border-bottom:1.5px solid #C8DDE8;
+      border-right:1.5px solid #C8DDE8;vertical-align:top;}
+    .slip-table td:last-child{border-right:none;}
+    .slip-table tr:last-child td{border-bottom:none;}
+    .slip-table tr:nth-child(even) td{background:#F8FCFF;}
+    .slip-table tr:hover td{background:#EFF6FF;}
+    .doc-no{font-family:'Outfit',sans-serif;font-size:16px;font-weight:900;
+      color:#0A2540;}
+    .doc-ref{font-family:monospace;font-size:12px;color:#5A7A91;margin-top:2px;}
+    .doc-cat{display:inline-block;padding:2px 8px;border-radius:8px;
+      background:#DBEAFE;color:#1D4ED8;font-size:11px;font-weight:700;margin-top:3px;}
+
+    /* Signature columns */
+    .sig-cell{min-width:120px;text-align:center;}
+    .sig-line{border-bottom:2px solid #0A2540;margin:28px 12px 6px;height:30px;}
+    .sig-label{font-size:11px;color:#5A7A91;text-align:center;}
+
+    /* ── FOOTER ── */
+    .slip-footer{margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+    .sig-block{border:2px solid #C8DDE8;border-radius:10px;padding:16px 18px;}
+    .sig-block-label{font-size:12px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.06em;color:#5A7A91;margin-bottom:6px;}
+    .sig-block-line{border-bottom:2px solid #0A2540;height:44px;margin-bottom:6px;}
+    .sig-block-sub{font-size:12px;color:#5A7A91;text-align:center;}
+
+    {% if slip.notes %}
+    .notes-box{background:#FFFBEB;border:2px solid #F59E0B;border-radius:10px;
+      padding:14px 18px;margin-top:16px;font-size:14px;line-height:1.7;}
+    .notes-box strong{color:#92400E;font-size:12px;text-transform:uppercase;
+      letter-spacing:.06em;display:block;margin-bottom:4px;}
+    {% endif %}
+
+    /* ── SCREEN-ONLY ELEMENTS ── */
+    .screen-only{display:block;}
+
+    /* ── PRINT STYLES ── */
+    @media print{
+      body{background:#fff!important;}
+      .topbar,.screen-only{display:none!important;}
+      .slip-wrap{margin:0;padding:10px;max-width:100%;}
+      .slip-doc{border:none;box-shadow:none;border-radius:0;padding:20px 10px;}
+      .slip-status{display:none;}
+      .slip-table tr:hover td{background:inherit!important;}
+      .slip-table tr:nth-child(even) td{background:#F8FCFF!important;
+        -webkit-print-color-adjust:exact;}
+      .slip-table thead tr{background:#0A2540!important;
+        -webkit-print-color-adjust:exact;}
+      .dest-box{background:#EFF6FF!important;-webkit-print-color-adjust:exact;}
+      .slip-letterhead{-webkit-print-color-adjust:exact;}
+      a{text-decoration:none;}
+    }
+    @media(max-width:640px){
+      .slip-doc{padding:22px 16px;}
+      .slip-meta{grid-template-columns:1fr;}
+      .slip-meta-cell{border-right:none;border-bottom:2px solid #0A2540;}
+      .slip-meta-cell:last-child{border-bottom:none;}
+      .slip-footer{grid-template-columns:1fr;}
+      .slip-table th:nth-child(5),.slip-table td:nth-child(5){display:none;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- Screen topbar (hidden on print) -->
+<div class="topbar screen-only">
+  <a href="/" class="tb-back">← Dashboard</a>
+  <div class="tb-title">📤 Routing Slip</div>
+  <button class="btn-print" onclick="window.print()">🖨️ Print Slip</button>
+</div>
+
+<div class="slip-wrap">
+
+  <div class="slip-status screen-only">
+    🚌 {{ docs|length }} document{{ 's' if docs|length != 1 else '' }} routed — status updated to In Transit
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       THE PRINTABLE ROUTING SLIP
+  ═══════════════════════════════════════ -->
+  <div class="slip-doc">
+
+    <!-- Letterhead -->
+    <div class="slip-letterhead">
+      <img src="/logo.png" alt="DepEd Leyte"/>
+      <div class="slip-lh-text">
+        <div class="slip-org">Republic of the Philippines<br/>Department of Education</div>
+        <div class="slip-sub-org">Schools Division of Leyte — Division Office</div>
+      </div>
+      <div class="slip-doc-type">ROUTING<br/>SLIP</div>
+    </div>
+
+    <!-- Slip metadata -->
+    <div class="slip-meta">
+      <div class="slip-meta-cell">
+        <div class="smc-label">Slip No.</div>
+        <div class="smc-val">{{ slip.slip_no }}</div>
+      </div>
+      <div class="slip-meta-cell">
+        <div class="smc-label">Date Prepared</div>
+        <div class="smc-val">{{ slip.created_at[:10] }}</div>
+      </div>
+      <div class="slip-meta-cell">
+        <div class="smc-label">Prepared By</div>
+        <div class="smc-val">{{ slip.prepared_by }}</div>
+      </div>
+    </div>
+
+    <!-- Destination -->
+    <div class="dest-box">
+      <div class="dest-icon">🏢</div>
+      <div>
+        <div class="dest-label">Forwarded To</div>
+        <div class="dest-val">{{ slip.destination }}</div>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    {% if slip.notes %}
+    <div class="notes-box">
+      <strong>📝 Notes / Instructions</strong>
+      {{ slip.notes }}
+    </div>
+    {% endif %}
+
+    <!-- Documents list -->
+    <div style="margin-top:20px;">
+      <div class="docs-title">
+        📋 Documents Included
+        <span class="docs-count">{{ docs|length }}</span>
+      </div>
+
+      <table class="slip-table">
+        <thead>
+          <tr>
+            <th style="width:36px;">#</th>
+            <th>Document / Content</th>
+            <th>Unit / Office / School</th>
+            <th>Sender</th>
+            <th>Referred To</th>
+            <th class="sig-cell">Date Received</th>
+            <th class="sig-cell">Signature</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for doc in docs %}
+          <tr>
+            <td style="font-weight:800;color:#0A2540;text-align:center;">{{ loop.index }}</td>
+            <td>
+              <div class="doc-no">{{ doc.doc_name }}</div>
+              {% if doc.doc_id %}<div class="doc-ref">{{ doc.doc_id }}</div>{% endif %}
+              {% if doc.category %}<div class="doc-cat">{{ doc.category }}</div>{% endif %}
+            </td>
+            <td style="font-size:13px;">{{ doc.sender_org or '—' }}</td>
+            <td style="font-size:13px;">{{ doc.sender_name or '—' }}</td>
+            <td style="font-size:13px;">{{ doc.referred_to or '—' }}</td>
+            <td class="sig-cell">
+              <div class="sig-line"></div>
+              <div class="sig-label">Date</div>
+            </td>
+            <td class="sig-cell">
+              <div class="sig-line"></div>
+              <div class="sig-label">Signature over Printed Name</div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Footer signatures -->
+    <div class="slip-footer">
+      <div class="sig-block">
+        <div class="sig-block-label">Prepared &amp; Released By</div>
+        <div class="sig-block-line"></div>
+        <div class="sig-block-sub">Signature over Printed Name / Designation</div>
+        <div style="margin-top:8px;font-size:13px;color:#5A7A91;">
+          Date: {{ slip.created_at[:10] }}
+        </div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-block-label">Received By ({{ slip.destination }})</div>
+        <div class="sig-block-line"></div>
+        <div class="sig-block-sub">Signature over Printed Name / Designation</div>
+        <div style="margin-top:8px;font-size:13px;color:#5A7A91;">
+          Date: ___________________
+        </div>
+      </div>
+    </div>
+
+    <!-- Page footer -->
+    <div style="margin-top:24px;padding-top:14px;border-top:2px solid #C8DDE8;
+        display:flex;align-items:center;justify-content:space-between;
+        font-size:12px;color:#8BA5B5;flex-wrap:wrap;gap:8px;">
+      <span>DocTracker — DepEd Leyte Division Office</span>
+      <span>Slip No.: <strong>{{ slip.slip_no }}</strong> &nbsp;|&nbsp; Generated: {{ slip.created_at[:16] }}</span>
+    </div>
+
+  </div><!-- end .slip-doc -->
+
+</div>
+
+</body>
+</html>

@@ -17,7 +17,7 @@
   </div>
   <div class="stat-card">
     <div class="stat-num">{{ stats.in_transit }}</div>
-    <div class="stat-label">🚚 In Transit</div>
+    <div class="stat-label">🚌 In Transit</div>
   </div>
   <div class="stat-card green">
     <div class="stat-num">{{ stats.released }}</div>
@@ -31,7 +31,7 @@
 
 <!-- ══════════════════════════════════════════
      OFFICE SUBMISSION QR FINDER
-     ══════════════════════════════════════════ -->
+══════════════════════════════════════════ -->
 {% if saved_offices %}
 <style>
   .office-qr-section{background:#fff;border:2px solid var(--border);border-radius:18px;
@@ -49,11 +49,9 @@
   .oqs-search:focus{border-color:var(--teal);background:#fff;}
   .oqs-body{padding:16px 20px;}
   .oqs-count{font-size:14px;color:var(--muted);margin-bottom:12px;font-weight:600;}
-
-  /* Office QR grid */
   .oqs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;}
   .oqs-card{border:2px solid #7C3AED;border-radius:14px;padding:16px;text-align:center;
-    background:#fff;transition:box-shadow .15s,transform .15s;cursor:pointer;}
+    background:#fff;transition:box-shadow .15s,transform .15s;}
   .oqs-card:hover{box-shadow:0 6px 22px rgba(124,58,237,.18);transform:translateY(-2px);}
   .oqs-card.hidden{display:none;}
   .oqs-card-badge{display:inline-flex;align-items:center;gap:5px;background:#EDE9FE;
@@ -69,28 +67,21 @@
     text-decoration:none;border:none;cursor:pointer;min-height:44px;
     background:linear-gradient(135deg,#5B21B6,#7C3AED);color:#fff;
     box-shadow:0 4px 12px rgba(124,58,237,.3);transition:all .15s;}
-  .btn-scan-sub:hover{box-shadow:0 6px 18px rgba(124,58,237,.45);}
   .btn-dl-sub{display:flex;align-items:center;justify-content:center;gap:6px;
     padding:9px;border-radius:9px;font-size:14px;font-weight:700;
     border:2px solid var(--border);color:var(--muted);background:var(--surface);
     text-decoration:none;transition:all .15s;}
   .btn-dl-sub:hover{border-color:#7C3AED;color:#5B21B6;}
-
-  .oqs-none{text-align:center;padding:28px;color:var(--muted);
-    font-size:16px;display:none;}
+  .oqs-none{text-align:center;padding:28px;color:var(--muted);font-size:16px;display:none;}
   .oqs-none.visible{display:block;}
-
   @media(max-width:600px){
     .oqs-header{flex-direction:column;align-items:flex-start;}
     .oqs-search-wrap{max-width:100%;width:100%;}
     .oqs-grid{grid-template-columns:1fr 1fr;}
   }
-  @media(max-width:400px){
-    .oqs-grid{grid-template-columns:1fr;}
-  }
 </style>
 
-<div class="office-qr-section" id="office-qr-section">
+<div class="office-qr-section">
   <div class="oqs-header">
     <div>
       <div class="oqs-title">📋 Office Submission QR Codes</div>
@@ -99,73 +90,55 @@
     <div class="oqs-search-wrap">
       <input type="text" class="oqs-search" id="oqs-search"
              placeholder="🔍 Search office name..."
-             oninput="filterOffices(this.value)"
-             autocomplete="off"/>
+             oninput="filterOffices(this.value)" autocomplete="off"/>
     </div>
   </div>
   <div class="oqs-body">
-    <div class="oqs-count" id="oqs-count">
-      {{ saved_offices|length }} office{% if saved_offices|length != 1 %}s{% endif %} registered
-    </div>
+    <div class="oqs-count" id="oqs-count">{{ saved_offices|length }} office{% if saved_offices|length != 1 %}s{% endif %} registered</div>
     <div class="oqs-grid" id="oqs-grid">
       {% for office in saved_offices %}
       {% set sub_slug = office.office_slug + '-sub' %}
       <div class="oqs-card" data-name="{{ office.office_name | lower }}">
         <div class="oqs-card-badge">📋 SUB</div>
         <div class="oqs-card-name">{{ office.office_name }}</div>
-        <img src="/office-qr/{{ sub_slug }}.png"
-             class="oqs-qr-img"
-             alt="Submit QR — {{ office.office_name }}"
-             loading="lazy"/>
+        <img src="/office-qr/{{ sub_slug }}.png" class="oqs-qr-img" loading="lazy"/>
         <div class="oqs-actions">
           {% if current_role == 'client' %}
-          <a href="/client/submit?office_slug={{ office.office_slug | urlencode }}&office_name={{ office.office_name | urlencode }}"
-             class="btn-scan-sub">📋 Submit Here</a>
+          <a href="/client/submit?office_slug={{ office.office_slug|urlencode }}&office_name={{ office.office_name|urlencode }}" class="btn-scan-sub">📋 Submit Here</a>
           {% else %}
-          <a href="/office-action/{{ sub_slug }}"
-             class="btn-scan-sub">📋 Submit Docs</a>
+          <a href="/office-action/{{ sub_slug }}" class="btn-scan-sub">📋 Submit Docs</a>
           {% endif %}
-          <a href="/office-qr/{{ sub_slug }}.png"
-             download="{{ sub_slug }}.png"
-             class="btn-dl-sub">⬇️ Download QR</a>
+          <a href="/office-qr/{{ sub_slug }}.png" download="{{ sub_slug }}.png" class="btn-dl-sub">⬇️ Download QR</a>
         </div>
       </div>
       {% endfor %}
     </div>
-    <div class="oqs-none" id="oqs-none">
-      No offices match your search.
-    </div>
+    <div class="oqs-none" id="oqs-none">No offices match your search.</div>
   </div>
 </div>
-
 <script>
 function filterOffices(query) {
   const q = query.toLowerCase().trim();
   const cards = document.querySelectorAll('.oqs-card');
   let visible = 0;
   cards.forEach(card => {
-    const name = card.dataset.name || '';
-    const show = !q || name.includes(q);
+    const show = !q || (card.dataset.name||'').includes(q);
     card.classList.toggle('hidden', !show);
     if (show) visible++;
   });
-  const count = document.getElementById('oqs-count');
-  const none  = document.getElementById('oqs-none');
-  count.textContent = visible + ' office' + (visible !== 1 ? 's' : '') + (q ? ' found' : ' registered');
-  none.classList.toggle('visible', visible === 0);
+  document.getElementById('oqs-count').textContent = visible + ' office' + (visible !== 1 ? 's' : '') + (q ? ' found' : ' registered');
+  document.getElementById('oqs-none').classList.toggle('visible', visible === 0);
 }
-// Auto-focus search if user hits /
 document.addEventListener('keydown', e => {
   if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
-    e.preventDefault();
-    document.getElementById('oqs-search').focus();
+    e.preventDefault(); document.getElementById('oqs-search').focus();
   }
 });
 </script>
 {% endif %}
 
 <!-- Filters -->
-<form method="get" action="/">
+<form method="get" action="/" id="filter-form">
   <div class="filters">
     <input type="text" name="search" value="{{ search }}" placeholder="🔍  Search document name, ID, sender..." />
     <select name="status" onchange="this.form.submit()">
@@ -180,18 +153,100 @@ document.addEventListener('keydown', e => {
   </div>
 </form>
 
+<!-- ══════════════════════════════════════════
+     ROUTING ACTION BAR — appears when docs selected
+══════════════════════════════════════════ -->
+<style>
+  .route-bar{display:none;position:sticky;top:68px;z-index:90;
+    background:linear-gradient(135deg,#0A2540,#1D4ED8);
+    border-radius:14px;padding:14px 18px;margin-bottom:14px;
+    box-shadow:0 6px 24px rgba(10,37,80,.35);
+    align-items:center;gap:14px;flex-wrap:wrap;}
+  .route-bar.visible{display:flex;}
+  .route-bar-label{font-family:'Outfit',sans-serif;font-size:16px;font-weight:900;
+    color:#fff;white-space:nowrap;flex-shrink:0;}
+  .route-bar-count{background:rgba(255,255,255,.2);color:#fff;border-radius:20px;
+    padding:3px 12px;font-size:14px;font-weight:800;}
+  .route-dest-wrap{flex:1;min-width:180px;}
+  .route-dest{width:100%;padding:10px 14px;border:2px solid rgba(255,255,255,.3);
+    border-radius:10px;background:rgba(255,255,255,.12);color:#fff;
+    font-family:inherit;font-size:15px;outline:none;min-height:44px;}
+  .route-dest::placeholder{color:rgba(255,255,255,.55);}
+  .route-dest:focus{border-color:rgba(255,255,255,.7);background:rgba(255,255,255,.2);}
+  .btn-route{padding:11px 20px;border-radius:10px;background:#fff;color:#1D4ED8;
+    border:none;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;
+    white-space:nowrap;min-height:44px;transition:all .15s;}
+  .btn-route:hover{background:#DBEAFE;}
+  .btn-clear-sel{padding:11px 16px;border-radius:10px;
+    background:rgba(255,255,255,.12);color:rgba(255,255,255,.85);
+    border:1.5px solid rgba(255,255,255,.25);font-family:inherit;font-size:14px;
+    font-weight:700;cursor:pointer;white-space:nowrap;min-height:44px;}
+  .btn-clear-sel:hover{background:rgba(255,255,255,.2);}
+
+  /* Checkbox column */
+  .cb-cell{width:44px;padding:0 8px!important;text-align:center;vertical-align:middle;}
+  .doc-checkbox{width:20px;height:20px;cursor:pointer;accent-color:#1D4ED8;
+    border-radius:4px;}
+  th.cb-cell{background:var(--surface);}
+  tr.row-selected{background:#EFF6FF!important;}
+  tr.row-selected:hover td{background:#DBEAFE!important;}
+
+  /* Select all checkbox */
+  #select-all{width:20px;height:20px;cursor:pointer;accent-color:#1D4ED8;}
+
+  @media(max-width:600px){
+    .route-bar{top:60px;border-radius:10px;padding:12px 14px;gap:10px;}
+    .route-bar-label{font-size:15px;}
+    .route-dest-wrap{min-width:unset;width:100%;order:3;}
+    .btn-route{flex:1;}
+  }
+</style>
+
+<!-- The routing bar (hidden until docs selected) -->
+<div class="route-bar" id="route-bar">
+  <div class="route-bar-label">📤 Route Selected</div>
+  <span class="route-bar-count" id="sel-count">0</span>
+  <div class="route-dest-wrap">
+    <input type="text" class="route-dest" id="route-dest"
+           placeholder="Destination office name..." autocomplete="off"
+           list="office-suggestions"/>
+    <datalist id="office-suggestions">
+      {% for office in saved_offices %}
+      <option value="{{ office.office_name }}">
+      {% endfor %}
+    </datalist>
+  </div>
+  <button class="btn-route" onclick="submitRouting()">🚀 Create Routing Slip</button>
+  <button class="btn-clear-sel" onclick="clearSelection()">✕ Clear</button>
+</div>
+
+<!-- Hidden form for routing submission -->
+<form method="post" action="/routing-slip/create" id="routing-form" style="display:none;">
+  <input type="hidden" name="doc_ids" id="routing-doc-ids"/>
+  <input type="hidden" name="destination" id="routing-dest-field"/>
+  <input type="hidden" name="notes" id="routing-notes"/>
+</form>
+
 <!-- Documents Table -->
 <div class="table-wrap">
   <div class="table-head">
     <div class="table-title">📋 Document Records</div>
-    <div class="table-count">{{ docs|length }} record{% if docs|length != 1 %}s{% endif %}</div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div class="table-count">{{ docs|length }} record{% if docs|length != 1 %}s{% endif %}</div>
+      {% if logged_in %}
+      <span style="font-size:13px;color:var(--muted);">☑ Check rows to route</span>
+      {% endif %}
+    </div>
   </div>
 
   {% if docs %}
   <div class="table-scroll">
-    <table>
+    <table id="docs-table">
       <thead>
         <tr>
+          {% if logged_in %}
+          <th class="cb-cell"><input type="checkbox" id="select-all" title="Select all"/></th>
+          {% endif %}
           <th>Document / Content</th>
           <th>Unit / Office / School</th>
           <th>Source / Sender</th>
@@ -202,12 +257,19 @@ document.addEventListener('keydown', e => {
       </thead>
       <tbody>
         {% for doc in docs %}
-        <tr onclick="window.location='/view/{{ doc.id }}'">
+        <tr onclick="rowClick(event, '{{ doc.id }}')" style="cursor:pointer;">
+          {% if logged_in %}
+          <td class="cb-cell" onclick="event.stopPropagation()">
+            <input type="checkbox" class="doc-checkbox" value="{{ doc.id }}"
+                   onchange="updateSelection()"/>
+          </td>
+          {% endif %}
           <td>
             <div class="doc-name">{{ doc.doc_name }}</div>
             {% if doc.doc_id %}<div class="doc-id">{{ doc.doc_id }}</div>{% endif %}
             {% if doc.category %}<div class="doc-cat">{{ doc.category }}</div>{% endif %}
-            {% if doc.submitted_by %}<div style="font-size:11px;color:var(--emerald);margin-top:2px;font-weight:700;">📱 Client Submission</div>{% endif %}
+            {% if doc.submitted_by %}<div style="font-size:11px;color:var(--emerald);margin-top:2px;font-weight:700;">📱 Client</div>{% endif %}
+            {% if doc.status == 'In Transit' %}<div style="font-size:11px;color:#1D4ED8;margin-top:2px;font-weight:700;">🚌 In Transit → {{ doc.forwarded_to or '?' }}</div>{% endif %}
           </td>
           <td style="font-size:var(--fs-sm);">{{ doc.sender_org or '—' }}</td>
           <td style="font-size:var(--fs-sm);">{{ doc.sender_name or '—' }}</td>
@@ -236,5 +298,59 @@ document.addEventListener('keydown', e => {
   </div>
   {% endif %}
 </div>
+
+<script>
+function rowClick(e, docId) {
+  // Only navigate if not clicking checkbox
+  if (e.target.type === 'checkbox') return;
+  window.location = '/view/' + docId;
+}
+
+function updateSelection() {
+  const checked = document.querySelectorAll('.doc-checkbox:checked');
+  const bar = document.getElementById('route-bar');
+  document.getElementById('sel-count').textContent = checked.length;
+  bar.classList.toggle('visible', checked.length > 0);
+  // Highlight selected rows
+  document.querySelectorAll('.doc-checkbox').forEach(cb => {
+    cb.closest('tr').classList.toggle('row-selected', cb.checked);
+  });
+}
+
+function clearSelection() {
+  document.querySelectorAll('.doc-checkbox').forEach(cb => {
+    cb.checked = false;
+    cb.closest('tr').classList.remove('row-selected');
+  });
+  document.getElementById('select-all').checked = false;
+  document.getElementById('route-bar').classList.remove('visible');
+}
+
+const selAll = document.getElementById('select-all');
+if (selAll) {
+  selAll.addEventListener('change', function() {
+    document.querySelectorAll('.doc-checkbox').forEach(cb => {
+      cb.checked = this.checked;
+      cb.closest('tr').classList.toggle('row-selected', this.checked);
+    });
+    updateSelection();
+  });
+}
+
+function submitRouting() {
+  const dest = document.getElementById('route-dest').value.trim();
+  if (!dest) {
+    document.getElementById('route-dest').focus();
+    document.getElementById('route-dest').style.borderColor = '#DC2626';
+    setTimeout(() => document.getElementById('route-dest').style.borderColor = '', 2000);
+    return;
+  }
+  const ids = Array.from(document.querySelectorAll('.doc-checkbox:checked')).map(cb => cb.value);
+  if (!ids.length) return;
+  document.getElementById('routing-doc-ids').value = ids.join(',');
+  document.getElementById('routing-dest-field').value = dest;
+  document.getElementById('routing-form').submit();
+}
+</script>
 
 {% endblock %}

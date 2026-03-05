@@ -371,6 +371,18 @@ def init_db():
                     ts TIMESTAMP DEFAULT NOW()
                 )
             """)
+            # Routing slips — batch routing documents sent to another office
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS routing_slips (
+                    id TEXT PRIMARY KEY,
+                    slip_no TEXT NOT NULL,
+                    destination TEXT NOT NULL,
+                    prepared_by TEXT,
+                    doc_ids JSONB NOT NULL,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    notes TEXT
+                )
+            """)
             # Office traffic log — counts clients in/out per office per day
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS office_traffic (
@@ -2540,6 +2552,126 @@ def office_qr_page():
 # ─────────────────────────────────────────────
 #  QUICK STATUS UPDATE (staff manual)
 # ─────────────────────────────────────────────
+
+# ─────────────────────────────────────────────
+#  ROUTING SLIPS — batch route docs to another office
+# ─────────────────────────────────────────────
+
+def generate_slip_no():
+    """e.g. SLIP-2026-A3F9"""
+    yr = datetime.now().strftime("%Y")
+    suffix = uuid.uuid4().hex[:4].upper()
+    return f"SLIP-{yr}-{suffix}"
+
+def save_routing_slip(slip):
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO routing_slips (id,slip_no,destination,prepared_by,doc_ids,notes)
+                            VALUES (%s,%s,%s,%s,%s,%s)
+                            ON CONFLICT (id) DO UPDATE SET
+                            destination=EXCLUDED.destination,
+                            doc_ids=EXCLUDED.doc_ids,
+                            notes=EXCLUDED.notes""",
+                        (slip["id"], slip["slip_no"], slip["destination"],
+                         slip["prepared_by"], json.dumps(slip["doc_ids"]), slip.get("notes",""))
+                    )
+                conn.commit()
+        except Exception as e:
+            print(f"save_routing_slip error: {e}")
+    else:
+        path = "routing_slips.json"
+        slips = {}
+        if os.path.exists(path):
+            with open(path) as f: slips = json.load(f)
+        slips[slip["id"]] = slip
+        with open(path,"w") as f: json.dump(slips, f)
+
+def get_routing_slip(slip_id):
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM routing_slips WHERE id=%s", (slip_id,))
+                    row = cur.fetchone()
+                    if not row: return None
+                    r = dict(row)
+                    r["doc_ids"] = r["doc_ids"] if isinstance(r["doc_ids"], list) else json.loads(r["doc_ids"])
+                    r["created_at"] = str(r["created_at"])[:19] if r.get("created_at") else now_str()
+                    return r
+        except Exception as e:
+            print(f"get_routing_slip error: {e}")
+            return None
+    else:
+        path = "routing_slips.json"
+        if not os.path.exists(path): return None
+        with open(path) as f: slips = json.load(f)
+        return slips.get(slip_id)
+
+@app.route("/routing-slip/create", methods=["POST"])
+@login_required
+def create_routing_slip():
+    """
+    Staff selects documents from dashboard, picks a destination office,
+    and creates a routing slip. Selected docs get status → In Transit.
+    """
+    doc_ids_raw = request.form.get("doc_ids","").strip()
+    destination = request.form.get("destination","").strip()
+    notes       = request.form.get("notes","").strip()
+
+    if not doc_ids_raw or not destination:
+        flash("Please select documents and enter a destination office.", "error")
+        return redirect(url_for("index"))
+
+    doc_ids = [d.strip() for d in doc_ids_raw.split(",") if d.strip()]
+    if not doc_ids:
+        flash("No valid document IDs selected.", "error")
+        return redirect(url_for("index"))
+
+    actor = session.get("full_name") or session.get("username") or "Staff"
+    slip  = {
+        "id":          str(uuid.uuid4())[:8].upper(),
+        "slip_no":     generate_slip_no(),
+        "destination": destination,
+        "prepared_by": actor,
+        "doc_ids":     doc_ids,
+        "notes":       notes,
+        "created_at":  now_str(),
+    }
+    save_routing_slip(slip)
+
+    # Update each doc: status → In Transit, log travel entry
+    for doc_id in doc_ids:
+        doc = get_doc(doc_id)
+        if doc:
+            doc["status"]       = "In Transit"
+            doc["forwarded_to"] = destination
+            doc.setdefault("travel_log",[]).append({
+                "office":    destination,
+                "action":    "Forwarded — In Transit",
+                "officer":   actor,
+                "timestamp": now_str(),
+                "remarks":   f"Included in routing slip {slip['slip_no']}. Forwarded to {destination}.",
+            })
+            save_doc(doc)
+
+    audit_log("routing_slip_created",
+              f"slip={slip['slip_no']} dest={destination} docs={len(doc_ids)}")
+    return redirect(url_for("view_routing_slip", slip_id=slip["id"]))
+
+@app.route("/routing-slip/<slip_id>")
+@login_required
+def view_routing_slip(slip_id):
+    """View / print a routing slip."""
+    slip = get_routing_slip(slip_id)
+    if not slip:
+        flash("Routing slip not found.", "error")
+        return redirect(url_for("index"))
+    docs = [get_doc(d) for d in slip["doc_ids"]]
+    docs = [d for d in docs if d]
+    return render_template("routing_slip.html", slip=slip, docs=docs)
 
 @app.route("/update-status/<doc_id>", methods=["POST"])
 @login_required
