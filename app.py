@@ -371,17 +371,33 @@ def init_db():
                     ts TIMESTAMP DEFAULT NOW()
                 )
             """)
-            # Seed default receive/release QR codes if not present
+            # Office traffic log — counts clients in/out per office per day
             cur.execute("""
-                INSERT INTO office_qr_codes (id, action, label)
-                VALUES ('OFFICE-RECEIVE', 'receive', 'Office Entrance - Receive')
-                ON CONFLICT (id) DO NOTHING
+                CREATE TABLE IF NOT EXISTS office_traffic (
+                    id SERIAL PRIMARY KEY,
+                    office_slug TEXT NOT NULL,
+                    office_name TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    doc_id TEXT,
+                    client_username TEXT,
+                    scanned_at TIMESTAMP DEFAULT NOW()
+                )
             """)
+            # Document QR tokens — RECEIVE and RELEASE one-time-use tokens
             cur.execute("""
-                INSERT INTO office_qr_codes (id, action, label)
-                VALUES ('OFFICE-RELEASE', 'release', 'Office Exit - Release')
-                ON CONFLICT (id) DO NOTHING
+                CREATE TABLE IF NOT EXISTS doc_qr_tokens (
+                    token TEXT PRIMARY KEY,
+                    doc_id TEXT NOT NULL,
+                    token_type TEXT NOT NULL,
+                    used BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
             """)
+            for col_sql in [
+                "ALTER TABLE doc_qr_tokens ADD COLUMN IF NOT EXISTS used BOOLEAN DEFAULT FALSE",
+            ]:
+                try: cur.execute(col_sql)
+                except Exception: pass
         conn.commit()
 
 if USE_DB:
@@ -459,7 +475,8 @@ def inject_auth():
         logged_in=is_logged_in(),
         current_user=session.get("username",""),
         current_role=session.get("role","guest"),
-        current_full_name=session.get("full_name","")
+        current_full_name=session.get("full_name",""),
+        now=datetime.now,
     )
 
 @app.after_request
@@ -1448,6 +1465,42 @@ def trash():
 #  QR DOWNLOAD
 # ─────────────────────────────────────────────
 
+@app.route("/doc-qr-download/<token>")
+@login_required
+def doc_qr_download(token):
+    """Download a RELEASE QR PNG by token (doesn't consume it)."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT doc_id, token_type FROM doc_qr_tokens WHERE token=%s",
+                        (token,)
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        return "QR token not found", 404
+                    doc = get_doc(row["doc_id"])
+                    token_type = row["token_type"]
+        except Exception as e:
+            return f"Error: {e}", 500
+    else:
+        path = "doc_qr_tokens.json"
+        if not os.path.exists(path): return "Not found", 404
+        with open(path) as f: tokens = json.load(f)
+        t = tokens.get(token)
+        if not t: return "Not found", 404
+        doc = get_doc(t["doc_id"])
+        token_type = t["token_type"]
+    if not doc:
+        return "Document not found", 404
+    png = make_doc_status_qr_png(token, token_type, doc.get("doc_name","Document"), box_size=12)
+    buf = BytesIO(png)
+    buf.seek(0)
+    safe = re.sub(r'[^a-zA-Z0-9_-]', '_', doc.get("doc_name","doc"))[:20]
+    return send_file(buf, mimetype="image/png", as_attachment=True,
+                     download_name=f"QR_{token_type}_{safe}.png")
+
 @app.route("/qr/<doc_id>.png")
 def qr_download(doc_id):
     doc = get_doc(doc_id)
@@ -1537,19 +1590,28 @@ def client_submitted(doc_id):
 
 @app.route("/client/submitted-batch")
 def client_submitted_batch():
-    """Batch submission confirmation — shows QR for every submitted doc."""
+    """Batch submission confirmation — shows RECEIVE QR for every submitted doc."""
     if not is_logged_in() or session.get("role") != "client":
         return redirect(url_for("client_login"))
-    ids_raw = request.args.get("ids","")
+    ids_raw    = request.args.get("ids","")
+    tokens_raw = request.args.get("tokens","")
     doc_ids = [i.strip() for i in ids_raw.split(",") if i.strip()]
+    tokens  = [t.strip() for t in tokens_raw.split(",") if t.strip()]
     if not doc_ids:
         return redirect(url_for("client_portal"))
+    base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
     qr_list = []
-    for doc_id in doc_ids:
+    for i, doc_id in enumerate(doc_ids):
         doc = get_doc(doc_id)
         if doc and doc.get("submitted_by") == session.get("username"):
-            qr_b64 = generate_qr_b64(doc, request.host_url)
-            qr_list.append((doc, qr_b64))
+            token = tokens[i] if i < len(tokens) else None
+            if token:
+                # RECEIVE QR — client gives this to staff at the office
+                qr_png = make_doc_status_qr_png(token, "RECEIVE", doc.get("doc_name","Document"))
+                qr_b64 = base64.b64encode(qr_png).decode()
+            else:
+                qr_b64 = generate_qr_b64(doc, request.host_url)
+            qr_list.append((doc, qr_b64, token))
     if not qr_list:
         return redirect(url_for("client_portal"))
     return render_template("client_submitted.html", qr_list=qr_list, batch=True)
@@ -1686,12 +1748,15 @@ def client_submit():
             session["submit_cart"] = cart
             session.modified = True
 
-        # ── SUBMIT ALL — save all cart items to DB ──
+        # ── SUBMIT ALL — save all cart items to DB + generate RECEIVE tokens ──
         elif action == "submit_all":
             if not cart:
                 error = "No documents to submit. Add at least one document first."
             else:
-                submitted_ids = []
+                submitted_ids     = []
+                receive_tokens    = []
+                office_slug_used  = session.get("submit_office_slug", "")
+                office_name_used  = session.get("submit_office_name", "")
                 for item in cart:
                     doc = {
                         "id":           str(uuid.uuid4())[:8].upper(),
@@ -1702,7 +1767,7 @@ def client_submit():
                         "sender_name":  session.get("full_name") or session.get("username"),
                         "sender_org":   item["unit_office"],
                         "sender_contact": "",
-                        "referred_to":  item["referred_to"],
+                        "referred_to":  item["referred_to"] or office_name_used,
                         "forwarded_to": "",
                         "recipient_name": "",
                         "recipient_org": "",
@@ -1718,29 +1783,48 @@ def client_submit():
                         "travel_log":   [],
                         "submitted_by": session.get("username"),
                         "submitted_by_name": session.get("full_name") or session.get("username"),
+                        "target_office_slug": office_slug_used,
+                        "target_office_name": office_name_used,
                     }
                     doc["travel_log"].append({
-                        "office":    item["unit_office"] or "Client",
+                        "office":    office_name_used or item["unit_office"] or "Client",
                         "action":    "Document Submitted by Client",
                         "officer":   doc["sender_name"],
                         "timestamp": doc["created_at"],
-                        "remarks":   f"Submitted via client portal (batch of {len(cart)}).",
+                        "remarks":   f"Submitted via client portal. Target office: {office_name_used or 'General'}.",
                     })
                     insert_doc(doc)
+                    # Generate RECEIVE token for this document
+                    rec_token = create_doc_token(doc["id"], "RECEIVE")
                     submitted_ids.append(doc["id"])
+                    receive_tokens.append(rec_token)
 
-                # Clear cart
+                # Clear cart + office
                 session.pop("submit_cart", None)
+                session.pop("submit_office_slug", None)
+                session.pop("submit_office_name", None)
                 session.modified = True
-                # Redirect to batch confirmation
+                # Redirect to batch confirmation with tokens
                 return redirect(url_for("client_submitted_batch",
-                                        ids=",".join(submitted_ids)))
+                                        ids=",".join(submitted_ids),
+                                        tokens=",".join(receive_tokens)))
 
         # Re-read cart after possible add/remove
         cart = session.get("submit_cart", [])
 
-    return render_template("client_submit.html", cart=cart, error=error,
-                           doc={}, unit_office_default=_get_client_org(session.get("username","")))
+    # Capture office context from QR scan (?office_slug=...&office_name=...)
+    incoming_slug = request.args.get("office_slug","")
+    incoming_name = request.args.get("office_name","")
+    if incoming_slug and incoming_name:
+        session["submit_office_slug"] = incoming_slug
+        session["submit_office_name"] = incoming_name
+        session.modified = True
+    office_slug = session.get("submit_office_slug","")
+    office_name = session.get("submit_office_name","")
+
+    return render_template("client_submit.html", cart=cart, error=error, doc={},
+                           office_slug=office_slug, office_name=office_name,
+                           unit_office_default=_get_client_org(session.get("username","")))
 
 @app.route("/client/track/<doc_id>")
 def client_track(doc_id):
@@ -1755,6 +1839,290 @@ def client_track(doc_id):
     return render_template("client_track.html", doc=doc, qr_b64=qr_b64)
 
 # ─────────────────────────────────────────────
+#  DOC STATUS QR TOKEN HELPERS
+#  Each submitted doc gets a RECEIVE token.
+#  When scanned → status=Received → generate RELEASE token.
+#  When RELEASE scanned → status=Released. Both log traffic.
+# ─────────────────────────────────────────────
+
+def create_doc_token(doc_id, token_type):
+    """Create a one-time token for RECEIVE or RELEASE QR. Returns token string."""
+    token = f"{token_type[:3].upper()}-{uuid.uuid4().hex[:16].upper()}"
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    # Remove any previous unused token of same type for this doc
+                    cur.execute(
+                        "DELETE FROM doc_qr_tokens WHERE doc_id=%s AND token_type=%s AND used=FALSE",
+                        (doc_id, token_type)
+                    )
+                    cur.execute(
+                        "INSERT INTO doc_qr_tokens (token, doc_id, token_type) VALUES (%s,%s,%s)",
+                        (token, doc_id, token_type)
+                    )
+                conn.commit()
+        except Exception as e:
+            print(f"create_doc_token error: {e}")
+    else:
+        path = "doc_qr_tokens.json"
+        tokens = {}
+        if os.path.exists(path):
+            with open(path) as f: tokens = json.load(f)
+        tokens[token] = {"doc_id": doc_id, "token_type": token_type, "used": False}
+        with open(path,"w") as f: json.dump(tokens, f)
+    return token
+
+def use_doc_token(token):
+    """
+    Validates and marks a doc QR token as used.
+    Returns (doc_id, token_type) or (None, None) if invalid/already used.
+    """
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT doc_id, token_type FROM doc_qr_tokens WHERE token=%s AND used=FALSE",
+                        (token,)
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        return None, None
+                    cur.execute("UPDATE doc_qr_tokens SET used=TRUE WHERE token=%s", (token,))
+                conn.commit()
+                return row["doc_id"], row["token_type"]
+        except Exception as e:
+            print(f"use_doc_token error: {e}")
+            return None, None
+    else:
+        path = "doc_qr_tokens.json"
+        if not os.path.exists(path): return None, None
+        with open(path) as f: tokens = json.load(f)
+        t = tokens.get(token)
+        if not t or t.get("used"): return None, None
+        tokens[token]["used"] = True
+        with open(path,"w") as f: json.dump(tokens, f)
+        return t["doc_id"], t["token_type"]
+
+def log_office_traffic(office_slug, office_name, event_type, doc_id, client_username):
+    """Record a client entering (RECEIVE) or leaving (RELEASE) an office."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO office_traffic
+                            (office_slug, office_name, event_type, doc_id, client_username)
+                            VALUES (%s,%s,%s,%s,%s)""",
+                        (office_slug, office_name, event_type, doc_id, client_username)
+                    )
+                conn.commit()
+        except Exception as e:
+            print(f"log_office_traffic error: {e}")
+    else:
+        path = "office_traffic.json"
+        logs = []
+        if os.path.exists(path):
+            with open(path) as f: logs = json.load(f)
+        logs.append({
+            "office_slug": office_slug, "office_name": office_name,
+            "event_type": event_type, "doc_id": doc_id,
+            "client_username": client_username, "scanned_at": now_str()
+        })
+        with open(path,"w") as f: json.dump(logs, f)
+
+def get_office_traffic_today(office_slug):
+    """Returns {received: int, released: int} for today."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT event_type, COUNT(*) as cnt FROM office_traffic
+                            WHERE office_slug=%s AND DATE(scanned_at)=DATE(NOW())
+                            GROUP BY event_type""",
+                        (office_slug,)
+                    )
+                    rows = cur.fetchall()
+                    result = {"received": 0, "released": 0}
+                    for r in rows:
+                        if r["event_type"] == "RECEIVE": result["received"] = r["cnt"]
+                        if r["event_type"] == "RELEASE": result["released"] = r["cnt"]
+                    return result
+        except Exception as e:
+            print(f"get_office_traffic_today error: {e}")
+            return {"received": 0, "released": 0}
+    else:
+        path = "office_traffic.json"
+        if not os.path.exists(path): return {"received": 0, "released": 0}
+        with open(path) as f: logs = json.load(f)
+        received = sum(1 for l in logs if l["office_slug"]==office_slug and l["event_type"]=="RECEIVE" and l.get("scanned_at","")[:10]==today)
+        released = sum(1 for l in logs if l["office_slug"]==office_slug and l["event_type"]=="RELEASE" and l.get("scanned_at","")[:10]==today)
+        return {"received": received, "released": released}
+
+def make_doc_status_qr_png(token, token_type, doc_name, box_size=10):
+    """
+    Generate a labeled PNG QR code for a RECEIVE or RELEASE token URL.
+    token_type: 'RECEIVE' or 'RELEASE'
+    """
+    from PIL import Image, ImageDraw, ImageFont
+    base = os.environ.get("APP_URL", "")
+    url  = f"{base}/doc-scan/{token}"
+
+    if token_type == "RECEIVE":
+        short_label = "REC"
+        label_color = "#1D4ED8"
+        bg_color    = "#DBEAFE"
+        sub_label   = "SUBMIT TO OFFICE"
+    else:
+        short_label = "REL"
+        label_color = "#065F46"
+        bg_color    = "#D1FAE5"
+        sub_label   = "PICK UP DOCUMENT"
+
+    qr = qrcode.QRCode(version=None,
+                        error_correction=qrcode.constants.ERROR_CORRECT_M,
+                        box_size=box_size, border=3)
+    qr.add_data(url)
+    qr.make(fit=True)
+    qr_img = qr.make_image(fill_color="#0A2540", back_color="white").convert("RGB")
+    qr_size = qr_img.size[0]
+
+    bar_h, foot_h, pad = 56, 56, 12
+    total_w = qr_size + pad * 2
+    total_h = bar_h + qr_size + pad * 2 + foot_h
+
+    canvas = Image.new("RGB", (total_w, total_h), "white")
+    draw   = ImageDraw.Draw(canvas)
+    draw.rectangle([0, 0, total_w, bar_h], fill=bg_color)
+
+    try:
+        font_big = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 26)
+        font_med = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 13)
+        font_sm  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 10)
+    except:
+        font_big = font_med = font_sm = ImageFont.load_default()
+
+    # Top label
+    bb = draw.textbbox((0,0), short_label, font=font_big)
+    draw.text(((total_w-(bb[2]-bb[0]))/2, (bar_h-(bb[3]-bb[1]))/2-2), short_label, font=font_big, fill=label_color)
+    canvas.paste(qr_img, (pad, bar_h + pad))
+
+    # Footer
+    foot_y = bar_h + qr_size + pad * 2
+    draw.rectangle([0, foot_y, total_w, total_h], fill=bg_color)
+    bb2 = draw.textbbox((0,0), sub_label, font=font_med)
+    draw.text(((total_w-(bb2[2]-bb2[0]))/2, foot_y+8), sub_label, font=font_med, fill=label_color)
+
+    # Doc name (truncated)
+    dname = doc_name[:28] + "…" if len(doc_name) > 28 else doc_name
+    bb3 = draw.textbbox((0,0), dname, font=font_sm)
+    draw.text(((total_w-(bb3[2]-bb3[0]))/2, foot_y+28), dname, font=font_sm, fill="#5A7A91")
+
+    # Bottom bar
+    draw.rectangle([0, total_h-4, total_w, total_h], fill=label_color)
+
+    buf = BytesIO()
+    canvas.save(buf, format="PNG")
+    buf.seek(0)
+    return buf.getvalue()
+
+# ─────────────────────────────────────────────
+#  DOC SCAN — Auto-status QR (RECEIVE / RELEASE)
+#  Client gets RECEIVE QR after submission.
+#  Staff scans → status=Received → generates RELEASE QR.
+#  Staff scans RELEASE → status=Released.
+#  Both events log office traffic.
+# ─────────────────────────────────────────────
+
+@app.route("/doc-scan/<token>")
+def doc_scan(token):
+    """
+    One-time-use QR scan that auto-updates document status.
+    No form needed — just scan and it happens.
+    Must be logged in as staff or admin.
+    """
+    if not is_logged_in():
+        return redirect(url_for("login", next=request.url))
+    role = session.get("role","")
+    if role == "client":
+        # Clients cannot operate the receive/release scanner
+        flash("This QR code is for office staff only. Please give it to the receiving officer.", "error")
+        return redirect(url_for("client_portal"))
+
+    doc_id, token_type = use_doc_token(token)
+
+    if not doc_id:
+        return render_template("doc_scan_result.html",
+            ok=False,
+            msg="This QR code has already been used or is invalid.",
+            token_type="UNKNOWN", doc=None, release_qr_b64=None,
+            traffic=None)
+
+    doc = get_doc(doc_id)
+    if not doc:
+        return render_template("doc_scan_result.html",
+            ok=False, msg="Document not found.", token_type=token_type,
+            doc=None, release_qr_b64=None, traffic=None)
+
+    office_slug = doc.get("target_office_slug", "general")
+    office_name = doc.get("target_office_name", "Office")
+    actor       = session.get("full_name") or session.get("username") or "Staff"
+    release_qr_b64 = None
+    traffic        = None
+
+    if token_type == "RECEIVE":
+        doc["status"]        = "Received"
+        doc["date_received"] = now_str()[:10]
+        doc["received_by"]   = actor
+        doc.setdefault("travel_log",[]).append({
+            "office":    office_name,
+            "action":    "Document Received at Office",
+            "officer":   actor,
+            "timestamp": now_str(),
+            "remarks":   "Auto-updated via RECEIVE QR scan.",
+        })
+        save_doc(doc)
+        # Log traffic — client entered
+        log_office_traffic(office_slug, office_name, "RECEIVE", doc_id,
+                           doc.get("submitted_by",""))
+        # Generate RELEASE token for when they pick up
+        rel_token = create_doc_token(doc_id, "RELEASE")
+        rel_png   = make_doc_status_qr_png(rel_token, "RELEASE", doc.get("doc_name","Document"))
+        release_qr_b64 = base64.b64encode(rel_png).decode()
+        doc["release_token"] = rel_token  # store for reference (not saved to DB)
+        save_doc(doc)
+        traffic = get_office_traffic_today(office_slug)
+        audit_log("doc_received_qr", f"doc_id={doc_id} office={office_name}")
+
+    elif token_type == "RELEASE":
+        doc["status"]        = "Released"
+        doc["date_released"] = now_str()[:10]
+        doc.setdefault("travel_log",[]).append({
+            "office":    office_name,
+            "action":    "Document Released / Picked Up",
+            "officer":   actor,
+            "timestamp": now_str(),
+            "remarks":   "Auto-updated via RELEASE QR scan. Client picked up document.",
+        })
+        save_doc(doc)
+        # Log traffic — client left
+        log_office_traffic(office_slug, office_name, "RELEASE", doc_id,
+                           doc.get("submitted_by",""))
+        traffic = get_office_traffic_today(office_slug)
+        audit_log("doc_released_qr", f"doc_id={doc_id} office={office_name}")
+
+    return render_template("doc_scan_result.html",
+        ok=True, token_type=token_type, doc=doc,
+        office_name=office_name, actor=actor,
+        release_qr_b64=release_qr_b64,
+        release_token=doc.get("release_token"),
+        traffic=traffic,
+        msg=None)
+
+# ─────────────────────────────────────────────
 #  OFFICE QR ACTIONS — Receive / Release stations
 # ─────────────────────────────────────────────
 
@@ -1764,21 +2132,35 @@ def office_action(action):
     Office QR scan landing page.
     action format: 'receive', 'release', or 'OfficeName-rec', 'OfficeName-rel', 'OfficeName-reg'
     """
-    # Parse office name and action type from format "OfficeName-rec/rel/reg"
+    # Parse office name and action type from format "OfficeName-rec/rel/reg/sub"
+    office_slug = re.sub(r'\s+', '-', action.rsplit('-',1)[0]).lower() if '-' in action else action
     office_name = None
     if action.endswith("-rec"):
-        office_name = action[:-4].replace("-", " ")
+        office_name = action[:-4].replace("-", " ").title()
         action_type = "receive"
     elif action.endswith("-rel"):
-        office_name = action[:-4].replace("-", " ")
+        office_name = action[:-4].replace("-", " ").title()
         action_type = "release"
     elif action.endswith("-reg"):
-        office_name = action[:-4].replace("-", " ")
-        # Redirect to client register with office AND reg code pre-filled
+        office_name = action[:-4].replace("-", " ").title()
+        # QR1: Registration — redirect to client register pre-filled with office
         base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
         return redirect(base + "/client/register?office=" + urllib.parse.quote(office_name) + "&code=" + urllib.parse.quote(CLIENT_REG_CODE))
+    elif action.endswith("-sub"):
+        # QR2: Submission — redirect client to submit form pre-filled with this office
+        office_name = action[:-4].replace("-", " ").title()
+        slug = action[:-4].lower()
+        base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
+        if not is_logged_in():
+            return redirect(url_for("client_login", next=f"/client/submit?office_slug={urllib.parse.quote(slug)}&office_name={urllib.parse.quote(office_name)}"))
+        if session.get("role") != "client":
+            flash("This QR code is for clients. Please log in with a client account.", "error")
+            return redirect(url_for("index"))
+        return redirect(f"/client/submit?office_slug={urllib.parse.quote(slug)}&office_name={urllib.parse.quote(office_name)}")
     elif action in ("receive", "release"):
         action_type = action
+        office_slug = "main-office"
+        office_name = "Main Office"
     else:
         return redirect(url_for("index"))
     action = action_type  # normalize
@@ -2039,10 +2421,16 @@ def office_qr_page():
         # Save it so it persists across devices
         save_office(office_name, session.get("username", ""))
         qr_data = {
-            "reg": make_slug(office_name, "-reg"),
-            "rec": make_slug(office_name, "-rec"),
-            "rel": make_slug(office_name, "-rel"),
+            "reg": make_slug(office_name, "-reg"),   # QR1: client registration
+            "sub": make_slug(office_name, "-sub"),   # QR2: client submission to this office
+            "rec": make_slug(office_name, "-rec"),   # QR3a: staff receive scanner
+            "rel": make_slug(office_name, "-rel"),   # QR3b: staff release scanner
         }
+        # Get today's traffic for this office
+        office_slug_key = re.sub(r'\s+', '-', office_name.strip().lower())
+        office_traffic  = get_office_traffic_today(office_slug_key)
+    else:
+        office_traffic = None
 
     saved_offices = load_saved_offices()
 
@@ -2050,6 +2438,7 @@ def office_qr_page():
                            base=base,
                            office_name=office_name,
                            qr_data=qr_data,
+                           office_traffic=office_traffic if office_name else None,
                            saved_offices=saved_offices,
                            client_reg_code=CLIENT_REG_CODE)
 
