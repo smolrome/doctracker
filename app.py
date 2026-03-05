@@ -1211,7 +1211,7 @@ def client_register():
                 return redirect(url_for("client_login"))
             else:
                 error = err
-    return render_template("client_register.html", error=error, office=request.args.get("office",""))
+    return render_template("client_register.html", error=error, office=request.args.get("office",""), reg_code=request.args.get("code",""))
 
 @app.route("/client/submit", methods=["GET","POST"])
 def client_submit():
@@ -1291,9 +1291,9 @@ def office_action(action):
         action_type = "release"
     elif action.endswith("-reg"):
         office_name = action[:-4].replace("-", " ")
-        # Redirect to client register with office pre-filled
+        # Redirect to client register with office AND reg code pre-filled
         base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
-        return redirect(base + "/client/register?office=" + urllib.parse.quote(office_name))
+        return redirect(base + "/client/register?office=" + urllib.parse.quote(office_name) + "&code=" + urllib.parse.quote(CLIENT_REG_CODE))
     elif action in ("receive", "release"):
         action_type = action
     else:

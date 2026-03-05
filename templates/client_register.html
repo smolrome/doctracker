@@ -59,10 +59,17 @@
     </div>
     {% endif %}
     <form method="post" id="reg-form">
-      <div class="form-group">
+      <div class="form-group" {% if reg_code %}style="display:none;"{% endif %}>
         <label>Registration Code <span class="req">*</span></label>
-        <input type="text" name="reg_code" placeholder="Enter code from the office QR" required autocomplete="off"/>
+        <input type="text" name="reg_code" value="{{ reg_code }}" placeholder="Enter code from the office QR" required autocomplete="off"/>
       </div>
+      {% if reg_code %}
+      <input type="hidden" name="reg_code" value="{{ reg_code }}"/>
+      <div class="info-box" style="background:#ECFDF5;border-color:#10B981;">
+        <span style="font-size:20px;">✅</span>
+        <p style="color:#065F46;">Registration code applied automatically from the QR scan.</p>
+      </div>
+      {% endif %}
       <div class="divider"></div>
       <div class="form-group">
         <label>Full Name <span class="req">*</span></label>
