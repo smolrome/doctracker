@@ -72,7 +72,7 @@
 </head>
 <body>
 <div class="topbar">
-  <div class="topbar-brand">📋 DocTracker</div>
+  <div class="topbar-brand" style="display:flex;align-items:center;gap:8px;"><img src="/logo.png" alt="Logo" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.4);background:#fff;"/> DocTracker</div>
   {% if logged_in %}
     {% if current_role == 'client' %}
     <a href="/client">My Documents</a>

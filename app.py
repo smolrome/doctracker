@@ -306,6 +306,14 @@ def internal_error(e):
     # Always show detailed error so we can debug
     return f"<pre style='padding:20px;font-size:13px;'><b>500 Internal Server Error:</b>\n\n{tb}</pre>", 500
 
+
+@app.route("/logo.png")
+def serve_logo():
+    """Serve the logo from templates/logo/ folder."""
+    import os
+    logo_path = os.path.join(os.path.dirname(__file__), 'templates', 'logo', 'doctrackerLOGO.png')
+    return send_file(logo_path, mimetype='image/png')
+
 @app.route("/debug-error")
 def debug_error():
     """Only accessible when FLASK_DEBUG=1 — shows system status."""
