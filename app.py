@@ -1666,42 +1666,83 @@ def client_login():
                 session.permanent      = True
                 update_last_login(username.lower().strip())
                 audit_log("client_login_ok", f"role={role}")
+                next_url = request.form.get("next_url","").strip() or request.args.get("next","").strip()
                 if role == "client":
-                    return redirect(url_for("client_portal"))
+                    dest = next_url or url_for("client_portal")
+                    return redirect(dest)
                 return redirect(url_for("index"))
             else:
                 error = "Invalid username or password."
                 audit_log("client_login_fail", f"username={username}")
-    return render_template("client_login.html", error=error, lockout_remaining=lockout_remaining)
+    # Carry context into template
+    office_slug = request.args.get("office_slug","")
+    office_name = request.args.get("office_name","")
+    next_url    = request.args.get("next","")
+    return render_template("client_login.html", error=error,
+        lockout_remaining=lockout_remaining,
+        office_slug=office_slug, office_name=office_name, next_url=next_url)
 
 @app.route("/client/register", methods=["GET","POST"])
 def client_register():
-    """Public client registration — no invite needed, just the public reg code."""
+    """
+    Public client registration — open to anyone.
+    Carries office_slug / office_name / next URL through the flow
+    so after registering the client is auto-logged in and redirected
+    to the submission form for that office.
+    """
     if is_logged_in():
-        return redirect(url_for("client_portal") if session.get("role") == "client" else url_for("index"))
+        next_url = request.args.get("next","")
+        if session.get("role") == "client":
+            return redirect(next_url or url_for("client_portal"))
+        return redirect(url_for("index"))
+
+    # Carry context from QR scan through GET params or hidden fields
+    office_slug = request.args.get("office_slug", request.form.get("office_slug","")).strip()
+    office_name = request.args.get("office_name", request.form.get("office_name","")).strip()
+    # Legacy: plain ?office= from old -reg QR links
+    if not office_name:
+        office_name = request.args.get("office", request.form.get("office","")).strip()
+    next_url    = request.args.get("next", request.form.get("next_url","")).strip()
+    # Build the post-login destination
+    if not next_url and office_slug and office_name:
+        next_url = f"/client/submit?office_slug={urllib.parse.quote(office_slug)}&office_name={urllib.parse.quote(office_name)}"
+
     error = None
     if request.method == "POST":
-        reg_code  = request.form.get("reg_code","").strip()
         username  = request.form.get("username","").strip()
         full_name = request.form.get("full_name","").strip()
         password  = request.form.get("password","").strip()
         confirm   = request.form.get("confirm_password","").strip()
-        if reg_code != CLIENT_REG_CODE:
-            error = "Invalid registration code. Please scan the QR code at the office."
-        elif not username or not password:
-            error = "Username and password are required."
-        elif len(password) < 6:
-            error = "Password must be at least 6 characters."
+        if not full_name:
+            error = "Full name is required."
+        elif not username:
+            error = "Username is required."
+        elif len(password) < 8:
+            error = "Password must be at least 8 characters."
         elif password != confirm:
             error = "Passwords do not match."
         else:
             ok, err = create_user(username, password, full_name, role="client")
             if ok:
-                flash("Account created! You can now log in and submit documents.", "success")
-                return redirect(url_for("client_login"))
+                # Auto-login after registration
+                full_name_db, role = verify_user(username, password)
+                session.clear()
+                session["username"]  = username.lower().strip()
+                session["full_name"] = full_name_db or full_name
+                session["role"]      = "client"
+                session.permanent    = True
+                update_last_login(username)
+                audit_log("register_and_login", f"new_client={username}")
+                flash(f"Welcome, {full_name}! Your account is ready.", "success")
+                return redirect(next_url or url_for("client_portal"))
             else:
                 error = err
-    return render_template("client_register.html", error=error, office=request.args.get("office",""), reg_code=request.args.get("code",""))
+
+    return render_template("client_register.html",
+        error=error,
+        office_name=office_name,
+        office_slug=office_slug,
+        next_url=next_url)
 
 @app.route("/client/submit", methods=["GET","POST"])
 def client_submit():
@@ -2145,20 +2186,30 @@ def office_action(action):
         action_type = "release"
     elif action.endswith("-reg"):
         office_name = action[:-4].replace("-", " ").title()
-        # QR1: Registration — redirect to client register pre-filled with office
-        base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
-        return redirect(base + "/client/register?office=" + urllib.parse.quote(office_name) + "&code=" + urllib.parse.quote(CLIENT_REG_CODE))
+        slug = action[:-4].lower()
+        # QR1: Registration — show gate page (register or login)
+        if is_logged_in() and session.get("role") == "client":
+            # Already registered — go straight to portal
+            return redirect(url_for("client_portal"))
+        return render_template("client_gate.html",
+            office_name=office_name,
+            office_slug=slug,
+            next_url=url_for("client_portal"))
     elif action.endswith("-sub"):
         # QR2: Submission — redirect client to submit form pre-filled with this office
         office_name = action[:-4].replace("-", " ").title()
         slug = action[:-4].lower()
-        base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
+        submit_url = f"/client/submit?office_slug={urllib.parse.quote(slug)}&office_name={urllib.parse.quote(office_name)}"
         if not is_logged_in():
-            return redirect(url_for("client_login", next=f"/client/submit?office_slug={urllib.parse.quote(slug)}&office_name={urllib.parse.quote(office_name)}"))
+            # Not logged in — show register/login choice page with office context
+            return render_template("client_gate.html",
+                office_name=office_name,
+                office_slug=slug,
+                next_url=submit_url)
         if session.get("role") != "client":
             flash("This QR code is for clients. Please log in with a client account.", "error")
             return redirect(url_for("index"))
-        return redirect(f"/client/submit?office_slug={urllib.parse.quote(slug)}&office_name={urllib.parse.quote(office_name)}")
+        return redirect(submit_url)
     elif action in ("receive", "release"):
         action_type = action
         office_slug = "main-office"

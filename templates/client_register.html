@@ -4,137 +4,218 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Register — DepEd Leyte DocTracker</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Source Sans 3',sans-serif;min-height:100vh;background:linear-gradient(135deg,#0A4D68 0%,#0E7490 50%,#059669 100%);display:flex;align-items:center;justify-content:center;padding:20px;}
-    .wrap{width:100%;max-width:500px;}
-    .header{text-align:center;margin-bottom:24px;}
-    .header-logo-img{
-      width:100px;height:100px;
-      border-radius:50%;
-      object-fit:cover;object-position:center;
-      display:block;margin:0 auto 14px;
-      border:4px solid rgba(255,255,255,.5);
-      box-shadow:0 8px 28px rgba(0,0,0,.35);
-      background:#fff;
-      overflow:hidden;
-    }
-    
-    .header-title{font-family:'Outfit',sans-serif;font-size:24px;font-weight:900;color:#fff;margin-bottom:4px;}
+    body{font-family:'Source Sans 3',sans-serif;min-height:100vh;
+      background:linear-gradient(135deg,#0A4D68 0%,#0E7490 50%,#059669 100%);
+      display:flex;align-items:center;justify-content:center;padding:20px;}
+    .wrap{width:100%;max-width:480px;}
+    .header{text-align:center;margin-bottom:22px;}
+    .logo{width:90px;height:90px;border-radius:50%;object-fit:cover;
+      border:4px solid rgba(255,255,255,.5);box-shadow:0 8px 28px rgba(0,0,0,.3);
+      display:block;margin:0 auto 14px;background:#fff;}
+    .header-title{font-family:'Outfit',sans-serif;font-size:24px;font-weight:900;color:#fff;margin-bottom:3px;}
     .header-sub{font-size:15px;color:rgba(255,255,255,.8);}
-    .card{background:#fff;border-radius:20px;padding:32px;box-shadow:0 24px 80px rgba(0,0,0,.3);}
-    .card-title{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#0A2540;margin-bottom:6px;}
-    .card-sub{font-size:15px;color:#5A7A91;margin-bottom:20px;}
-    .info-box{border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start;}
-    .info-box p{font-size:15px;line-height:1.5;margin:0;}
-    .info-green{background:#ECFDF5;border:2px solid #059669;}
-    .info-green p{color:#065F46;}
-    .info-blue{background:#EFF6FF;border:2px solid #3B82F6;}
-    .info-blue p{color:#1D4ED8;}
-    .info-amber{background:#FFFBEB;border:2px solid #F59E0B;}
-    .info-amber p{color:#92400E;}
-    .error-box{background:#FEE2E2;border:2px solid #FCA5A5;border-radius:10px;padding:14px 16px;font-size:15px;color:#7F1D1D;margin-bottom:16px;}
-    .divider{height:1px;background:#C8DDE8;margin:16px 0;}
-    .form-group{margin-bottom:16px;}
-    .form-group label{display:block;font-size:15px;font-weight:700;color:#2D4A63;margin-bottom:8px;}
+
+    /* Office banner */
+    .office-banner{background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);
+      border-radius:14px;padding:13px 18px;margin-bottom:18px;
+      display:flex;align-items:center;gap:12px;}
+    .ob-icon{font-size:28px;flex-shrink:0;}
+    .ob-label{font-size:13px;font-weight:700;color:rgba(255,255,255,.7);
+      text-transform:uppercase;letter-spacing:.05em;margin-bottom:1px;}
+    .ob-name{font-family:'Outfit',sans-serif;font-size:17px;font-weight:900;color:#fff;}
+
+    .card{background:#fff;border-radius:20px;padding:28px 28px 24px;
+      box-shadow:0 24px 80px rgba(0,0,0,.3);}
+    .card-title{font-family:'Outfit',sans-serif;font-size:20px;font-weight:900;
+      color:#0A2540;margin-bottom:4px;}
+    .card-sub{font-size:15px;color:#5A7A91;margin-bottom:20px;line-height:1.5;}
+
+    .error-box{background:#FEE2E2;border:2px solid #FCA5A5;border-radius:10px;
+      padding:13px 15px;font-size:15px;color:#7F1D1D;margin-bottom:16px;
+      display:flex;align-items:flex-start;gap:10px;}
+
+    .steps{display:flex;gap:8px;margin-bottom:20px;}
+    .step{flex:1;text-align:center;padding:10px 6px;border-radius:10px;
+      background:#F0F7FA;border:2px solid #C8DDE8;}
+    .step.active{background:linear-gradient(135deg,#0A4D68,#0E7490);border-color:transparent;}
+    .step-num{font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;
+      color:#5A7A91;}
+    .step.active .step-num{color:#fff;}
+    .step-label{font-size:12px;font-weight:700;color:#5A7A91;margin-top:2px;}
+    .step.active .step-label{color:rgba(255,255,255,.85);}
+
+    .form-group{margin-bottom:15px;}
+    .form-group label{display:block;font-size:15px;font-weight:700;color:#2D4A63;margin-bottom:7px;}
     .req{color:#DC2626;margin-left:3px;}
-    .form-group input{width:100%;padding:14px 16px;border:2px solid #C8DDE8;border-radius:10px;font-family:inherit;font-size:18px;color:#0A2540;background:#F0F7FA;outline:none;min-height:54px;transition:border .15s,box-shadow .15s;}
-    .form-group input:focus{border-color:#059669;background:#fff;box-shadow:0 0 0 4px rgba(5,150,105,.15);}
-    .btn{width:100%;padding:16px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;font-size:18px;font-weight:700;min-height:56px;background:linear-gradient(135deg,#059669,#0E7490);color:#fff;box-shadow:0 6px 20px rgba(5,150,105,.4);transition:all .2s;margin-top:4px;}
+    .form-group input{width:100%;padding:13px 15px;border:2px solid #C8DDE8;
+      border-radius:10px;font-family:inherit;font-size:17px;color:#0A2540;
+      background:#F0F7FA;outline:none;min-height:52px;
+      transition:border .15s,box-shadow .15s;-webkit-appearance:none;}
+    .form-group input:focus{border-color:#059669;background:#fff;
+      box-shadow:0 0 0 4px rgba(5,150,105,.15);}
+    .hint{font-size:13px;color:#8BA5B5;margin-top:5px;}
+
+    .divider{height:2px;background:#E8F0F5;margin:18px 0;}
+
+    .btn{width:100%;padding:16px;border-radius:12px;border:none;cursor:pointer;
+      font-family:inherit;font-size:18px;font-weight:800;min-height:56px;
+      background:linear-gradient(135deg,#059669,#0E7490);color:#fff;
+      box-shadow:0 6px 20px rgba(5,150,105,.4);transition:all .2s;margin-top:4px;}
     .btn:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(5,150,105,.5);}
+    .btn:disabled{opacity:.6;transform:none;}
+
     .login-link{text-align:center;margin-top:16px;font-size:15px;color:#5A7A91;}
     .login-link a{color:#0E7490;font-weight:700;text-decoration:none;}
-    #loading-overlay{display:none;position:fixed;inset:0;background:rgba(10,37,64,.65);backdrop-filter:blur(4px);z-index:999;align-items:center;justify-content:center;}
+
+    #loading-overlay{display:none;position:fixed;inset:0;
+      background:rgba(10,37,64,.7);backdrop-filter:blur(4px);
+      z-index:999;align-items:center;justify-content:center;}
     #loading-overlay.active{display:flex;}
     .loading-box{background:#fff;border-radius:20px;padding:36px 48px;text-align:center;}
-    .loading-spinner{width:52px;height:52px;border:5px solid #C8DDE8;border-top-color:#059669;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 16px;}
+    .loading-spinner{width:52px;height:52px;border:5px solid #C8DDE8;
+      border-top-color:#059669;border-radius:50%;
+      animation:spin .7s linear infinite;margin:0 auto 16px;}
     .loading-text{font-family:'Outfit',sans-serif;font-size:18px;font-weight:700;color:#0A2540;}
     @keyframes spin{to{transform:rotate(360deg);}}
-      @media(max-width:480px){
-      body{padding:14px;}
-      .card{padding:24px 18px;}
-      .card-title{font-size:18px;}
+
+    @media(max-width:440px){
+      .card{padding:22px 16px 18px;}
+      .header-title{font-size:21px;}
     }
     @media(max-width:360px){
-      .card{padding:18px 14px;}
-      .form-group input{font-size:16px;min-height:52px;}
+      .form-group input{font-size:16px;min-height:50px;}
+      .steps{display:none;}
     }
   </style>
 </head>
 <body>
 <div class="wrap">
+
   <div class="header">
-    <img src="/logo.png" alt="DepEd Leyte Logo" class="header-logo-img"/>
-    <div class="header-title">Create Account</div>
+    <img src="/logo.png" alt="DepEd Leyte" class="logo"/>
+    <div class="header-title">Create Your Account</div>
     <div class="header-sub">DepEd Leyte Division — Client Portal</div>
   </div>
+
+  {% if office_name %}
+  <div class="office-banner">
+    <div class="ob-icon">🏢</div>
+    <div>
+      <div class="ob-label">After registering you'll submit to</div>
+      <div class="ob-name">{{ office_name }}</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Progress steps -->
+  <div class="steps">
+    <div class="step active">
+      <div class="step-num">1</div>
+      <div class="step-label">Register</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-label">{% if office_name %}Submit Docs{% else %}Log In{% endif %}</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-label">Get QR</div>
+    </div>
+  </div>
+
   <div class="card">
-    <div class="card-title">Client Registration</div>
-    <div class="card-sub">Register to submit and track your documents.</div>
-
-    {% if error %}<div class="error-box">❌ {{ error }}</div>{% endif %}
-
-    {% if office %}
-    <div class="info-box info-blue">
-      <span style="font-size:22px;">🏢</span>
-      <p>Registering via <strong>{{ office }}</strong> office QR code.</p>
+    <div class="card-title">New Client Registration</div>
+    <div class="card-sub">
+      Fill in your details below. No approval needed — your account is ready immediately.
     </div>
-    {% else %}
-    <div class="info-box info-amber">
-      <span style="font-size:22px;">ℹ️</span>
-      <p>Scan the QR code at the DepEd Leyte Division Office to get your registration code, or ask the front desk staff.</p>
-    </div>
+
+    {% if error %}
+    <div class="error-box">❌ {{ error }}</div>
     {% endif %}
 
     <form method="post" id="reg-form">
-      <div class="form-group" {% if reg_code %}style="display:none;"{% endif %}>
-        <label>Registration Code <span class="req">*</span></label>
-        <input type="text" name="reg_code" value="{{ reg_code }}" placeholder="Enter code from office QR" required autocomplete="off"/>
+      <!-- Carry context through -->
+      <input type="hidden" name="office_slug" value="{{ office_slug }}"/>
+      <input type="hidden" name="office_name" value="{{ office_name }}"/>
+      <input type="hidden" name="next_url"    value="{{ next_url }}"/>
+
+      <div class="form-group">
+        <label>Full Name <span class="req">*</span></label>
+        <input type="text" name="full_name"
+               placeholder="e.g. Maria Santos"
+               autocomplete="name" required autofocus/>
       </div>
-      {% if reg_code %}
-      <input type="hidden" name="reg_code" value="{{ reg_code }}"/>
-      <div class="info-box info-green">
-        <span style="font-size:22px;">✅</span>
-        <p>Registration code applied automatically from QR scan.</p>
-      </div>
-      {% endif %}
 
       <div class="divider"></div>
 
       <div class="form-group">
-        <label>Full Name <span class="req">*</span></label>
-        <input type="text" name="full_name" placeholder="e.g. Maria Santos" autocomplete="name" required/>
-      </div>
-      <div class="form-group">
         <label>Username <span class="req">*</span></label>
-        <input type="text" name="username" placeholder="Choose a username" autocomplete="username" required/>
+        <input type="text" name="username"
+               placeholder="Choose a username (no spaces)"
+               autocomplete="username" required/>
+        <div class="hint">You'll use this to log in.</div>
       </div>
       <div class="form-group">
         <label>Password <span class="req">*</span></label>
-        <input type="password" name="password" placeholder="At least 6 characters" autocomplete="new-password" required/>
+        <input type="password" name="password" id="pw1"
+               placeholder="At least 8 characters"
+               autocomplete="new-password" required/>
       </div>
       <div class="form-group">
         <label>Confirm Password <span class="req">*</span></label>
-        <input type="password" name="confirm_password" placeholder="Re-enter password" autocomplete="new-password" required/>
+        <input type="password" name="confirm_password" id="pw2"
+               placeholder="Re-enter your password"
+               autocomplete="new-password" required/>
       </div>
-      <button type="submit" class="btn">✅ Create Account</button>
+
+      <button type="submit" class="btn" id="submit-btn">
+        ✅ Create Account &amp; Continue
+      </button>
     </form>
-    <div class="login-link">Already have an account? <a href="/client/login">Sign in →</a></div>
+
+    <div class="login-link">
+      Already have an account?
+      <a href="/client/login?office_slug={{ office_slug | urlencode }}&office_name={{ office_name | urlencode }}&next={{ next_url | urlencode }}">
+        Sign in →
+      </a>
+    </div>
   </div>
 </div>
+
 <div id="loading-overlay">
-  <div class="loading-box"><div class="loading-spinner"></div><div class="loading-text">Creating account...</div></div>
+  <div class="loading-box">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Creating your account…</div>
+  </div>
 </div>
+
 <script>
-const form=document.getElementById('reg-form');
-form.addEventListener('submit',function(e){
-  const p1=form.querySelector('[name=password]').value;
-  const p2=form.querySelector('[name=confirm_password]').value;
-  if(p1!==p2){e.preventDefault();alert('Passwords do not match.');return;}
+const form = document.getElementById('reg-form');
+form.addEventListener('submit', function(e) {
+  const p1 = document.getElementById('pw1').value;
+  const p2 = document.getElementById('pw2').value;
+  if (p1 !== p2) {
+    e.preventDefault();
+    alert('Passwords do not match.');
+    return;
+  }
+  if (p1.length < 8) {
+    e.preventDefault();
+    alert('Password must be at least 8 characters.');
+    return;
+  }
+  document.getElementById('submit-btn').disabled = true;
   document.getElementById('loading-overlay').classList.add('active');
 });
-window.addEventListener('pageshow',e=>{if(e.persisted)document.getElementById('loading-overlay').classList.remove('active');});
+window.addEventListener('pageshow', e => {
+  if (e.persisted) {
+    document.getElementById('loading-overlay').classList.remove('active');
+    document.getElementById('submit-btn').disabled = false;
+  }
+});
 </script>
 </body>
 </html>
