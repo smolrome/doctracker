@@ -3,124 +3,202 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Document Submitted — DocTracker</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <title>Submission Confirmed — DocTracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     html{font-size:16px;-webkit-text-size-adjust:100%;}
-    :root{--teal:#0E7490;--dark:#0A4D68;--navy:#0A2540;--surface:#F0F7FA;--border:#C8DDE8;--muted:#5A7A91;}
-    body{font-family:'Source Sans 3',sans-serif;min-height:100vh;
-      background:linear-gradient(135deg,#0A4D68 0%,#0E7490 50%,#059669 100%);
-      display:flex;align-items:flex-start;justify-content:center;padding:20px;}
-    .wrap{width:100%;max-width:500px;}
-    .card{background:#fff;border-radius:20px;padding:28px 24px;
-      box-shadow:0 24px 64px rgba(0,0,0,.25);}
+    :root{
+      --teal:#0E7490;--dark:#0A4D68;--emerald:#059669;
+      --navy:#0A2540;--surface:#F0F7FA;--border:#C8DDE8;
+      --text:#0A2540;--muted:#5A7A91;
+    }
+    body{font-family:'Source Sans 3',sans-serif;background:var(--surface);min-height:100vh;color:var(--text);}
 
-    /* Success header */
-    .success-header{text-align:center;margin-bottom:20px;}
-    .success-header img{width:80px;height:80px;border-radius:50%;object-fit:cover;
-      border:4px solid rgba(255,255,255,.5);box-shadow:0 8px 24px rgba(0,0,0,.2);
-      margin-bottom:12px;}
-    .success-icon{font-size:48px;margin-bottom:10px;}
-    .success-title{font-family:'Outfit',sans-serif;font-size:22px;font-weight:900;
-      color:var(--navy);margin-bottom:6px;}
-    .success-sub{font-size:15px;color:var(--muted);line-height:1.55;}
+    /* TOPBAR */
+    .topbar{background:linear-gradient(135deg,#0A4D68 0%,#0E7490 55%,#059669 100%);
+      height:60px;display:flex;align-items:center;padding:0 16px;gap:12px;
+      box-shadow:0 4px 20px rgba(10,45,100,.3);position:relative;}
+    .topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+      background:linear-gradient(90deg,#22D3EE,#34D399,#22D3EE);}
+    .topbar-brand{display:flex;align-items:center;gap:10px;}
+    .topbar-brand img{width:38px;height:38px;border-radius:50%;object-fit:cover;
+      border:2px solid rgba(255,255,255,.45);background:#fff;}
+    .topbar-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:900;color:#fff;}
 
-    /* Doc info */
-    .doc-info{background:#ECFDF5;border:2px solid #059669;border-radius:12px;
-      padding:14px 16px;margin-bottom:16px;}
-    .doc-info-label{font-size:13px;font-weight:700;text-transform:uppercase;
-      letter-spacing:.07em;color:#0A4D68;margin-bottom:6px;}
-    .doc-info-name{font-family:'Outfit',sans-serif;font-size:17px;font-weight:800;
-      color:var(--navy);margin-bottom:4px;line-height:1.3;}
-    .doc-info-ref{font-family:monospace;font-size:13px;color:var(--muted);}
+    .page{max-width:720px;margin:0 auto;padding:22px 14px 60px;}
 
-    /* QR box */
-    .qr-box{background:var(--surface);border:2px dashed var(--border);
-      border-radius:14px;padding:18px;margin-bottom:16px;text-align:center;}
-    .qr-label{font-size:13px;font-weight:700;text-transform:uppercase;
-      letter-spacing:.07em;color:var(--muted);margin-bottom:12px;}
-    .qr-img{width:min(200px, 70vw);height:min(200px, 70vw);
-      border-radius:12px;border:3px solid var(--border);margin:0 auto 12px;display:block;}
-    .qr-hint{font-size:15px;color:var(--muted);line-height:1.55;}
+    /* HERO */
+    .hero{background:linear-gradient(135deg,var(--dark),var(--teal),var(--emerald));
+      border-radius:20px;padding:28px 24px;text-align:center;margin-bottom:24px;
+      box-shadow:0 8px 32px rgba(10,45,100,.25);}
+    .hero-icon{font-size:56px;margin-bottom:12px;}
+    .hero-title{font-family:'Outfit',sans-serif;font-size:26px;font-weight:900;
+      color:#fff;margin-bottom:8px;line-height:1.2;}
+    .hero-sub{font-size:17px;color:rgba(255,255,255,.88);line-height:1.5;}
+    .badge-count{display:inline-block;background:rgba(255,255,255,.2);
+      border:2px solid rgba(255,255,255,.4);border-radius:30px;
+      padding:6px 20px;font-size:16px;font-weight:800;color:#fff;margin-top:12px;}
 
-    /* Steps */
-    .steps{margin-bottom:16px;}
-    .steps-title{font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;
-      text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
-      margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border);}
-    .step{display:flex;gap:12px;margin-bottom:12px;align-items:flex-start;}
-    .step-num{width:30px;height:30px;border-radius:50%;
-      background:linear-gradient(135deg,#0A4D68,#0E7490);
-      color:#fff;font-size:14px;font-weight:800;
-      display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-    .step-text{font-size:15px;color:var(--navy);line-height:1.55;padding-top:4px;}
+    /* INSTRUCTIONS */
+    .instructions{background:#fff;border:2px solid var(--border);border-radius:16px;
+      padding:18px 20px;margin-bottom:20px;}
+    .instructions-title{font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;
+      color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+    .steps-list{list-style:none;display:flex;flex-direction:column;gap:10px;}
+    .steps-list li{display:flex;align-items:flex-start;gap:12px;font-size:16px;color:var(--text);}
+    .step-circle{width:28px;height:28px;border-radius:50%;
+      background:linear-gradient(135deg,var(--dark),var(--teal));
+      color:#fff;font-family:'Outfit',sans-serif;font-weight:900;font-size:14px;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
 
-    /* Buttons */
-    .btn{display:flex;align-items:center;justify-content:center;gap:8px;
-      width:100%;padding:15px;border-radius:10px;font-family:inherit;
-      font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;
-      border:none;min-height:52px;margin-bottom:10px;transition:all .2s;}
-    .btn:last-child{margin-bottom:0;}
-    .btn-main{background:linear-gradient(135deg,#0A4D68,#059669);color:#fff;
-      box-shadow:0 5px 16px rgba(10,77,104,.3);}
-    .btn-main:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(10,77,104,.4);}
-    .btn-outline{background:var(--surface);color:var(--muted);border:2px solid var(--border);}
-    .btn-outline:hover{border-color:var(--teal);color:var(--dark);}
+    /* DOC CARD */
+    .doc-card{background:#fff;border:2px solid var(--border);border-radius:18px;
+      margin-bottom:16px;overflow:hidden;box-shadow:0 3px 14px rgba(10,45,100,.08);}
+    .doc-card-header{background:linear-gradient(135deg,var(--dark),var(--teal));
+      padding:14px 18px;display:flex;align-items:center;justify-content:space-between;
+      gap:10px;flex-wrap:wrap;}
+    .doc-num{font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;
+      color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.06em;}
+    .doc-card-name{font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;
+      color:#fff;line-height:1.3;flex:1;}
+    .ref-badge{background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.35);
+      border-radius:8px;padding:4px 12px;font-family:monospace;font-size:13px;
+      color:#fff;white-space:nowrap;}
+    .doc-card-body{padding:18px 20px;display:grid;grid-template-columns:1fr auto;
+      gap:20px;align-items:start;}
+    .doc-meta{font-size:15px;color:var(--text);line-height:1.9;}
+    .doc-meta strong{color:var(--navy);}
+    .status-pending{display:inline-block;background:#FEF3C7;color:#92400E;
+      border-radius:20px;padding:4px 14px;font-size:14px;font-weight:700;margin-top:6px;}
 
-    @media(max-width:480px){
-      body{padding:12px;}
-      .card{padding:20px 16px;}
-      .success-title{font-size:20px;}
-      .step-text{font-size:14px;}
+    /* QR */
+    .qr-wrap{text-align:center;flex-shrink:0;}
+    .qr-img{width:min(150px,40vw);height:min(150px,40vw);
+      border-radius:12px;border:3px solid var(--border);display:block;
+      margin:0 auto 10px;}
+    .qr-label{font-size:13px;font-weight:700;color:var(--muted);}
+    .btn-dl-qr{display:inline-flex;align-items:center;gap:5px;margin-top:8px;
+      padding:8px 14px;border-radius:8px;background:var(--surface);
+      color:var(--muted);border:2px solid var(--border);font-size:14px;
+      font-weight:700;text-decoration:none;transition:all .15s;}
+    .btn-dl-qr:hover{border-color:var(--teal);color:var(--teal);}
+
+    /* ACTIONS */
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px;}
+    .btn-action{display:flex;align-items:center;justify-content:center;gap:8px;
+      padding:15px;border-radius:14px;font-family:inherit;font-size:17px;
+      font-weight:800;text-decoration:none;border:none;cursor:pointer;
+      min-height:54px;transition:all .2s;}
+    .btn-primary-action{background:linear-gradient(135deg,var(--dark),var(--teal));
+      color:#fff;box-shadow:0 5px 16px rgba(10,77,104,.3);}
+    .btn-primary-action:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(10,77,104,.4);}
+    .btn-secondary-action{background:#fff;color:var(--navy);border:2px solid var(--border);}
+    .btn-secondary-action:hover{border-color:var(--teal);color:var(--teal);}
+
+    @media print{
+      .topbar,.instructions,.actions{display:none!important;}
+      .hero{background:#0A4D68!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      .doc-card{break-inside:avoid;page-break-inside:avoid;}
+    }
+    @media(max-width:520px){
+      .doc-card-body{grid-template-columns:1fr;gap:14px;}
+      .qr-wrap{display:flex;align-items:center;gap:14px;flex-direction:row;}
+      .qr-img{width:min(120px,35vw);height:min(120px,35vw);}
+      .actions{grid-template-columns:1fr;}
+      .hero-title{font-size:22px;}
+      .doc-card-name{font-size:16px;}
     }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <div class="success-header">
-      <img src="/logo.png" alt="DepEd Leyte Logo"/>
-      <div class="success-title">🎉 Document Submitted!</div>
-      <div class="success-sub">Your document is logged. Screenshot your QR code — you'll need it at the office.</div>
-    </div>
 
-    <div class="doc-info">
-      <div class="doc-info-label">📄 Submitted Document</div>
-      <div class="doc-info-name">{{ doc.doc_name }}</div>
-      <div class="doc-info-ref">Ref: {{ doc.doc_id }} &nbsp;·&nbsp; ID: {{ doc.id }}</div>
-    </div>
-
-    <div class="qr-box">
-      <div class="qr-label">📱 Your Document QR Code</div>
-      <img src="data:image/png;base64,{{ qr_b64 }}" class="qr-img" alt="Document QR Code"/>
-      <div class="qr-hint">Show this QR at the office to instantly update your document's status.</div>
-    </div>
-
-    <div class="steps">
-      <div class="steps-title">How to use your QR</div>
-      <div class="step">
-        <div class="step-num">1</div>
-        <div class="step-text"><strong>Screenshot or save</strong> this QR code right now.</div>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div class="step-text">At the office, scan the QR → tap <strong>Mark as Received</strong>.</div>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div class="step-text">When ready for pickup, scan again → tap <strong>Mark as Released</strong>.</div>
-      </div>
-      <div class="step">
-        <div class="step-num">4</div>
-        <div class="step-text">Track status anytime from <strong>My Documents</strong>.</div>
-      </div>
-    </div>
-
-    <a href="/qr/{{ doc.id }}.png" download class="btn btn-outline">⬇️ Download QR as PNG</a>
-    <a href="/client/track/{{ doc.id }}" class="btn btn-outline">🔍 Track This Document</a>
-    <a href="/client" class="btn btn-main">📋 Go to My Documents</a>
+<div class="topbar">
+  <div class="topbar-brand">
+    <img src="/logo.png" alt="Logo"/>
+    <span class="topbar-title">Submission Confirmed</span>
   </div>
+</div>
+
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-icon">🎉</div>
+    <div class="hero-title">
+      {% if qr_list|length == 1 %}
+        Document Submitted!
+      {% else %}
+        {{ qr_list|length }} Documents Submitted!
+      {% endif %}
+    </div>
+    <div class="hero-sub">
+      Your document{{ 's' if qr_list|length != 1 else '' }} ha{{ 've' if qr_list|length != 1 else 's' }}
+      been received and logged.<br/>
+      Each document has a unique QR code — save or print them.
+    </div>
+    {% if qr_list|length > 1 %}
+    <div class="badge-count">📋 {{ qr_list|length }} documents in this batch</div>
+    {% endif %}
+  </div>
+
+  <!-- INSTRUCTIONS -->
+  <div class="instructions">
+    <div class="instructions-title">📌 What Happens Next</div>
+    <ul class="steps-list">
+      <li>
+        <div class="step-circle">1</div>
+        <span><strong>Save or print</strong> each QR code below — you'll need them to track your documents.</span>
+      </li>
+      <li>
+        <div class="step-circle">2</div>
+        <span>Staff at the office will <strong>scan your QR</strong> when they receive each document.</span>
+      </li>
+      <li>
+        <div class="step-circle">3</div>
+        <span>Track the status anytime from <strong>My Documents</strong> in the portal.</span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- DOCUMENT CARDS -->
+  {% for doc, qr_b64 in qr_list %}
+  <div class="doc-card">
+    <div class="doc-card-header">
+      <div>
+        {% if qr_list|length > 1 %}
+        <div class="doc-num">Document {{ loop.index }} of {{ qr_list|length }}</div>
+        {% endif %}
+        <div class="doc-card-name">{{ doc.doc_name }}</div>
+      </div>
+      <div class="ref-badge">{{ doc.doc_id }}</div>
+    </div>
+    <div class="doc-card-body">
+      <div>
+        <div class="doc-meta">
+          <strong>From:</strong> {{ doc.sender_org or '—' }}<br/>
+          <strong>Referred To:</strong> {{ doc.referred_to or '—' }}<br/>
+          {% if doc.category %}<strong>Type:</strong> {{ doc.category }}<br/>{% endif %}
+          <strong>Date Filed:</strong> {{ doc.doc_date or doc.created_at[:10] }}
+        </div>
+        <div class="status-pending">⏳ Pending — awaiting receipt</div>
+      </div>
+      <div class="qr-wrap">
+        <img src="data:image/png;base64,{{ qr_b64 }}" class="qr-img" alt="QR Code"/>
+        <div class="qr-label">Scan to track</div>
+        <a href="/qr/{{ doc.id }}.png" download="QR_{{ doc.doc_name[:20] }}_{{ doc.id }}.png"
+           class="btn-dl-qr">⬇️ Download QR</a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- ACTION BUTTONS -->
+  <div class="actions">
+    <a href="/client" class="btn-action btn-primary-action">📂 My Documents</a>
+    <a href="/client/submit" class="btn-action btn-secondary-action">➕ Submit More</a>
+  </div>
+
 </div>
 </body>
 </html>

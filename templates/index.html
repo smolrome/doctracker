@@ -1,25 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
-<style>
-  .date-filter {
-    padding: 12px 16px;
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    font-size: 14px;
-    background: var(--surface);
-    color: var(--text);
-    min-width: 160px;
-    cursor: pointer;
-  }
-  .date-filter:focus {
-    border-color: var(--teal);
-    box-shadow: 0 0 0 3px rgba(14,116,144,.15);
-    outline: none;
-  }
-  @media (max-width: 600px) {
-    .date-filter { min-width: 140px; }
-  }
-</style>
 
 <!-- Stats Row -->
 <div class="stats-grid">
@@ -53,7 +33,6 @@
 <form method="get" action="/">
   <div class="filters">
     <input type="text" name="search" value="{{ search }}" placeholder="🔍  Search document name, ID, sender..." />
-    <input type="date" name="date" value="{{ filter_date }}" class="date-filter" title="Filter by date received" />
     <select name="status" onchange="this.form.submit()">
       {% for s in status_options %}
         <option value="{{ s }}" {% if filter_status==s %}selected{% endif %}>{{ s }}</option>
@@ -63,9 +42,6 @@
     <a href="/?type=Received&search={{ search }}&status={{ filter_status }}" class="btn-filter {% if filter_type=='Received'  %}active{% endif %}">📥 Received</a>
     <a href="/?type=Released&search={{ search }}&status={{ filter_status }}" class="btn-filter {% if filter_type=='Released'  %}active{% endif %}">✅ Released</a>
     <button type="submit" class="btn btn-primary btn-sm">Search</button>
-    {% if filter_date %}
-    <a href="/?type={{ filter_type }}&search={{ search }}&status={{ filter_status }}" class="btn btn-secondary btn-sm" title="Clear date filter">✕</a>
-    {% endif %}
   </div>
 </form>
 

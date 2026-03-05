@@ -1157,7 +1157,6 @@ def index():
     search        = request.args.get("search","").lower()
     filter_status = request.args.get("status","All")
     filter_type   = request.args.get("type","All")
-    filter_date   = request.args.get("date","")
     filtered = docs
     if search:
         filtered = [d for d in filtered if search in (
@@ -1170,13 +1169,9 @@ def index():
         filtered = [d for d in filtered if d.get("date_received") and not d.get("date_released")]
     elif filter_type == "Released":
         filtered = [d for d in filtered if d.get("date_released")]
-    # Date filter - filter by date_received
-    if filter_date:
-        filtered = [d for d in filtered if d.get("date_received") and filter_date in d.get("date_received","")]
     return render_template("index.html",
         docs=filtered, stats=get_stats(docs),
         search=search, filter_status=filter_status, filter_type=filter_type,
-        filter_date=filter_date,
         status_options=["All","Pending","In Review","In Transit","Released","On Hold","Archived"])
 
 # ─────────────────────────────────────────────
@@ -1515,16 +1510,49 @@ def scan():
 # ─────────────────────────────────────────────
 
 
+def _get_client_org(username):
+    """Try to recall the client's last used unit/office from their docs."""
+    if not username:
+        return ""
+    try:
+        docs = load_docs()
+        for d in docs:
+            if d.get("submitted_by") == username and d.get("sender_org"):
+                return d["sender_org"]
+    except Exception:
+        pass
+    return ""
+
 @app.route("/client/submitted/<doc_id>")
 def client_submitted(doc_id):
-    """Show QR code immediately after client submits a document."""
+    """Single-doc submission confirmation (legacy / direct link support)."""
     if not is_logged_in() or session.get("role") != "client":
         return redirect(url_for("client_login"))
     doc = get_doc(doc_id)
     if not doc or doc.get("submitted_by") != session.get("username"):
         return redirect(url_for("client_portal"))
     qr_b64 = generate_qr_b64(doc, request.host_url)
-    return render_template("client_submitted.html", doc=doc, qr_b64=qr_b64)
+    return render_template("client_submitted.html", docs=[doc],
+                           qr_list=[(doc, qr_b64)], batch=False)
+
+@app.route("/client/submitted-batch")
+def client_submitted_batch():
+    """Batch submission confirmation — shows QR for every submitted doc."""
+    if not is_logged_in() or session.get("role") != "client":
+        return redirect(url_for("client_login"))
+    ids_raw = request.args.get("ids","")
+    doc_ids = [i.strip() for i in ids_raw.split(",") if i.strip()]
+    if not doc_ids:
+        return redirect(url_for("client_portal"))
+    qr_list = []
+    for doc_id in doc_ids:
+        doc = get_doc(doc_id)
+        if doc and doc.get("submitted_by") == session.get("username"):
+            qr_b64 = generate_qr_b64(doc, request.host_url)
+            qr_list.append((doc, qr_b64))
+    if not qr_list:
+        return redirect(url_for("client_portal"))
+    return render_template("client_submitted.html", qr_list=qr_list, batch=True)
 
 
 @app.route("/client/scan")
@@ -1613,49 +1641,106 @@ def client_register():
 
 @app.route("/client/submit", methods=["GET","POST"])
 def client_submit():
-    """Client submits a new document."""
+    """Client builds a batch of documents to submit (cart-style)."""
     if not is_logged_in() or session.get("role") != "client":
         return redirect(url_for("client_login"))
+
+    # Session cart — list of pending docs not yet saved to DB
+    cart = session.get("submit_cart", [])
+    error = None
+
     if request.method == "POST":
-        doc = {
-            "id":           str(uuid.uuid4())[:8].upper(),
-            "doc_id":       generate_ref(),
-            "doc_name":     request.form.get("doc_name","").strip(),
-            "category":     request.form.get("category","").strip(),
-            "description":  request.form.get("description","").strip(),
-            "sender_name":  session.get("full_name") or session.get("username"),
-            "sender_org":   request.form.get("unit_office","").strip(),
-            "sender_contact": "",
-            "referred_to":  request.form.get("referred_to","").strip(),
-            "forwarded_to": "",
-            "recipient_name": "",
-            "recipient_org": "",
-            "recipient_contact": "",
-            "received_by":  "",
-            "date_received": "",
-            "date_released": "",
-            "doc_date":     now_str()[:10],
-            "status":       "Pending",
-            "notes":        request.form.get("notes","").strip(),
-            "created_at":   now_str(),
-            "routing":      [],
-            "travel_log":   [],
-            "submitted_by": session.get("username"),
-            "submitted_by_name": session.get("full_name") or session.get("username"),
-        }
-        if not doc["doc_name"]:
-            flash("Document name/particulars is required.", "error")
-            return render_template("client_submit.html", doc=doc)
-        doc["travel_log"].append({
-            "office": doc["sender_org"] or "Client",
-            "action": "Document Submitted by Client",
-            "officer": doc["sender_name"],
-            "timestamp": doc["created_at"],
-            "remarks": "Submitted via client portal.",
-        })
-        insert_doc(doc)
-        return redirect(url_for("client_submitted", doc_id=doc["id"]))
-    return render_template("client_submit.html", doc={})
+        action = request.form.get("_action","add")
+
+        # ── ADD a document to the cart ──
+        if action == "add":
+            doc_name    = request.form.get("doc_name","").strip()
+            unit_office = request.form.get("unit_office","").strip()
+            referred_to = request.form.get("referred_to","").strip()
+            category    = request.form.get("category","").strip()
+            description = request.form.get("description","").strip()
+            notes       = request.form.get("notes","").strip()
+
+            if not doc_name:
+                error = "Document name / particulars is required."
+            elif not referred_to:
+                error = "Referred To is required."
+            else:
+                cart.append({
+                    "tmp_id":      uuid.uuid4().hex[:8].upper(),  # temp ID for cart ops
+                    "doc_name":    doc_name,
+                    "unit_office": unit_office,
+                    "referred_to": referred_to,
+                    "category":    category,
+                    "description": description,
+                    "notes":       notes,
+                })
+                session["submit_cart"] = cart
+                session.modified = True
+                flash(f"✅ '{doc_name}' added to your submission list.", "success")
+
+        # ── REMOVE one item from cart ──
+        elif action == "remove":
+            tmp_id = request.form.get("tmp_id","")
+            cart = [d for d in cart if d["tmp_id"] != tmp_id]
+            session["submit_cart"] = cart
+            session.modified = True
+
+        # ── SUBMIT ALL — save all cart items to DB ──
+        elif action == "submit_all":
+            if not cart:
+                error = "No documents to submit. Add at least one document first."
+            else:
+                submitted_ids = []
+                for item in cart:
+                    doc = {
+                        "id":           str(uuid.uuid4())[:8].upper(),
+                        "doc_id":       generate_ref(),
+                        "doc_name":     item["doc_name"],
+                        "category":     item["category"],
+                        "description":  item["description"],
+                        "sender_name":  session.get("full_name") or session.get("username"),
+                        "sender_org":   item["unit_office"],
+                        "sender_contact": "",
+                        "referred_to":  item["referred_to"],
+                        "forwarded_to": "",
+                        "recipient_name": "",
+                        "recipient_org": "",
+                        "recipient_contact": "",
+                        "received_by":  "",
+                        "date_received": "",
+                        "date_released": "",
+                        "doc_date":     now_str()[:10],
+                        "status":       "Pending",
+                        "notes":        item["notes"],
+                        "created_at":   now_str(),
+                        "routing":      [],
+                        "travel_log":   [],
+                        "submitted_by": session.get("username"),
+                        "submitted_by_name": session.get("full_name") or session.get("username"),
+                    }
+                    doc["travel_log"].append({
+                        "office":    item["unit_office"] or "Client",
+                        "action":    "Document Submitted by Client",
+                        "officer":   doc["sender_name"],
+                        "timestamp": doc["created_at"],
+                        "remarks":   f"Submitted via client portal (batch of {len(cart)}).",
+                    })
+                    insert_doc(doc)
+                    submitted_ids.append(doc["id"])
+
+                # Clear cart
+                session.pop("submit_cart", None)
+                session.modified = True
+                # Redirect to batch confirmation
+                return redirect(url_for("client_submitted_batch",
+                                        ids=",".join(submitted_ids)))
+
+        # Re-read cart after possible add/remove
+        cart = session.get("submit_cart", [])
+
+    return render_template("client_submit.html", cart=cart, error=error,
+                           doc={}, unit_office_default=_get_client_org(session.get("username","")))
 
 @app.route("/client/track/<doc_id>")
 def client_track(doc_id):
@@ -1738,6 +1823,7 @@ def office_qr_png(action):
     """Generate office QR code PNG with label text — REG / REC / REL."""
     from PIL import Image, ImageDraw, ImageFont
     base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
+    # Embed signed URL so QR codes can be verified and expired
     signed_action = sign_office_action(action)
     url = base + "/office-action/" + signed_action
 
@@ -1767,89 +1853,71 @@ def office_qr_png(action):
         office_display = action.replace("-", " ").title()
         sub_label = "OFFICE QR"
 
-    # ── QR code — smaller box_size so QR is compact ──
+    # Generate QR module
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=9,   # was 14 — smaller QR modules
-        border=3
+        box_size=10, border=3
     )
     qr.add_data(url)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="#0A2540", back_color="white").convert("RGB")
     qr_size = qr_img.size[0]  # square
 
-    # ── Canvas layout — tall top + bottom bars for big text ──
-    bar_h   = 80   # top bar  (was 80)
-    foot_h  = 70   # bottom bar (was 70)
-    pad     = 14
-    total_w = qr_size + pad * 2
-    total_h = bar_h + qr_size + pad * 2 + foot_h
+    # Build canvas: QR + header bar + footer bar
+    bar_h    = 56   # top bar height
+    foot_h   = 48   # bottom bar height
+    pad      = 12
+    total_w  = qr_size + pad * 2
+    total_h  = bar_h + qr_size + pad * 2 + foot_h
 
     canvas = Image.new("RGB", (total_w, total_h), "white")
     draw   = ImageDraw.Draw(canvas)
 
-    # ── TOP BAR ──
+    # ── TOP BAR (colored background with short label) ──
     draw.rectangle([0, 0, total_w, bar_h], fill=bg_color)
 
-    # ── Load fonts — bigger sizes ──
-    font_loaded = False
+    # Try to load a font, fall back gracefully
     try:
-        font_big  = ImageFont.truetype("arial.ttf", 100)
-        font_med  = ImageFont.truetype("arial.ttf", 48)
-        font_sm   = ImageFont.truetype("arial.ttf", 36)
-        font_loaded = True
+        font_big  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+        font_med  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 13)
+        font_sm   = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 11)
     except:
-        try:
-            font_big  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 100)
-            font_med  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48)
-            font_sm   = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
-            font_loaded = True
-        except:
-            pass
+        font_big  = ImageFont.load_default()
+        font_med  = ImageFont.load_default()
+        font_sm   = ImageFont.load_default()
 
-    if not font_loaded:
-        font_big = font_med = font_sm = ImageFont.load_default()
-
-    # Short label centered in top bar
+    # Draw short label centered in top bar
     bbox = draw.textbbox((0, 0), short_label, font=font_big)
-    lw = bbox[2] - bbox[0]
-    lh = bbox[3] - bbox[1]
-    draw.text(
-        ((total_w - lw) / 2, (bar_h - lh) / 2),
-        short_label, font=font_big, fill=label_color
-    )
+    lw   = bbox[2] - bbox[0]
+    lh   = bbox[3] - bbox[1]
+    draw.text(((total_w - lw) / 2, (bar_h - lh) / 2 - 2), short_label, font=font_big, fill=label_color)
 
     # ── QR CODE ──
     canvas.paste(qr_img, (pad, bar_h + pad))
 
-    # ── BOTTOM BAR ──
+    # ── BOTTOM BAR (white with office name + sub label) ──
     foot_y = bar_h + qr_size + pad * 2
 
-    # Sub-label (e.g. "RECEIVE DOCUMENT") — centered, bold
+    # Sub label (REC / REL / REG description)
     bbox2 = draw.textbbox((0, 0), sub_label, font=font_med)
     sw = bbox2[2] - bbox2[0]
-    draw.text(
-        ((total_w - sw) / 2, foot_y + 14),
-        sub_label, font=font_med, fill=label_color
-    )
+    draw.text(((total_w - sw) / 2, foot_y + 6), sub_label, font=font_med, fill=label_color)
 
-    # Office name — centered below sub-label, truncate if too wide
+    # Office name
+    # Truncate if too long
     office_text = office_display
     while True:
         bbox3 = draw.textbbox((0, 0), office_text, font=font_sm)
-        if bbox3[2] - bbox3[0] <= total_w - 20 or len(office_text) < 5:
+        if bbox3[2] - bbox3[0] <= total_w - 16 or len(office_text) < 5:
             break
         office_text = office_text[:-4] + "..."
     bbox3 = draw.textbbox((0, 0), office_text, font=font_sm)
     ow = bbox3[2] - bbox3[0]
-    draw.text(
-        ((total_w - ow) / 2, foot_y + 56),
-        office_text, font=font_sm, fill="#5A7A91"
-    )
+    draw.text(((total_w - ow) / 2, foot_y + 26), office_text, font=font_sm, fill="#5A7A91")
 
-    # Thick colored stripe at very bottom
-    draw.rectangle([0, total_h - 8, total_w, total_h], fill=label_color)
+    # Thin colored line at bottom
+    draw.rectangle([0, total_h - 4, total_w, total_h], fill=label_color)
 
     buf = BytesIO()
     canvas.save(buf, format="PNG")
