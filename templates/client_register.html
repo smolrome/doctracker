@@ -52,6 +52,12 @@
       <p>Scan the QR code posted at the DepEd Leyte Division Office to get the registration code, or ask the front desk staff.</p>
     </div>
     {% if error %}<div class="error-box">❌ {{ error }}</div>{% endif %}
+    {% if office %}
+    <div class="info-box" style="background:#EFF6FF;border-color:#3B82F6;">
+      <span style="font-size:20px;">🏢</span>
+      <p style="color:#1D4ED8;">Registering via <strong>{{ office }}</strong> office QR code.</p>
+    </div>
+    {% endif %}
     <form method="post" id="reg-form">
       <div class="form-group">
         <label>Registration Code <span class="req">*</span></label>

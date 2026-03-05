@@ -244,8 +244,10 @@
         <a href="/upload-qr" class="nav-add" style="background:#7C3AED;">📤 Upload QR</a>
         <a href="/add"       class="nav-add">+ Add Document</a>
         <div style="display:flex;align-items:center;gap:8px;margin-left:4px;padding-left:12px;border-left:1px solid rgba(255,255,255,.15);">
-          {% if current_role == 'admin' %}
+          {% if current_role == 'admin' or current_role == 'staff' %}
           <a href="/office-qr-page" class="nav-add" style="background:#059669;">🖨️ QR Codes</a>
+          {% endif %}
+          {% if current_role == 'admin' %}
           <a href="/manage-users" class="nav-add" style="background:#374151;">👥 Users</a>
           {% endif %}
           <span style="font-size:13px;color:#8EA8C3;">👤 {{ current_user }}</span>

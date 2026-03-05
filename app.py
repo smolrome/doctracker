@@ -1,5 +1,5 @@
 import os, uuid, base64, json, re, hashlib
-import urllib.request, urllib.error
+import urllib.request, urllib.error, urllib.parse
 from datetime import datetime
 from io import BytesIO
 from functools import wraps
@@ -1211,7 +1211,7 @@ def client_register():
                 return redirect(url_for("client_login"))
             else:
                 error = err
-    return render_template("client_register.html", error=error)
+    return render_template("client_register.html", error=error, office=request.args.get("office",""))
 
 @app.route("/client/submit", methods=["GET","POST"])
 def client_submit():
@@ -1275,15 +1275,30 @@ def client_track(doc_id):
 #  OFFICE QR ACTIONS — Receive / Release stations
 # ─────────────────────────────────────────────
 
-@app.route("/office-action/<action>", methods=["GET","POST"])
+@app.route("/office-action/<path:action>", methods=["GET","POST"])
 def office_action(action):
     """
-    Anyone can scan office QR — client or staff.
-    Clients must be logged in to update their own doc.
-    action = 'receive' or 'release'
+    Office QR scan landing page.
+    action format: 'receive', 'release', or 'OfficeName-rec', 'OfficeName-rel', 'OfficeName-reg'
     """
-    if action not in ("receive","release"):
+    # Parse office name and action type from format "OfficeName-rec/rel/reg"
+    office_name = None
+    if action.endswith("-rec"):
+        office_name = action[:-4].replace("-", " ")
+        action_type = "receive"
+    elif action.endswith("-rel"):
+        office_name = action[:-4].replace("-", " ")
+        action_type = "release"
+    elif action.endswith("-reg"):
+        office_name = action[:-4].replace("-", " ")
+        # Redirect to client register with office pre-filled
+        base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
+        return redirect(base + "/client/register?office=" + urllib.parse.quote(office_name))
+    elif action in ("receive", "release"):
+        action_type = action
+    else:
         return redirect(url_for("index"))
+    action = action_type  # normalize
     result = None
     if request.method == "POST":
         doc_id = request.form.get("doc_id","").strip().upper()
@@ -1320,13 +1335,20 @@ def office_action(action):
                 result = {"ok": True, "doc": doc, "action": action}
     return render_template("office_action.html", action=action, result=result)
 
-@app.route("/office-qr/<action>.png")
+@app.route("/office-qr/<path:action>.png")
 def office_qr_png(action):
-    """Generate and serve the office receive/release QR code image."""
-    if action not in ("receive","release"):
-        return "Invalid", 404
+    """Generate office QR code — supports 'receive', 'release', or 'OfficeName-rec/rel/reg'."""
     base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
     url = base + "/office-action/" + action
+    # Determine label
+    if action.endswith("-rec"):
+        label = action[:-4].replace("-"," ") + " — Receive"
+    elif action.endswith("-rel"):
+        label = action[:-4].replace("-"," ") + " — Release"
+    elif action.endswith("-reg"):
+        label = action[:-4].replace("-"," ") + " — Register"
+    else:
+        label = action.capitalize()
     qr = qrcode.QRCode(version=None,
                         error_correction=qrcode.constants.ERROR_CORRECT_M,
                         box_size=10, border=4)
@@ -1336,8 +1358,8 @@ def office_qr_png(action):
     buf = BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
-    return send_file(buf, mimetype="image/png",
-                     download_name=f"office-{action}-qr.png")
+    safe = re.sub(r'[^a-zA-Z0-9_-]', '_', action)
+    return send_file(buf, mimetype="image/png", download_name=f"qr-{safe}.png")
 
 @app.route("/client-reg-qr.png")
 @login_required
@@ -1358,18 +1380,26 @@ def client_reg_qr():
     buf.seek(0)
     return send_file(buf, mimetype="image/png", download_name="client-registration-qr.png")
 
-@app.route("/office-qr-page")
+@app.route("/office-qr-page", methods=["GET","POST"])
 @login_required
 def office_qr_page():
-    """Admin page to view and print all office QR codes."""
-    if session.get("role") != "admin":
-        flash("Admin access required.", "error")
-        return redirect(url_for("index"))
+    """Staff page to generate their office QR codes."""
     base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
+    office_name = request.args.get("office", "").strip() or request.form.get("office_name", "").strip()
+    # Build QR slugs: replace spaces with dashes, lowercase
+    def slug(name, suffix):
+        return re.sub(r'\s+', '-', name.strip()) + suffix
+    qr_data = None
+    if office_name:
+        qr_data = {
+            "reg": slug(office_name, "-reg"),
+            "rec": slug(office_name, "-rec"),
+            "rel": slug(office_name, "-rel"),
+        }
     return render_template("office_qr_page.html",
-                           receive_url=base + "/office-action/receive",
-                           release_url=base + "/office-action/release",
-                           client_reg_url=base + "/client/register",
+                           base=base,
+                           office_name=office_name,
+                           qr_data=qr_data,
                            client_reg_code=CLIENT_REG_CODE)
 
 # ─────────────────────────────────────────────

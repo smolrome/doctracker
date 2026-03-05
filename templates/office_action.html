@@ -39,9 +39,14 @@
   <div class="action-hero">
     <div class="action-icon">{% if action=='receive' %}📥{% else %}✅{% endif %}</div>
     <div class="action-title">{% if action=='receive' %}Receive Document{% else %}Release Document{% endif %}</div>
-    <div class="action-sub">
-      {% if action=='receive' %}Enter your document ID to mark it as Received at the office.
-      {% else %}Enter your document ID to mark it as Released from the office.{% endif %}
+    {% if office_name %}
+    <div style="display:inline-block;margin-top:8px;padding:4px 14px;background:rgba(255,255,255,.3);border-radius:20px;font-size:13px;font-weight:700;">
+      🏢 {{ office_name }}
+    </div>
+    {% endif %}
+    <div class="action-sub" style="margin-top:8px;">
+      {% if action=='receive' %}Enter the document ID to mark it as Received.
+      {% else %}Enter the document ID to mark it as Released.{% endif %}
     </div>
   </div>
 
@@ -49,7 +54,7 @@
     {% if result.ok %}
     <div class="result-ok">
       <h3>{% if action=='receive' %}📥 Marked as Received!{% else %}✅ Marked as Released!{% endif %}</h3>
-      <p>Status updated successfully.</p>
+      <p>Status updated successfully{% if office_name %} at <strong>{{ office_name }}</strong>{% endif %}.</p>
       <div class="doc-meta">
         <div>
           <div class="dm-label">Document</div>
