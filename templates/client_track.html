@@ -12,44 +12,52 @@
     .topbar{background:var(--dark);padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;}
     .topbar-brand{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:#fff;}
     .topbar a{color:#A7F3D0;font-size:13px;font-weight:600;text-decoration:none;}
-    .page{max-width:680px;margin:0 auto;padding:24px 16px;}
-    .card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;}
-    .card h3{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid var(--border);}
+    .page{max-width:560px;margin:0 auto;padding:20px 16px;}
+    .card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:20px;margin-bottom:14px;}
+    .card h3{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid var(--border);}
 
     /* Status hero */
-    .status-hero{text-align:center;padding:28px 20px;border-radius:14px;margin-bottom:16px;}
-    .status-hero.Pending{background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:2px solid #F59E0B;}
-    .status-hero.Received{background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:2px solid #3B82F6;}
-    .status-hero.Released{background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border:2px solid #10B981;}
-    .status-hero.default{background:var(--surface);border:2px solid var(--border);}
-    .status-icon{font-size:48px;margin-bottom:10px;}
-    .status-label{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px;}
-    .status-hero.Pending .status-label{color:#92400E;}
-    .status-hero.Received .status-label{color:#1D4ED8;}
-    .status-hero.Released .status-label{color:#065F46;}
+    .status-hero{text-align:center;padding:24px 20px;border-radius:14px;margin-bottom:14px;}
+    .s-Pending{background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:2px solid #F59E0B;}
+    .s-Received{background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:2px solid #3B82F6;}
+    .s-Released{background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border:2px solid var(--green);}
+    .s-default{background:var(--surface);border:2px solid var(--border);}
+    .status-icon{font-size:44px;margin-bottom:8px;}
+    .status-label{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:3px;}
+    .s-Pending .status-label{color:#92400E;}
+    .s-Received .status-label{color:#1D4ED8;}
+    .s-Released .status-label{color:#065F46;}
     .status-sub{font-size:13px;color:var(--muted);}
 
-    /* Meta grid */
-    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-    .meta-item{}
-    .meta-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px;}
-    .meta-value{font-size:14px;color:var(--text);font-weight:500;}
-    .meta-value.mono{font-family:monospace;font-size:13px;}
+    /* QR section */
+    .qr-section{text-align:center;}
+    .qr-img{width:180px;height:180px;border-radius:10px;border:3px solid var(--border);margin:0 auto 12px;display:block;}
+    .qr-hint{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:12px;}
+    .qr-actions{display:flex;gap:8px;}
+    .btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;border-radius:9px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;border:none;min-height:42px;}
+    .btn-green{background:var(--green);color:#fff;flex:1;}
+    .btn-outline{background:var(--surface);color:var(--muted);border:1.5px solid var(--border);flex:1;}
+    .btn-outline:hover{border-color:var(--green);color:var(--dark);}
+
+    /* Meta */
+    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .meta-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:2px;}
+    .meta-value{font-size:13px;color:var(--text);font-weight:500;}
+    .meta-value.mono{font-family:monospace;}
 
     /* Timeline */
     .timeline{list-style:none;}
-    .tl-item{display:flex;gap:14px;margin-bottom:16px;position:relative;}
-    .tl-item:not(:last-child)::after{content:'';position:absolute;left:18px;top:38px;bottom:-8px;width:2px;background:var(--border);}
-    .tl-dot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:var(--surface);border:2px solid var(--border);}
+    .tl-item{display:flex;gap:12px;margin-bottom:14px;position:relative;}
+    .tl-item:not(:last-child)::after{content:'';position:absolute;left:16px;top:34px;bottom:-6px;width:2px;background:var(--border);}
+    .tl-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:var(--surface);border:2px solid var(--border);}
     .tl-dot.receive{background:#DBEAFE;border-color:#3B82F6;}
-    .tl-dot.release{background:#D1FAE5;border-color:#10B981;}
+    .tl-dot.release{background:#D1FAE5;border-color:var(--green);}
     .tl-dot.create{background:#FEF3C7;border-color:#F59E0B;}
-    .tl-content{flex:1;}
-    .tl-action{font-weight:700;font-size:14px;color:var(--navy);}
-    .tl-meta{font-size:12px;color:var(--muted);margin-top:2px;}
-    .tl-remark{font-size:12px;color:var(--text);margin-top:4px;background:var(--surface);padding:6px 10px;border-radius:6px;}
+    .tl-action{font-weight:700;font-size:13px;color:var(--navy);}
+    .tl-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+    .tl-remark{font-size:12px;color:var(--text);margin-top:4px;background:var(--surface);padding:5px 9px;border-radius:6px;}
 
-    @media(max-width:480px){.meta-grid{grid-template-columns:1fr;}}
+    @media(max-width:400px){.meta-grid{grid-template-columns:1fr;}}
   </style>
 </head>
 <body>
@@ -59,18 +67,32 @@
 </div>
 
 <div class="page">
-  {% set status_class = doc.status if doc.status in ['Pending','Received','Released'] else 'default' %}
-  {% set status_icons = {'Pending': '⏳', 'Received': '📥', 'Released': '✅'} %}
+  {% set status = doc.status %}
+  {% set hero_class = 's-' + status if status in ['Pending','Received','Released'] else 's-default' %}
+  {% set icons = {'Pending':'⏳','Received':'📥','Released':'✅'} %}
 
   <!-- Status Hero -->
-  <div class="status-hero {{ status_class }}">
-    <div class="status-icon">{{ status_icons.get(doc.status, '📄') }}</div>
-    <div class="status-label">{{ doc.status }}</div>
+  <div class="status-hero {{ hero_class }}">
+    <div class="status-icon">{{ icons.get(status,'📄') }}</div>
+    <div class="status-label">{{ status }}</div>
     <div class="status-sub">
-      {% if doc.status == 'Pending' %}Your document has been submitted and is awaiting processing.
-      {% elif doc.status == 'Received' %}Your document has been received at the DepEd Leyte Division Office.
-      {% elif doc.status == 'Released' %}Your document has been processed and released.
-      {% else %}{{ doc.status }}{% endif %}
+      {% if status=='Pending' %}Submitted — awaiting processing at the office.
+      {% elif status=='Received' %}Received at DepEd Leyte Division Office.
+      {% elif status=='Released' %}Processed and released from the office.
+      {% else %}{{ status }}{% endif %}
+    </div>
+  </div>
+
+  <!-- QR Code Card -->
+  <div class="card">
+    <h3>📱 Your Document QR Code</h3>
+    <div class="qr-section">
+      <img src="data:image/png;base64,{{ qr_b64 }}" class="qr-img" alt="Document QR"/>
+      <div class="qr-hint">Show or scan this QR at the office to update your document's status automatically.</div>
+      <div class="qr-actions">
+        <a href="/qr/{{ doc.id }}.png" download class="btn btn-outline">⬇️ Download</a>
+        <a href="/receive/{{ doc.id }}" class="btn btn-green">⚡ Update Status</a>
+      </div>
     </div>
   </div>
 
@@ -78,38 +100,38 @@
   <div class="card">
     <h3>📄 Document Information</h3>
     <div class="meta-grid">
-      <div class="meta-item">
+      <div>
         <div class="meta-label">Reference No.</div>
         <div class="meta-value mono">{{ doc.doc_id or doc.id }}</div>
       </div>
-      <div class="meta-item">
+      <div>
         <div class="meta-label">Submitted</div>
         <div class="meta-value">{{ doc.created_at[:10] if doc.created_at else '—' }}</div>
       </div>
-      <div class="meta-item" style="grid-column:span 2;">
+      <div style="grid-column:span 2;">
         <div class="meta-label">Content / Particulars</div>
-        <div class="meta-value">{{ doc.doc_name }}</div>
+        <div class="meta-value" style="font-weight:700;">{{ doc.doc_name }}</div>
       </div>
-      <div class="meta-item">
+      <div>
         <div class="meta-label">Type</div>
         <div class="meta-value">{{ doc.category or '—' }}</div>
       </div>
-      <div class="meta-item">
+      <div>
         <div class="meta-label">Referred To</div>
         <div class="meta-value">{{ doc.referred_to or '—' }}</div>
       </div>
-      <div class="meta-item">
+      <div>
         <div class="meta-label">From Unit/Office</div>
         <div class="meta-value">{{ doc.sender_org or '—' }}</div>
       </div>
       {% if doc.date_received %}
-      <div class="meta-item">
+      <div>
         <div class="meta-label">Date Received</div>
         <div class="meta-value">{{ doc.date_received }}</div>
       </div>
       {% endif %}
       {% if doc.date_released %}
-      <div class="meta-item">
+      <div>
         <div class="meta-label">Date Released</div>
         <div class="meta-value">{{ doc.date_released }}</div>
       </div>
@@ -123,12 +145,12 @@
     <h3>🗺️ Document Timeline</h3>
     <ul class="timeline">
       {% for log in doc.travel_log|reverse %}
-      {% set dot_class = 'receive' if 'Receive' in log.action else ('release' if 'Release' in log.action else 'create') %}
+      {% set dot = 'receive' if 'Receive' in log.action else ('release' if 'Release' in log.action else 'create') %}
       <li class="tl-item">
-        <div class="tl-dot {{ dot_class }}">
+        <div class="tl-dot {{ dot }}">
           {{ '📥' if 'Receive' in log.action else ('✅' if 'Release' in log.action else '📄') }}
         </div>
-        <div class="tl-content">
+        <div>
           <div class="tl-action">{{ log.action }}</div>
           <div class="tl-meta">{{ log.office }} · {{ log.timestamp[:16].replace('T',' ') if log.timestamp else '' }}</div>
           {% if log.remarks %}<div class="tl-remark">{{ log.remarks }}</div>{% endif %}

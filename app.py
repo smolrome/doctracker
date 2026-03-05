@@ -1144,6 +1144,14 @@ def client_submitted(doc_id):
     qr_b64 = generate_qr_b64(doc, request.host_url)
     return render_template("client_submitted.html", doc=doc, qr_b64=qr_b64)
 
+
+@app.route("/client/scan")
+def client_scan():
+    """Client QR scanner page — uses phone camera to scan a document QR."""
+    if not is_logged_in() or session.get("role") != "client":
+        return redirect(url_for("client_login"))
+    return render_template("client_scan.html")
+
 @app.route("/client")
 def client_portal():
     """Client dashboard — shows only their own submitted documents."""
@@ -1260,7 +1268,8 @@ def client_track(doc_id):
     if not doc or doc.get("submitted_by") != session.get("username"):
         flash("Document not found.", "error")
         return redirect(url_for("client_portal"))
-    return render_template("client_track.html", doc=doc)
+    qr_b64 = generate_qr_b64(doc, request.host_url)
+    return render_template("client_track.html", doc=doc, qr_b64=qr_b64)
 
 # ─────────────────────────────────────────────
 #  OFFICE QR ACTIONS — Receive / Release stations
