@@ -279,6 +279,15 @@ def init_db():
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
+            # Saved offices for QR page persistence across devices
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS saved_offices (
+                    office_slug TEXT PRIMARY KEY,
+                    office_name TEXT NOT NULL,
+                    created_by TEXT,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
             # Seed default receive/release QR codes if not present
             cur.execute("""
                 INSERT INTO office_qr_codes (id, action, label)
@@ -1347,26 +1356,105 @@ def office_action(action):
 
 @app.route("/office-qr/<path:action>.png")
 def office_qr_png(action):
-    """Generate office QR code — supports 'receive', 'release', or 'OfficeName-rec/rel/reg'."""
+    """Generate office QR code PNG with label text — REG / REC / REL."""
+    from PIL import Image, ImageDraw, ImageFont
     base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
     url = base + "/office-action/" + action
-    # Determine label
+
+    # Determine short label and office display name
     if action.endswith("-rec"):
-        label = action[:-4].replace("-"," ") + " — Receive"
+        short_label = "REC"
+        label_color = "#1D4ED8"
+        bg_color    = "#DBEAFE"
+        office_display = action[:-4].replace("-", " ").title()
+        sub_label = "RECEIVE DOCUMENT"
     elif action.endswith("-rel"):
-        label = action[:-4].replace("-"," ") + " — Release"
+        short_label = "REL"
+        label_color = "#065F46"
+        bg_color    = "#D1FAE5"
+        office_display = action[:-4].replace("-", " ").title()
+        sub_label = "RELEASE DOCUMENT"
     elif action.endswith("-reg"):
-        label = action[:-4].replace("-"," ") + " — Register"
+        short_label = "REG"
+        label_color = "#92400E"
+        bg_color    = "#FEF3C7"
+        office_display = action[:-4].replace("-", " ").title()
+        sub_label = "CLIENT REGISTRATION"
     else:
-        label = action.capitalize()
-    qr = qrcode.QRCode(version=None,
-                        error_correction=qrcode.constants.ERROR_CORRECT_M,
-                        box_size=10, border=4)
+        short_label = action.upper()[:3]
+        label_color = "#0A2540"
+        bg_color    = "#F0F7FA"
+        office_display = action.replace("-", " ").title()
+        sub_label = "OFFICE QR"
+
+    # Generate QR module
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10, border=3
+    )
     qr.add_data(url)
     qr.make(fit=True)
-    img = qr.make_image(fill_color="#0D1B2A", back_color="white")
+    qr_img = qr.make_image(fill_color="#0A2540", back_color="white").convert("RGB")
+    qr_size = qr_img.size[0]  # square
+
+    # Build canvas: QR + header bar + footer bar
+    bar_h    = 56   # top bar height
+    foot_h   = 48   # bottom bar height
+    pad      = 12
+    total_w  = qr_size + pad * 2
+    total_h  = bar_h + qr_size + pad * 2 + foot_h
+
+    canvas = Image.new("RGB", (total_w, total_h), "white")
+    draw   = ImageDraw.Draw(canvas)
+
+    # ── TOP BAR (colored background with short label) ──
+    draw.rectangle([0, 0, total_w, bar_h], fill=bg_color)
+
+    # Try to load a font, fall back gracefully
+    try:
+        font_big  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+        font_med  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 13)
+        font_sm   = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 11)
+    except:
+        font_big  = ImageFont.load_default()
+        font_med  = ImageFont.load_default()
+        font_sm   = ImageFont.load_default()
+
+    # Draw short label centered in top bar
+    bbox = draw.textbbox((0, 0), short_label, font=font_big)
+    lw   = bbox[2] - bbox[0]
+    lh   = bbox[3] - bbox[1]
+    draw.text(((total_w - lw) / 2, (bar_h - lh) / 2 - 2), short_label, font=font_big, fill=label_color)
+
+    # ── QR CODE ──
+    canvas.paste(qr_img, (pad, bar_h + pad))
+
+    # ── BOTTOM BAR (white with office name + sub label) ──
+    foot_y = bar_h + qr_size + pad * 2
+
+    # Sub label (REC / REL / REG description)
+    bbox2 = draw.textbbox((0, 0), sub_label, font=font_med)
+    sw = bbox2[2] - bbox2[0]
+    draw.text(((total_w - sw) / 2, foot_y + 6), sub_label, font=font_med, fill=label_color)
+
+    # Office name
+    # Truncate if too long
+    office_text = office_display
+    while True:
+        bbox3 = draw.textbbox((0, 0), office_text, font=font_sm)
+        if bbox3[2] - bbox3[0] <= total_w - 16 or len(office_text) < 5:
+            break
+        office_text = office_text[:-4] + "..."
+    bbox3 = draw.textbbox((0, 0), office_text, font=font_sm)
+    ow = bbox3[2] - bbox3[0]
+    draw.text(((total_w - ow) / 2, foot_y + 26), office_text, font=font_sm, fill="#5A7A91")
+
+    # Thin colored line at bottom
+    draw.rectangle([0, total_h - 4, total_w, total_h], fill=label_color)
+
     buf = BytesIO()
-    img.save(buf, format="PNG")
+    canvas.save(buf, format="PNG")
     buf.seek(0)
     safe = re.sub(r'[^a-zA-Z0-9_-]', '_', action)
     return send_file(buf, mimetype="image/png", download_name=f"qr-{safe}.png")
@@ -1390,26 +1478,106 @@ def client_reg_qr():
     buf.seek(0)
     return send_file(buf, mimetype="image/png", download_name="client-registration-qr.png")
 
+def save_office(office_name, created_by):
+    """Persist an office name so it shows on any device."""
+    office_slug = re.sub(r'\s+', '-', office_name.strip().lower())
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO saved_offices (office_slug, office_name, created_by)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (office_slug) DO UPDATE SET office_name=EXCLUDED.office_name
+                    """, (office_slug, office_name.strip(), created_by))
+                conn.commit()
+        except Exception as e:
+            print(f"save_office error: {e}")
+    else:
+        # JSON fallback
+        path = "saved_offices.json"
+        offices = {}
+        if os.path.exists(path):
+            with open(path) as f:
+                offices = json.load(f)
+        offices[office_slug] = {"office_name": office_name.strip(), "created_by": created_by}
+        with open(path, "w") as f:
+            json.dump(offices, f, indent=2)
+
+def load_saved_offices():
+    """Load all saved offices, newest first."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT office_name, office_slug, created_by, created_at FROM saved_offices ORDER BY created_at DESC")
+                    return [dict(r) for r in cur.fetchall()]
+        except Exception as e:
+            print(f"load_saved_offices error: {e}")
+            return []
+    else:
+        path = "saved_offices.json"
+        if not os.path.exists(path):
+            return []
+        with open(path) as f:
+            offices = json.load(f)
+        return [{"office_name": v["office_name"], "office_slug": k, "created_by": v.get("created_by","")} for k, v in offices.items()]
+
+def delete_saved_office(office_slug):
+    """Remove a saved office."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM saved_offices WHERE office_slug=%s", (office_slug,))
+                conn.commit()
+        except Exception as e:
+            print(f"delete_saved_office error: {e}")
+    else:
+        path = "saved_offices.json"
+        if os.path.exists(path):
+            with open(path) as f:
+                offices = json.load(f)
+            offices.pop(office_slug, None)
+            with open(path, "w") as f:
+                json.dump(offices, f, indent=2)
+
 @app.route("/office-qr-page", methods=["GET","POST"])
 @login_required
 def office_qr_page():
-    """Staff page to generate their office QR codes."""
+    """Staff page to generate and view saved office QR codes."""
     base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
+
+    # Handle DELETE saved office
+    if request.method == "POST" and request.form.get("_action") == "delete_office":
+        slug_to_delete = request.form.get("office_slug","").strip()
+        if slug_to_delete:
+            delete_saved_office(slug_to_delete)
+            flash("Office removed.", "success")
+        return redirect(url_for("office_qr_page"))
+
     office_name = request.args.get("office", "").strip() or request.form.get("office_name", "").strip()
-    # Build QR slugs: replace spaces with dashes, lowercase
-    def slug(name, suffix):
-        return re.sub(r'\s+', '-', name.strip()) + suffix
     qr_data = None
+
+    def make_slug(name, suffix):
+        return re.sub(r'\s+', '-', name.strip()) + suffix
+
     if office_name:
+        # Save it so it persists across devices
+        save_office(office_name, session.get("username", ""))
         qr_data = {
-            "reg": slug(office_name, "-reg"),
-            "rec": slug(office_name, "-rec"),
-            "rel": slug(office_name, "-rel"),
+            "reg": make_slug(office_name, "-reg"),
+            "rec": make_slug(office_name, "-rec"),
+            "rel": make_slug(office_name, "-rel"),
         }
+
+    saved_offices = load_saved_offices()
+
     return render_template("office_qr_page.html",
                            base=base,
                            office_name=office_name,
                            qr_data=qr_data,
+                           saved_offices=saved_offices,
                            client_reg_code=CLIENT_REG_CODE)
 
 # ─────────────────────────────────────────────

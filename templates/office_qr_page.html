@@ -3,114 +3,173 @@
 
 <div class="page-header">
   <a href="/" class="page-back">← Dashboard</a>
-  <div class="page-title">🖨️ Office QR Code Generator</div>
+  <div class="page-title">🖨️ Office QR Codes</div>
 </div>
 
 <style>
-  .gen-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px;}
-  .gen-card h3{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:16px;}
-  .format-hint{background:var(--surface);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--text);margin-bottom:14px;line-height:1.8;}
-  .format-hint code{background:#E2E8F0;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:13px;color:#1D4ED8;}
+  /* Generator form */
+  .gen-card{background:#fff;border:2px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:20px;box-shadow:0 2px 10px rgba(10,45,100,.05);}
+  .gen-card-title{font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--border);}
+  .gen-form{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
+  .gen-form .form-group{flex:1;min-width:220px;margin-bottom:0;}
 
-  .qr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px;}
-  .qr-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:20px;text-align:center;}
-  .qr-card.reg-card{border-color:#F59E0B;}
-  .qr-card.rec-card{border-color:#3B82F6;}
-  .qr-card.rel-card{border-color:#10B981;}
-  .qr-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700;margin-bottom:10px;}
+  /* Saved offices list */
+  .saved-section{margin-bottom:20px;}
+  .saved-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between;}
+  .saved-title span{font-size:14px;font-weight:600;color:var(--muted);}
+  .office-row{
+    background:#fff;border:2px solid var(--border);border-radius:14px;
+    padding:16px 18px;margin-bottom:10px;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:12px;flex-wrap:wrap;transition:border .15s,box-shadow .15s;
+  }
+  .office-row:hover{border-color:var(--teal);box-shadow:0 4px 16px rgba(14,116,144,.12);}
+  .office-row-name{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:var(--navy);}
+  .office-row-slug{font-family:monospace;font-size:13px;color:var(--muted);margin-top:2px;}
+  .office-row-actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;}
+  .btn-view{padding:9px 16px;border-radius:8px;font-size:15px;font-weight:700;
+    text-decoration:none;background:linear-gradient(135deg,var(--dark),var(--teal));
+    color:#fff;border:none;cursor:pointer;min-height:42px;
+    display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+  .btn-del{padding:9px 14px;border-radius:8px;font-size:14px;font-weight:700;
+    background:#FEE2E2;color:#DC2626;border:2px solid #FECACA;cursor:pointer;
+    min-height:42px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;
+    font-family:inherit;}
+  .btn-del:hover{background:#DC2626;color:#fff;}
+
+  /* QR grid */
+  .qr-section{margin-bottom:20px;}
+  .qr-section-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .qr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .qr-card{background:#fff;border-radius:16px;padding:20px;text-align:center;border:2px solid var(--border);}
+  .qr-card.reg-card{border-color:#D97706;border-width:3px;}
+  .qr-card.rec-card{border-color:#1D4ED8;border-width:3px;}
+  .qr-card.rel-card{border-color:#059669;border-width:3px;}
+  .qr-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:30px;font-size:16px;font-weight:800;margin-bottom:10px;letter-spacing:.04em;}
   .badge-reg{background:#FEF3C7;color:#92400E;}
   .badge-rec{background:#DBEAFE;color:#1D4ED8;}
   .badge-rel{background:#D1FAE5;color:#065F46;}
-  .qr-card h3{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--navy);margin-bottom:4px;}
-  .qr-card p{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5;}
-  .qr-img{width:160px;height:160px;border-radius:8px;border:2px solid var(--border);margin:0 auto 12px;display:block;}
-  .qr-slug{font-family:monospace;font-size:13px;color:var(--muted);background:var(--surface);padding:6px 8px;border-radius:6px;margin-bottom:12px;word-break:break-all;}
-  .btn-sm-dl{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;border:1.5px solid var(--border);color:var(--muted);background:var(--surface);}
-  .btn-sm-dl:hover{border-color:var(--teal);color:var(--teal);}
+  .qr-card-title{font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;color:var(--navy);margin-bottom:4px;}
+  .qr-card-desc{font-size:14px;color:var(--muted);margin-bottom:14px;line-height:1.5;}
+  .qr-img{width:min(180px,100%);height:min(180px,100%);aspect-ratio:1;border-radius:10px;border:2px solid var(--border);margin:0 auto 12px;display:block;object-fit:contain;}
+  .qr-slug{font-family:monospace;font-size:13px;color:var(--muted);background:var(--surface);padding:6px 10px;border-radius:8px;margin-bottom:12px;word-break:break-all;}
+  .btn-dl{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border-radius:9px;font-size:15px;font-weight:700;text-decoration:none;border:2px solid var(--border);color:var(--muted);background:var(--surface);transition:all .15s;}
+  .btn-dl:hover{border-color:var(--teal);color:var(--teal);}
 
-  .empty-state{text-align:center;padding:32px;color:var(--muted);}
-  .empty-state .icon{font-size:40px;margin-bottom:10px;}
+  /* Empty */
+  .empty-box{text-align:center;padding:40px 20px;background:#fff;border:2px solid var(--border);border-radius:16px;}
+  .empty-box .ei{font-size:48px;margin-bottom:12px;}
+  .empty-box p{font-size:16px;color:var(--muted);}
 
+  /* Responsive */
   @media(max-width:900px){.qr-grid{grid-template-columns:1fr 1fr;}}
   @media(max-width:580px){.qr-grid{grid-template-columns:1fr;}}
   @media(max-width:480px){
     .gen-card{padding:16px;}
-    .gen-card form{flex-direction:column;}
-    .gen-card .form-group{margin-bottom:0;}
+    .gen-form{flex-direction:column;}
+    .gen-form .btn{width:100%;justify-content:center;}
+    .office-row{flex-direction:column;align-items:flex-start;}
+    .office-row-actions{width:100%;}
+    .btn-view,.btn-del{flex:1;justify-content:center;}
     .qr-card{padding:16px;}
-    .qr-img{width:140px;height:140px;}
   }
-  @media print{.page-header,.gen-card form,.btn-sm-dl{display:none!important;}.qr-grid{grid-template-columns:repeat(3,1fr);gap:12px;}}
+  @media print{
+    .gen-card,.saved-section,.page-header,.btn-dl,.btn-view,.btn-del{display:none!important;}
+    .qr-grid{grid-template-columns:repeat(3,1fr)!important;gap:10px;}
+    .qr-img{width:150px!important;height:150px!important;}
+  }
 </style>
 
-<!-- Generator Form -->
+<!-- ── GENERATOR FORM ── -->
 <div class="gen-card">
-  <h3>⚙️ Generate Office QR Codes</h3>
-  <div class="format-hint">
-    Enter your office name to generate 3 QR codes in the format:<br/>
-    <code>OfficeName-reg</code> &nbsp;·&nbsp; <code>OfficeName-rec</code> &nbsp;·&nbsp; <code>OfficeName-rel</code>
-  </div>
-  <form method="get" action="/office-qr-page" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
-    <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0;">
-      <label>Your Office / School / Unit Name</label>
+  <div class="gen-card-title">⚙️ Add / Generate Office QR Codes</div>
+  <form method="get" action="/office-qr-page" class="gen-form">
+    <div class="form-group">
+      <label style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:8px;display:block;">
+        Office / School / Unit Name
+      </label>
       <input type="text" name="office" value="{{ office_name }}"
-             placeholder="e.g. Ormoc City, Leyte NHS, Budget Section"
-             style="font-size:16px;min-height:48px;" required/>
+             placeholder="e.g. Ormoc City, Budget Section, Leyte NHS"
+             style="font-size:17px;min-height:52px;" required/>
     </div>
-    <button type="submit" class="btn btn-primary" style="min-height:48px;white-space:nowrap;">🖨️ Generate QR Codes</button>
+    <button type="submit" class="btn btn-primary" style="min-height:52px;white-space:nowrap;font-size:16px;">
+      🖨️ Generate &amp; Save
+    </button>
   </form>
 </div>
 
+<!-- ── CURRENTLY GENERATED (from URL param) ── -->
 {% if qr_data %}
-<!-- QR Code Results -->
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
-  <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--navy);">
+<div class="qr-section">
+  <div class="qr-section-title">
     📋 QR Codes for: <span style="color:var(--teal);">{{ office_name }}</span>
+    <button onclick="window.print()" class="btn btn-secondary btn-sm" style="font-size:14px;min-height:38px;">🖨️ Print</button>
   </div>
-  <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨️ Print All</button>
-</div>
-
-<div class="qr-grid">
-
-  <!-- Registration QR -->
-  <div class="qr-card reg-card">
-    <span class="qr-badge badge-reg">👤 REGISTRATION</span>
-    <h3>Client Registration</h3>
-    <p>Clients scan this to register and submit documents for <strong>{{ office_name }}</strong>.</p>
-    <img src="/office-qr/{{ qr_data.reg }}.png" class="qr-img" alt="Reg QR"/>
-    <div class="qr-slug">{{ qr_data.reg }}</div>
-    <a href="/office-qr/{{ qr_data.reg }}.png" download="{{ qr_data.reg }}.png" class="btn-sm-dl">⬇️ Download PNG</a>
-  </div>
-
-  <!-- Receive QR -->
-  <div class="qr-card rec-card">
-    <span class="qr-badge badge-rec">📥 RECEIVING</span>
-    <h3>Receive Document</h3>
-    <p>Scan at the <strong>entrance/receiving window</strong> to mark documents as Received.</p>
-    <img src="/office-qr/{{ qr_data.rec }}.png" class="qr-img" alt="Rec QR"/>
-    <div class="qr-slug">{{ qr_data.rec }}</div>
-    <a href="/office-qr/{{ qr_data.rec }}.png" download="{{ qr_data.rec }}.png" class="btn-sm-dl">⬇️ Download PNG</a>
-  </div>
-
-  <!-- Release QR -->
-  <div class="qr-card rel-card">
-    <span class="qr-badge badge-rel">✅ RELEASING</span>
-    <h3>Release Document</h3>
-    <p>Scan at the <strong>exit/releasing window</strong> to mark documents as Released.</p>
-    <img src="/office-qr/{{ qr_data.rel }}.png" class="qr-img" alt="Rel QR"/>
-    <div class="qr-slug">{{ qr_data.rel }}</div>
-    <a href="/office-qr/{{ qr_data.rel }}.png" download="{{ qr_data.rel }}.png" class="btn-sm-dl">⬇️ Download PNG</a>
-  </div>
-
-</div>
-
-{% else %}
-<div class="gen-card">
-  <div class="empty-state">
-    <div class="icon">🖨️</div>
-    <p>Enter your office name above to generate your 3 QR codes.</p>
+  <div class="qr-grid">
+    <div class="qr-card reg-card">
+      <div class="qr-badge badge-reg">👤 REG</div>
+      <div class="qr-card-title">Registration</div>
+      <div class="qr-card-desc">Clients scan to create an account for <strong>{{ office_name }}</strong>.</div>
+      <img src="/office-qr/{{ qr_data.reg }}.png" class="qr-img" alt="REG QR"/>
+      <div class="qr-slug">{{ qr_data.reg }}</div>
+      <a href="/office-qr/{{ qr_data.reg }}.png" download="{{ qr_data.reg }}.png" class="btn-dl">⬇️ Download</a>
+    </div>
+    <div class="qr-card rec-card">
+      <div class="qr-badge badge-rec">📥 REC</div>
+      <div class="qr-card-title">Receive</div>
+      <div class="qr-card-desc">Scan at <strong>receiving window</strong> to mark document as Received.</div>
+      <img src="/office-qr/{{ qr_data.rec }}.png" class="qr-img" alt="REC QR"/>
+      <div class="qr-slug">{{ qr_data.rec }}</div>
+      <a href="/office-qr/{{ qr_data.rec }}.png" download="{{ qr_data.rec }}.png" class="btn-dl">⬇️ Download</a>
+    </div>
+    <div class="qr-card rel-card">
+      <div class="qr-badge badge-rel">✅ REL</div>
+      <div class="qr-card-title">Release</div>
+      <div class="qr-card-desc">Scan at <strong>releasing window</strong> to mark document as Released.</div>
+      <img src="/office-qr/{{ qr_data.rel }}.png" class="qr-img" alt="REL QR"/>
+      <div class="qr-slug">{{ qr_data.rel }}</div>
+      <a href="/office-qr/{{ qr_data.rel }}.png" download="{{ qr_data.rel }}.png" class="btn-dl">⬇️ Download</a>
+    </div>
   </div>
 </div>
 {% endif %}
+
+<!-- ── SAVED OFFICES LIST ── -->
+<div class="saved-section">
+  <div class="saved-title">
+    🏢 Saved Offices
+    <span>{{ saved_offices|length }} office{% if saved_offices|length != 1 %}s{% endif %} saved</span>
+  </div>
+
+  {% if saved_offices %}
+    {% for office in saved_offices %}
+    {% set slug_reg = office.office_slug + '-reg' %}
+    {% set slug_rec = office.office_slug + '-rec' %}
+    {% set slug_rel = office.office_slug + '-rel' %}
+    <div class="office-row">
+      <div>
+        <div class="office-row-name">🏢 {{ office.office_name }}</div>
+        <div class="office-row-slug">{{ office.office_slug }}</div>
+      </div>
+      <div class="office-row-actions">
+        <a href="/office-qr-page?office={{ office.office_name | urlencode }}" class="btn-view">
+          📋 View QR Codes
+        </a>
+        <form method="post" action="/office-qr-page" style="margin:0;"
+              onsubmit="return confirm('Remove {{ office.office_name }}?')">
+          <input type="hidden" name="_action" value="delete_office"/>
+          <input type="hidden" name="office_slug" value="{{ office.office_slug }}"/>
+          <button type="submit" class="btn-del">🗑️ Remove</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="empty-box">
+    <div class="ei">🏢</div>
+    <p>No offices saved yet. Enter an office name above to generate and save QR codes.</p>
+  </div>
+  {% endif %}
+</div>
 
 {% endblock %}
