@@ -149,6 +149,8 @@
   .sig-block-office{font-size:13px;font-weight:700;color:var(--navy);
     margin-bottom:14px}
   .sig-block-line{border-bottom:2px solid var(--navy);height:40px;margin-bottom:6px}
+  .sig-block-name{font-size:14px;font-weight:800;color:var(--navy);
+    text-align:center;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
   .sig-block-sub{font-size:11px;color:var(--muted);text-align:center}
   .sig-block-date{margin-top:10px;font-size:12px;color:var(--muted);
     display:flex;align-items:center;gap:6px}
@@ -314,7 +316,8 @@
       <div class="sig-footer">
         <div class="sig-block">
           <div class="sig-block-lbl">Prepared &amp; Released By</div>
-          <div class="sig-block-office">{{ slip.prepared_by }}</div>
+          <div style="height:32px"></div>
+          <div class="sig-block-name">{{ slip.prepared_by }}</div>
           <div class="sig-block-line"></div>
           <div class="sig-block-sub">Signature over Printed Name / Designation</div>
           <div class="sig-block-date">
