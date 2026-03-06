@@ -1216,6 +1216,16 @@ def enable_user_route(username):
 
 @app.route("/")
 def index():
+    role = session.get("role", "")
+
+    # ── PUBLIC LANDING PAGE ──
+    # Unauthenticated visitors and clients see the landing page.
+    # Staff and admins go directly to the dashboard.
+    if role not in ("staff", "admin"):
+        saved_offices = load_saved_offices()
+        return render_template("landing.html", saved_offices=saved_offices)
+
+    # ── STAFF / ADMIN DASHBOARD ──
     docs          = load_docs()
     search        = request.args.get("search","").lower()
     filter_status = request.args.get("status","All")
@@ -1260,6 +1270,14 @@ def index():
         filter_time_to=filter_time_to,
         status_options=["All","Pending","In Review","In Transit","Released","On Hold","Archived"],
         saved_offices=saved_offices)
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    """Explicit /dashboard URL for staff/admin — always shows the document table."""
+    if session.get("role") not in ("staff", "admin"):
+        return redirect(url_for("index"))
+    return redirect(url_for("index"))
 
 # ─────────────────────────────────────────────
 #  ADD DOCUMENT

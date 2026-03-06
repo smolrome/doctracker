@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>DocTracker — DepEd Leyte Division Document Tracking System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0B1F0E;--forest:#1A3D20;--green:#2D6A35;--sage:#4A8C54;--mint:#7BC47F;
+  --gold:#C8922A;--gold2:#E8B84B;--cream:#F5F0E8;--parchment:#EDE5D0;--paper:#FAF7F2;
+  --white:#FFFFFF;--red:#C0392B;--blue:#1A4A7A;--radius:14px;
+  --shadow:0 4px 24px rgba(11,31,14,.12);--shadow-lg:0 12px 48px rgba(11,31,14,.18);
+  --text-xs:13px;--text-sm:15px;--text-base:17px;--text-md:19px;--text-lg:22px;--text-xl:26px;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Outfit',sans-serif;background:var(--paper);color:var(--ink);overflow-x:hidden;font-size:var(--text-base);line-height:1.75;}
+::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:var(--parchment)}::-webkit-scrollbar-thumb{background:var(--sage);border-radius:4px}
+.reveal{opacity:0;transform:translateY(50px);transition:opacity .7s ease,transform .7s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-left{opacity:0;transform:translateX(-50px);transition:opacity .7s ease,transform .7s ease}
+.reveal-left.visible{opacity:1;transform:translateX(0)}
+.reveal-right{opacity:0;transform:translateX(50px);transition:opacity .7s ease,transform .7s ease}
+.reveal-right.visible{opacity:1;transform:translateX(0)}
+.reveal-scale{opacity:0;transform:scale(0.9);transition:opacity .6s ease,transform .6s ease}
+.reveal-scale.visible{opacity:1;transform:scale(1)}
+.stagger>*:nth-child(1){transition-delay:.05s}.stagger>*:nth-child(2){transition-delay:.12s}.stagger>*:nth-child(3){transition-delay:.19s}.stagger>*:nth-child(4){transition-delay:.26s}.stagger>*:nth-child(5){transition-delay:.33s}.stagger>*:nth-child(6){transition-delay:.40s}.stagger>*:nth-child(7){transition-delay:.47s}.stagger>*:nth-child(8){transition-delay:.54s}.stagger>*:nth-child(9){transition-delay:.61s}.stagger>*:nth-child(10){transition-delay:.68s}.stagger>*:nth-child(11){transition-delay:.75s}.stagger>*:nth-child(12){transition-delay:.82s}
+/* COVER */
+.cover{min-height:100vh;background:var(--forest);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:60px 40px 100px;text-align:center}
+.cover-pattern{position:absolute;inset:0;background-image:radial-gradient(circle at 20% 20%,rgba(200,146,42,.1) 0%,transparent 50%),radial-gradient(circle at 80% 80%,rgba(123,196,127,.08) 0%,transparent 50%),repeating-linear-gradient(45deg,transparent,transparent 40px,rgba(255,255,255,.015) 40px,rgba(255,255,255,.015) 41px),repeating-linear-gradient(-45deg,transparent,transparent 40px,rgba(255,255,255,.015) 40px,rgba(255,255,255,.015) 41px);pointer-events:none}
+.cover-particle{position:absolute;border-radius:50%;pointer-events:none;animation:floatParticle linear infinite;opacity:.15}
+@keyframes floatParticle{0%{transform:translateY(100vh) rotate(0deg);opacity:0}10%{opacity:.15}90%{opacity:.15}100%{transform:translateY(-200px) rotate(720deg);opacity:0}}
+.cover-seal{width:100px;height:100px;border-radius:50%;overflow:hidden;border:3px solid rgba(200,146,42,.5);box-shadow:0 0 0 6px rgba(200,146,42,.12),0 0 0 16px rgba(200,146,42,.05);animation:sealPulse 3.5s ease-in-out infinite;margin-bottom:28px;background:var(--white)}
+.cover-seal img{width:100%;height:100%;object-fit:cover}
+@keyframes sealPulse{0%,100%{box-shadow:0 0 0 6px rgba(200,146,42,.12),0 0 0 16px rgba(200,146,42,.05)}50%{box-shadow:0 0 0 10px rgba(200,146,42,.2),0 0 0 24px rgba(200,146,42,.04)}}
+.cover-eyebrow{font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--gold2);margin-bottom:18px}
+.cover h1{font-family:'Playfair Display',serif;font-size:clamp(48px,8vw,96px);font-weight:900;color:var(--white);line-height:.95;margin-bottom:14px;text-shadow:0 4px 32px rgba(0,0,0,.3)}
+.cover h1 em{font-style:normal;color:var(--gold2)}
+.cover-subtitle{font-size:clamp(16px,2.2vw,20px);font-weight:400;color:rgba(255,255,255,.75);max-width:600px;line-height:1.8;margin-bottom:32px}
+/* Auth-aware CTAs */
+.cover-welcome{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.18);border-radius:16px;padding:16px 28px;margin-bottom:28px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;backdrop-filter:blur(8px)}
+.cover-welcome-name{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--white)}
+.cover-welcome-sub{font-size:13px;color:rgba(255,255,255,.6);margin-top:2px}
+.cover-welcome-badge{padding:4px 12px;border-radius:100px;background:rgba(123,196,127,.2);border:1px solid rgba(123,196,127,.35);font-size:11px;font-weight:700;color:#7BC47F;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.cover-ctas{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:20px}
+.cover-btn{padding:14px 32px;border-radius:12px;font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;text-decoration:none;transition:all .2s;display:inline-flex;align-items:center;gap:9px;border:none;cursor:pointer}
+.cover-btn.gold{background:var(--gold);color:var(--ink);box-shadow:0 6px 28px rgba(200,146,42,.4)}.cover-btn.gold:hover{background:var(--gold2);transform:translateY(-2px);box-shadow:0 10px 36px rgba(200,146,42,.55)}
+.cover-btn.glass{background:rgba(255,255,255,.1);color:var(--white);border:2px solid rgba(255,255,255,.25);backdrop-filter:blur(8px)}.cover-btn.glass:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.42)}
+.cover-chips{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:52px}
+.chip{padding:9px 22px;border-radius:100px;font-size:14px;font-weight:600;border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.88);background:rgba(255,255,255,.08);backdrop-filter:blur(8px);transition:background .2s,border-color .2s}
+.chip:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.4)}
+.cover-stats{display:flex;gap:0;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.14);border-radius:20px;overflow:hidden;backdrop-filter:blur(10px)}
+.cover-stat{padding:26px 44px;text-align:center;border-right:1px solid rgba(255,255,255,.12)}.cover-stat:last-child{border-right:none}
+.cover-stat-num{font-family:'Playfair Display',serif;font-size:44px;font-weight:900;color:var(--gold2);line-height:1}
+.cover-stat-lbl{font-size:13px;font-weight:500;color:rgba(255,255,255,.55);margin-top:6px;letter-spacing:.06em}
+.scroll-hint{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);font-size:13px;color:rgba(255,255,255,.45);display:flex;flex-direction:column;align-items:center;gap:6px;animation:bounce 2.5s ease-in-out infinite;letter-spacing:.1em;text-transform:uppercase}
+.scroll-arrows{display:flex;flex-direction:column;gap:4px}
+.s-arrow{width:22px;height:22px;border-right:2.5px solid rgba(255,255,255,.35);border-bottom:2.5px solid rgba(255,255,255,.35);transform:rotate(45deg)}
+.s-arrow:nth-child(2){animation:arrowFade 2.5s .25s ease-in-out infinite;opacity:.6}.s-arrow:nth-child(3){animation:arrowFade 2.5s .5s ease-in-out infinite;opacity:.3}
+@keyframes arrowFade{0%,100%{opacity:.8}50%{opacity:.15}}
+@keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(8px)}}
+/* NAV */
+.nav{position:sticky;top:0;z-index:200;background:rgba(250,247,242,.96);backdrop-filter:blur(20px);border-bottom:2px solid var(--parchment);padding:0 40px;height:64px;display:flex;align-items:center;gap:14px}
+.nav-brand{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--forest);display:flex;align-items:center;gap:10px;text-decoration:none}
+.nav-logo{width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid rgba(200,146,42,.4)}
+.nav-sep{width:1.5px;height:22px;background:var(--parchment);flex-shrink:0}
+.nav-links{display:flex;gap:2px;flex:1}
+.nav-a{padding:8px 14px;border-radius:9px;font-size:14px;font-weight:600;color:var(--sage);text-decoration:none;letter-spacing:.03em;transition:background .15s,color .15s}
+.nav-a:hover{background:var(--parchment);color:var(--forest)}
+.nav-actions{display:flex;gap:8px;align-items:center;margin-left:auto}
+.nav-btn-ghost{padding:8px 18px;border-radius:9px;font-size:14px;font-weight:700;border:2px solid var(--parchment);color:var(--forest);background:transparent;text-decoration:none;transition:all .15s}
+.nav-btn-ghost:hover{background:var(--parchment)}
+.nav-btn-solid{padding:8px 18px;border-radius:9px;font-size:14px;font-weight:700;background:var(--forest);color:var(--white);text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.nav-btn-solid:hover{background:var(--green)}
+.nav-user-chip{display:flex;align-items:center;gap:7px;padding:6px 14px;border-radius:9px;background:rgba(45,106,53,.08);border:1.5px solid rgba(45,106,53,.2);font-size:14px;font-weight:600;color:var(--forest)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--sage)}
+/* SECTIONS */
+.section{max-width:1200px;margin:0 auto;padding:90px 40px}
+.section-bg-alt{background:rgba(237,229,208,.25)}
+.section-head{margin-bottom:60px}
+.section-eyebrow{display:inline-flex;align-items:center;gap:12px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;color:var(--gold);margin-bottom:14px}
+.section-eyebrow::before{content:'';width:32px;height:2.5px;background:var(--gold)}
+.section-title{font-family:'Playfair Display',serif;font-size:clamp(34px,4.5vw,58px);font-weight:900;color:var(--ink);line-height:1.05}
+.section-title span{color:var(--green)}
+.section-sub{font-size:16px;color:#5A6E5C;line-height:1.8;max-width:600px;margin-top:12px}
+.section-divider{height:2px;background:linear-gradient(90deg,transparent,var(--parchment),transparent)}
+/* ROLES */
+.roles-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.role-card{background:var(--white);border:2px solid var(--parchment);border-radius:24px;padding:36px;position:relative;overflow:hidden;transition:transform .3s,box-shadow .3s,border-color .3s}
+.role-card:hover{transform:translateY(-8px);box-shadow:var(--shadow-lg);border-color:var(--mint)}
+.role-card::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;border-radius:24px 24px 0 0}
+.role-card.admin::before{background:linear-gradient(90deg,var(--gold),var(--gold2))}.role-card.staff::before{background:linear-gradient(90deg,var(--green),var(--sage))}.role-card.client::before{background:linear-gradient(90deg,var(--blue),#3B82F6)}
+.role-icon{font-size:48px;margin-bottom:18px;display:block}
+.role-tag{display:inline-block;padding:5px 16px;border-radius:100px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+.role-tag.admin{background:rgba(200,146,42,.12);color:var(--gold)}.role-tag.staff{background:rgba(45,106,53,.12);color:var(--green)}.role-tag.client{background:rgba(26,74,122,.12);color:var(--blue)}
+.role-name{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--ink);margin-bottom:10px}
+.role-desc{font-size:var(--text-sm);color:#4B5563;line-height:1.8;margin-bottom:24px}
+.role-perms{list-style:none;display:flex;flex-direction:column;gap:10px}
+.perm-item{display:flex;align-items:flex-start;gap:10px;font-size:var(--text-sm);color:var(--ink);line-height:1.6}
+.perm-item::before{content:'✓';color:var(--sage);font-weight:700;flex-shrink:0;margin-top:1px;font-size:16px}
+.perm-item.no::before{content:'✕';color:#FBBF24;font-size:14px;margin-top:2px}.perm-item.no{color:#9CA3AF}
+/* OFFICES DARK SECTION */
+.offices-wrap{background:var(--forest);position:relative;overflow:hidden;padding:88px 0}
+.offices-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 15% 50%,rgba(200,146,42,.09) 0%,transparent 55%),radial-gradient(circle at 85% 50%,rgba(123,196,127,.07) 0%,transparent 55%),repeating-linear-gradient(45deg,transparent,transparent 40px,rgba(255,255,255,.008) 40px,rgba(255,255,255,.008) 41px);pointer-events:none}
+.offices-inner{max-width:1200px;margin:0 auto;padding:0 40px;position:relative;z-index:1}
+.offices-head{text-align:center;margin-bottom:52px}
+.offices-eyebrow{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--gold2);margin-bottom:14px}
+.offices-title{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,48px);font-weight:900;color:var(--white);line-height:1.08;margin-bottom:12px}
+.offices-title em{font-style:normal;color:var(--gold2)}
+.offices-sub{font-size:15px;color:rgba(255,255,255,.58);max-width:500px;margin:0 auto;line-height:1.8}
+.offices-search-wrap{max-width:400px;margin:28px auto 0;position:relative}
+.offices-search{width:100%;padding:13px 18px 13px 46px;border-radius:12px;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:var(--white);font-family:'Outfit',sans-serif;font-size:15px;outline:none;backdrop-filter:blur(8px);transition:border .2s,background .2s}
+.offices-search::placeholder{color:rgba(255,255,255,.38)}
+.offices-search:focus{border-color:rgba(200,146,42,.55);background:rgba(255,255,255,.11)}
+.offices-search-ico{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:17px;pointer-events:none}
+.offices-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:18px}
+.office-card{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);border-radius:20px;padding:22px 18px;text-align:center;transition:all .28s;backdrop-filter:blur(8px)}
+.office-card:hover{background:rgba(255,255,255,.11);border-color:rgba(200,146,42,.45);transform:translateY(-6px);box-shadow:0 18px 44px rgba(0,0,0,.28)}
+.office-card-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:100px;background:rgba(200,146,42,.16);border:1px solid rgba(200,146,42,.28);font-size:11px;font-weight:700;color:var(--gold2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:11px}
+.office-card-name{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--white);line-height:1.35;margin-bottom:16px;min-height:38px;display:flex;align-items:center;justify-content:center}
+.office-qr-wrap{width:132px;height:132px;margin:0 auto 16px;border-radius:12px;overflow:hidden;border:3px solid rgba(255,255,255,.18);background:var(--white);padding:5px;transition:border-color .25s;cursor:zoom-in}
+.office-card:hover .office-qr-wrap{border-color:rgba(200,146,42,.55)}
+.office-qr-wrap img{width:100%;height:100%;object-fit:contain;border-radius:6px;display:block}
+.office-card-actions{display:flex;flex-direction:column;gap:8px}
+.btn-submit{display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 12px;border-radius:10px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;text-decoration:none;background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);transition:all .2s;border:none;cursor:pointer;width:100%}
+.btn-submit:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(200,146,42,.45)}
+.btn-dl{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:10px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;text-decoration:none;background:rgba(255,255,255,.08);color:rgba(255,255,255,.72);border:1.5px solid rgba(255,255,255,.16);transition:all .15s}
+.btn-dl:hover{background:rgba(255,255,255,.14);color:var(--white)}
+.offices-empty{text-align:center;padding:64px 20px}
+.offices-empty-ico{font-size:56px;opacity:.3;margin-bottom:14px}
+.offices-empty-txt{font-size:16px;color:rgba(255,255,255,.42);line-height:1.7}
+/* Auth prompt / client strip */
+.auth-prompt{background:rgba(255,255,255,.06);border:1.5px solid rgba(200,146,42,.28);border-radius:20px;padding:32px;text-align:center;margin-top:36px;backdrop-filter:blur(8px)}
+.auth-prompt h3{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--white);margin-bottom:8px}
+.auth-prompt p{font-size:14px;color:rgba(255,255,255,.6);line-height:1.75;margin-bottom:20px;max-width:440px;margin-left:auto;margin-right:auto}
+.auth-prompt-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.auth-btn{padding:12px 28px;border-radius:10px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;text-decoration:none;transition:all .15s}
+.auth-btn.gold{background:var(--gold);color:var(--ink)}.auth-btn.gold:hover{background:var(--gold2)}
+.auth-btn.outline{background:rgba(255,255,255,.1);color:var(--white);border:1.5px solid rgba(255,255,255,.28)}.auth-btn.outline:hover{background:rgba(255,255,255,.18)}
+.client-strip{background:linear-gradient(135deg,rgba(45,106,53,.45),rgba(26,61,32,.6));border:1.5px solid rgba(123,196,127,.25);border-radius:18px;padding:22px 28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-top:36px;backdrop-filter:blur(10px)}
+.client-strip-info{flex:1;min-width:180px}
+.client-strip-name{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--white);margin-bottom:3px}
+.client-strip-sub{font-size:13px;color:rgba(255,255,255,.6)}
+.client-strip-btns{display:flex;gap:10px;flex-wrap:wrap}
+.c-btn{padding:10px 22px;border-radius:10px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;text-decoration:none;transition:all .15s}
+.c-btn.gold{background:var(--gold);color:var(--ink)}.c-btn.gold:hover{background:var(--gold2)}
+.c-btn.ghost{background:rgba(255,255,255,.12);color:var(--white);border:1.5px solid rgba(255,255,255,.25)}.c-btn.ghost:hover{background:rgba(255,255,255,.2)}
+/* QR LIGHTBOX */
+.qr-lb{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px);opacity:0;pointer-events:none;transition:opacity .25s}
+.qr-lb.open{opacity:1;pointer-events:all}
+.qr-lb-box{background:var(--white);border-radius:20px;padding:28px;text-align:center;max-width:320px;width:100%;transform:scale(.9);transition:transform .25s}
+.qr-lb.open .qr-lb-box{transform:scale(1)}
+.qr-lb-name{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--ink);margin-bottom:16px}
+.qr-lb-img{width:100%;max-width:240px;border-radius:10px;border:2px solid var(--parchment)}
+.qr-lb-close{margin-top:18px;padding:10px 24px;border-radius:9px;background:var(--forest);color:var(--white);border:none;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;width:100%}
+.qr-lb-close:hover{background:var(--green)}
+/* FLOW */
+.flow-wrap{position:relative}
+.flow-phase{display:grid;grid-template-columns:260px 1fr;gap:0;margin-bottom:0;border-bottom:2px solid var(--parchment);transition:background .3s}
+.flow-phase:last-child{border-bottom:none}.flow-phase:hover{background:rgba(45,106,53,.015)}
+.phase-aside{padding:44px 36px 44px 0;border-right:3px solid var(--parchment);position:relative;display:flex;flex-direction:column;justify-content:flex-start}
+.phase-aside::after{content:'';position:absolute;right:-10px;top:52px;width:18px;height:18px;border-radius:50%;border:3px solid var(--white);transition:transform .3s}
+.flow-phase:hover .phase-aside::after{transform:scale(1.3)}
+.flow-phase.p1 .phase-aside::after{background:var(--gold)}.flow-phase.p2 .phase-aside::after{background:var(--green)}.flow-phase.p3 .phase-aside::after{background:var(--blue)}.flow-phase.p4 .phase-aside::after{background:var(--sage)}.flow-phase.p5 .phase-aside::after{background:#DC2626}.flow-phase.p6 .phase-aside::after{background:var(--green)}.flow-phase.p7 .phase-aside::after{background:var(--gold)}
+.phase-num{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--gold);letter-spacing:.1em;margin-bottom:10px}
+.phase-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--ink);margin-bottom:10px;line-height:1.25}
+.phase-actor{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:100px;font-size:13px;font-weight:600;margin-top:auto;width:fit-content}
+.actor-admin{background:rgba(200,146,42,.12);color:var(--gold)}.actor-staff{background:rgba(45,106,53,.12);color:var(--green)}.actor-client{background:rgba(26,74,122,.12);color:var(--blue)}.actor-both{background:rgba(74,140,84,.1);color:var(--sage)}
+.phase-body{padding:44px 0 44px 44px}
+.steps-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.step{background:var(--white);border:1.5px solid var(--parchment);border-radius:18px;padding:22px 24px;transition:border-color .25s,box-shadow .25s,transform .25s;position:relative;overflow:hidden}
+.step::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:18px 0 0 18px}
+.flow-phase.p1 .step::before{background:var(--gold)}.flow-phase.p2 .step::before{background:var(--green)}.flow-phase.p3 .step::before{background:var(--blue)}.flow-phase.p4 .step::before{background:var(--sage)}.flow-phase.p5 .step::before{background:#DC2626}.flow-phase.p6 .step::before{background:var(--green)}.flow-phase.p7 .step::before{background:var(--gold)}
+.step:hover{border-color:var(--mint);box-shadow:0 6px 24px rgba(45,106,53,.12);transform:translateY(-4px)}
+.step-n{font-family:'JetBrains Mono',monospace;font-size:12px;color:#9CA3AF;margin-bottom:10px}
+.step-ico{font-size:32px;margin-bottom:10px;display:block}
+.step-title{font-size:var(--text-md);font-weight:700;color:var(--ink);margin-bottom:8px;line-height:1.3}
+.step-desc{font-size:var(--text-sm);color:#4B5563;line-height:1.8}
+/* PIPELINE */
+.pipeline{display:flex;align-items:stretch;gap:0;background:var(--white);border:2px solid var(--parchment);border-radius:22px;overflow:hidden;margin-bottom:28px}
+.pipe-node{flex:1;padding:28px 22px;text-align:center;position:relative;border-right:1.5px solid var(--parchment);transition:background .2s}
+.pipe-node:hover{background:rgba(45,106,53,.04)}.pipe-node:last-child{border-right:none}
+.pipe-node::after{content:'→';position:absolute;right:-12px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--parchment);z-index:1}
+.pipe-node:last-child::after{display:none}
+.pipe-ico{font-size:32px;margin-bottom:10px;display:block}.pipe-name{font-size:var(--text-md);font-weight:700;color:var(--ink);margin-bottom:6px}.pipe-how{font-size:var(--text-xs);color:#6B7280;line-height:1.6}
+.pipe-node.p-pending{background:rgba(245,158,11,.04)}.pipe-node.p-received{background:rgba(26,74,122,.04)}.pipe-node.p-review{background:rgba(139,92,246,.04)}.pipe-node.p-transit{background:rgba(14,165,233,.04)}.pipe-node.p-released{background:rgba(45,106,53,.06)}
+/* INFO BOXES */
+.info-boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.info-box{background:var(--white);border:2px solid var(--parchment);border-radius:18px;padding:28px;font-size:var(--text-sm);line-height:1.8;color:#374151}
+.info-box-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin-bottom:12px}
+/* QR GRID */
+.qr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:44px}
+.qr-card{background:var(--white);border:2px solid var(--parchment);border-radius:22px;padding:28px;text-align:center;transition:transform .25s,box-shadow .25s,border-color .25s}
+.qr-card:hover{transform:translateY(-6px);box-shadow:var(--shadow);border-color:var(--mint)}
+.qr-vis{width:100px;height:100px;margin:0 auto 18px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:42px;position:relative;overflow:hidden}
+.qr-vis::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 5px,rgba(0,0,0,.03) 5px,rgba(0,0,0,.03) 6px),repeating-linear-gradient(90deg,transparent,transparent 5px,rgba(0,0,0,.03) 5px,rgba(0,0,0,.03) 6px)}
+.qr-card.q-app .qr-vis{background:rgba(200,146,42,.1);border:2px solid rgba(200,146,42,.3)}.qr-card.q-sub .qr-vis{background:rgba(26,74,122,.08);border:2px solid rgba(26,74,122,.25)}.qr-card.q-rec .qr-vis{background:rgba(45,106,53,.08);border:2px solid rgba(45,106,53,.25)}.qr-card.q-rel .qr-vis{background:rgba(74,140,84,.08);border:2px solid rgba(74,140,84,.25)}
+.qr-slug{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;padding:6px 12px;border-radius:8px;margin:12px auto;display:inline-block}
+.qr-card.q-app .qr-slug{background:rgba(200,146,42,.1);color:var(--gold)}.qr-card.q-sub .qr-slug{background:rgba(26,74,122,.08);color:var(--blue)}.qr-card.q-rec .qr-slug{background:rgba(45,106,53,.08);color:var(--green)}.qr-card.q-rel .qr-slug{background:rgba(74,140,84,.08);color:var(--sage)}
+.qr-card h4{font-size:var(--text-lg);font-weight:700;color:var(--ink);margin-bottom:8px}.qr-card p{font-size:var(--text-sm);color:#4B5563;line-height:1.8}
+/* ACTOR TABLE */
+.actor-compare{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.actor-col{background:var(--white);border:2px solid var(--parchment);border-radius:22px;overflow:hidden;transition:box-shadow .25s}.actor-col:hover{box-shadow:var(--shadow-lg)}
+.actor-col-head{padding:22px 26px;border-bottom:2px solid var(--parchment);display:flex;align-items:center;gap:14px}
+.actor-col-head.admin-h{background:linear-gradient(135deg,rgba(200,146,42,.1),rgba(232,184,75,.05))}.actor-col-head.staff-h{background:linear-gradient(135deg,rgba(45,106,53,.1),rgba(74,140,84,.05))}.actor-col-head.client-h{background:linear-gradient(135deg,rgba(26,74,122,.1),rgba(59,130,246,.05))}
+.actor-col-icon{font-size:32px}.actor-col-name{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--ink)}
+.actor-col-body{padding:20px}
+.actor-action{display:flex;gap:12px;padding:12px 16px;border-radius:12px;margin-bottom:10px;background:var(--paper);border:1.5px solid transparent;transition:border-color .15s,background .15s;cursor:default}
+.actor-action:hover{border-color:var(--parchment);background:var(--white)}.actor-action:last-child{margin-bottom:0}
+.aa-n{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:#D1D5DB;flex-shrink:0;margin-top:3px;width:22px;text-align:right}
+.aa-txt{font-size:var(--text-sm);color:var(--ink);line-height:1.65}.aa-txt strong{color:var(--forest);font-weight:700}
+/* DATA FLOW */
+.dataflow-table{background:var(--white);border:2px solid var(--parchment);border-radius:22px;overflow:hidden}
+.df-row{display:grid;grid-template-columns:130px 1fr 1fr 1fr;border-bottom:1px solid var(--parchment);align-items:center;transition:background .15s}
+.df-row:not(.df-head):hover{background:rgba(45,106,53,.02)}.df-row:last-child{border-bottom:none}.df-row.df-head{background:var(--forest)}
+.df-cell{padding:16px 20px;font-size:var(--text-sm)}
+.df-head .df-cell{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.6)}
+.df-actor-cell{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--sage);border-right:1px solid var(--parchment);display:flex;align-items:center;gap:8px}
+.df-action-cell{color:var(--ink);font-weight:500;border-right:1px solid var(--parchment);font-size:var(--text-sm)}.df-system-cell{color:#4B5563;font-size:13px;border-right:1px solid var(--parchment)}
+.df-result-cell{display:flex;align-items:center;gap:8px;font-size:var(--text-sm);font-weight:600}.df-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+/* TECH */
+.tech-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.tech-item{background:var(--white);border:1.5px solid var(--parchment);border-radius:16px;padding:20px 18px;display:flex;align-items:center;gap:14px;transition:transform .2s,box-shadow .2s,border-color .2s}
+.tech-item:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:var(--mint)}.tech-ico{font-size:30px;flex-shrink:0}.tech-name{font-size:var(--text-sm);font-weight:700;color:var(--ink)}.tech-role{font-size:13px;color:#6B7280;margin-top:3px;line-height:1.4}
+/* PROGRESS + BACK TOP */
+#progressBar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--gold2),var(--green));z-index:300;width:0;transition:width .1s linear;box-shadow:0 0 10px rgba(200,146,42,.5)}
+#backTop{position:fixed;bottom:36px;right:36px;z-index:150;width:52px;height:52px;border-radius:50%;background:var(--forest);color:var(--white);border:none;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(11,31,14,.3);opacity:0;transform:translateY(20px);transition:opacity .3s,transform .3s,background .2s}
+#backTop.visible{opacity:1;transform:translateY(0)}#backTop:hover{background:var(--green)}
+/* FOOTER */
+.footer{background:var(--forest);padding:60px 40px;text-align:center;position:relative;overflow:hidden}
+.footer::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 40px,rgba(255,255,255,.01) 40px,rgba(255,255,255,.01) 41px)}
+.footer-logo{font-family:'Playfair Display',serif;font-size:30px;font-weight:900;color:var(--white);position:relative;z-index:1}
+.footer-logo span{color:var(--gold2)}
+.footer-sub{font-size:13px;color:rgba(255,255,255,.35);margin-top:10px;letter-spacing:.05em;position:relative;z-index:1}
+/* RESPONSIVE */
+@media(max-width:960px){
+  .roles-grid,.actor-compare,.info-boxes,.qr-grid,.tech-grid{grid-template-columns:repeat(2,1fr)}
+  .flow-phase{grid-template-columns:1fr}.phase-aside{border-right:none;border-bottom:3px solid var(--parchment);padding:24px 0}.phase-aside::after{display:none}.phase-body{padding:24px 0}
+  .cover-stats{flex-wrap:wrap}.cover-stat{min-width:120px}
+  .section{padding:64px 24px}.offices-inner{padding:0 24px}
+  .nav{padding:0 20px}.nav-links{display:none}
+  .df-row{grid-template-columns:1fr}.df-cell{border-right:none!important;border-bottom:1px solid var(--parchment);padding:10px 16px}.df-row.df-head .df-cell:not(:first-child){display:none}
+}
+@media(max-width:600px){
+  .roles-grid,.actor-compare,.info-boxes,.qr-grid{grid-template-columns:1fr}
+  .cover{padding:60px 24px 90px}.cover-stats{display:none}
+  .cover-ctas{flex-direction:column;align-items:center}
+  .cover-btn{justify-content:center;width:100%;max-width:280px}
+  .offices-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:380px){.offices-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="progressBar"></div>
+
+<!-- ═══ NAV ═══ -->
+<nav class="nav">
+  <a href="/" class="nav-brand">
+    <img src="/static/logo.png" alt="DepEd" class="nav-logo"/>
+    DocTracker
+  </a>
+  <div class="nav-sep"></div>
+  <div class="nav-links">
+    <a href="#offices" class="nav-a">Submit Documents</a>
+    <a href="#how-it-works" class="nav-a">How It Works</a>
+    <a href="#process" class="nav-a">Process Flow</a>
+    <a href="#qr-guide" class="nav-a">QR Guide</a>
+    <a href="#tech" class="nav-a">Tech Stack</a>
+  </div>
+  <div class="nav-actions">
+    {% if logged_in %}
+      <div class="nav-user-chip"><div class="nav-dot"></div>{{ current_full_name or current_user }}</div>
+      {% if current_role in ('admin','staff') %}
+        <a href="/dashboard" class="nav-btn-solid">📊 Dashboard</a>
+      {% else %}
+        <a href="/client" class="nav-btn-solid">📋 My Documents</a>
+        <a href="/logout" class="nav-btn-ghost">Sign Out</a>
+      {% endif %}
+    {% else %}
+      <a href="/client/login" class="nav-btn-ghost">Sign In</a>
+      <a href="/client/register" class="nav-btn-solid">✍️ Register Free</a>
+    {% endif %}
+  </div>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="cover" id="home">
+  <div class="cover-pattern"></div>
+  <div class="cover-particle" style="width:6px;height:6px;background:var(--gold);left:8%;animation-duration:19s;animation-delay:0s"></div>
+  <div class="cover-particle" style="width:4px;height:4px;background:var(--mint);left:22%;animation-duration:25s;animation-delay:5s"></div>
+  <div class="cover-particle" style="width:7px;height:7px;background:var(--gold2);left:50%;animation-duration:21s;animation-delay:2s"></div>
+  <div class="cover-particle" style="width:5px;height:5px;background:var(--sage);left:74%;animation-duration:23s;animation-delay:8s"></div>
+  <div class="cover-particle" style="width:4px;height:4px;background:var(--gold);left:91%;animation-duration:17s;animation-delay:1s"></div>
+
+  <div class="cover-seal"><img src="/static/logo.png" alt="DepEd Leyte Division"/></div>
+  <div class="cover-eyebrow">Schools Division of Leyte — Division Office</div>
+  <h1>Doc<em>Tracker</em></h1>
+  <p class="cover-subtitle">The official document routing and tracking system of the DepEd Leyte Division. Submit, track, and receive your documents — entirely from your phone.</p>
+
+  {% if logged_in %}
+    <div class="cover-welcome">
+      <div>
+        <div class="cover-welcome-name">Welcome back, {{ current_full_name or current_user }}!</div>
+        <div class="cover-welcome-sub">
+          {% if current_role == 'client' %}You're signed in as a client. Submit documents or check your existing ones below.
+          {% elif current_role == 'staff' %}You're signed in as staff. Head to your dashboard to manage documents.
+          {% else %}You're signed in as administrator. Full system access available.{% endif %}
+        </div>
+      </div>
+      <div class="cover-welcome-badge">✓ Signed In</div>
+    </div>
+    <div class="cover-ctas">
+      {% if current_role == 'client' %}
+        <a href="/client" class="cover-btn gold">📋 My Documents</a>
+        <a href="#offices" class="cover-btn glass">🏢 Submit to an Office</a>
+      {% elif current_role in ('admin','staff') %}
+        <a href="/dashboard" class="cover-btn gold">📊 Go to Dashboard</a>
+        <a href="#process" class="cover-btn glass">📖 View Process Flow</a>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="cover-ctas">
+      <a href="/client/register" class="cover-btn gold">✍️ Register Free — No Email Needed</a>
+      <a href="/client/login" class="cover-btn glass">🔑 Sign In</a>
+    </div>
+  {% endif %}
+
+  <div class="cover-chips">
+    <span class="chip">📱 Mobile-First</span>
+    <span class="chip">🔍 Real-Time Tracking</span>
+    <span class="chip">📋 QR Code Receipts</span>
+    <span class="chip">🏢 Multi-Office Routing</span>
+    <span class="chip">🔒 Private &amp; Secure</span>
+    <span class="chip">🤖 AI-Assisted Entry</span>
+  </div>
+  <div class="cover-stats">
+    <div class="cover-stat"><div class="cover-stat-num">3</div><div class="cover-stat-lbl">User Roles</div></div>
+    <div class="cover-stat"><div class="cover-stat-num">7</div><div class="cover-stat-lbl">Process Phases</div></div>
+    <div class="cover-stat"><div class="cover-stat-num">4</div><div class="cover-stat-lbl">QR Code Types</div></div>
+    <div class="cover-stat"><div class="cover-stat-num">100%</div><div class="cover-stat-lbl">Audit Trail</div></div>
+  </div>
+  <div class="scroll-hint">
+    <span>Scroll to explore</span>
+    <div class="scroll-arrows"><div class="s-arrow"></div><div class="s-arrow"></div><div class="s-arrow"></div></div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══ OFFICE QR CODES ═══ -->
+<section class="offices-wrap" id="offices">
+  <div class="offices-inner">
+    <div class="offices-head reveal">
+      <div class="offices-eyebrow">Submit Your Documents</div>
+      <div class="offices-title">Office <em>Submission</em> QR Codes</div>
+      <div class="offices-sub">Scan an office QR with your phone camera to go straight to their submission form — or tap Submit below if you're already signed in.</div>
+      {% if saved_offices|length > 4 %}
+      <div class="offices-search-wrap">
+        <span class="offices-search-ico">🔍</span>
+        <input class="offices-search" type="text" id="officeSearch" placeholder="Search offices…" oninput="filterOffices(this.value)" autocomplete="off"/>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if saved_offices %}
+    <div class="offices-grid stagger" id="officesGrid">
+      {% for office in saved_offices %}
+      {% set sub_slug = office.office_slug ~ '-sub' %}
+      <div class="office-card reveal" data-name="{{ office.office_name | lower }}">
+        <div class="office-card-badge">📋 Submission</div>
+        <div class="office-card-name">{{ office.office_name }}</div>
+        <div class="office-qr-wrap" onclick="openQR('{{ office.office_name | e }}','/office-qr/{{ sub_slug }}.png')" title="Tap to enlarge">
+          <img src="/office-qr/{{ sub_slug }}.png" alt="{{ office.office_name }} Submission QR" loading="lazy"/>
+        </div>
+        <div class="office-card-actions">
+          {% if logged_in and current_role == 'client' %}
+            <a href="/client/submit?office_slug={{ office.office_slug | urlencode }}&amp;office_name={{ office.office_name | urlencode }}" class="btn-submit">📋 Submit Here</a>
+          {% elif logged_in and current_role in ('admin','staff') %}
+            <a href="/office-action/{{ sub_slug }}" class="btn-submit">📋 Open Office Page</a>
+          {% else %}
+            <a href="/client/login?next=/client/submit%3Foffice_slug%3D{{ office.office_slug | urlencode }}%26office_name%3D{{ office.office_name | urlencode }}" class="btn-submit">🔑 Sign In to Submit</a>
+          {% endif %}
+          <a href="/office-qr/{{ sub_slug }}.png" download="{{ sub_slug }}.png" class="btn-dl">⬇️ Download QR</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if logged_in and current_role == 'client' %}
+    <div class="client-strip reveal">
+      <div class="client-strip-info">
+        <div class="client-strip-name">{{ current_full_name or current_user }}</div>
+        <div class="client-strip-sub">Your submitted documents are private — only you can see them in your portal.</div>
+      </div>
+      <div class="client-strip-btns">
+        <a href="/client" class="c-btn gold">📋 My Documents</a>
+        <a href="/client/submit" class="c-btn ghost">+ New Submission</a>
+      </div>
+    </div>
+    {% elif not logged_in %}
+    <div class="auth-prompt reveal">
+      <h3>Ready to Submit Your Documents?</h3>
+      <p>Create a free account to submit to any office above and track your documents in real time. No email required — just a username and password you choose.</p>
+      <div class="auth-prompt-btns">
+        <a href="/client/register" class="auth-btn gold">✍️ Register Free</a>
+        <a href="/client/login" class="auth-btn outline">🔑 Sign In</a>
+      </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="offices-empty reveal">
+      <div class="offices-empty-ico">🏢</div>
+      <div class="offices-empty-txt">No offices registered yet.<br/>Offices appear here once staff members complete their account setup.</div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- QR Lightbox -->
+<div class="qr-lb" id="qrLb" onclick="closeQR()">
+  <div class="qr-lb-box" onclick="event.stopPropagation()">
+    <div class="qr-lb-name" id="qrLbName"></div>
+    <img class="qr-lb-img" id="qrLbImg" src="" alt=""/>
+    <button class="qr-lb-close" onclick="closeQR()">Close</button>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="section" id="how-it-works">
+  <div class="section-head reveal">
+    <div class="section-eyebrow">System Overview</div>
+    <div class="section-title">Three Roles, <span>One System</span></div>
+    <p class="section-sub">Every person in DocTracker has a clearly defined role. Clients can only see their own documents — the staff document table is never accessible to the public.</p>
+  </div>
+  <div class="roles-grid stagger">
+    <div class="role-card admin reveal">
+      <span class="role-icon">👑</span><span class="role-tag admin">Administrator</span>
+      <div class="role-name">System Admin</div>
+      <div class="role-desc">Manages the entire system — users, offices, QR codes, and configuration. Full visibility over all documents and all activity.</div>
+      <ul class="role-perms">
+        <li class="perm-item">Invite and manage all staff accounts</li>
+        <li class="perm-item">Generate and print all office QR code sets</li>
+        <li class="perm-item">View, search and filter every document</li>
+        <li class="perm-item">Access full activity and audit log</li>
+        <li class="perm-item">Post App Welcome QR for public onboarding</li>
+      </ul>
+    </div>
+    <div class="role-card staff reveal">
+      <span class="role-icon">🏢</span><span class="role-tag staff">Office Staff</span>
+      <div class="role-name">Staff Member</div>
+      <div class="role-desc">Receives, processes, routes, and releases documents. Creates the paper trail and maintains chain of custody across offices.</div>
+      <ul class="role-perms">
+        <li class="perm-item">Receive documents via QR scan or manual entry</li>
+        <li class="perm-item">Update status, add remarks, edit details</li>
+        <li class="perm-item">Create batch routing slips with time filters</li>
+        <li class="perm-item">Use AI to auto-extract fields from photos/PDFs</li>
+        <li class="perm-item">View dashboard and all documents</li>
+      </ul>
+    </div>
+    <div class="role-card client reveal">
+      <span class="role-icon">👤</span><span class="role-tag client">Client</span>
+      <div class="role-name">Client / Public</div>
+      <div class="role-desc">Submits documents and tracks their progress. Privacy-first — clients can only ever see their own submitted documents.</div>
+      <ul class="role-perms">
+        <li class="perm-item">Register free — no email required</li>
+        <li class="perm-item">Submit documents to any registered office</li>
+        <li class="perm-item">Get a unique QR code receipt per document</li>
+        <li class="perm-item">Track real-time status and travel log</li>
+        <li class="perm-item no">Cannot see other clients' documents</li>
+        <li class="perm-item no">Cannot access the staff document table</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══ PROCESS FLOW ═══ -->
+<section class="section" id="process">
+  <div class="section-head reveal">
+    <div class="section-eyebrow">End-to-End Workflow</div>
+    <div class="section-title">Complete <span>Process Flow</span></div>
+    <p class="section-sub">From system setup all the way to document release — every phase of the lifecycle explained step by step.</p>
+  </div>
+  <div class="flow-wrap">
+    <div class="flow-phase p1 reveal">
+      <div class="phase-aside"><div class="phase-num">PHASE 01</div><div class="phase-title">System Initialization</div><span class="phase-actor actor-admin">👑 Admin</span></div>
+      <div class="phase-body"><div class="steps-row stagger">
+        <div class="step reveal"><div class="step-n">01.1</div><span class="step-ico">🔐</span><div class="step-title">Admin Login</div><div class="step-desc">Admin logs in via <strong>/login</strong> using credentials set in Railway environment variables. Full access to all system functions — users, documents, QR codes, activity logs.</div></div>
+        <div class="step reveal"><div class="step-n">01.2</div><span class="step-ico">🖨️</span><div class="step-title">Generate Office QR Sets</div><div class="step-desc">Goes to QR Codes page, types each office name, downloads four QR codes per office: App Welcome, SUB, REC, REL. Posts them in the correct physical locations.</div></div>
+        <div class="step reveal"><div class="step-n">01.3</div><span class="step-ico">📊</span><div class="step-title">Monitor Everything</div><div class="step-desc">Admin sees all documents on the main dashboard with full search, date, and time filters. Can edit, reroute, or update any document at any time.</div></div>
+      </div></div>
+    </div>
+    <div class="flow-phase p2 reveal">
+      <div class="phase-aside"><div class="phase-num">PHASE 02</div><div class="phase-title">Staff Onboarding</div><span class="phase-actor actor-staff">🏢 Admin → Staff</span></div>
+      <div class="phase-body"><div class="steps-row stagger">
+        <div class="step reveal"><div class="step-n">02.1</div><span class="step-ico">📧</span><div class="step-title">Admin Sends Invitation</div><div class="step-desc">Admin goes to 👥 Users → 📧 Send Invite. System generates a one-time 32-char token with a 48-hour expiry. Brevo HTTPS API delivers a branded email.</div></div>
+        <div class="step reveal"><div class="step-n">02.2</div><span class="step-ico">📝</span><div class="step-title">Staff Registers &amp; QR Auto-Created</div><div class="step-desc">Staff clicks the link, fills in their Office/Unit name, full name, username, and password. The system immediately generates their office's full QR code set automatically.</div></div>
+        <div class="step reveal"><div class="step-n">02.3</div><span class="step-ico">🖨️</span><div class="step-title">Print &amp; Post QR Codes</div><div class="step-desc">Staff logs in, downloads their office QR set. Posts: SUB at the client counter, REC at the receiving window, REL at the releasing window.</div></div>
+        <div class="step reveal"><div class="step-n">02.4</div><span class="step-ico">📊</span><div class="step-title">Access Dashboard</div><div class="step-desc">Staff lands on the document dashboard. Can log walk-in documents, scan QR codes, filter by date and time, and create routing slips for batch forwarding.</div></div>
+      </div></div>
+    </div>
+    <div class="flow-phase p3 reveal">
+      <div class="phase-aside"><div class="phase-num">PHASE 03</div><div class="phase-title">Client Registration</div><span class="phase-actor actor-client">👤 Client</span></div>
+      <div class="phase-body"><div class="steps-row stagger">
+        <div class="step reveal"><div class="step-n">03.1</div><span class="step-ico">📱</span><div class="step-title">Scan the Welcome QR</div><div class="step-desc">Client spots the App Welcome QR posted at the office entrance or bulletin board. Scans it — opens this landing page directly on their phone.</div></div>
+        <div class="step reveal"><div class="step-n">03.2</div><span class="step-ico">✍️</span><div class="step-title">Register Free</div><div class="step-desc">Taps Register, fills in full name, chooses a username and password (8+ chars, 1 number). Account created instantly — no email address needed.</div></div>
+        <div class="step reveal"><div class="step-n">03.3</div><span class="step-ico">🔒</span><div class="step-title">Private Client Portal</div><div class="step-desc">Client logs in and lands on their personal portal. They see only their own submitted documents — the staff document table is completely inaccessible.</div></div>
+      </div></div>
+    </div>
+    <div class="flow-phase p4 reveal">
+      <div class="phase-aside"><div class="phase-num">PHASE 04</div><div class="phase-title">Document Submission</div><span class="phase-actor actor-client">👤 Client</span></div>
+      <div class="phase-body"><div class="steps-row stagger">
+        <div class="step reveal"><div class="step-n">04.1</div><span class="step-ico">📄</span><div class="step-title">Choose Office &amp; Fill Form</div><div class="step-desc">Taps Submit Here on any office card above. Form opens pre-filled with that office. Fills in unit/school, sender name, document particulars, category, and Referred To officer. Can add multiple documents to one batch.</div></div>
+        <div class="step reveal"><div class="step-n">04.2</div><span class="step-ico">💾</span><div class="step-title">Logged to Database</div><div class="step-desc">Each document gets a unique Reference Number (REF-2026-XXXX) and 8-char system ID. Inserted into PostgreSQL JSONB with status <strong>Pending</strong> and an initial travel log entry.</div></div>
+        <div class="step reveal"><div class="step-n">04.3</div><span class="step-ico">📲</span><div class="step-title">QR Code Receipt</div><div class="step-desc">Client is shown a QR code immediately after submission. <strong>Screenshot or download it</strong> — this QR is the key to receiving and releasing the document at the office.</div></div>
+        <div class="step reveal"><div class="step-n">04.4</div><span class="step-ico">👁️</span><div class="step-title">Always in Your Portal</div><div class="step-desc">The QR is permanently available in each document's tracking page in the client portal. Tap any document → QR displayed with full status history and travel log.</div></div>
+      </div></div>
+    </div>
+    <div class="flow-phase p5 reveal">
+      <div class="phase-aside"><div class="phase-num">PHASE 05</div><div class="phase-title">Document Receiving</div><span class="phase-actor actor-both">👤 Client + 🏢 Staff</span></div>
+      <div class="phase-body"><div class="steps-row stagger">
+        <div class="step reveal"><div class="step-n">05.1</div><span class="step-ico">🚶</span><div class="step-title">Client Arrives at Counter</div><div class="step-desc">Client brings physical documents to the office receiving window and shows their document QR code from their phone portal.</div></div>
+        <div class="step reveal"><div class="step-n">05.2</div><span class="step-ico">📷</span><div class="step-title">Staff Scans Document QR</div><div class="step-desc">Staff uses the DocTracker scan page or the office REC scanner. System pulls up the document record instantly — no manual search required.</div></div>
+        <div class="step reveal"><div class="step-n">05.3</div><span class="step-ico">📥</span><div class="step-title">Mark as Received</div><div class="step-desc">Staff taps Mark as Received. Status: Pending → <strong>Received</strong>. Receiving officer name, date, time, and office are appended to the travel log automatically.</div></div>
+        <div class="step reveal"><div class="step-n">05.4</div><span class="step-ico">⚡</span><div class="step-title">Client Sees Update Instantly</div><div class="step-desc">The client can see the status change in their private portal immediately — no need to ask the staff. Full travel log entry is visible right away.</div></div>
+      </div></div>
+    </div>
+    <div class="flow-phase p6 reveal">
+      <div class="phase-aside"><div class="phase-num">PHASE 06</div><div class="phase-title">Staff Processing &amp; Routing</div><span class="phase-actor actor-staff">🏢 Staff / Admin</span></div>
+      <div class="phase-body"><div class="steps-row stagger">
+        <div class="step reveal"><div class="step-n">06.1</div><span class="step-ico">📊</span><div class="step-title">View &amp; Filter Dashboard</div><div class="step-desc">Staff filters by Date and Time range (e.g. 08:00–12:00) to isolate a morning batch, then searches by name or reference number. Clicks any row to open the full document detail.</div></div>
+        <div class="step reveal"><div class="step-n">06.2</div><span class="step-ico">🚌</span><div class="step-title">Batch Route via Slip</div><div class="step-desc">Select documents on the dashboard, set destination office, click Create Routing Slip. Or use Auto-select by Time to select an entire shift's batch in one click. All selected documents → <strong>In Transit</strong>.</div></div>
+        <div class="step reveal"><div class="step-n">06.3</div><span class="step-ico">🖨️</span><div class="step-title">Print &amp; Forward</div><div class="step-desc">System generates a routing slip (SLIP-2026-XXXX) with a document table, prepared-by and received-by signature blocks. Print and attach to the physical documents.</div></div>
+        <div class="step reveal"><div class="step-n">06.4</div><span class="step-ico">🤖</span><div class="step-title">AI-Assisted Entry</div><div class="step-desc">For walk-in documents: upload a photo or PDF of the physical document. Claude AI extracts all fields automatically — name, sender, category, dates — and pre-fills the entire form.</div></div>
+      </div></div>
+    </div>
+    <div class="flow-phase p7 reveal">
+      <div class="phase-aside"><div class="phase-num">PHASE 07</div><div class="phase-title">Document Release</div><span class="phase-actor actor-both">🏢 Staff + 👤 Client</span></div>
+      <div class="phase-body"><div class="steps-row stagger">
+        <div class="step reveal"><div class="step-n">07.1</div><span class="step-ico">✅</span><div class="step-title">Staff Sets Status to Released</div><div class="step-desc">When processing is complete, staff updates the document to <strong>Released</strong> using the Quick Status Update panel. Client sees this change immediately in their private portal.</div></div>
+        <div class="step reveal"><div class="step-n">07.2</div><span class="step-ico">📲</span><div class="step-title">Client Presents QR for Pickup</div><div class="step-desc">Client returns to the office, opens their document from the portal, and shows the QR at the releasing window. Staff scans it to confirm pickup.</div></div>
+        <div class="step reveal"><div class="step-n">07.3</div><span class="step-ico">🎉</span><div class="step-title">Lifecycle Complete</div><div class="step-desc">Travel log records the final entry. Client's portal shows the complete journey: Submitted → Received → In Review → Released, with every timestamp and officer name throughout.</div></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══ STATUS PIPELINE ═══ -->
+<section class="section section-bg-alt" id="status">
+  <div class="section-head reveal">
+    <div class="section-eyebrow">Document Lifecycle</div>
+    <div class="section-title">Status <span>Pipeline</span></div>
+  </div>
+  <div class="pipeline reveal">
+    <div class="pipe-node p-pending"><span class="pipe-ico">📤</span><div class="pipe-name">Pending</div><div class="pipe-how">Client submits via portal</div></div>
+    <div class="pipe-node p-received"><span class="pipe-ico">📥</span><div class="pipe-name">Received</div><div class="pipe-how">Staff scans QR at receiving counter</div></div>
+    <div class="pipe-node p-review"><span class="pipe-ico">🔍</span><div class="pipe-name">In Review</div><div class="pipe-how">Staff updates during processing</div></div>
+    <div class="pipe-node p-transit"><span class="pipe-ico">🚌</span><div class="pipe-name">In Transit</div><div class="pipe-how">Routed to another office via slip</div></div>
+    <div class="pipe-node p-released"><span class="pipe-ico">✅</span><div class="pipe-name">Released</div><div class="pipe-how">Client picks up — cycle complete</div></div>
+  </div>
+  <div class="info-boxes stagger">
+    <div class="info-box reveal" style="border-color:rgba(200,146,42,.3)"><div class="info-box-title" style="color:var(--gold)">⚡ QR-Triggered Updates</div>Pending → <strong>Received</strong> — staff scans document QR at receiving counter<br/><br/>Released → <strong>Pickup confirmed</strong> — staff scans document QR at releasing window to close the lifecycle</div>
+    <div class="info-box reveal" style="border-color:rgba(45,106,53,.3)"><div class="info-box-title" style="color:var(--green)">✋ Manual Staff Updates</div>Any → <strong>In Review</strong>, <strong>In Transit</strong>, <strong>On Hold</strong>, <strong>Archived</strong><br/><br/>Routing slip creation automatically sets all selected documents to <strong>In Transit</strong> in one action</div>
+    <div class="info-box reveal" style="border-color:rgba(26,74,122,.3)"><div class="info-box-title" style="color:var(--blue)">🔒 Privacy by Design</div>Clients view the full travel log of <strong>their own documents only</strong>. The staff document table, other clients' data, and system statistics are <strong>never accessible</strong> to client accounts under any circumstance.</div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══ QR GUIDE ═══ -->
+<section class="section" id="qr-guide">
+  <div class="section-head reveal">
+    <div class="section-eyebrow">QR Code Architecture</div>
+    <div class="section-title">Four Types of <span>QR Codes</span></div>
+    <p class="section-sub">Each QR code serves a specific purpose in the document lifecycle. Here's where to post each one and exactly who scans it.</p>
+  </div>
+  <div class="qr-grid stagger">
+    <div class="qr-card q-app reveal"><div class="qr-vis">📱</div><div class="qr-slug">App Welcome</div><h4>Welcome QR</h4><p>Posted at office entrances, bulletin boards, waiting areas. Scanned by new or returning clients — opens this landing page with Register and Sign In options.</p></div>
+    <div class="qr-card q-sub reveal"><div class="qr-vis">📋</div><div class="qr-slug">OfficeName-sub</div><h4>Submission QR</h4><p>Posted at each office counter. Client scans → submission form opens pre-filled with that office's name. Download visible in the Offices section above.</p></div>
+    <div class="qr-card q-rec reveal"><div class="qr-vis">📥</div><div class="qr-slug">OfficeName-rec</div><h4>Receiving Station</h4><p>Posted at the receiving window. Staff scans client's document QR here to mark it Received — office name, officer, and timestamp logged automatically.</p></div>
+    <div class="qr-card q-rel reveal"><div class="qr-vis">✅</div><div class="qr-slug">OfficeName-rel</div><h4>Releasing Station</h4><p>Posted at the pickup window. Scanned when client retrieves their processed document. Closes the document lifecycle with a final travel log entry.</p></div>
+  </div>
+  <div class="reveal" style="display:grid;grid-template-columns:1fr auto 1fr;gap:24px;align-items:center;background:var(--white);border:2px solid var(--parchment);border-radius:20px;padding:28px 32px">
+    <div class="info-box" style="border:none;padding:0;background:none"><div class="info-box-title" style="color:var(--gold)">📲 Auto-Created on Staff Registration</div>When a staff member registers and enters their Office/Unit name, the system automatically generates their full QR code set — no admin action required. Also available manually from the 🖨️ QR Codes page.</div>
+    <div style="text-align:center;font-size:36px;color:var(--parchment);font-weight:300">→</div>
+    <div class="info-box" style="border:none;padding:0;background:none"><div class="info-box-title" style="color:var(--green)">📋 Office Name Auto-Logged</div>When a scan happens via an office QR, the office name is parsed from the QR slug and recorded automatically in the document's travel log — no manual entry needed by the scanning officer.</div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══ ACTORS ═══ -->
+<section class="section section-bg-alt" id="actors">
+  <div class="section-head reveal">
+    <div class="section-eyebrow">Step-by-Step Breakdown</div>
+    <div class="section-title">Actions by <span>Each Actor</span></div>
+  </div>
+  <div class="actor-compare stagger">
+    <div class="actor-col reveal">
+      <div class="actor-col-head admin-h"><span class="actor-col-icon">👑</span><div class="actor-col-name">Administrator</div></div>
+      <div class="actor-col-body">
+        <div class="actor-action"><span class="aa-n">01</span><div class="aa-txt">Log in at <strong>/login</strong> with admin credentials from Railway environment variables</div></div>
+        <div class="actor-action"><span class="aa-n">02</span><div class="aa-txt">Go to <strong>👥 Users → 📧 Send Invite</strong> to onboard staff with a one-time email link</div></div>
+        <div class="actor-action"><span class="aa-n">03</span><div class="aa-txt">Monitor all documents on the <strong>dashboard</strong> with date, time, status, and text filters</div></div>
+        <div class="actor-action"><span class="aa-n">04</span><div class="aa-txt">Go to <strong>🖨️ QR Codes</strong> → type office name → download all 4 QR codes as PNG files</div></div>
+        <div class="actor-action"><span class="aa-n">05</span><div class="aa-txt">Post the <strong>App Welcome QR</strong> at building entrances to onboard clients to the system</div></div>
+        <div class="actor-action"><span class="aa-n">06</span><div class="aa-txt">Enable or disable staff accounts from <strong>Manage Users</strong> — takes effect immediately</div></div>
+        <div class="actor-action"><span class="aa-n">07</span><div class="aa-txt">View the <strong>Activity Log</strong> for a full audit trail of every login, submission, and status change</div></div>
+      </div>
+    </div>
+    <div class="actor-col reveal">
+      <div class="actor-col-head staff-h"><span class="actor-col-icon">🏢</span><div class="actor-col-name">Office Staff</div></div>
+      <div class="actor-col-body">
+        <div class="actor-action"><span class="aa-n">01</span><div class="aa-txt">Receive invite email → click one-time link → fill in <strong>Office/Unit name, username &amp; password</strong></div></div>
+        <div class="actor-action"><span class="aa-n">02</span><div class="aa-txt">Post QR codes — <strong>SUB</strong> at counter, <strong>REC</strong> at receiving window, <strong>REL</strong> at releasing window</div></div>
+        <div class="actor-action"><span class="aa-n">03</span><div class="aa-txt">Log walk-in documents via <strong>+ Log Document</strong> → multi-document cart → Log All in one action</div></div>
+        <div class="actor-action"><span class="aa-n">04</span><div class="aa-txt">Use <strong>Date + Time From/To filters</strong> on the dashboard to isolate morning or afternoon batches</div></div>
+        <div class="actor-action"><span class="aa-n">05</span><div class="aa-txt">Use <strong>Auto-select by Time</strong> in the route panel to select an entire shift's batch instantly</div></div>
+        <div class="actor-action"><span class="aa-n">06</span><div class="aa-txt">Create and print <strong>Routing Slips</strong> (SLIP-2026-XXXX) with signature columns for chain-of-custody</div></div>
+        <div class="actor-action"><span class="aa-n">07</span><div class="aa-txt">Use <strong>🤖 AI Scan</strong> — upload photo or PDF → Claude AI extracts and pre-fills all form fields</div></div>
+      </div>
+    </div>
+    <div class="actor-col reveal">
+      <div class="actor-col-head client-h"><span class="actor-col-icon">👤</span><div class="actor-col-name">Client</div></div>
+      <div class="actor-col-body">
+        <div class="actor-action"><span class="aa-n">01</span><div class="aa-txt">Scan the <strong>App Welcome QR</strong> or visit this page → tap Register → account in seconds</div></div>
+        <div class="actor-action"><span class="aa-n">02</span><div class="aa-txt">Choose an office in the <strong>Offices section above</strong> → tap Submit Here → fill form → submit batch</div></div>
+        <div class="actor-action"><span class="aa-n">03</span><div class="aa-txt"><strong>Screenshot or download</strong> the QR code on the confirmation page — it's your document receipt</div></div>
+        <div class="actor-action"><span class="aa-n">04</span><div class="aa-txt">Bring physical documents to the office → staff scans your QR → status becomes <strong>Received</strong></div></div>
+        <div class="actor-action"><span class="aa-n">05</span><div class="aa-txt">Track status anytime in <strong>My Documents</strong> — only your own documents are ever shown</div></div>
+        <div class="actor-action"><span class="aa-n">06</span><div class="aa-txt">When status shows <strong>Released</strong> → return to office → present QR → pick up your documents</div></div>
+        <div class="actor-action"><span class="aa-n">07</span><div class="aa-txt">View the full <strong>travel log</strong> — see every office your document passed through and who handled it</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══ DATA FLOW ═══ -->
+<section class="section">
+  <div class="section-head reveal">
+    <div class="section-eyebrow">Technical Architecture</div>
+    <div class="section-title">Data <span>Flow</span></div>
+  </div>
+  <div class="dataflow-table reveal">
+    <div class="df-row df-head"><div class="df-cell">Actor</div><div class="df-cell">Action</div><div class="df-cell">System Process</div><div class="df-cell">Result</div></div>
+    <div class="df-row"><div class="df-cell df-actor-cell">👑 Admin</div><div class="df-cell df-action-cell">Sends staff invitation</div><div class="df-cell df-system-cell">INSERT invite_tokens (32-char hex, 48h expiry) → Brevo HTTPS API call</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--gold)"></div>Branded email delivered to staff</div></div>
+    <div class="df-row"><div class="df-cell df-actor-cell">🏢 Staff</div><div class="df-cell df-action-cell">Registers via invite link</div><div class="df-cell df-system-cell">Validate token → INSERT users (role=staff, office=X) → save_office(X) → QR set auto-generated → token used=TRUE</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--green)"></div>Account + office QR set created instantly</div></div>
+    <div class="df-row"><div class="df-cell df-actor-cell">👤 Client</div><div class="df-cell df-action-cell">Registers via landing page</div><div class="df-cell df-system-cell">POST /client/register → INSERT users (role=client, SHA-256 hashed password) — no email stored</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--blue)"></div>Client account active instantly</div></div>
+    <div class="df-row"><div class="df-cell df-actor-cell">👤 Client</div><div class="df-cell df-action-cell">Submits documents</div><div class="df-cell df-system-cell">INSERT documents (JSONB: id, fields, status=Pending, travel_log[]) — one per document in batch</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--sage)"></div>QR code generated and shown per document</div></div>
+    <div class="df-row"><div class="df-cell df-actor-cell">🏢 Staff</div><div class="df-cell df-action-cell">Scans doc QR → Received</div><div class="df-cell df-system-cell">POST /receive/&lt;id&gt; action=receive → UPDATE status=Received, date_received + travel_log APPEND</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--blue)"></div>Status updated, client portal reflects change</div></div>
+    <div class="df-row"><div class="df-cell df-actor-cell">🏢 Staff</div><div class="df-cell df-action-cell">Creates routing slip</div><div class="df-cell df-system-cell">POST /routing-slip/create → UPDATE docs IN TRANSIT + INSERT routing_slips (SLIP-2026-XXXX)</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--green)"></div>Printable slip with signature columns ready</div></div>
+    <div class="df-row"><div class="df-cell df-actor-cell">🏢 Staff</div><div class="df-cell df-action-cell">Manual status update</div><div class="df-cell df-system-cell">POST /update-status/&lt;id&gt; → UPDATE documents SET status=X + travel_log APPEND with officer + timestamp</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--green)"></div>Status changed, client sees update</div></div>
+    <div class="df-row"><div class="df-cell df-actor-cell">🏢 Staff</div><div class="df-cell df-action-cell">Scans doc QR → Released</div><div class="df-cell df-system-cell">POST /receive/&lt;id&gt; action=release → UPDATE status=Released, date_released + travel_log APPEND</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--green)"></div>✅ Document lifecycle complete</div></div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══ TECH STACK ═══ -->
+<section class="section section-bg-alt" id="tech">
+  <div class="section-head reveal">
+    <div class="section-eyebrow">Infrastructure</div>
+    <div class="section-title">Technology <span>Stack</span></div>
+  </div>
+  <div class="tech-grid stagger">
+    <div class="tech-item reveal"><span class="tech-ico">🐍</span><div><div class="tech-name">Python 3 + Flask</div><div class="tech-role">Web Framework &amp; Routing</div></div></div>
+    <div class="tech-item reveal"><span class="tech-ico">🐘</span><div><div class="tech-name">PostgreSQL</div><div class="tech-role">Persistent Database (Railway)</div></div></div>
+    <div class="tech-item reveal"><span class="tech-ico">🚂</span><div><div class="tech-name">Railway</div><div class="tech-role">Cloud Hosting &amp; Auto-Deploy</div></div></div>
+    <div class="tech-item reveal"><span class="tech-ico">🦄</span><div><div class="tech-name">Gunicorn</div><div class="tech-role">Production WSGI Server</div></div></div>
+    <div class="tech-item reveal"><span class="tech-ico">📦</span><div><div class="tech-name">psycopg2</div><div class="tech-role">PostgreSQL Adapter (JSONB)</div></div></div>
+    <div class="tech-item reveal"><span class="tech-ico">📱</span><div><div class="tech-name">qrcode + Pillow</div><div class="tech-role">Server-Side QR Generation</div></div></div>
+    <div class="tech-item reveal"><span class="tech-ico">👁️</span><div><div class="tech-name">jsQR (Browser)</div><div class="tech-role">In-App Camera QR Scanning</div></div></div>
+    <div class="tech-item reveal"><span class="tech-ico">📷</span><div><div class="tech-name">OpenCV + NumPy</div><div class="tech-role">Server-Side QR Image Decode</div></div></div>
+    <div class="tech-item reveal"><span class="tech-ico">🤖</span><div><div class="tech-name">Claude AI (Anthropic)</div><div class="tech-role">Document Data Extraction</div></div></div>
+    <div class="tech-item reveal"><span class="tech-ico">📧</span><div><div class="tech-name">Brevo API</div><div class="tech-role">Transactional Email (HTTPS)</div></div></div>
+    <div class="tech-item reveal"><span class="tech-ico">🔐</span><div><div class="tech-name">SHA-256 + Flask Sessions</div><div class="tech-role">Authentication &amp; Security</div></div></div>
+    <div class="tech-item reveal"><span class="tech-ico">🗄️</span><div><div class="tech-name">JSONB Document Store</div><div class="tech-role">Flexible Schema with UPSERT</div></div></div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="footer-logo">Doc<span>Tracker</span></div>
+  <div style="font-size:16px;color:rgba(255,255,255,.55);margin-top:8px;position:relative;z-index:1">DepEd Leyte Division — Document Routing &amp; Tracking System</div>
+  <div class="footer-sub">Flask · PostgreSQL · Railway · Claude AI · Brevo · qrcode · jsQR · OpenCV</div>
+</footer>
+
+<button id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">↑</button>
+
+<script>
+const revealEls = document.querySelectorAll('.reveal,.reveal-left,.reveal-right,.reveal-scale');
+const revObs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1, rootMargin: '0px 0px -36px 0px' });
+revealEls.forEach(el => revObs.observe(el));
+
+const bar = document.getElementById('progressBar');
+const btn = document.getElementById('backTop');
+window.addEventListener('scroll', () => {
+  const pct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight) * 100;
+  bar.style.width = pct + '%';
+  btn.classList.toggle('visible', window.scrollY > 500);
+});
+
+window.addEventListener('load', () => {
+  const coverEls = document.querySelectorAll('.cover > *:not(.cover-pattern):not(.cover-particle)');
+  coverEls.forEach((el, i) => {
+    el.style.opacity = '0'; el.style.transform = 'translateY(30px)';
+    el.style.transition = 'opacity .8s ease, transform .8s ease';
+    el.style.transitionDelay = (i * 0.11) + 's';
+    setTimeout(() => { el.style.opacity = ''; el.style.transform = ''; }, 60);
+  });
+});
+
+function animateCounter(el, target, duration = 1400) {
+  let start = 0; const step = target / (duration / 16);
+  const timer = setInterval(() => {
+    start += step;
+    if (start >= target) { el.textContent = target; clearInterval(timer); }
+    else el.textContent = Math.floor(start);
+  }, 16);
+}
+const statNums = document.querySelectorAll('.cover-stat-num');
+let countersStarted = false;
+const counterObs = new IntersectionObserver(entries => {
+  if (!countersStarted && entries.some(e => e.isIntersecting)) {
+    countersStarted = true;
+    statNums.forEach(el => { const v = parseInt(el.textContent); if (!isNaN(v)) animateCounter(el, v); });
+  }
+});
+if (statNums.length) counterObs.observe(statNums[0]);
+
+document.querySelectorAll('.flow-phase').forEach(p => {
+  p.addEventListener('mouseenter', () => { p.style.paddingLeft = '8px'; p.style.transition = 'padding .2s'; });
+  p.addEventListener('mouseleave', () => { p.style.paddingLeft = ''; });
+});
+
+function filterOffices(q) {
+  q = q.trim().toLowerCase();
+  document.querySelectorAll('#officesGrid .office-card').forEach(c => {
+    c.style.display = (!q || c.dataset.name.includes(q)) ? '' : 'none';
+  });
+}
+
+function openQR(name, src) {
+  document.getElementById('qrLbName').textContent = name;
+  document.getElementById('qrLbImg').src = src;
+  document.getElementById('qrLb').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeQR() {
+  document.getElementById('qrLb').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeQR(); });
+</script>
+</body>
+</html>
