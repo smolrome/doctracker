@@ -183,7 +183,6 @@
     .meta-strip{grid-template-columns:1fr 1fr}
     .meta-cell{border-right:none;border-bottom:1.5px solid var(--border)}
     .sig-footer{grid-template-columns:1fr}
-    .slip-table th:nth-child(4),.slip-table td:nth-child(4),
     .slip-table th:nth-child(5),.slip-table td:nth-child(5){display:none}
   }
   </style>
@@ -286,8 +285,7 @@
               <th>Unit / Office / School</th>
               <th>Sender</th>
               <th>Referred To</th>
-              <th class="sig-cell" style="width:100px">Date Received</th>
-              <th class="sig-cell" style="width:140px">Signature</th>
+              <th class="sig-cell" style="width:120px">Date Received</th>
             </tr>
           </thead>
           <tbody>
@@ -306,10 +304,6 @@
                 <div class="sig-line"></div>
                 <div class="sig-sub">Date</div>
               </td>
-              <td class="sig-cell">
-                <div class="sig-line"></div>
-                <div class="sig-sub">Signature over Printed Name</div>
-              </td>
             </tr>
             {% endfor %}
           </tbody>
@@ -320,7 +314,7 @@
       <div class="sig-footer">
         <div class="sig-block">
           <div class="sig-block-lbl">Prepared &amp; Released By</div>
-          <div class="sig-block-office">Division Office</div>
+          <div class="sig-block-office">{{ slip.prepared_by }}</div>
           <div class="sig-block-line"></div>
           <div class="sig-block-sub">Signature over Printed Name / Designation</div>
           <div class="sig-block-date">
