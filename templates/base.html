@@ -722,6 +722,7 @@
         Cancel
       </button>
       <form method="POST" action="/clear-database" style="margin:0;">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/>
         <button type="submit"
                 style="padding:12px 24px;border-radius:9px;border:none;
                        background:#DC2626;color:#fff;font-weight:700;font-size:.95rem;cursor:pointer;">
@@ -761,6 +762,24 @@
 </div>
 
 <script>
+  // ── CSRF: auto-inject token into every POST form ──
+  (function() {
+    const TOKEN = "{{ csrf_token | e }}";
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('form').forEach(function(form) {
+        if ((form.method || '').toLowerCase() === 'post') {
+          if (!form.querySelector('[name="_csrf_token"]')) {
+            const inp = document.createElement('input');
+            inp.type  = 'hidden';
+            inp.name  = '_csrf_token';
+            inp.value = TOKEN;
+            form.appendChild(inp);
+          }
+        }
+      });
+    });
+  })();
+
   // ── Mobile drawer ──
   function toggleMenu(){ document.getElementById('nav-drawer').classList.toggle('open'); }
   function closeMenu(){ document.getElementById('nav-drawer').classList.remove('open'); }

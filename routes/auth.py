@@ -52,7 +52,14 @@ def login():
                           username=username, ip=ip)
                 if role == "client":
                     return redirect(url_for("client.portal"))
-                next_url = request.args.get("next") or url_for("dashboard.index")
+                next_raw = request.args.get("next", "")
+                # Open redirect protection: only allow relative paths
+                from urllib.parse import urlparse
+                parsed = urlparse(next_raw)
+                if next_raw and not parsed.scheme and not parsed.netloc and next_raw.startswith("/"):
+                    next_url = next_raw
+                else:
+                    next_url = url_for("dashboard.index")
                 flash(f"Welcome, {full_name}!", "success")
                 return redirect(next_url)
             else:
@@ -89,6 +96,10 @@ def register():
                 error = "Password must be at least 8 characters."
             elif not re.search(r'[0-9]', password):
                 error = "Password must contain at least one number."
+            elif not re.search(r'[A-Z]', password):
+                error = "Password must contain at least one uppercase letter."
+            elif not re.search(r'[^A-Za-z0-9]', password):
+                error = "Password must contain at least one special character (e.g. @, #, !, %)."
             elif password != confirm:
                 error = "Passwords do not match."
             else:

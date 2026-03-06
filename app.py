@@ -21,9 +21,10 @@ Structure:
 """
 
 import os
+import secrets
 import time
 
-from flask import Flask, flash, jsonify, redirect, render_template, session, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
 
 import config
 from utils import get_client_ip, is_logged_in
@@ -115,6 +116,37 @@ def create_app() -> Flask:
             now             = datetime.now,
         )
 
+    # ── CSRF Protection ────────────────────────────────────────────────────────
+    CSRF_EXEMPT_PREFIXES = ("/office-action/", "/slip-scan/", "/doc-scan/",
+                            "/client/", "/static/", "/office-qr/")
+
+    @app.before_request
+    def csrf_check():
+        if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
+            return
+        # Exempt QR scan endpoints (accessed by scanning device, no session)
+        path = request.path
+        if any(path.startswith(p) for p in CSRF_EXEMPT_PREFIXES):
+            return
+        session_token = session.get("_csrf_token")
+        form_token    = (request.form.get("_csrf_token")
+                         or request.headers.get("X-CSRF-Token"))
+        if not session_token or not form_token:
+            return redirect(url_for("auth.login"))
+        if not secrets.compare_digest(session_token, form_token):
+            flash("Security check failed. Please try again.", "error")
+            return redirect(request.referrer or url_for("dashboard.index"))
+
+    @app.before_request
+    def inject_csrf_token():
+        if "_csrf_token" not in session:
+            session["_csrf_token"] = secrets.token_hex(32)
+
+    # Make CSRF token available in all templates
+    @app.context_processor
+    def csrf_context():
+        return {"csrf_token": session.get("_csrf_token", "")}
+
     # Security headers on every response
     @app.after_request
     def add_security_headers(response):
@@ -124,6 +156,16 @@ def create_app() -> Flask:
             "X-XSS-Protection":       "1; mode=block",
             "Referrer-Policy":        "strict-origin-when-cross-origin",
             "Permissions-Policy":     "geolocation=(), microphone=(), camera=(self)",
+            "Content-Security-Policy": (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; "
+                "font-src 'self' https://fonts.gstatic.com; "
+                "img-src 'self' data: https:; "
+                "connect-src 'self'; "
+                "frame-ancestors 'none';"
+            ),
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
         })
         if is_logged_in():
             last_active = session.get("last_active", 0)

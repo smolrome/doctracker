@@ -26,6 +26,8 @@ DATA_FILE = os.environ.get("DATA_FILE", "documents.json")  # JSON fallback
 # ── Admin credentials ──────────────────────────────────────────────────────────
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "deped2025")
+if ADMIN_PASSWORD == "deped2025":
+    print("WARNING: ADMIN_PASSWORD is using the default. Set ADMIN_PASSWORD in Railway Variables immediately!")
 
 # ── Email (Brevo) ──────────────────────────────────────────────────────────────
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
