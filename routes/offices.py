@@ -122,49 +122,96 @@ def create_routing_slip():
         flash("No valid document IDs selected.", "error")
         return redirect(url_for("dashboard.index"))
 
-    actor     = session.get("full_name") or session.get("username") or "Staff"
-    slip_date = request.form.get("slip_date", "").strip() or now_str()[:10]
+    actor       = session.get("full_name") or session.get("username") or "Staff"
+    from_office = session.get("office") or "DepEd Leyte Division"
+    slip_date   = request.form.get("slip_date", "").strip() or now_str()[:10]
+
+    from services.documents import save_doc
+    from services.qr import create_slip_token, make_slip_qr_png, APP_URL
+    import base64
+
+    slip_id  = str(uuid.uuid4())[:8].upper()
+    slip_no  = generate_slip_no()
+
+    # Generate SLIP-level QR tokens
+    recv_token = create_slip_token(slip_id, "SLIP_RECEIVE")
+    rel_token  = create_slip_token(slip_id, "SLIP_RELEASE")
+
     slip = {
-        "id":          str(uuid.uuid4())[:8].upper(),
-        "slip_no":     generate_slip_no(),
-        "destination": destination,
-        "prepared_by": actor,
-        "doc_ids":     doc_ids,
-        "notes":       notes,
-        "slip_date":   slip_date,
-        "time_from":   request.form.get("time_from", "").strip(),
-        "time_to":     request.form.get("time_to", "").strip(),
-        "created_at":  now_str(),
+        "id":           slip_id,
+        "slip_no":      slip_no,
+        "destination":  destination,
+        "from_office":  from_office,
+        "prepared_by":  actor,
+        "doc_ids":      doc_ids,
+        "notes":        notes,
+        "slip_date":    slip_date,
+        "time_from":    request.form.get("time_from", "").strip(),
+        "time_to":      request.form.get("time_to", "").strip(),
+        "created_at":   now_str(),
+        "recv_token":   recv_token,
+        "rel_token":    rel_token,
+        "status":       "In Transit",
     }
     save_routing_slip(slip)
 
+    # Update every document: In Transit + store from/to office
     for doc_id in doc_ids:
         doc = get_doc(doc_id)
         if doc:
-            doc["status"]       = "In Transit"
-            doc["forwarded_to"] = destination
+            doc["status"]          = "In Transit"
+            doc["forwarded_to"]    = destination
+            doc["from_office"]     = from_office
+            doc["routing_slip_id"] = slip_id
+            doc["routing_slip_no"] = slip_no
             doc.setdefault("travel_log", []).append({
-                "office":    destination,
-                "action":    "Forwarded — In Transit",
+                "office":    from_office,
+                "action":    f"Released — In Transit to {destination}",
                 "officer":   actor,
                 "timestamp": now_str(),
-                "remarks":   f"Included in routing slip {slip['slip_no']}. Forwarded to {destination}.",
+                "remarks":   f"Routing slip {slip_no}. Forwarded from {from_office} → {destination}.",
             })
-            from services.documents import save_doc
             save_doc(doc)
 
     audit_log("routing_slip_created",
-              f"slip={slip['slip_no']} dest={destination} docs={len(doc_ids)}",
+              f"slip={slip_no} from={from_office} dest={destination} docs={len(doc_ids)}",
               username=session.get("username", ""), ip=get_client_ip())
-    return redirect(url_for("offices.view_routing_slip", slip_id=slip["id"]))
+    return redirect(url_for("offices.view_routing_slip", slip_id=slip_id))
 
 
 @offices_bp.route("/routing-slip/<slip_id>")
 @login_required
 def view_routing_slip(slip_id):
+    import base64
+    from services.qr import make_slip_qr_png, APP_URL
+
     slip = get_routing_slip(slip_id)
     if not slip:
         flash("Routing slip not found.", "error")
         return redirect(url_for("dashboard.index"))
     docs = [d for d in (get_doc(did) for did in slip["doc_ids"]) if d]
-    return render_template("routing_slip.html", slip=slip, docs=docs)
+
+    # Generate QR PNGs for both tokens (embedded as base64 for immediate display/print)
+    recv_qr_b64 = rel_qr_b64 = None
+    from_office = slip.get("from_office", "DepEd Leyte Division")
+    destination = slip.get("destination", "")
+    slip_no     = slip.get("slip_no", slip_id)
+
+    if slip.get("recv_token"):
+        try:
+            png = make_slip_qr_png(slip["recv_token"], "SLIP_RECEIVE",
+                                   slip_no, destination, from_office)
+            recv_qr_b64 = base64.b64encode(png).decode()
+        except Exception as e:
+            print(f"recv QR error: {e}")
+
+    if slip.get("rel_token"):
+        try:
+            png = make_slip_qr_png(slip["rel_token"], "SLIP_RELEASE",
+                                   slip_no, destination, from_office)
+            rel_qr_b64 = base64.b64encode(png).decode()
+        except Exception as e:
+            print(f"rel QR error: {e}")
+
+    return render_template("routing_slip.html", slip=slip, docs=docs,
+                           recv_qr_b64=recv_qr_b64, rel_qr_b64=rel_qr_b64)

@@ -299,12 +299,11 @@ function clearField(name, val='') {
 ══════════════════════════════════════════ -->
 <style>
 
-  /* ── ROUTING PANEL ── */
-  .route-panel{display:none;position:sticky;top:68px;z-index:90;
+  /* ── ROUTING PANEL (modal content) ── */
+  .route-panel{
     background:linear-gradient(135deg,#0A2540 0%,#1D4ED8 100%);
-    border-radius:16px;padding:18px 20px;margin-bottom:14px;
+    border-radius:16px;padding:18px 20px;
     box-shadow:0 8px 32px rgba(10,37,80,.45);}
-  .route-panel.visible{display:block;}
   .rp-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
   .rp-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:900;
     color:#fff;display:flex;align-items:center;gap:10px;}
@@ -370,35 +369,48 @@ function clearField(name, val='') {
   {% endfor %}
 </datalist>
 
-<!-- ── ROUTING PANEL (appears when docs selected) ── -->
-<div class="route-panel" id="route-panel">
+<!-- ── ROUTING MODAL ── -->
+<div id="routing-modal" style="display:none;position:fixed;inset:0;z-index:8000;
+     background:rgba(10,37,64,.7);backdrop-filter:blur(6px);
+     align-items:center;justify-content:center;padding:16px;">
+<div class="route-panel" id="route-panel" style="display:block;position:relative;
+     top:auto;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;
+     box-shadow:0 24px 80px rgba(0,0,0,.5);">
+
   <div class="rp-header">
     <div class="rp-title">
       📤 Create Routing Slip
       <span class="rp-count" id="sel-count">0 selected</span>
     </div>
-    <button class="rp-close" onclick="clearSelection()">✕ Cancel</button>
+    <button class="rp-close" onclick="closeRoutingModal()">✕ Close</button>
+  </div>
+
+  <!-- Selected docs preview -->
+  <div id="selected-preview" style="margin-bottom:14px;display:none;">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+                color:rgba(255,255,255,.6);margin-bottom:8px;">Selected Documents</div>
+    <div id="selected-list"
+         style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px 14px;
+                max-height:120px;overflow-y:auto;font-size:13px;color:rgba(255,255,255,.9);">
+    </div>
   </div>
 
   <div class="rp-fields">
-    <!-- Destination -->
     <div class="rp-field">
       <label>📍 Destination Office *</label>
       <input type="text" class="rp-input" id="route-dest"
              placeholder="e.g. Budget Section, HR Unit..."
              list="office-suggestions" autocomplete="off"/>
     </div>
-    <!-- Date -->
     <div class="rp-field">
       <label>📅 Slip Date</label>
       <input type="date" class="rp-input" id="slip-date"/>
     </div>
-    <!-- Time Range (optional) -->
     <div class="rp-field" style="grid-column:span 2">
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
         <input type="checkbox" id="use-time-range" onchange="toggleTimeRange(this.checked)"
-               style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"/>
-        🕐 Include Time Range <span style="font-size:12px;font-weight:400;color:var(--muted)">(optional — for Auto-select by Time)</span>
+               style="width:16px;height:16px;accent-color:#fff;cursor:pointer"/>
+        🕐 Include Time Range <span style="font-size:12px;font-weight:400;color:rgba(255,255,255,.5)">(optional)</span>
       </label>
     </div>
     <div class="rp-field" id="time-from-field" style="display:none">
@@ -409,25 +421,25 @@ function clearField(name, val='') {
       <label>To</label>
       <input type="time" class="rp-input" id="time-to" placeholder="12:00"/>
     </div>
-    <!-- Notes -->
     <div class="rp-field notes-field">
       <label>📝 Notes / Instructions (optional)</label>
       <textarea class="rp-notes" id="route-notes" rows="2"
-                placeholder="e.g. For immediate action, please process within the day..."></textarea>
+                placeholder="e.g. For immediate action..."></textarea>
     </div>
   </div>
 
   <div class="rp-bottom">
-    <div class="rp-hint">
-      💡 Manually check rows in the table, or enable <strong>Time Range</strong> above and click <strong>Auto-select</strong> to automatically check all documents in that window.
-    </div>
-    <button class="btn-time-filter" id="btn-auto-select" onclick="autoSelectByTime()" title="Auto-check docs in time range" style="display:none">
+    <button class="btn-time-filter" id="btn-auto-select" onclick="autoSelectByTime()" style="display:none">
       ⏱️ Auto-select by Time
     </button>
+    <div class="rp-hint" style="flex:1">
+      💡 Check rows in the table first, or use <strong>Auto-select by Time</strong>.
+    </div>
     <button class="btn-route" onclick="submitRouting()">
       🚀 Create Routing Slip
     </button>
   </div>
+</div>
 </div>
 
 <!-- Hidden form for routing submission -->
@@ -465,7 +477,18 @@ function clearField(name, val='') {
         </select>
         <label style="font-size:13px;color:var(--muted);">per page</label>
       </div>
-      <span style="font-size:13px;color:var(--muted);">☑ Check rows to route</span>
+      <button onclick="openRoutingModal()"
+              style="display:inline-flex;align-items:center;gap:7px;
+                     padding:8px 18px;border-radius:9px;border:none;
+                     background:linear-gradient(135deg,#0A2540,#1D4ED8);
+                     color:#fff;font-weight:700;font-size:13px;cursor:pointer;
+                     box-shadow:0 2px 10px rgba(29,78,216,.3);
+                     transition:filter .15s,transform .1s;"
+              onmouseover="this.style.filter='brightness(1.15)'"
+              onmouseout="this.style.filter=''"
+              title="Select documents then create a routing slip">
+        📤 Create Routing Slip
+      </button>
       {% endif %}
     </div>
   </div>
@@ -527,7 +550,22 @@ function clearField(name, val='') {
             {% if s=='Pending'    %}<span class="badge badge-pending">{{ s }}</span>
             {% elif s=='Received' %}<span class="badge badge-received">{{ s }}</span>
             {% elif s=='In Review'%}<span class="badge badge-review">{{ s }}</span>
-            {% elif s=='In Transit'%}<span class="badge badge-transit">{{ s }}</span>
+            {% elif s=='In Transit' %}
+              <span class="badge badge-transit">{{ s }}</span>
+              {% if doc.from_office or doc.forwarded_to %}
+              <div style="margin-top:5px;font-size:11px;font-weight:700;color:#374151;
+                          display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+                {% if doc.from_office %}
+                <span style="background:#F1F5F9;border:1px solid #CBD5E1;border-radius:5px;
+                             padding:2px 6px;color:#475569;">{{ doc.from_office[:20] }}</span>
+                <span style="color:#0E7490;">→</span>
+                {% endif %}
+                {% if doc.forwarded_to %}
+                <span style="background:#DBEAFE;border:1px solid #93C5FD;border-radius:5px;
+                             padding:2px 6px;color:#1D4ED8;">{{ doc.forwarded_to[:20] }}</span>
+                {% endif %}
+              </div>
+              {% endif %}
             {% elif s=='Released' %}<span class="badge badge-released">{{ s }}</span>
             {% elif s=='On Hold'  %}<span class="badge badge-hold">{{ s }}</span>
             {% else %}<span class="badge badge-archived">{{ s }}</span>{% endif %}
@@ -636,16 +674,57 @@ function rowClick(e, docId) {
   window.location = '/view/' + docId;
 }
 
+function openRoutingModal() {
+  const modal = document.getElementById('routing-modal');
+  modal.style.display = 'flex';
+  updateSelectedPreview();
+  // Set today's date if not set
+  const sd = document.getElementById('slip-date');
+  if (sd && !sd.value) sd.value = new Date().toISOString().slice(0,10);
+}
+
+function closeRoutingModal() {
+  document.getElementById('routing-modal').style.display = 'none';
+}
+
+// Close modal on backdrop click
+document.getElementById('routing-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeRoutingModal();
+});
+
+function updateSelectedPreview() {
+  const checked = document.querySelectorAll('.doc-checkbox:checked');
+  const n = checked.length;
+  const countEl = document.getElementById('sel-count');
+  if (countEl) countEl.textContent = n + ' selected';
+
+  const preview = document.getElementById('selected-preview');
+  const list    = document.getElementById('selected-list');
+  if (!preview || !list) return;
+
+  if (n === 0) {
+    preview.style.display = 'none';
+    list.innerHTML = '';
+  } else {
+    preview.style.display = 'block';
+    list.innerHTML = Array.from(checked).map(function(cb, i) {
+      const row = cb.closest('tr');
+      const name = row ? row.querySelector('.doc-name') : null;
+      return '<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.1)">' +
+             (i+1) + '. ' + (name ? name.textContent.trim() : cb.value) + '</div>';
+    }).join('');
+  }
+}
+
 function updateSelection() {
   const checked = document.querySelectorAll('.doc-checkbox:checked');
-  const panel = document.getElementById('route-panel');
-  const countEl = document.getElementById('sel-count');
   const n = checked.length;
+  const countEl = document.getElementById('sel-count');
   if (countEl) countEl.textContent = n + ' selected';
-  if (panel) panel.classList.toggle('visible', n > 0);
   document.querySelectorAll('.doc-checkbox').forEach(cb => {
     cb.closest('tr').classList.toggle('row-selected', cb.checked);
   });
+  updateSelectedPreview();
 }
 
 function clearSelection() {
@@ -655,8 +734,7 @@ function clearSelection() {
   });
   const sa = document.getElementById('select-all');
   if (sa) sa.checked = false;
-  const panel = document.getElementById('route-panel');
-  if (panel) panel.classList.remove('visible');
+  updateSelectedPreview();
 }
 
 const selAll = document.getElementById('select-all');

@@ -255,6 +255,24 @@
     <!-- Body -->
     <div class="slip-body">
 
+      <!-- From → To route indicator -->
+      <div style="display:flex;align-items:center;gap:0;margin-bottom:16px;
+                  border:1.5px solid var(--border);border-radius:12px;overflow:hidden;">
+        <div style="flex:1;padding:12px 18px;background:#F8FAFC;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;
+                      letter-spacing:.1em;color:var(--muted);margin-bottom:2px;">From Office</div>
+          <div style="font-weight:800;color:var(--navy);font-size:.95rem;">
+            {{ slip.from_office or 'DepEd Leyte Division' }}
+          </div>
+        </div>
+        <div style="padding:0 14px;font-size:1.4rem;color:var(--teal);font-weight:900;">→</div>
+        <div style="flex:1;padding:12px 18px;background:#EFF6FF;border-left:1.5px solid var(--border);">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;
+                      letter-spacing:.1em;color:var(--muted);margin-bottom:2px;">To Office</div>
+          <div style="font-weight:800;color:#1D4ED8;font-size:.95rem;">{{ slip.destination }}</div>
+        </div>
+      </div>
+
       <!-- Destination -->
       <div class="dest-strip">
         <div class="dest-ico">🏢</div>
@@ -337,6 +355,37 @@
       </div>
 
     </div><!-- /slip-body -->
+
+    <!-- ── QR CODES for scanning ── -->
+    {% if recv_qr_b64 or rel_qr_b64 %}
+    <div class="qr-strip" style="padding:20px 28px;border-top:2px dashed var(--border);
+         display:flex;gap:24px;justify-content:center;flex-wrap:wrap;background:#FAFCFF;">
+      {% if recv_qr_b64 %}
+      <div style="text-align:center;">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;
+                    color:#1D4ED8;margin-bottom:8px;">📥 RECEIVE QR</div>
+        <img src="data:image/png;base64,{{ recv_qr_b64 }}"
+             style="width:160px;border-radius:10px;border:2px solid #93C5FD;"
+             alt="Receive QR"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;font-weight:600;">
+          {{ slip.destination }} scans this<br>when documents arrive
+        </div>
+      </div>
+      {% endif %}
+      {% if rel_qr_b64 %}
+      <div style="text-align:center;">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;
+                    color:#065F46;margin-bottom:8px;">📤 RELEASE QR</div>
+        <img src="data:image/png;base64,{{ rel_qr_b64 }}"
+             style="width:160px;border-radius:10px;border:2px solid #6EE7B7;"
+             alt="Release QR"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;font-weight:600;">
+          {{ slip.from_office or 'Originating office' }} scans this<br>when releasing documents
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
 
     <!-- Bottom bar -->
     <div class="slip-footer-bar">

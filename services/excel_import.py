@@ -194,7 +194,7 @@ def import_excel(file_bytes: bytes, filename: str,
     # Single batch insert — one DB connection for all rows
     if docs_to_insert:
         try:
-            _batch_insert(docs_to_insert)
+            _batch_insert(docs_to_insert, session_id=imported_by)
             summary["imported"] = len(docs_to_insert)
         except Exception as e:
             summary["errors"].append(f"Batch insert failed: {e}")
@@ -204,22 +204,45 @@ def import_excel(file_bytes: bytes, filename: str,
     return summary
 
 
-def _batch_insert(docs: list[dict]):
+def _batch_insert(docs: list[dict], session_id: str = ""):
     """Insert all docs in one DB transaction to avoid timeout."""
     from services.database import USE_DB, get_conn
     from services.documents import _save_docs_json, load_docs
 
+    total = len(docs)
+
+    def _emit(i, msg=""):
+        if session_id:
+            try:
+                from routes.progress import update_progress
+                pct = int(10 + (i / total) * 85) if total else 95
+                update_progress(session_id, pct, msg)
+            except Exception:
+                pass
+
+    _emit(0, f"Inserting {total} documents...")
+
     if USE_DB:
         with get_conn() as conn:
             with conn.cursor() as cur:
-                for doc in docs:
+                for i, doc in enumerate(docs):
                     cur.execute(
                         "INSERT INTO documents (id, data, created_at) "
                         "VALUES (%s, %s::jsonb, %s) ON CONFLICT (id) DO NOTHING",
                         (doc["id"], json.dumps(doc), doc.get("created_at", ""))
                     )
+                    if i % 10 == 0:
+                        _emit(i + 1, f"Saved {i + 1} of {total}...")
             conn.commit()
     else:
         existing = load_docs()
         existing = docs + existing
         _save_docs_json(existing)
+
+    _emit(total, "Done!")
+    if session_id:
+        try:
+            from routes.progress import update_progress
+            update_progress(session_id, 100, "Import complete!", done=True)
+        except Exception:
+            pass

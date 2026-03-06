@@ -365,3 +365,96 @@ def doc_qr_download(token):
     safe = re.sub(r'[^a-zA-Z0-9_-]', '_', doc.get("doc_name", "doc"))[:20]
     return send_file(buf, mimetype="image/png", as_attachment=True,
                      download_name=f"QR_{token_type}_{safe}.png")
+
+
+# ── Routing slip QR scan ───────────────────────────────────────────────────────
+
+@scanning_bp.route("/slip-scan/<token>")
+def slip_scan(token):
+    """
+    Scan a routing slip QR code.
+    SLIP_RECEIVE → marks all docs in slip as Received at destination office.
+    SLIP_RELEASE → marks all docs in slip as Released from originating office.
+    """
+    if not is_logged_in():
+        return redirect(url_for("auth.login", next=request.url))
+    if session.get("role") == "client":
+        flash("This QR code is for office staff only.", "error")
+        return redirect(url_for("client.portal"))
+
+    from services.qr import use_slip_token, create_slip_token, make_slip_qr_png
+    from services.misc import get_routing_slip
+    from services.documents import save_doc
+
+    slip_id, token_type = use_slip_token(token)
+
+    if not slip_id:
+        return render_template("slip_scan_result.html",
+                               ok=False,
+                               msg="This QR code has already been used or is invalid.",
+                               token_type="UNKNOWN", slip=None, docs=[])
+
+    slip = get_routing_slip(slip_id)
+    if not slip:
+        return render_template("slip_scan_result.html",
+                               ok=False, msg="Routing slip not found.",
+                               token_type=token_type, slip=None, docs=[])
+
+    actor       = session.get("full_name") or session.get("username") or "Staff"
+    destination = slip.get("destination", "Office")
+    from_office = slip.get("from_office", "DepEd Leyte Division")
+    slip_no     = slip.get("slip_no", slip_id)
+    docs_updated = []
+    next_qr_b64  = None
+
+    for doc_id in slip.get("doc_ids", []):
+        doc = get_doc(doc_id)
+        if not doc:
+            continue
+
+        if token_type == "SLIP_RECEIVE":
+            doc["status"]       = "Received"
+            doc["received_by"]  = actor
+            doc["date_received"] = now_str()[:10]
+            doc["from_office"]  = from_office
+            doc["forwarded_to"] = destination
+            doc.setdefault("travel_log", []).append({
+                "office":    destination,
+                "action":    f"Received at {destination}",
+                "officer":   actor,
+                "timestamp": now_str(),
+                "remarks":   f"Auto-updated via routing slip {slip_no} RECEIVE scan.",
+            })
+
+        elif token_type == "SLIP_RELEASE":
+            doc["status"]       = "Released"
+            doc["date_released"] = now_str()[:10]
+            doc.setdefault("travel_log", []).append({
+                "office":    from_office,
+                "action":    f"Released from {from_office}",
+                "officer":   actor,
+                "timestamp": now_str(),
+                "remarks":   f"Auto-updated via routing slip {slip_no} RELEASE scan.",
+            })
+
+        save_doc(doc)
+        docs_updated.append(doc)
+
+    # If SLIP_RECEIVE: generate fresh RELEASE QR for the receiving office
+    if token_type == "SLIP_RECEIVE":
+        new_rel_token = create_slip_token(slip_id, "SLIP_RELEASE")
+        png = make_slip_qr_png(new_rel_token, "SLIP_RELEASE",
+                               slip_no, destination, from_office)
+        next_qr_b64 = base64.b64encode(png).decode()
+        slip["rel_token"] = new_rel_token
+        from services.misc import save_routing_slip
+        save_routing_slip(slip)
+
+    audit_log(f"slip_scan_{token_type.lower()}",
+              f"slip={slip_no} docs={len(docs_updated)} by={actor}",
+              username=session.get("username", ""), ip=get_client_ip())
+
+    return render_template("slip_scan_result.html",
+                           ok=True, token_type=token_type,
+                           slip=slip, docs=docs_updated,
+                           actor=actor, next_qr_b64=next_qr_b64)

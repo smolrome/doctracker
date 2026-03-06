@@ -445,3 +445,110 @@ def _build_office_qr_png(url: str, short_label: str, sub_label: str,
     buf   = BytesIO()
     final.save(buf, format="PNG")
     return buf.getvalue()
+
+
+# ── Routing slip QR tokens ─────────────────────────────────────────────────────
+
+def create_slip_token(slip_id: str, token_type: str) -> str:
+    """
+    Create a SLIP-RECEIVE or SLIP-RELEASE token for a whole routing slip.
+    token_type: 'SLIP_RECEIVE' or 'SLIP_RELEASE'
+    """
+    token = f"{token_type[:8].upper()}-{uuid.uuid4().hex[:16].upper()}"
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM doc_qr_tokens WHERE doc_id=%s AND token_type=%s AND used=FALSE",
+                        (f"SLIP:{slip_id}", token_type)
+                    )
+                    cur.execute(
+                        "INSERT INTO doc_qr_tokens (token, doc_id, token_type) VALUES (%s,%s,%s)",
+                        (token, f"SLIP:{slip_id}", token_type)
+                    )
+                conn.commit()
+        except Exception as e:
+            print(f"create_slip_token error: {e}")
+    else:
+        path = "doc_qr_tokens.json"
+        tokens = {}
+        try:
+            if os.path.exists(path):
+                with open(path) as f:
+                    tokens = json.load(f)
+        except Exception:
+            pass
+        tokens[token] = {"doc_id": f"SLIP:{slip_id}", "token_type": token_type, "used": False}
+        with open(path, "w") as f:
+            json.dump(tokens, f)
+    return token
+
+
+def use_slip_token(token: str):
+    """
+    Consume a slip token. Returns (slip_id, token_type) or (None, None).
+    """
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT doc_id, token_type FROM doc_qr_tokens WHERE token=%s AND used=FALSE",
+                        (token,)
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        return None, None
+                    cur.execute("UPDATE doc_qr_tokens SET used=TRUE WHERE token=%s", (token,))
+                conn.commit()
+            raw = row["doc_id"]
+            slip_id = raw.removeprefix("SLIP:") if raw.startswith("SLIP:") else None
+            return slip_id, row["token_type"]
+        except Exception as e:
+            print(f"use_slip_token error: {e}")
+            return None, None
+    else:
+        path = "doc_qr_tokens.json"
+        tokens = {}
+        try:
+            if os.path.exists(path):
+                with open(path) as f:
+                    tokens = json.load(f)
+        except Exception:
+            return None, None
+        entry = tokens.get(token)
+        if not entry or entry.get("used"):
+            return None, None
+        tokens[token]["used"] = True
+        with open(path, "w") as f:
+            json.dump(tokens, f)
+        raw = entry["doc_id"]
+        slip_id = raw.removeprefix("SLIP:") if raw.startswith("SLIP:") else None
+        return slip_id, entry["token_type"]
+
+
+def make_slip_qr_png(token: str, token_type: str,
+                     slip_no: str, destination: str, from_office: str,
+                     box_size: int = 10) -> bytes:
+    """Labeled QR PNG for routing slip RECEIVE or RELEASE scan."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    base = APP_URL or ""
+    url  = f"{base}/slip-scan/{token}"
+
+    if "RECEIVE" in token_type:
+        short_label = "RECEIVE"
+        label_color = "#1D4ED8"
+        bg_color    = "#DBEAFE"
+        sub_label   = f"RECEIVE AT: {destination.upper()[:28]}"
+    else:
+        short_label = "RELEASE"
+        label_color = "#065F46"
+        bg_color    = "#D1FAE5"
+        sub_label   = f"RELEASE FROM: {from_office.upper()[:25]}"
+
+    qr_img = _render_qr_image(url, box_size, "#0A2540")
+    return _compose_labeled_png(qr_img, short_label, sub_label,
+                                f"Routing Slip {slip_no}",
+                                label_color, bg_color, small=True)
