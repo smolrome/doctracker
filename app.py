@@ -2398,71 +2398,116 @@ def office_qr_png(action):
         office_display = action.replace("-", " ").title()
         sub_label = "OFFICE QR"
 
-    # Generate QR module
+    # Generate QR module — larger box_size for crisp print quality
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=10, border=3
+        box_size=12, border=3
     )
     qr.add_data(url)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="#0A2540", back_color="white").convert("RGB")
     qr_size = qr_img.size[0]  # square
 
-    # Build canvas: QR + header bar + footer bar
-    bar_h    = 56   # top bar height
-    foot_h   = 48   # bottom bar height
-    pad      = 12
-    total_w  = qr_size + pad * 2
-    total_h  = bar_h + qr_size + pad * 2 + foot_h
+    # ── FONTS — try multiple paths for compatibility ──
+    def load_font(bold=True, size=24):
+        paths_bold = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        ]
+        paths_reg  = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+        ]
+        paths = paths_bold if bold else paths_reg
+        for p in paths:
+            try:
+                return ImageFont.truetype(p, size)
+            except:
+                pass
+        return ImageFont.load_default()
+
+    # Fonts sized relative to QR width so they always look proportional
+    # QR is typically ~420-500px wide at box_size=12
+    font_label   = load_font(bold=True,  size=max(40, qr_size // 11))   # top short label e.g. "SUB"
+    font_sublbl  = load_font(bold=True,  size=max(28, qr_size // 16))   # bottom bold type e.g. "OFFICE QR"
+    font_office  = load_font(bold=True,  size=max(26, qr_size // 17))   # bottom office name
+    font_subname = load_font(bold=False, size=max(22, qr_size // 20))   # bottom sub-label type description
+
+    pad    = 16
+    total_w = qr_size + pad * 2
+
+    # ── Measure all text to size bars correctly ──
+    def text_w(text, font):
+        bb = ImageDraw.Draw(Image.new("RGB",(1,1))).textbbox((0,0), text, font=font)
+        return bb[2] - bb[0]
+    def text_h(text, font):
+        bb = ImageDraw.Draw(Image.new("RGB",(1,1))).textbbox((0,0), text, font=font)
+        return bb[3] - bb[1]
+
+    label_h   = text_h(short_label, font_label)
+    bar_h     = label_h + 32           # top bar: label + generous vertical padding
+
+    # Bottom: two lines — office name (bold) + sub description
+    # Truncate office name if needed
+    office_text = office_display
+    while text_w(office_text, font_office) > total_w - 24 and len(office_text) > 4:
+        office_text = office_text[:-4] + "…"
+
+    oh = text_h(office_text, font_office)
+    sh = text_h(sub_label,   font_subname)
+    foot_h = oh + sh + 36              # bottom bar: two lines + padding
+
+    total_h = bar_h + pad + qr_size + pad + foot_h
 
     canvas = Image.new("RGB", (total_w, total_h), "white")
     draw   = ImageDraw.Draw(canvas)
 
-    # ── TOP BAR (colored background with short label) ──
+    # ── TOP BAR ── colored background
     draw.rectangle([0, 0, total_w, bar_h], fill=bg_color)
 
-    # Try to load a font, fall back gracefully
-    try:
-        font_big  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
-        font_med  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 13)
-        font_sm   = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 11)
-    except:
-        font_big  = ImageFont.load_default()
-        font_med  = ImageFont.load_default()
-        font_sm   = ImageFont.load_default()
+    # Accent stripe at very top
+    draw.rectangle([0, 0, total_w, 6], fill=label_color)
 
-    # Draw short label centered in top bar
-    bbox = draw.textbbox((0, 0), short_label, font=font_big)
-    lw   = bbox[2] - bbox[0]
-    lh   = bbox[3] - bbox[1]
-    draw.text(((total_w - lw) / 2, (bar_h - lh) / 2 - 2), short_label, font=font_big, fill=label_color)
+    # Short label centered vertically & horizontally in top bar
+    lw = text_w(short_label, font_label)
+    lh = text_h(short_label, font_label)
+    draw.text(
+        ((total_w - lw) / 2, (bar_h - lh) / 2),
+        short_label, font=font_label, fill=label_color
+    )
 
     # ── QR CODE ──
     canvas.paste(qr_img, (pad, bar_h + pad))
 
-    # ── BOTTOM BAR (white with office name + sub label) ──
-    foot_y = bar_h + qr_size + pad * 2
+    # ── BOTTOM BAR ──
+    foot_y = bar_h + pad + qr_size + pad
 
-    # Sub label (REC / REL / REG description)
-    bbox2 = draw.textbbox((0, 0), sub_label, font=font_med)
-    sw = bbox2[2] - bbox2[0]
-    draw.text(((total_w - sw) / 2, foot_y + 6), sub_label, font=font_med, fill=label_color)
+    # Light separator line
+    draw.rectangle([0, foot_y, total_w, foot_y + 3], fill=bg_color)
+    foot_y += 3
 
-    # Office name
-    # Truncate if too long
-    office_text = office_display
-    while True:
-        bbox3 = draw.textbbox((0, 0), office_text, font=font_sm)
-        if bbox3[2] - bbox3[0] <= total_w - 16 or len(office_text) < 5:
-            break
-        office_text = office_text[:-4] + "..."
-    bbox3 = draw.textbbox((0, 0), office_text, font=font_sm)
-    ow = bbox3[2] - bbox3[0]
-    draw.text(((total_w - ow) / 2, foot_y + 26), office_text, font=font_sm, fill="#5A7A91")
+    inner_y = foot_y + 12
 
-    # Thin colored line at bottom
-    draw.rectangle([0, total_h - 4, total_w, total_h], fill=label_color)
+    # Line 1: Office name — bold, dark, big
+    ow = text_w(office_text, font_office)
+    draw.text(
+        ((total_w - ow) / 2, inner_y),
+        office_text, font=font_office, fill="#0A2540"
+    )
+    inner_y += oh + 8
+
+    # Line 2: Sub-label type description — colored, medium
+    sw = text_w(sub_label, font_subname)
+    draw.text(
+        ((total_w - sw) / 2, inner_y),
+        sub_label, font=font_subname, fill=label_color
+    )
+
+    # Colored line at bottom
+    draw.rectangle([0, total_h - 6, total_w, total_h], fill=label_color)
 
     buf = BytesIO()
     canvas.save(buf, format="PNG")
