@@ -67,6 +67,7 @@ def create_app() -> Flask:
     from routes.client    import client_bp
     from routes.scanning  import scanning_bp
     from routes.offices   import offices_bp
+    from routes.backup    import backup_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
@@ -74,6 +75,7 @@ def create_app() -> Flask:
     app.register_blueprint(client_bp)
     app.register_blueprint(scanning_bp)
     app.register_blueprint(offices_bp)
+    app.register_blueprint(backup_bp)
 
     # Register template filter
     @app.template_filter("time12")

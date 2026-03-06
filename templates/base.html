@@ -475,6 +475,7 @@
       {% if current_role == 'admin' %}
         <a href="/manage-users"  class="nav-btn">👥 Users</a>
         <a href="/activity-log"  class="nav-btn">📋 Audit</a>
+        <a href="/backup"        class="nav-btn">🗄️ Backup</a>
         <a href="/trash"         class="nav-btn">🗑️ Trash</a>
       {% endif %}
       <span class="nav-user">👤 {{ current_full_name or current_user }}</span>
@@ -502,6 +503,7 @@
     {% if current_role == 'admin' %}
       <a href="/manage-users"  class="nav-btn" onclick="closeMenu()">👥 Manage Users</a>
       <a href="/activity-log"  class="nav-btn" onclick="closeMenu()">📋 Activity Log</a>
+      <a href="/backup"        class="nav-btn" onclick="closeMenu()">🗄️ Backup &amp; Restore</a>
       <a href="/trash"         class="nav-btn" onclick="closeMenu()">🗑️ Trash</a>
     {% endif %}
     <div class="nav-divider"></div>
