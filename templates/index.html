@@ -1,118 +1,656 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- STATS -->
+<!-- Stats Row -->
 <div class="stats-grid">
   <div class="stat-card">
     <div class="stat-num">{{ stats.total }}</div>
-    <div class="stat-label">Total Documents</div>
+    <div class="stat-label">📋 Total</div>
   </div>
   <div class="stat-card yellow">
     <div class="stat-num">{{ stats.pending }}</div>
-    <div class="stat-label">Pending</div>
+    <div class="stat-label">⏳ Pending</div>
   </div>
   <div class="stat-card teal">
     <div class="stat-num">{{ stats.in_review }}</div>
-    <div class="stat-label">In Review</div>
+    <div class="stat-label">🔍 In Review</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num">{{ stats.in_transit }}</div>
+    <div class="stat-label">🚌 In Transit</div>
   </div>
   <div class="stat-card green">
     <div class="stat-num">{{ stats.released }}</div>
-    <div class="stat-label">Released</div>
+    <div class="stat-label">✅ Released</div>
   </div>
   <div class="stat-card red">
     <div class="stat-num">{{ stats.on_hold }}</div>
-    <div class="stat-label">On Hold</div>
+    <div class="stat-label">⏸️ On Hold</div>
   </div>
 </div>
 
-<!-- FILTERS -->
-<form method="get" action="/">
-  <div class="filters">
-    <input type="text" name="search" value="{{ search }}" placeholder="🔍  Search by name, ID, sender, recipient..." />
-    <select name="status" onchange="this.form.submit()">
-      {% for s in status_options %}
-        <option value="{{ s }}" {% if filter_status == s %}selected{% endif %}>{{ s }}</option>
-      {% endfor %}
-    </select>
-    <a href="/?type=All&search={{ search }}&status={{ filter_status }}"
-       class="btn-filter {% if filter_type == 'All' %}active{% endif %}">All</a>
-    <a href="/?type=Received&search={{ search }}&status={{ filter_status }}"
-       class="btn-filter {% if filter_type == 'Received' %}active{% endif %}">Received</a>
-    <a href="/?type=Released&search={{ search }}&status={{ filter_status }}"
-       class="btn-filter {% if filter_type == 'Released' %}active{% endif %}">Released</a>
-    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+<!-- ══════════════════════════════════════════
+     OFFICE SUBMISSION QR FINDER
+══════════════════════════════════════════ -->
+{% if saved_offices %}
+<style>
+  .office-qr-section{background:#fff;border:2px solid var(--border);border-radius:18px;
+    margin-bottom:20px;overflow:hidden;box-shadow:0 2px 12px rgba(10,45,100,.06);}
+  .oqs-header{padding:16px 20px;border-bottom:2px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+    background:linear-gradient(135deg,#F0F7FA,#fff);}
+  .oqs-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:900;
+    color:var(--navy);display:flex;align-items:center;gap:10px;}
+  .oqs-subtitle{font-size:14px;color:var(--muted);margin-top:2px;}
+  .oqs-search-wrap{display:flex;gap:10px;align-items:center;flex:1;max-width:400px;}
+  .oqs-search{flex:1;padding:10px 14px;border:2px solid var(--border);border-radius:10px;
+    font-size:15px;font-family:inherit;outline:none;min-height:44px;
+    background:var(--surface);transition:border .15s;}
+  .oqs-search:focus{border-color:var(--teal);background:#fff;}
+  .oqs-body{padding:16px 20px;}
+  .oqs-count{font-size:14px;color:var(--muted);margin-bottom:12px;font-weight:600;}
+  .oqs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;}
+  .oqs-card{border:2px solid #7C3AED;border-radius:14px;padding:16px;text-align:center;
+    background:#fff;transition:box-shadow .15s,transform .15s;}
+  .oqs-card:hover{box-shadow:0 6px 22px rgba(124,58,237,.18);transform:translateY(-2px);}
+  .oqs-card.hidden{display:none;}
+  .oqs-card-badge{display:inline-flex;align-items:center;gap:5px;background:#EDE9FE;
+    color:#5B21B6;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:700;
+    margin-bottom:8px;}
+  .oqs-card-name{font-family:'Outfit',sans-serif;font-size:16px;font-weight:900;
+    color:var(--navy);margin-bottom:10px;line-height:1.3;}
+  .oqs-qr-img{width:min(140px,100%);aspect-ratio:1;border-radius:9px;
+    border:2px solid var(--border);display:block;margin:0 auto 10px;object-fit:contain;}
+  .oqs-actions{display:flex;flex-direction:column;gap:7px;}
+  .btn-scan-sub{display:flex;align-items:center;justify-content:center;gap:6px;
+    padding:10px;border-radius:9px;font-size:15px;font-weight:800;font-family:inherit;
+    text-decoration:none;border:none;cursor:pointer;min-height:44px;
+    background:linear-gradient(135deg,#5B21B6,#7C3AED);color:#fff;
+    box-shadow:0 4px 12px rgba(124,58,237,.3);transition:all .15s;}
+  .btn-dl-sub{display:flex;align-items:center;justify-content:center;gap:6px;
+    padding:9px;border-radius:9px;font-size:14px;font-weight:700;
+    border:2px solid var(--border);color:var(--muted);background:var(--surface);
+    text-decoration:none;transition:all .15s;}
+  .btn-dl-sub:hover{border-color:#7C3AED;color:#5B21B6;}
+  .oqs-none{text-align:center;padding:28px;color:var(--muted);font-size:16px;display:none;}
+  .oqs-none.visible{display:block;}
+  @media(max-width:600px){
+    .oqs-header{flex-direction:column;align-items:flex-start;}
+    .oqs-search-wrap{max-width:100%;width:100%;}
+    .oqs-grid{grid-template-columns:1fr 1fr;}
+  }
+</style>
+
+<div class="office-qr-section">
+  <div class="oqs-header">
+    <div>
+      <div class="oqs-title">📋 Office Submission QR Codes</div>
+      <div class="oqs-subtitle">Can't find the QR at the office? Search and submit from here.</div>
+    </div>
+    <div class="oqs-search-wrap">
+      <input type="text" class="oqs-search" id="oqs-search"
+             placeholder="🔍 Search office name..."
+             oninput="filterOffices(this.value)" autocomplete="off"/>
+    </div>
   </div>
+  <div class="oqs-body">
+    <div class="oqs-count" id="oqs-count">{{ saved_offices|length }} office{% if saved_offices|length != 1 %}s{% endif %} registered</div>
+    <div class="oqs-grid" id="oqs-grid">
+      {% for office in saved_offices %}
+      {% set sub_slug = office.office_slug + '-sub' %}
+      <div class="oqs-card" data-name="{{ office.office_name | lower }}">
+        <div class="oqs-card-badge">📋 SUB</div>
+        <div class="oqs-card-name">{{ office.office_name }}</div>
+        <img src="/office-qr/{{ sub_slug }}.png" class="oqs-qr-img" loading="lazy"/>
+        <div class="oqs-actions">
+          {% if current_role == 'client' %}
+          <a href="/client/submit?office_slug={{ office.office_slug|urlencode }}&office_name={{ office.office_name|urlencode }}" class="btn-scan-sub">📋 Submit Here</a>
+          {% else %}
+          <a href="/office-action/{{ sub_slug }}" class="btn-scan-sub">📋 Submit Docs</a>
+          {% endif %}
+          <a href="/office-qr/{{ sub_slug }}.png" download="{{ sub_slug }}.png" class="btn-dl-sub">⬇️ Download QR</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="oqs-none" id="oqs-none">No offices match your search.</div>
+  </div>
+</div>
+<script>
+function filterOffices(query) {
+  const q = query.toLowerCase().trim();
+  const cards = document.querySelectorAll('.oqs-card');
+  let visible = 0;
+  cards.forEach(card => {
+    const show = !q || (card.dataset.name||'').includes(q);
+    card.classList.toggle('hidden', !show);
+    if (show) visible++;
+  });
+  document.getElementById('oqs-count').textContent = visible + ' office' + (visible !== 1 ? 's' : '') + (q ? ' found' : ' registered');
+  document.getElementById('oqs-none').classList.toggle('visible', visible === 0);
+}
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault(); document.getElementById('oqs-search').focus();
+  }
+});
+</script>
+{% endif %}
+
+<style>
+  /* ── FILTER BAR ── */
+  .filter-bar{background:#fff;border:2px solid var(--border);border-radius:16px;
+    padding:16px 18px;margin-bottom:14px;
+    box-shadow:0 2px 10px rgba(10,45,100,.05);}
+  .filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+  .filter-group{display:flex;flex-direction:column;gap:5px;min-width:0;}
+  .filter-group.grow{flex:1;min-width:180px;}
+  .filter-group.w-date{width:148px;}
+  .filter-group.w-time{width:118px;}
+  .filter-group.w-status{width:155px;}
+  .filter-label{font-size:11px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.06em;color:var(--muted);}
+  .filter-input{padding:9px 12px;border:2px solid var(--border);border-radius:10px;
+    font-family:inherit;font-size:15px;color:var(--text);background:var(--surface);
+    outline:none;min-height:42px;width:100%;transition:border .15s;}
+  .filter-input:focus{border-color:var(--teal);background:#fff;}
+  .filter-input.has-value{border-color:var(--teal);background:#EFF6FF;}
+  .filter-divider{width:1px;background:var(--border);align-self:stretch;
+    margin:0 2px;flex-shrink:0;}
+  .filter-type-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;
+    align-items:center;}
+  .type-btn{padding:7px 14px;border-radius:20px;font-size:14px;font-weight:700;
+    border:2px solid var(--border);background:var(--surface);color:var(--muted);
+    text-decoration:none;transition:all .15s;white-space:nowrap;}
+  .type-btn:hover{border-color:var(--teal);color:var(--teal);}
+  .type-btn.active{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .filter-actions{display:flex;gap:8px;margin-left:auto;}
+  .btn-clear-filters{padding:7px 14px;border-radius:20px;font-size:14px;font-weight:700;
+    border:2px solid var(--border);background:#fff;color:var(--muted);
+    text-decoration:none;cursor:pointer;transition:all .15s;}
+  .btn-clear-filters:hover{border-color:#DC2626;color:#DC2626;}
+
+  /* Active filter indicator */
+  .filter-active-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .filter-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;
+    border-radius:20px;font-size:13px;font-weight:700;
+    background:#EFF6FF;border:1.5px solid #BFDBFE;color:#1D4ED8;}
+  .pill-x{color:#93C5FD;cursor:pointer;font-size:15px;line-height:1;}
+  .pill-x:hover{color:#1D4ED8;}
+
+  @media(max-width:700px){
+    .filter-row{gap:8px;}
+    .filter-group.w-date,.filter-group.w-time,.filter-group.w-status{width:100%;}
+    .filter-group.grow{min-width:100%;}
+    .filter-divider{display:none;}
+  }
+</style>
+
+<!-- ── FILTER BAR ── -->
+<form method="get" action="/" id="filter-form">
+  <div class="filter-bar">
+    <div class="filter-row">
+
+      <!-- Search -->
+      <div class="filter-group grow">
+        <span class="filter-label">🔍 Search</span>
+        <input type="text" name="search" class="filter-input {% if search %}has-value{% endif %}"
+               value="{{ search }}"
+               placeholder="Document name, ID, sender, office..."/>
+      </div>
+
+      <div class="filter-divider"></div>
+
+      <!-- Status -->
+      <div class="filter-group w-status">
+        <span class="filter-label">📌 Status</span>
+        <select name="status" class="filter-input {% if filter_status != 'All' %}has-value{% endif %}"
+                onchange="this.form.submit()">
+          {% for s in status_options %}
+            <option value="{{ s }}" {% if filter_status==s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-divider"></div>
+
+      <!-- Date -->
+      <div class="filter-group w-date">
+        <span class="filter-label">📅 Date</span>
+        <input type="date" name="date" class="filter-input {% if filter_date %}has-value{% endif %}"
+               value="{{ filter_date }}"
+               title="Filter by date document was logged"/>
+      </div>
+
+      <!-- Time From -->
+      <div class="filter-group w-time">
+        <span class="filter-label">🕐 From</span>
+        <input type="time" name="time_from" class="filter-input {% if filter_time_from %}has-value{% endif %}"
+               value="{{ filter_time_from }}"
+               title="Show documents logged at or after this time"/>
+      </div>
+
+      <!-- Time To -->
+      <div class="filter-group w-time">
+        <span class="filter-label">🕑 To</span>
+        <input type="time" name="time_to" class="filter-input {% if filter_time_to %}has-value{% endif %}"
+               value="{{ filter_time_to }}"
+               title="Show documents logged at or before this time"/>
+      </div>
+
+      <div class="filter-divider"></div>
+
+      <!-- Actions -->
+      <div class="filter-group" style="flex-shrink:0;">
+        <span class="filter-label">&nbsp;</span>
+        <div style="display:flex;gap:8px;">
+          <button type="submit" class="btn btn-primary btn-sm" style="min-height:42px;">Apply</button>
+          <a href="/" class="btn-clear-filters" title="Clear all filters">✕ Clear</a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Type quick filters + active pills row -->
+    <div class="filter-type-row">
+      <a href="/?type=All&search={{ search }}&status={{ filter_status }}&date={{ filter_date }}&time_from={{ filter_time_from }}&time_to={{ filter_time_to }}"
+         class="type-btn {% if filter_type=='All' %}active{% endif %}">All</a>
+      <a href="/?type=Received&search={{ search }}&status={{ filter_status }}&date={{ filter_date }}&time_from={{ filter_time_from }}&time_to={{ filter_time_to }}"
+         class="type-btn {% if filter_type=='Received' %}active{% endif %}">📥 Received</a>
+      <a href="/?type=Released&search={{ search }}&status={{ filter_status }}&date={{ filter_date }}&time_from={{ filter_time_from }}&time_to={{ filter_time_to }}"
+         class="type-btn {% if filter_type=='Released' %}active{% endif %}">✅ Released</a>
+
+      <!-- Shortcut: Today button -->
+      <button type="button" class="type-btn" onclick="setToday()" title="Filter to today's documents">
+        📆 Today
+      </button>
+
+      {% set any_filter = search or filter_status != 'All' or filter_type != 'All' or filter_date or filter_time_from or filter_time_to %}
+      {% if any_filter %}
+      <div class="filter-active-pills" style="margin-top:0;margin-left:8px;">
+        {% if filter_date %}<span class="filter-pill">📅 {{ filter_date }} <span class="pill-x" onclick="clearField('date')">×</span></span>{% endif %}
+        {% if filter_time_from or filter_time_to %}<span class="filter-pill">🕐 {{ filter_time_from or '00:00' }} – {{ filter_time_to or '23:59' }} <span class="pill-x" onclick="clearField('time_from');clearField('time_to');">×</span></span>{% endif %}
+        {% if filter_status != 'All' %}<span class="filter-pill">{{ filter_status }} <span class="pill-x" onclick="clearField('status','All')">×</span></span>{% endif %}
+        {% if search %}<span class="filter-pill">🔍 "{{ search }}" <span class="pill-x" onclick="clearField('search','')">×</span></span>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+  <!-- carry type through form submission -->
+  <input type="hidden" name="type" value="{{ filter_type }}"/>
 </form>
 
-<!-- TABLE -->
+<script>
+function setToday() {
+  const today = new Date().toISOString().slice(0,10);
+  document.querySelector('input[name="date"]').value = today;
+  document.getElementById('filter-form').submit();
+}
+function clearField(name, val='') {
+  const el = document.querySelector('[name="'+name+'"]');
+  if (el) el.value = val;
+  document.getElementById('filter-form').submit();
+}
+</script>
+
+<!-- ══════════════════════════════════════════
+     ROUTING ACTION BAR — appears when docs selected
+══════════════════════════════════════════ -->
+<style>
+
+  /* ── ROUTING PANEL ── */
+  .route-panel{display:none;position:sticky;top:68px;z-index:90;
+    background:linear-gradient(135deg,#0A2540 0%,#1D4ED8 100%);
+    border-radius:16px;padding:18px 20px;margin-bottom:14px;
+    box-shadow:0 8px 32px rgba(10,37,80,.45);}
+  .route-panel.visible{display:block;}
+  .rp-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .rp-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:900;
+    color:#fff;display:flex;align-items:center;gap:10px;}
+  .rp-count{background:rgba(255,255,255,.22);color:#fff;border-radius:20px;
+    padding:3px 14px;font-size:14px;font-weight:800;}
+  .rp-close{margin-left:auto;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);
+    color:rgba(255,255,255,.8);border-radius:8px;padding:6px 12px;cursor:pointer;
+    font-family:inherit;font-size:14px;font-weight:700;}
+  .rp-close:hover{background:rgba(255,255,255,.22);}
+  .rp-fields{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px;}
+  .rp-field label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.06em;color:rgba(255,255,255,.65);margin-bottom:5px;}
+  .rp-input{width:100%;padding:10px 13px;border:2px solid rgba(255,255,255,.25);
+    border-radius:10px;background:rgba(255,255,255,.12);color:#fff;
+    font-family:inherit;font-size:15px;outline:none;min-height:44px;
+    transition:border .15s,background .15s;}
+  .rp-input::placeholder{color:rgba(255,255,255,.45);}
+  .rp-input:focus{border-color:rgba(255,255,255,.7);background:rgba(255,255,255,.2);}
+  .rp-input[type="date"],.rp-input[type="time"]{color-scheme:dark;}
+  .rp-field.notes-field{grid-column:1/-1;}
+  .rp-notes{width:100%;padding:10px 13px;border:2px solid rgba(255,255,255,.25);
+    border-radius:10px;background:rgba(255,255,255,.1);color:#fff;
+    font-family:inherit;font-size:15px;outline:none;min-height:44px;resize:none;}
+  .rp-notes::placeholder{color:rgba(255,255,255,.4);}
+  .rp-notes:focus{border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.18);}
+  .rp-bottom{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .rp-hint{flex:1;font-size:13px;color:rgba(255,255,255,.6);line-height:1.5;}
+  .btn-route{padding:12px 24px;border-radius:10px;background:#fff;color:#1D4ED8;
+    border:none;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;
+    white-space:nowrap;min-height:46px;transition:all .15s;
+    display:flex;align-items:center;gap:8px;}
+  .btn-route:hover{background:#DBEAFE;transform:translateY(-1px);}
+  .btn-time-filter{padding:10px 16px;border-radius:10px;
+    background:rgba(255,255,255,.15);color:#fff;
+    border:1.5px solid rgba(255,255,255,.3);font-family:inherit;font-size:14px;
+    font-weight:700;cursor:pointer;white-space:nowrap;min-height:46px;
+    display:flex;align-items:center;gap:6px;}
+  .btn-time-filter:hover{background:rgba(255,255,255,.25);}
+
+  /* Checkbox column */
+  .cb-cell{width:44px;padding:0 8px!important;text-align:center;vertical-align:middle;}
+  .doc-checkbox{width:20px;height:20px;cursor:pointer;accent-color:#1D4ED8;
+    border-radius:4px;}
+  th.cb-cell{background:var(--surface);}
+  tr.row-selected{background:#EFF6FF!important;}
+  tr.row-selected:hover td{background:#DBEAFE!important;}
+
+  /* Select all checkbox */
+  #select-all{width:20px;height:20px;cursor:pointer;accent-color:#1D4ED8;}
+
+  @media(max-width:600px){
+    .route-bar{top:60px;border-radius:10px;padding:12px 14px;gap:10px;}
+    .route-bar-label{font-size:15px;}
+    .route-dest-wrap{min-width:unset;width:100%;order:3;}
+    .btn-route{flex:1;}
+  }
+</style>
+
+<!-- datalist for office autocomplete -->
+<datalist id="office-suggestions">
+  {% for office in saved_offices %}
+  <option value="{{ office.office_name }}">
+  {% endfor %}
+</datalist>
+
+<!-- ── ROUTING PANEL (appears when docs selected) ── -->
+<div class="route-panel" id="route-panel">
+  <div class="rp-header">
+    <div class="rp-title">
+      📤 Create Routing Slip
+      <span class="rp-count" id="sel-count">0 selected</span>
+    </div>
+    <button class="rp-close" onclick="clearSelection()">✕ Cancel</button>
+  </div>
+
+  <div class="rp-fields">
+    <!-- Destination -->
+    <div class="rp-field">
+      <label>📍 Destination Office *</label>
+      <input type="text" class="rp-input" id="route-dest"
+             placeholder="e.g. Budget Section, HR Unit..."
+             list="office-suggestions" autocomplete="off"/>
+    </div>
+    <!-- Date -->
+    <div class="rp-field">
+      <label>📅 Slip Date</label>
+      <input type="date" class="rp-input" id="slip-date"/>
+    </div>
+    <!-- Time Range (optional) -->
+    <div class="rp-field" style="grid-column:span 2">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
+        <input type="checkbox" id="use-time-range" onchange="toggleTimeRange(this.checked)"
+               style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"/>
+        🕐 Include Time Range <span style="font-size:12px;font-weight:400;color:var(--muted)">(optional — for Auto-select by Time)</span>
+      </label>
+    </div>
+    <div class="rp-field" id="time-from-field" style="display:none">
+      <label>From</label>
+      <input type="time" class="rp-input" id="time-from" placeholder="08:00"/>
+    </div>
+    <div class="rp-field" id="time-to-field" style="display:none">
+      <label>To</label>
+      <input type="time" class="rp-input" id="time-to" placeholder="12:00"/>
+    </div>
+    <!-- Notes -->
+    <div class="rp-field notes-field">
+      <label>📝 Notes / Instructions (optional)</label>
+      <textarea class="rp-notes" id="route-notes" rows="2"
+                placeholder="e.g. For immediate action, please process within the day..."></textarea>
+    </div>
+  </div>
+
+  <div class="rp-bottom">
+    <div class="rp-hint">
+      💡 Manually check rows in the table, or enable <strong>Time Range</strong> above and click <strong>Auto-select</strong> to automatically check all documents in that window.
+    </div>
+    <button class="btn-time-filter" id="btn-auto-select" onclick="autoSelectByTime()" title="Auto-check docs in time range" style="display:none">
+      ⏱️ Auto-select by Time
+    </button>
+    <button class="btn-route" onclick="submitRouting()">
+      🚀 Create Routing Slip
+    </button>
+  </div>
+</div>
+
+<!-- Hidden form for routing submission -->
+<form method="post" action="/routing-slip/create" id="routing-form" style="display:none;">
+  <input type="hidden" name="doc_ids" id="routing-doc-ids"/>
+  <input type="hidden" name="destination" id="routing-dest-field"/>
+  <input type="hidden" name="notes" id="routing-notes"/>
+  <input type="hidden" name="slip_date" id="routing-slip-date"/>
+  <input type="hidden" name="time_from" id="routing-time-from"/>
+  <input type="hidden" name="time_to" id="routing-time-to"/>
+</form>
+
+<!-- Documents Table -->
 <div class="table-wrap">
   <div class="table-head">
-    <div class="table-title">Documents</div>
-    <div class="table-count">{{ docs|length }} record{% if docs|length != 1 %}s{% endif %}</div>
+    <div class="table-title">📋 Document Records</div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div class="table-count">{{ docs|length }} record{% if docs|length != 1 %}s{% endif %}</div>
+      {% if logged_in %}
+      <span style="font-size:13px;color:var(--muted);">☑ Check rows to route</span>
+      {% endif %}
+    </div>
   </div>
 
   {% if docs %}
-  <table>
-    <thead>
-      <tr>
-        <th>Document</th>
-        <th>Category</th>
-        <th>Sender</th>
-        <th>Recipient</th>
-        <th>Date Received</th>
-        <th>Date Released</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for doc in docs %}
-      <tr onclick="window.location='/view/{{ doc.id }}'">
-        <td>
-          <div class="doc-name">{{ doc.doc_name }}</div>
-          {% if doc.doc_id %}
-            <div class="doc-id">{{ doc.doc_id }}</div>
+  <div class="table-scroll">
+    <table id="docs-table">
+      <thead>
+        <tr>
+          {% if logged_in %}
+          <th class="cb-cell"><input type="checkbox" id="select-all" title="Select all"/></th>
           {% endif %}
-        </td>
-        <td>{{ doc.category or '—' }}</td>
-        <td>
-          <div>{{ doc.sender_name or '—' }}</div>
-          {% if doc.sender_org %}
-            <div style="font-size:12px;color:var(--muted)">{{ doc.sender_org }}</div>
+          <th>Document / Content</th>
+          <th>Unit / Office / School</th>
+          <th>Source / Sender</th>
+          <th>Referred To</th>
+          <th>Date &amp; Time Received</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for doc in docs %}
+        <tr onclick="rowClick(event, '{{ doc.id }}')" style="cursor:pointer;"
+            data-created-at="{{ doc.created_at or '' }}"
+            data-doc-id="{{ doc.id }}">
+          {% if logged_in %}
+          <td class="cb-cell" onclick="event.stopPropagation()">
+            <input type="checkbox" class="doc-checkbox" value="{{ doc.id }}"
+                   onchange="updateSelection()"/>
+          </td>
           {% endif %}
-        </td>
-        <td>
-          <div>{{ doc.recipient_name or '—' }}</div>
-          {% if doc.recipient_org %}
-            <div style="font-size:12px;color:var(--muted)">{{ doc.recipient_org }}</div>
-          {% endif %}
-        </td>
-        <td>{{ doc.date_received or '—' }}</td>
-        <td>{{ doc.date_released or '—' }}</td>
-        <td>
-          {% set s = doc.status %}
-          {% if s == 'Pending' %}
-            <span class="badge badge-pending">{{ s }}</span>
-          {% elif s == 'In Review' %}
-            <span class="badge badge-review">{{ s }}</span>
-          {% elif s == 'Released' %}
-            <span class="badge badge-released">{{ s }}</span>
-          {% elif s == 'On Hold' %}
-            <span class="badge badge-hold">{{ s }}</span>
-          {% else %}
-            <span class="badge badge-archived">{{ s }}</span>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+          <td>
+            <div class="doc-name">{{ doc.doc_name }}</div>
+            {% if doc.doc_id %}<div class="doc-id">{{ doc.doc_id }}</div>{% endif %}
+            {% if doc.category %}<div class="doc-cat">{{ doc.category }}</div>{% endif %}
+            {% if doc.submitted_by %}<div style="font-size:11px;color:var(--emerald);margin-top:2px;font-weight:700;">📱 Client</div>{% endif %}
+            {% if doc.status == 'In Transit' %}
+            <div style="display:inline-flex;align-items:center;gap:5px;margin-top:3px;
+              background:#DBEAFE;border:1.5px solid #93C5FD;border-radius:8px;
+              padding:2px 9px;font-size:12px;font-weight:700;color:#1D4ED8;">
+              🚌 → {{ doc.forwarded_to or 'In Transit' }}
+            </div>{% endif %}
+          </td>
+          <td style="font-size:var(--fs-sm);">{{ doc.sender_org or '—' }}</td>
+          <td style="font-size:var(--fs-sm);">{{ doc.sender_name or '—' }}</td>
+          <td style="font-size:var(--fs-sm);">{{ doc.referred_to or '—' }}</td>
+          <td style="white-space:nowrap;font-size:var(--fs-sm);">
+            {% if doc.date_received %}
+              <div style="font-weight:700;color:var(--navy);">{{ doc.date_received }}</div>
+              <div style="font-size:12px;color:var(--teal);margin-top:2px;font-weight:600;">
+                {{ doc.created_at | time12 }}
+              </div>
+            {% else %}
+              <span style="color:var(--muted);">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% set s = doc.status %}
+            {% if s=='Pending'    %}<span class="badge badge-pending">{{ s }}</span>
+            {% elif s=='Received' %}<span class="badge badge-received">{{ s }}</span>
+            {% elif s=='In Review'%}<span class="badge badge-review">{{ s }}</span>
+            {% elif s=='In Transit'%}<span class="badge badge-transit">{{ s }}</span>
+            {% elif s=='Released' %}<span class="badge badge-released">{{ s }}</span>
+            {% elif s=='On Hold'  %}<span class="badge badge-hold">{{ s }}</span>
+            {% else %}<span class="badge badge-archived">{{ s }}</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% else %}
   <div class="empty">
     <div class="empty-icon">📭</div>
     <h3>No documents found</h3>
-    <p>Try adjusting your filters or <a href="/add" style="color:var(--accent)">add a new document</a>.</p>
+    <p>Try adjusting filters or <a href="/add" style="color:var(--teal);font-weight:700;">add a new document</a>.</p>
   </div>
   {% endif %}
 </div>
+
+<script>
+// ── Today's date as default for slip-date ──
+(function(){
+  const sd = document.getElementById('slip-date');
+  if (sd) sd.value = new Date().toISOString().slice(0,10);
+})();
+
+function rowClick(e, docId) {
+  if (e.target.type === 'checkbox') return;
+  window.location = '/view/' + docId;
+}
+
+function updateSelection() {
+  const checked = document.querySelectorAll('.doc-checkbox:checked');
+  const panel = document.getElementById('route-panel');
+  const countEl = document.getElementById('sel-count');
+  const n = checked.length;
+  if (countEl) countEl.textContent = n + ' selected';
+  if (panel) panel.classList.toggle('visible', n > 0);
+  document.querySelectorAll('.doc-checkbox').forEach(cb => {
+    cb.closest('tr').classList.toggle('row-selected', cb.checked);
+  });
+}
+
+function clearSelection() {
+  document.querySelectorAll('.doc-checkbox').forEach(cb => {
+    cb.checked = false;
+    cb.closest('tr').classList.remove('row-selected');
+  });
+  const sa = document.getElementById('select-all');
+  if (sa) sa.checked = false;
+  const panel = document.getElementById('route-panel');
+  if (panel) panel.classList.remove('visible');
+}
+
+const selAll = document.getElementById('select-all');
+if (selAll) {
+  selAll.addEventListener('change', function() {
+    document.querySelectorAll('.doc-checkbox').forEach(cb => {
+      cb.checked = this.checked;
+      cb.closest('tr').classList.toggle('row-selected', this.checked);
+    });
+    updateSelection();
+  });
+}
+
+// ── AUTO-SELECT docs by time range ──
+// Each row has data-received-time set from the date_received field
+// (We use created_at as fallback for time matching)
+function toggleTimeRange(on) {
+  document.getElementById('time-from-field').style.display  = on ? '' : 'none';
+  document.getElementById('time-to-field').style.display    = on ? '' : 'none';
+  document.getElementById('btn-auto-select').style.display  = on ? '' : 'none';
+  if (!on) {
+    document.getElementById('time-from').value = '';
+    document.getElementById('time-to').value   = '';
+  }
+}
+
+function autoSelectByTime() {
+  const useTime = document.getElementById('use-time-range').checked;
+  const tf = document.getElementById('time-from').value;
+  const tt = document.getElementById('time-to').value;
+  const sd = document.getElementById('slip-date').value;
+
+  if (useTime && (!tf || !tt)) {
+    alert('Please set both a Time From and Time To, or uncheck Include Time Range.');
+    return;
+  }
+
+  let count = 0;
+  document.querySelectorAll('.doc-checkbox').forEach(cb => {
+    const row = cb.closest('tr');
+    const ts  = row.dataset.createdAt || '';          // "2026-03-06 14:32:00"
+    const rowDate = ts.slice(0,10);
+    const rowTime = ts.slice(11,16);                  // "14:32"
+
+    let inRange = false;
+    if (ts) {
+      const dateOk = !sd || rowDate === sd;
+      const timeOk = rowTime >= tf && rowTime <= tt;
+      inRange = dateOk && timeOk;
+    }
+    cb.checked = inRange;
+    row.classList.toggle('row-selected', inRange);
+    if (inRange) count++;
+  });
+
+  updateSelection();
+  if (count === 0) {
+    alert('No documents found in that date/time range. Check the filters or try a wider range.');
+  } else {
+    // Flash feedback
+    const btn = document.querySelector('.btn-time-filter');
+    const orig = btn.textContent;
+    btn.textContent = '✅ ' + count + ' selected';
+    setTimeout(() => btn.textContent = orig, 2000);
+  }
+}
+
+function submitRouting() {
+  const dest = document.getElementById('route-dest').value.trim();
+  if (!dest) {
+    const el = document.getElementById('route-dest');
+    el.focus();
+    el.style.borderColor = '#FCA5A5';
+    el.style.background  = 'rgba(220,38,38,.15)';
+    setTimeout(() => { el.style.borderColor=''; el.style.background=''; }, 2500);
+    return;
+  }
+  const ids = Array.from(document.querySelectorAll('.doc-checkbox:checked')).map(cb => cb.value);
+  if (!ids.length) {
+    alert('No documents selected. Check boxes in the table or use Auto-select by Time.');
+    return;
+  }
+  document.getElementById('routing-doc-ids').value     = ids.join(',');
+  document.getElementById('routing-dest-field').value  = dest;
+  document.getElementById('routing-notes').value       = document.getElementById('route-notes').value;
+  document.getElementById('routing-slip-date').value   = document.getElementById('slip-date').value;
+  document.getElementById('routing-time-from').value   = document.getElementById('time-from').value;
+  document.getElementById('routing-time-to').value     = document.getElementById('time-to').value;
+  document.getElementById('routing-form').submit();
+}
+</script>
 
 {% endblock %}

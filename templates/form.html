@@ -1,123 +1,440 @@
 {% extends "base.html" %}
 {% block content %}
 
+{% if action == 'edit' %}
 <div class="page-header">
-  {% if action == 'edit' %}
-    <a href="/view/{{ doc.id }}" class="page-back">← Back</a>
-    <div class="page-title">Edit Document</div>
-  {% else %}
-    <a href="/" class="page-back">← Back</a>
-    <div class="page-title">Add New Document</div>
-  {% endif %}
+  <a href="/view/{{ doc.id }}" class="page-back">← Back</a>
+  <div class="page-title">✏️ Edit Document</div>
 </div>
 
-<form method="post">
+<style>
+  .form-card{background:#fff;border:2px solid var(--border);border-radius:16px;
+    padding:22px;margin-bottom:16px;box-shadow:0 2px 10px rgba(10,45,100,.05);}
+  .form-card h3{font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
+    margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--border);}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .form-group{margin-bottom:14px;}
+  .form-group:last-child{margin-bottom:0;}
+  .form-group label{display:block;font-size:15px;font-weight:700;color:var(--navy);margin-bottom:7px;}
+  .req{color:#DC2626;margin-left:3px;}
+  .form-group input,.form-group select,.form-group textarea{
+    width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;
+    font-family:inherit;font-size:16px;color:var(--text);background:var(--surface);
+    outline:none;min-height:50px;transition:border .15s,box-shadow .15s;}
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus{
+    border-color:var(--teal);background:#fff;box-shadow:0 0 0 4px rgba(14,116,144,.12);}
+  .form-group textarea{min-height:80px;resize:vertical;}
+  .form-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:8px;}
+  @media(max-width:600px){
+    .form-row{grid-template-columns:1fr;}
+    .form-actions{flex-direction:column-reverse;}
+    .form-actions .btn{width:100%;justify-content:center;}
+  }
+</style>
 
-  <!-- Document Info -->
+<form method="post">
   <div class="form-card">
-    <h3>📄 Document Info</h3>
+    <h3>📄 Document Identification</h3>
     <div class="form-row">
       <div class="form-group">
-        <label>Document Name <span class="req">*</span></label>
-        <input type="text" name="doc_name" value="{{ doc.get('doc_name','') }}" placeholder="e.g. Contract Agreement 2025" required />
+        <label>Content / Particulars <span class="req">*</span></label>
+        <input type="text" name="doc_name" value="{{ doc.get('doc_name','') }}" required/>
       </div>
       <div class="form-group">
-        <label>Document ID / Reference No.</label>
-        <input type="text" name="doc_id" value="{{ doc.get('doc_id','') }}" placeholder="e.g. REF-2025-001" />
+        <label>Reference No.</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" name="doc_id" id="doc-ref-input"
+            value="{{ doc.get('doc_id','') }}" style="flex:1;"/>
+        </div>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Category</label>
-        <input type="text" name="category" value="{{ doc.get('category','') }}" placeholder="e.g. Legal, Finance, HR..." />
+        <label>Document Type</label>
+        <select name="category">
+          <option value="">— Select type —</option>
+          {% for c in ['Letter','Memorandum','Report','Application','Voucher','Plantilla','Payroll','Memo','Request','Endorsement','Order','Notice','Circular','Certificate','Other'] %}
+            <option value="{{ c }}" {% if doc.get('category')==c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
       </div>
       <div class="form-group">
-        <label>Status</label>
+        <label>Document Date</label>
+        <input type="date" name="doc_date" value="{{ doc.get('doc_date','') }}"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Description / Remarks</label>
+      <textarea name="description">{{ doc.get('description','') }}</textarea>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <h3>📤 Source / Sender</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Unit / Office / School / District</label>
+        <input type="text" name="sender_org" value="{{ doc.get('sender_org','') }}"
+          placeholder="e.g. Palo Central School"/>
+      </div>
+      <div class="form-group">
+        <label>Sender Name &amp; Designation</label>
+        <input type="text" name="sender_name" value="{{ doc.get('sender_name','') }}"
+          placeholder="e.g. Juan dela Cruz, Principal II"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Contact / Address</label>
+      <input type="text" name="sender_contact" value="{{ doc.get('sender_contact','') }}"
+        placeholder="Email, phone, or office address"/>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <h3>📥 Receiving Information</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Received By</label>
+        <input type="text" name="received_by" value="{{ doc.get('received_by','') }}"
+          placeholder="e.g. Maria Santos, Admin Aide"/>
+      </div>
+      <div class="form-group">
+        <label>Date Received</label>
+        <input type="date" name="date_received" value="{{ doc.get('date_received','') }}"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <h3>📍 Routing Information</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Referred To</label>
+        <input type="text" name="referred_to" value="{{ doc.get('referred_to','') }}"
+          placeholder="e.g. SDS, Budget Officer"/>
+      </div>
+      <div class="form-group">
+        <label>Forwarded To</label>
+        <input type="text" name="forwarded_to" value="{{ doc.get('forwarded_to','') }}"
+          placeholder="e.g. Budget Section, HR Unit"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Full Office Route <small style="font-weight:400;">(comma-separated, in order)</small></label>
+      <input type="text" name="routing_offices"
+        value="{{ doc.get('routing_str', ', '.join(doc.get('routing',[]))) }}"
+        placeholder="e.g. Records Section, Budget Unit, SDS Office, Release"/>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date Released</label>
+        <input type="date" name="date_released" value="{{ doc.get('date_released','') }}"/>
+      </div>
+      <div class="form-group">
+        <label>Current Status</label>
         <select name="status">
           {% for s in status_options %}
-            <option value="{{ s }}" {% if doc.get('status', 'Pending') == s %}selected{% endif %}>{{ s }}</option>
+            <option value="{{ s }}" {% if doc.get('status')==s %}selected{% endif %}>{{ s }}</option>
           {% endfor %}
         </select>
       </div>
     </div>
-    <div class="form-group">
-      <label>Description</label>
-      <textarea name="description" rows="3" placeholder="Brief description of the document...">{{ doc.get('description','') }}</textarea>
-    </div>
   </div>
 
-  <!-- Dates -->
-  <div class="form-card">
-    <h3>📅 Dates</h3>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Date Received <span class="req">*</span></label>
-        <input type="date" name="date_received" value="{{ doc.get('date_received','') }}" />
-      </div>
-      <div class="form-group">
-        <label>Date Released</label>
-        <input type="date" name="date_released" value="{{ doc.get('date_released','') }}" />
-      </div>
-    </div>
-  </div>
-
-  <!-- Sender Info -->
-  <div class="form-card">
-    <h3>📤 Sender / From</h3>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Full Name</label>
-        <input type="text" name="sender_name" value="{{ doc.get('sender_name','') }}" placeholder="Sender's full name" />
-      </div>
-      <div class="form-group">
-        <label>Organization</label>
-        <input type="text" name="sender_org" value="{{ doc.get('sender_org','') }}" placeholder="Company / Department" />
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Contact Info (email, phone, address)</label>
-      <input type="text" name="sender_contact" value="{{ doc.get('sender_contact','') }}" placeholder="e.g. sender@email.com | +63 9XX XXX XXXX" />
-    </div>
-  </div>
-
-  <!-- Recipient Info -->
-  <div class="form-card">
-    <h3>📥 Recipient / To</h3>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Full Name</label>
-        <input type="text" name="recipient_name" value="{{ doc.get('recipient_name','') }}" placeholder="Recipient's full name" />
-      </div>
-      <div class="form-group">
-        <label>Organization</label>
-        <input type="text" name="recipient_org" value="{{ doc.get('recipient_org','') }}" placeholder="Company / Department" />
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Contact Info (email, phone, address)</label>
-      <input type="text" name="recipient_contact" value="{{ doc.get('recipient_contact','') }}" placeholder="e.g. recipient@email.com | +63 9XX XXX XXXX" />
-    </div>
-  </div>
-
-  <!-- Notes -->
   <div class="form-card">
     <h3>📝 Notes</h3>
     <div class="form-group">
-      <label>Additional Notes / Remarks</label>
-      <textarea name="notes" rows="4" placeholder="Any additional information, follow-ups, or remarks...">{{ doc.get('notes','') }}</textarea>
+      <textarea name="notes" rows="3"
+        placeholder="Additional instructions, action required...">{{ doc.get('notes','') }}</textarea>
     </div>
   </div>
 
   <div class="form-actions">
-    {% if action == 'edit' %}
-      <a href="/view/{{ doc.id }}" class="btn btn-secondary">Cancel</a>
-      <button type="submit" class="btn btn-primary">💾 Save Changes</button>
-    {% else %}
-      <a href="/" class="btn btn-secondary">Cancel</a>
-      <button type="submit" class="btn btn-primary">➕ Add Document</button>
-    {% endif %}
+    <a href="/view/{{ doc.id }}" class="btn btn-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary">💾 Save Changes</button>
   </div>
-
 </form>
 
+{% else %}
+{# ═══════════════════════════════════════════════
+   ADD MODE — same cart UX as client submission
+   ═══════════════════════════════════════════════ #}
+
+<style>
+  /* ── STEP INDICATOR ── */
+  .steps-indicator{display:flex;align-items:center;gap:0;margin-bottom:22px;
+    background:#fff;border:2px solid var(--border);border-radius:14px;overflow:hidden;}
+  .step-pill{flex:1;padding:12px 8px;text-align:center;font-size:14px;
+    font-weight:700;color:var(--muted);border-right:2px solid var(--border);}
+  .step-pill:last-child{border-right:none;}
+  .step-pill.active{background:linear-gradient(135deg,var(--dark),var(--teal));color:#fff;}
+  .step-pill.done{background:#D1FAE5;color:#065F46;}
+  .step-num{font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;
+    display:block;margin-bottom:2px;}
+
+  /* ── CART ── */
+  .cart-section{margin-bottom:20px;}
+  .cart-header{display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:12px;flex-wrap:wrap;gap:10px;}
+  .cart-title{font-family:'Outfit',sans-serif;font-size:20px;font-weight:900;
+    color:var(--navy);display:flex;align-items:center;gap:10px;}
+  .cart-count{background:linear-gradient(135deg,var(--dark),var(--teal));
+    color:#fff;border-radius:20px;padding:3px 12px;font-size:15px;font-weight:800;}
+
+  .cart-empty{background:#fff;border:2px dashed var(--border);border-radius:16px;
+    padding:32px;text-align:center;}
+  .cart-empty .ce-icon{font-size:48px;margin-bottom:10px;}
+  .cart-empty p{font-size:16px;color:var(--muted);}
+
+  .cart-item{background:#fff;border:2px solid var(--border);border-radius:14px;
+    padding:16px 18px;margin-bottom:10px;
+    display:flex;align-items:flex-start;justify-content:space-between;
+    gap:12px;transition:border .15s,box-shadow .15s;}
+  .cart-item:hover{border-color:var(--teal);box-shadow:0 4px 16px rgba(14,116,144,.1);}
+  .cart-item-num{font-family:'Outfit',sans-serif;font-size:22px;font-weight:900;
+    color:var(--teal);flex-shrink:0;min-width:28px;}
+  .cart-item-body{flex:1;min-width:0;}
+  .cart-item-name{font-family:'Outfit',sans-serif;font-size:17px;font-weight:800;
+    color:var(--navy);margin-bottom:4px;line-height:1.3;}
+  .cart-item-meta{font-size:14px;color:var(--muted);line-height:1.6;}
+  .cat-tag{display:inline-block;padding:2px 10px;border-radius:12px;
+    background:#EFF6FF;color:#1D4ED8;font-size:13px;font-weight:700;margin-left:6px;}
+  .btn-remove{padding:8px 14px;border-radius:8px;background:#FEE2E2;
+    color:var(--danger);border:2px solid #FECACA;font-size:14px;font-weight:700;
+    cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;
+    display:inline-flex;align-items:center;gap:5px;}
+  .btn-remove:hover{background:var(--danger);color:#fff;}
+
+  /* ── LOG ALL BUTTON ── */
+  .submit-all-wrap{background:#fff;border:2px solid #059669;border-radius:16px;
+    padding:18px 20px;margin-bottom:20px;}
+  .submit-all-wrap p{font-size:16px;color:#065F46;margin-bottom:14px;
+    display:flex;align-items:center;gap:8px;}
+  .btn-submit-all{display:flex;align-items:center;justify-content:center;gap:10px;
+    width:100%;padding:17px;border-radius:12px;font-family:inherit;font-size:18px;
+    font-weight:800;cursor:pointer;border:none;min-height:58px;
+    background:linear-gradient(135deg,#059669,#0E7490);color:#fff;
+    box-shadow:0 6px 20px rgba(5,150,105,.35);transition:all .2s;}
+  .btn-submit-all:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(5,150,105,.5);}
+
+  /* ── ADD FORM ── */
+  .add-form-card{background:#fff;border:2px solid var(--border);border-radius:16px;
+    padding:22px;box-shadow:0 2px 12px rgba(10,45,100,.06);}
+  .add-form-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;
+    color:var(--navy);margin-bottom:18px;display:flex;align-items:center;gap:10px;
+    padding-bottom:12px;border-bottom:2px solid var(--border);}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .form-group{margin-bottom:14px;}
+  .form-group:last-child{margin-bottom:0;}
+  .form-group label{display:block;font-size:16px;font-weight:700;
+    color:var(--navy);margin-bottom:8px;}
+  .req{color:var(--danger);margin-left:3px;}
+  .form-group input,.form-group select,.form-group textarea{
+    width:100%;padding:13px 15px;border:2px solid var(--border);border-radius:10px;
+    font-family:inherit;font-size:17px;color:var(--text);background:var(--surface);
+    outline:none;min-height:52px;transition:border .15s,box-shadow .15s;
+    -webkit-appearance:none;appearance:none;}
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus{
+    border-color:var(--teal);background:#fff;box-shadow:0 0 0 4px rgba(14,116,144,.15);}
+  .form-group textarea{min-height:80px;resize:vertical;}
+  .btn-add{display:flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;padding:15px;border-radius:12px;font-family:inherit;
+    font-size:17px;font-weight:800;cursor:pointer;border:none;min-height:54px;
+    background:linear-gradient(135deg,var(--dark),var(--teal));color:#fff;
+    box-shadow:0 5px 16px rgba(10,77,104,.3);margin-top:6px;transition:all .2s;}
+  .btn-add:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(10,77,104,.4);}
+
+  .error-box{background:#FEE2E2;border:2px solid #FECACA;border-radius:10px;
+    padding:14px 16px;font-size:16px;color:#7F1D1D;margin-bottom:16px;
+    display:flex;align-items:center;gap:10px;}
+  .flash-ok{background:#D1FAE5;border:2px solid #059669;border-radius:10px;
+    padding:14px 16px;font-size:16px;color:#065F46;margin-bottom:16px;
+    display:flex;align-items:center;gap:10px;}
+
+  /* Loading */
+  #loading-overlay{display:none;position:fixed;inset:0;
+    background:rgba(10,37,64,.65);backdrop-filter:blur(4px);
+    z-index:9999;align-items:center;justify-content:center;}
+  #loading-overlay.active{display:flex;}
+  .loading-box{background:#fff;border-radius:20px;padding:32px 40px;text-align:center;}
+  .loading-spinner{width:50px;height:50px;border:5px solid var(--border);
+    border-top-color:var(--teal);border-radius:50%;
+    animation:spin .75s linear infinite;margin:0 auto 16px;}
+  .loading-text{font-family:'Outfit',sans-serif;font-size:18px;font-weight:700;color:var(--navy);}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  @media(max-width:600px){
+    .form-row{grid-template-columns:1fr;}
+    .add-form-card{padding:16px;}
+    .steps-indicator{display:none;}
+    .cart-title{font-size:18px;}
+  }
+  @media(max-width:380px){
+    .btn-add,.btn-submit-all{font-size:16px;}
+  }
+</style>
+
+<div class="page-header">
+  <a href="/" class="page-back">← Dashboard</a>
+  <div class="page-title">📋 Log New Documents</div>
+</div>
+
+<!-- Step indicator -->
+<div class="steps-indicator">
+  <div class="step-pill active">
+    <span class="step-num">1</span>Add Documents
+  </div>
+  <div class="step-pill {% if cart %}done{% endif %}">
+    <span class="step-num">2</span>Review List
+  </div>
+  <div class="step-pill">
+    <span class="step-num">3</span>Log &amp; Save
+  </div>
+</div>
+
+<!-- Flash / error messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+  <div class="flash-ok">✅ {{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+{% if error %}
+<div class="error-box">❌ {{ error }}</div>
+{% endif %}
+
+<!-- ── CART ── -->
+<div class="cart-section">
+  <div class="cart-header">
+    <div class="cart-title">
+      📋 Documents to Log
+      {% if cart %}<span class="cart-count">{{ cart|length }}</span>{% endif %}
+    </div>
+  </div>
+
+  {% if cart %}
+  <div class="submit-all-wrap">
+    <p>✅ <strong>{{ cart|length }} document{{ 's' if cart|length != 1 else '' }}</strong> ready to log. Review the list, then save all at once.</p>
+    <form method="post" id="submit-all-form">
+      <input type="hidden" name="_action" value="submit_all"/>
+      <button type="submit" class="btn-submit-all"
+              onclick="showLoading('Logging all documents...')">
+        💾 Log All {{ cart|length }} Document{{ 's' if cart|length != 1 else '' }}
+      </button>
+    </form>
+  </div>
+
+  {% for item in cart %}
+  <div class="cart-item">
+    <div class="cart-item-num">#{{ loop.index }}</div>
+    <div class="cart-item-body">
+      <div class="cart-item-name">{{ item.doc_name }}
+        {% if item.category %}<span class="cat-tag">{{ item.category }}</span>{% endif %}
+      </div>
+      <div class="cart-item-meta">
+        {% if item.sender_org %}<strong>From:</strong> {{ item.sender_org }}<br/>{% endif %}
+        {% if item.sender_name %}<strong>Sender:</strong> {{ item.sender_name }}<br/>{% endif %}
+        {% if item.referred_to %}<strong>Referred To:</strong> {{ item.referred_to }}<br/>{% endif %}
+        {% if item.description %}<strong>Remarks:</strong> {{ item.description[:80] }}{% if item.description|length > 80 %}…{% endif %}{% endif %}
+      </div>
+    </div>
+    <form method="post" style="margin:0;">
+      <input type="hidden" name="_action" value="remove"/>
+      <input type="hidden" name="tmp_id" value="{{ item.tmp_id }}"/>
+      <button type="submit" class="btn-remove">✕ Remove</button>
+    </form>
+  </div>
+  {% endfor %}
+
+  {% else %}
+  <div class="cart-empty">
+    <div class="ce-icon">📄</div>
+    <p>No documents added yet.<br/>Fill in the form below to add your first document.</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ── ADD DOCUMENT FORM ── -->
+<div class="add-form-card">
+  <div class="add-form-title">
+    ➕ Add {% if cart %}Another{% endif %} Document
+  </div>
+
+  <form method="post" id="add-form">
+    <input type="hidden" name="_action" value="add"/>
+
+    <!-- Row 1: Office + Sender name -->
+    <div class="form-row">
+      <div class="form-group">
+        <label>Unit / Office / School <span class="req">*</span></label>
+        <input type="text" name="sender_org"
+               placeholder="e.g. Palo Central School, Leyte District I" autofocus/>
+      </div>
+      <div class="form-group">
+        <label>Sender Name &amp; Designation</label>
+        <input type="text" name="sender_name"
+               placeholder="e.g. Juan dela Cruz, Principal II"/>
+      </div>
+    </div>
+
+    <!-- Content / Particulars -->
+    <div class="form-group">
+      <label>Content / Particulars <span class="req">*</span></label>
+      <input type="text" name="doc_name"
+             placeholder="e.g. Plantilla of Personnel, Leave Application, Memo No. 001" required/>
+    </div>
+
+    <!-- Row 2: Type + Referred To -->
+    <div class="form-row">
+      <div class="form-group">
+        <label>Document Type</label>
+        <select name="category">
+          <option value="">— Select type —</option>
+          {% for cat in ['Letter','Memorandum','Report','Application','Voucher','Plantilla','Payroll','Memo','Request','Endorsement','Order','Notice','Circular','Certificate','Other'] %}
+          <option value="{{ cat }}">{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Referred To</label>
+        <input type="text" name="referred_to"
+               placeholder="e.g. SDS, Budget Officer"/>
+      </div>
+    </div>
+
+    <!-- Remarks -->
+    <div class="form-group">
+      <label>Description / Remarks</label>
+      <textarea name="description"
+                placeholder="Additional details, purpose, or instructions..."></textarea>
+    </div>
+
+    <button type="submit" class="btn-add">
+      ➕ Add to Log List
+    </button>
+  </form>
+</div>
+
+<div id="loading-overlay">
+  <div class="loading-box">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loading-text">Processing...</div>
+  </div>
+</div>
+
+<script>
+function showLoading(msg) {
+  document.getElementById('loading-text').textContent = msg || 'Processing...';
+  document.getElementById('loading-overlay').classList.add('active');
+}
+window.addEventListener('pageshow', e => {
+  if (e.persisted) document.getElementById('loading-overlay').classList.remove('active');
+});
+{% if not error %}
+const docNameInput = document.querySelector('input[name="doc_name"]');
+if (docNameInput) docNameInput.focus();
+{% endif %}
+</script>
+
+{% endif %}
 {% endblock %}

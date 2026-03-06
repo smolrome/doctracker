@@ -1,226 +1,226 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
-import json
-import os
-import uuid
-import base64
-import anthropic
-from datetime import datetime
+"""
+app.py — Flask application factory.
 
-app = Flask(__name__)
-app.secret_key = "doctracker-secret-key"
-
-# ── Anthropic client (reads ANTHROPIC_API_KEY from environment) ──────────────
-ai_client = anthropic.Anthropic()
-
-DATA_FILE = "documents.json"
-
-def load_docs():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    return []
-
-def save_docs(docs):
-    with open(DATA_FILE, "w") as f:
-        json.dump(docs, f, indent=2)
-
-def get_stats(docs):
-    return {
-        "total": len(docs),
-        "pending": sum(1 for d in docs if d["status"] == "Pending"),
-        "released": sum(1 for d in docs if d["status"] == "Released"),
-        "on_hold": sum(1 for d in docs if d["status"] == "On Hold"),
-        "in_review": sum(1 for d in docs if d["status"] == "In Review"),
-    }
-
-@app.route("/")
-def index():
-    docs = load_docs()
-    search = request.args.get("search", "").lower()
-    filter_status = request.args.get("status", "All")
-    filter_type = request.args.get("type", "All")
-
-    filtered = docs
-    if search:
-        filtered = [d for d in filtered if search in (d.get("doc_name","") + d.get("doc_id","") + d.get("sender_name","") + d.get("recipient_name","") + d.get("category","")).lower()]
-    if filter_status != "All":
-        filtered = [d for d in filtered if d["status"] == filter_status]
-    if filter_type == "Received":
-        filtered = [d for d in filtered if d.get("date_received") and not d.get("date_released")]
-    elif filter_type == "Released":
-        filtered = [d for d in filtered if d.get("date_released")]
-
-    stats = get_stats(docs)
-    return render_template("index.html", docs=filtered, stats=stats,
-                           search=search, filter_status=filter_status, filter_type=filter_type,
-                           status_options=["All","Pending","In Review","Released","On Hold","Archived"])
-
-@app.route("/add", methods=["GET", "POST"])
-def add():
-    if request.method == "POST":
-        docs = load_docs()
-        doc = {
-            "id": str(uuid.uuid4())[:8].upper(),
-            "doc_id": request.form.get("doc_id", "").strip(),
-            "doc_name": request.form.get("doc_name", "").strip(),
-            "category": request.form.get("category", "").strip(),
-            "description": request.form.get("description", "").strip(),
-            "sender_name": request.form.get("sender_name", "").strip(),
-            "sender_org": request.form.get("sender_org", "").strip(),
-            "sender_contact": request.form.get("sender_contact", "").strip(),
-            "recipient_name": request.form.get("recipient_name", "").strip(),
-            "recipient_org": request.form.get("recipient_org", "").strip(),
-            "recipient_contact": request.form.get("recipient_contact", "").strip(),
-            "date_received": request.form.get("date_received", ""),
-            "date_released": request.form.get("date_released", ""),
-            "status": request.form.get("status", "Pending"),
-            "notes": request.form.get("notes", "").strip(),
-            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        }
-        if not doc["doc_name"]:
-            flash("Document name is required.", "error")
-            return render_template("form.html", doc=doc, action="add",
-                                   status_options=["Pending","In Review","Released","On Hold","Archived"])
-        docs.insert(0, doc)
-        save_docs(docs)
-        flash("Document added successfully.", "success")
-        return redirect(url_for("index"))
-    return render_template("form.html", doc={}, action="add",
-                           status_options=["Pending","In Review","Released","On Hold","Archived"])
-
-@app.route("/view/<doc_id>")
-def view_doc(doc_id):
-    docs = load_docs()
-    doc = next((d for d in docs if d["id"] == doc_id), None)
-    if not doc:
-        flash("Document not found.", "error")
-        return redirect(url_for("index"))
-    return render_template("detail.html", doc=doc)
-
-@app.route("/edit/<doc_id>", methods=["GET", "POST"])
-def edit(doc_id):
-    docs = load_docs()
-    doc = next((d for d in docs if d["id"] == doc_id), None)
-    if not doc:
-        flash("Document not found.", "error")
-        return redirect(url_for("index"))
-
-    if request.method == "POST":
-        doc.update({
-            "doc_id": request.form.get("doc_id", "").strip(),
-            "doc_name": request.form.get("doc_name", "").strip(),
-            "category": request.form.get("category", "").strip(),
-            "description": request.form.get("description", "").strip(),
-            "sender_name": request.form.get("sender_name", "").strip(),
-            "sender_org": request.form.get("sender_org", "").strip(),
-            "sender_contact": request.form.get("sender_contact", "").strip(),
-            "recipient_name": request.form.get("recipient_name", "").strip(),
-            "recipient_org": request.form.get("recipient_org", "").strip(),
-            "recipient_contact": request.form.get("recipient_contact", "").strip(),
-            "date_received": request.form.get("date_received", ""),
-            "date_released": request.form.get("date_released", ""),
-            "status": request.form.get("status", "Pending"),
-            "notes": request.form.get("notes", "").strip(),
-        })
-        if not doc["doc_name"]:
-            flash("Document name is required.", "error")
-            return render_template("form.html", doc=doc, action="edit",
-                                   status_options=["Pending","In Review","Released","On Hold","Archived"])
-        save_docs(docs)
-        flash("Document updated successfully.", "success")
-        return redirect(url_for("view_doc", doc_id=doc_id))
-
-    return render_template("form.html", doc=doc, action="edit",
-                           status_options=["Pending","In Review","Released","On Hold","Archived"])
-
-@app.route("/delete/<doc_id>", methods=["POST"])
-def delete(doc_id):
-    docs = load_docs()
-    docs = [d for d in docs if d["id"] != doc_id]
-    save_docs(docs)
-    flash("Document deleted.", "error")
-    return redirect(url_for("index"))
-
-@app.route("/scan", methods=["GET", "POST"])
-def scan():
-    extracted = None
-    error = None
-
-    if request.method == "POST":
-        uploaded = request.files.get("document")
-        if not uploaded or uploaded.filename == "":
-            error = "Please select a file to scan."
-        else:
-            try:
-                file_bytes = uploaded.read()
-                b64 = base64.standard_b64encode(file_bytes).decode("utf-8")
-                mime = uploaded.content_type or "image/jpeg"
-
-                # Build the message content depending on file type
-                if mime == "application/pdf":
-                    content = [
-                        {
-                            "type": "document",
-                            "source": {"type": "base64", "media_type": "application/pdf", "data": b64},
-                        },
-                        {"type": "text", "text": SCAN_PROMPT},
-                    ]
-                else:
-                    content = [
-                        {
-                            "type": "image",
-                            "source": {"type": "base64", "media_type": mime, "data": b64},
-                        },
-                        {"type": "text", "text": SCAN_PROMPT},
-                    ]
-
-                response = ai_client.messages.create(
-                    model="claude-opus-4-5",
-                    max_tokens=1024,
-                    messages=[{"role": "user", "content": content}],
-                )
-
-                raw = response.content[0].text.strip()
-                # Strip markdown fences if present
-                raw = raw.replace("```json", "").replace("```", "").strip()
-                extracted = json.loads(raw)
-
-            except json.JSONDecodeError:
-                error = "Could not parse document data. Try a clearer image or PDF."
-            except Exception as e:
-                error = f"Scan failed: {str(e)}"
-
-    return render_template("scan.html", extracted=extracted, error=error,
-                           status_options=["Pending", "In Review", "Released", "On Hold", "Archived"])
-
-
-SCAN_PROMPT = """
-You are a document data extraction assistant. Analyze this document and extract all relevant fields.
-
-Return ONLY a valid JSON object with these exact keys (use empty string "" if not found):
-{
-  "doc_name": "title or subject of the document",
-  "doc_id": "any reference number, document ID, or control number",
-  "category": "document type e.g. Memo, Letter, Contract, Invoice, Report, etc.",
-  "description": "brief one-sentence summary of the document purpose",
-  "sender_name": "full name of the sender or author",
-  "sender_org": "organization, department, or company of the sender",
-  "sender_contact": "email, phone, or address of the sender",
-  "recipient_name": "full name of the recipient or addressee",
-  "recipient_org": "organization or department of the recipient",
-  "recipient_contact": "email, phone, or address of the recipient",
-  "date_received": "date in YYYY-MM-DD format if found, else empty string",
-  "date_released": "",
-  "notes": "any other important details, subject line, or key information"
-}
-
-Return ONLY the JSON. No explanation, no markdown, no extra text.
+Structure:
+  config.py           — all environment variables and constants
+  utils.py            — shared decorators and helpers
+  services/
+    database.py       — DB connection, table creation, migrations
+    auth.py           — password hashing, user CRUD, rate limiting
+    documents.py      — document CRUD and statistics
+    qr.py             — QR generation, signing, image decoding
+    email.py          — invite tokens and Brevo email
+    misc.py           — audit log, offices, routing slips
+  routes/
+    auth.py           — /login  /register  /logout
+    admin.py          — /manage-users  /send-invite  /activity-log  etc.
+    dashboard.py      — /  /add  /edit  /view  /delete  /trash  etc.
+    client.py         — /client/*
+    scanning.py       — /office-action  /doc-scan  /receive  /scan  etc.
+    offices.py        — /office-qr-page  /routing-slip/*  /welcome  etc.
 """
 
+import os
+import time
 
-@app.route("/api/docs")
-def api_docs():
-    return jsonify(load_docs())
+from flask import Flask, flash, jsonify, redirect, render_template, session, url_for
+
+import config
+from utils import get_client_ip, is_logged_in
+
+# ── Optional dependencies ──────────────────────────────────────────────────────
+
+try:
+    import psycopg2
+    _PSYCOPG2_OK = True
+except ImportError:
+    _PSYCOPG2_OK = False
+
+
+# ── Application factory ────────────────────────────────────────────────────────
+
+def create_app() -> Flask:
+    app = Flask(__name__)
+
+    # Load config
+    app.secret_key = config.SECRET_KEY
+    app.config.update(
+        SESSION_COOKIE_HTTPONLY   = config.SESSION_COOKIE_HTTPONLY,
+        SESSION_COOKIE_SAMESITE   = config.SESSION_COOKIE_SAMESITE,
+        SESSION_COOKIE_SECURE     = config.SESSION_COOKIE_SECURE,
+        PERMANENT_SESSION_LIFETIME = config.PERMANENT_SESSION_LIFETIME,
+        MAX_CONTENT_LENGTH        = config.MAX_CONTENT_LENGTH,
+    )
+
+    # Initialize database
+    from services.database import USE_DB, init_db
+    if USE_DB:
+        try:
+            init_db()
+        except Exception as e:
+            print(f"DB init error: {e}")
+
+    # Register blueprints
+    from routes.auth      import auth_bp
+    from routes.admin     import admin_bp
+    from routes.dashboard import dashboard_bp
+    from routes.client    import client_bp
+    from routes.scanning  import scanning_bp
+    from routes.offices   import offices_bp
+
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(dashboard_bp)
+    app.register_blueprint(client_bp)
+    app.register_blueprint(scanning_bp)
+    app.register_blueprint(offices_bp)
+
+    # Register template filter
+    @app.template_filter("time12")
+    def time12_filter(ts):
+        """Convert 'YYYY-MM-DD HH:MM:SS' or 'HH:MM' to 12-hr format."""
+        if not ts:
+            return "—"
+        try:
+            t = str(ts).strip()
+            if "T" in t:
+                hhmm = t[11:16]
+            elif len(t) >= 16:
+                hhmm = t[11:16]
+            elif ":" in t and len(t) <= 5:
+                hhmm = t
+            else:
+                return t
+            h, m    = int(hhmm[:2]), int(hhmm[3:5])
+            period  = "AM" if h < 12 else "PM"
+            return f"{h % 12 or 12}:{m:02d} {period}"
+        except Exception:
+            return str(ts)
+
+    # Context processor — injects auth variables into every template
+    @app.context_processor
+    def inject_auth():
+        from datetime import datetime
+        return dict(
+            logged_in       = is_logged_in(),
+            current_user    = session.get("username", ""),
+            current_role    = session.get("role", "guest"),
+            current_full_name = session.get("full_name", ""),
+            now             = datetime.now,
+        )
+
+    # Security headers on every response
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.update({
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options":        "SAMEORIGIN",
+            "X-XSS-Protection":       "1; mode=block",
+            "Referrer-Policy":        "strict-origin-when-cross-origin",
+            "Permissions-Policy":     "geolocation=(), microphone=(), camera=(self)",
+        })
+        if is_logged_in():
+            last_active = session.get("last_active", 0)
+            now = time.time()
+            if last_active and now - last_active > 8 * 3600:
+                session.clear()
+                flash("Your session expired. Please log in again.", "error")
+            else:
+                session["last_active"] = now
+        return response
+
+    # Block disabled accounts mid-session
+    @app.before_request
+    def check_session_active():
+        if not is_logged_in() or session.get("role") == "admin":
+            return
+        username = session.get("username", "")
+        if username and USE_DB:
+            try:
+                from services.database import get_conn
+                with get_conn() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT active FROM users WHERE username=%s", (username,))
+                        row = cur.fetchone()
+                        if row and not row["active"]:
+                            session.clear()
+                            flash("Your account has been disabled. Contact the administrator.", "error")
+                            return redirect(url_for("auth.login"))
+            except Exception:
+                pass
+
+    # Error handlers
+    @app.errorhandler(500)
+    def internal_error(e):
+        import traceback
+        print(f"500 ERROR:\n{traceback.format_exc()}")
+        if os.environ.get("FLASK_DEBUG") == "1":
+            return (f"<pre style='padding:20px'><b>500 Error</b>\n\n"
+                    f"{traceback.format_exc()}</pre>"), 500
+        try:
+            from services.misc import audit_log
+            audit_log("500_error", str(e)[:300],
+                      username=session.get("username", "anonymous"),
+                      ip=get_client_ip())
+        except Exception:
+            pass
+        return render_template("500.html"), 500
+
+    @app.errorhandler(429)
+    def too_many_requests(e):
+        return render_template("500.html",
+                               error_title="Too Many Attempts",
+                               error_msg="Please wait a few minutes before trying again."), 429
+
+    @app.errorhandler(403)
+    def forbidden(e):
+        flash("You do not have permission to access that page.", "error")
+        return redirect(url_for("dashboard.index"))
+
+    # Logo route
+    @app.route("/logo.png")
+    def serve_logo():
+        import os
+        logo = os.path.join(os.path.dirname(__file__), "templates", "logo", "doctrackerLOGO.png")
+        from flask import send_file
+        return send_file(logo, mimetype="image/png")
+
+    # Public API endpoints
+    @app.route("/api/gen-ref")
+    def api_gen_ref():
+        from services.documents import generate_ref
+        return jsonify({"ref": generate_ref()})
+
+    @app.route("/api/docs")
+    def api_docs():
+        from services.documents import load_docs
+        return jsonify(load_docs())
+
+    @app.route("/api/docs/<doc_id>/log")
+    def api_log(doc_id):
+        from services.documents import get_doc
+        doc = get_doc(doc_id)
+        if not doc:
+            return jsonify({"error": "not found"}), 404
+        return jsonify(doc.get("travel_log", []))
+
+    return app
+
+
+# ── Entry point ────────────────────────────────────────────────────────────────
+
+app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    import socket
+    try:
+        local_ip = socket.gethostbyname(socket.gethostname())
+    except Exception:
+        local_ip = "your-ip"
+    print("\n" + "=" * 55)
+    print("  DepEd Leyte Division — Document Tracker")
+    print("=" * 55)
+    print(f"  ✅ Server running!")
+    print(f"  📡 Local: http://{local_ip}:5000")
+    print("=" * 55 + "\n")
+    app.run(debug=False, host="0.0.0.0", port=5000)
