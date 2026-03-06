@@ -94,29 +94,113 @@
     .nav-brand-main { font-size: 18px; line-height: 1.1; }
     .nav-brand-sub { font-size: 11px; font-weight: 500; color: rgba(255,255,255,.75); letter-spacing: .04em; text-transform: uppercase; }
 
-    .nav-actions { display: flex; gap: 8px; align-items: center; }
+    .nav-actions { display: flex; gap: 6px; align-items: center; }
+
+    /* ── Nav primary button ── */
     .nav-btn {
       color: #fff; text-decoration: none;
-      padding: 9px 16px; border-radius: var(--radius-sm);
+      padding: 8px 14px; border-radius: var(--radius-sm);
       font-family: 'Source Sans 3', sans-serif;
-      font-weight: 600; font-size: var(--fs-sm);
+      font-weight: 600; font-size: 14px;
       background: rgba(255,255,255,.15);
       border: 1.5px solid rgba(255,255,255,.25);
       transition: all .2s; white-space: nowrap;
-      min-height: 42px; display: inline-flex; align-items: center; gap: 6px;
+      min-height: 38px; display: inline-flex; align-items: center; gap: 6px;
       cursor: pointer;
     }
     .nav-btn:hover { background: rgba(255,255,255,.28); border-color: rgba(255,255,255,.5); }
-    .nav-btn.primary { background: rgba(255,255,255,.25); border-color: rgba(255,255,255,.5); }
-    .nav-btn.danger  { background: rgba(220,38,38,.3); border-color: rgba(220,38,38,.5); }
-    .nav-user { font-size: var(--fs-xs); color: rgba(255,255,255,.8); padding: 0 4px; white-space: nowrap; }
+    .nav-btn.primary { background: rgba(255,255,255,.9); color: var(--navy); border-color: transparent; font-weight: 700; }
+    .nav-btn.primary:hover { background: #fff; }
+    .nav-btn.danger  { background: rgba(220,38,38,.35); border-color: rgba(220,38,38,.5); }
+    .nav-btn.danger:hover { background: rgba(220,38,38,.55); }
 
+    /* ── Dropdown ── */
+    .nav-dropdown { position: relative; }
+    .nav-dropdown-trigger {
+      color: #fff; cursor: pointer;
+      padding: 8px 14px; border-radius: var(--radius-sm);
+      font-family: 'Source Sans 3', sans-serif;
+      font-weight: 600; font-size: 14px;
+      background: rgba(255,255,255,.15);
+      border: 1.5px solid rgba(255,255,255,.25);
+      transition: all .2s; white-space: nowrap;
+      min-height: 38px; display: inline-flex; align-items: center; gap: 7px;
+      user-select: none;
+    }
+    .nav-dropdown-trigger:hover,
+    .nav-dropdown.open .nav-dropdown-trigger {
+      background: rgba(255,255,255,.28); border-color: rgba(255,255,255,.5);
+    }
+    .nav-dropdown-trigger .chevron {
+      font-size: 10px; opacity: .7;
+      transition: transform .2s;
+    }
+    .nav-dropdown.open .chevron { transform: rotate(180deg); }
+
+    .nav-dropdown-menu {
+      display: none;
+      position: absolute; top: calc(100% + 10px); right: 0;
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 12px 48px rgba(10,37,64,.25);
+      border: 1px solid var(--border);
+      min-width: 220px; z-index: 500;
+      overflow: hidden;
+      animation: dropIn .15s ease;
+    }
+    @keyframes dropIn {
+      from { opacity:0; transform: translateY(-6px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    .nav-dropdown.open .nav-dropdown-menu { display: block; }
+
+    .dd-section {
+      padding: 6px;
+    }
+    .dd-label {
+      font-size: 10px; font-weight: 800; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--muted);
+      padding: 8px 10px 4px; display: block;
+    }
+    .dd-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 8px;
+      font-size: 14px; font-weight: 600; color: var(--navy);
+      text-decoration: none; transition: background .12s;
+      cursor: pointer; border: none; background: none;
+      width: 100%; text-align: left; font-family: inherit;
+    }
+    .dd-item:hover { background: var(--surface); }
+    .dd-item .dd-icon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
+    .dd-item .dd-text { flex: 1; }
+    .dd-item .dd-desc { font-size: 11px; color: var(--muted); font-weight: 400; display: block; margin-top: 1px; }
+    .dd-divider { height: 1px; background: var(--border); margin: 4px 6px; }
+    .dd-item.danger { color: #DC2626; }
+    .dd-item.danger:hover { background: #FEF2F2; }
+    .dd-item.highlight { color: var(--emerald); }
+    .dd-item.highlight:hover { background: #F0FDF4; }
+
+    /* ── User chip ── */
+    .nav-user-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,.12); border: 1.5px solid rgba(255,255,255,.2);
+      border-radius: var(--radius-sm); padding: 6px 12px;
+      font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap;
+    }
+    .nav-user-chip .avatar {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(255,255,255,.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; flex-shrink: 0;
+    }
+
+    /* ── Hamburger ── */
     .nav-hamburger {
       display: none; flex-direction: column; gap: 5px;
       cursor: pointer; padding: 8px; border: none; background: transparent; flex-shrink: 0;
     }
     .nav-hamburger span { display: block; width: 24px; height: 2.5px; background: #fff; border-radius: 3px; transition: all .3s; }
 
+    /* ── Mobile drawer ── */
     .nav-drawer {
       display: none; position: fixed;
       top: var(--nav-h); left: 0; right: 0;
@@ -129,6 +213,11 @@
     .nav-drawer.open { display: flex; }
     .nav-drawer .nav-btn { justify-content: center; padding: 16px; font-size: var(--fs-base); }
     .nav-divider { height: 1px; background: rgba(255,255,255,.1); margin: 4px 0; }
+    .nav-drawer-section {
+      font-size: 11px; font-weight: 800; letter-spacing: .1em;
+      text-transform: uppercase; color: rgba(255,255,255,.4);
+      padding: 8px 4px 2px;
+    }
 
     /* ════════════════════════════════════
        FLASH MESSAGES
@@ -466,23 +555,91 @@
 
   <div class="nav-actions">
     {% if logged_in %}
-      <a href="/scan"      class="nav-btn">📷 Scan</a>
-      <a href="/upload-qr" class="nav-btn">📤 Upload QR</a>
-      <a href="/add"       class="nav-btn primary">＋ Add Document</a>
-      {% if current_role in ('admin','staff') %}
-        <a href="/office-qr-page" class="nav-btn">🖨️ QR Codes</a>
-      {% endif %}
+
+      <!-- ── Actions dropdown ── -->
+      <div class="nav-dropdown" id="dd-actions">
+        <div class="nav-dropdown-trigger" onclick="toggleDD('dd-actions')">
+          ⚡ Actions <span class="chevron">▼</span>
+        </div>
+        <div class="nav-dropdown-menu">
+          <div class="dd-section">
+            <a href="/add" class="dd-item highlight">
+              <span class="dd-icon">＋</span>
+              <span class="dd-text">Add Document<span class="dd-desc">Log a new incoming document</span></span>
+            </a>
+            <a href="/scan" class="dd-item">
+              <span class="dd-icon">📷</span>
+              <span class="dd-text">Scan QR<span class="dd-desc">Scan a document QR code</span></span>
+            </a>
+            <a href="/upload-qr" class="dd-item">
+              <span class="dd-icon">📤</span>
+              <span class="dd-text">Upload QR Image<span class="dd-desc">Process a QR from photo</span></span>
+            </a>
+            {% if current_role in ('admin','staff') %}
+            <a href="/office-qr-page" class="dd-item">
+              <span class="dd-icon">🖨️</span>
+              <span class="dd-text">Office QR Codes<span class="dd-desc">Print QR for offices</span></span>
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Admin dropdown ── -->
       {% if current_role == 'admin' %}
-        <a href="/manage-users"  class="nav-btn">👥 Users</a>
-        <a href="/activity-log"  class="nav-btn">📋 Audit</a>
-        <a href="/import-excel"  class="nav-btn">📥 Import</a>
-        <a href="/backup"        class="nav-btn">🗄️ Backup</a>
-        <a href="/trash"         class="nav-btn">🗑️ Trash</a>
+      <div class="nav-dropdown" id="dd-admin">
+        <div class="nav-dropdown-trigger" onclick="toggleDD('dd-admin')">
+          ⚙️ Admin <span class="chevron">▼</span>
+        </div>
+        <div class="nav-dropdown-menu">
+          <div class="dd-section">
+            <span class="dd-label">Manage</span>
+            <a href="/manage-users" class="dd-item">
+              <span class="dd-icon">👥</span>
+              <span class="dd-text">Users<span class="dd-desc">Add, edit, deactivate accounts</span></span>
+            </a>
+            <a href="/activity-log" class="dd-item">
+              <span class="dd-icon">📋</span>
+              <span class="dd-text">Audit Log<span class="dd-desc">Full activity history</span></span>
+            </a>
+            <a href="/trash" class="dd-item">
+              <span class="dd-icon">🗑️</span>
+              <span class="dd-text">Trash<span class="dd-desc">Recover deleted documents</span></span>
+            </a>
+          </div>
+          <div class="dd-divider"></div>
+          <div class="dd-section">
+            <span class="dd-label">Data</span>
+            <a href="/import-excel" class="dd-item">
+              <span class="dd-icon">📥</span>
+              <span class="dd-text">Import Excel<span class="dd-desc">Bulk import from spreadsheet</span></span>
+            </a>
+            <a href="/backup" class="dd-item">
+              <span class="dd-icon">🗄️</span>
+              <span class="dd-text">Backup &amp; Restore<span class="dd-desc">Download or restore data</span></span>
+            </a>
+          </div>
+          <div class="dd-divider"></div>
+          <div class="dd-section">
+            <span class="dd-label">Danger Zone</span>
+            <button class="dd-item danger" onclick="confirmClearDB()">
+              <span class="dd-icon">⚠️</span>
+              <span class="dd-text">Clear Database<span class="dd-desc">Wipe all documents permanently</span></span>
+            </button>
+          </div>
+        </div>
+      </div>
       {% endif %}
-      <span class="nav-user">👤 {{ current_full_name or current_user }}</span>
-      <a href="/logout" class="nav-btn danger">Logout</a>
+
+      <!-- ── User chip + logout ── -->
+      <div class="nav-user-chip">
+        <div class="avatar">👤</div>
+        {{ current_full_name.split()[0] if current_full_name else current_user }}
+      </div>
+      <a href="/logout" class="nav-btn danger">⏻ Logout</a>
+
     {% else %}
-      <span class="nav-user">👁 View Only</span>
+      <span style="font-size:13px;color:rgba(255,255,255,.7);padding:0 4px;">👁 View Only</span>
       <a href="/login" class="nav-btn primary">🔐 Staff Login</a>
     {% endif %}
   </div>
@@ -495,26 +652,62 @@
 <!-- ═══ MOBILE DRAWER ═══ -->
 <div class="nav-drawer" id="nav-drawer">
   {% if logged_in %}
-    <a href="/scan"        class="nav-btn" onclick="closeMenu()">📷 Scan Document</a>
-    <a href="/upload-qr"   class="nav-btn" onclick="closeMenu()">📤 Upload QR Code</a>
-    <a href="/add"         class="nav-btn primary" onclick="closeMenu()">＋ Add Document</a>
+    <div class="nav-drawer-section">Actions</div>
+    <a href="/add"       class="nav-btn primary" onclick="closeMenu()">＋ Add Document</a>
+    <a href="/scan"      class="nav-btn" onclick="closeMenu()">📷 Scan QR</a>
+    <a href="/upload-qr" class="nav-btn" onclick="closeMenu()">📤 Upload QR Image</a>
     {% if current_role in ('admin','staff') %}
       <a href="/office-qr-page" class="nav-btn" onclick="closeMenu()">🖨️ Office QR Codes</a>
     {% endif %}
     {% if current_role == 'admin' %}
+      <div class="nav-divider"></div>
+      <div class="nav-drawer-section">Admin</div>
       <a href="/manage-users"  class="nav-btn" onclick="closeMenu()">👥 Manage Users</a>
-      <a href="/activity-log"  class="nav-btn" onclick="closeMenu()">📋 Activity Log</a>
-      <a href="/import-excel"  class="nav-btn" onclick="closeMenu()">📥 Import from Excel</a>
-      <a href="/backup"        class="nav-btn" onclick="closeMenu()">🗄️ Backup &amp; Restore</a>
+      <a href="/activity-log"  class="nav-btn" onclick="closeMenu()">📋 Audit Log</a>
       <a href="/trash"         class="nav-btn" onclick="closeMenu()">🗑️ Trash</a>
+      <a href="/import-excel"  class="nav-btn" onclick="closeMenu()">📥 Import Excel</a>
+      <a href="/backup"        class="nav-btn" onclick="closeMenu()">🗄️ Backup &amp; Restore</a>
+      <button class="nav-btn danger" onclick="closeMenu();confirmClearDB();" style="border:none;width:100%;justify-content:center;">⚠️ Clear Database</button>
     {% endif %}
     <div class="nav-divider"></div>
-    <a href="/"            class="nav-btn" onclick="closeMenu()">← Dashboard</a>
-    <a href="/logout"      class="nav-btn danger" onclick="closeMenu()">🔓 Logout ({{ current_full_name or current_user }})</a>
+    <a href="/"      class="nav-btn" onclick="closeMenu()">🏠 Dashboard</a>
+    <a href="/logout" class="nav-btn danger" onclick="closeMenu()">⏻ Logout ({{ current_full_name or current_user }})</a>
   {% else %}
-    <a href="/"            class="nav-btn" onclick="closeMenu()">← Dashboard</a>
-    <a href="/login"       class="nav-btn primary" onclick="closeMenu()">🔐 Staff Login</a>
+    <a href="/"      class="nav-btn" onclick="closeMenu()">🏠 Dashboard</a>
+    <a href="/login" class="nav-btn primary" onclick="closeMenu()">🔐 Staff Login</a>
   {% endif %}
+</div>
+
+<!-- ═══ Clear DB modal ═══ -->
+<div id="clear-db-modal" style="display:none;position:fixed;inset:0;z-index:9000;
+     background:rgba(10,37,64,.7);backdrop-filter:blur(4px);
+     align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:36px;max-width:440px;width:90%;
+              box-shadow:0 24px 80px rgba(0,0,0,.35);text-align:center;">
+    <div style="font-size:3rem;margin-bottom:12px;">⚠️</div>
+    <h2 style="color:#991B1B;font-size:1.4rem;margin-bottom:10px;">Clear Entire Database?</h2>
+    <p style="color:#374151;font-size:.95rem;line-height:1.6;margin-bottom:8px;">
+      This will <strong>permanently delete all documents</strong> from the system.
+      This cannot be undone.
+    </p>
+    <p style="color:#DC2626;font-size:.88rem;font-weight:700;margin-bottom:24px;">
+      Download a backup first before doing this!
+    </p>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button onclick="document.getElementById('clear-db-modal').style.display='none'"
+              style="padding:12px 24px;border-radius:9px;border:1.5px solid #CBD5E1;
+                     background:#F8FAFC;color:#374151;font-weight:700;font-size:.95rem;cursor:pointer;">
+        Cancel
+      </button>
+      <form method="POST" action="/clear-database" style="margin:0;">
+        <button type="submit"
+                style="padding:12px 24px;border-radius:9px;border:none;
+                       background:#DC2626;color:#fff;font-weight:700;font-size:.95rem;cursor:pointer;">
+          Yes, Delete Everything
+        </button>
+      </form>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ FLASH ═══ -->
@@ -542,12 +735,34 @@
 </div>
 
 <script>
+  // ── Mobile drawer ──
   function toggleMenu(){ document.getElementById('nav-drawer').classList.toggle('open'); }
   function closeMenu(){ document.getElementById('nav-drawer').classList.remove('open'); }
   document.addEventListener('click', function(e){
     const d=document.getElementById('nav-drawer'), h=document.querySelector('.nav-hamburger');
     if(d&&d.classList.contains('open')&&!d.contains(e.target)&&!h.contains(e.target)) closeMenu();
   });
+
+  // ── Dropdowns ──
+  function toggleDD(id) {
+    const all = document.querySelectorAll('.nav-dropdown');
+    all.forEach(function(dd) {
+      if (dd.id !== id) dd.classList.remove('open');
+    });
+    document.getElementById(id).classList.toggle('open');
+  }
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.nav-dropdown')) {
+      document.querySelectorAll('.nav-dropdown').forEach(function(dd){ dd.classList.remove('open'); });
+    }
+  });
+
+  // ── Clear DB modal ──
+  function confirmClearDB() {
+    document.getElementById('clear-db-modal').style.display = 'flex';
+  }
+
+  // ── Loading overlay ──
   function showLoading(msg, sub){
     document.getElementById('loading-text').textContent = msg||'Please wait...';
     document.getElementById('loading-sub').textContent = sub||'';
@@ -564,6 +779,7 @@
         else if(a.includes('/add')||a.includes('/edit/')) showLoading('Saving...','Updating record');
         else if(a.includes('/update-status/')) showLoading('Updating status...','');
         else if(a.includes('/scan')) showLoading('Scanning...','AI is reading the document');
+        else if(a.includes('/clear-database')) showLoading('Clearing...','Deleting all documents');
         else showLoading('Processing...','Please wait');
       });
     });

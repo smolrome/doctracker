@@ -121,3 +121,42 @@ def enable_user_route(username):
               ip=get_client_ip())
     flash(f"Account '{username}' has been re-enabled.", "success")
     return redirect(url_for("admin.manage_users"))
+
+
+@admin_bp.route("/clear-database", methods=["POST"])
+@admin_required
+def clear_database():
+    """Permanently delete all documents. Admin only. Irreversible."""
+    from services.database import USE_DB, get_conn
+    import os, json as _json
+
+    username = session.get("username", "admin")
+    count = 0
+
+    try:
+        if USE_DB:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT COUNT(*) FROM documents")
+                    count = cur.fetchone()[0]
+                    cur.execute("DELETE FROM documents")
+                conn.commit()
+        else:
+            path = "documents.json"
+            if os.path.exists(path):
+                with open(path) as f:
+                    docs = _json.load(f)
+                count = len(docs)
+                with open(path, "w") as f:
+                    _json.dump([], f)
+
+        audit_log("database_cleared",
+                  f"deleted_count={count}",
+                  username=username,
+                  ip=get_client_ip())
+        flash(f"Database cleared — {count} document(s) permanently deleted.", "success")
+
+    except Exception as e:
+        flash(f"Clear failed: {e}", "error")
+
+    return redirect(url_for("dashboard.index"))
