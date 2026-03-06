@@ -434,6 +434,10 @@ def init_db():
             """)
             for col_sql in [
                 "ALTER TABLE doc_qr_tokens ADD COLUMN IF NOT EXISTS used BOOLEAN DEFAULT FALSE",
+                # routing_slips columns added after initial deploy
+                "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS slip_date TEXT",
+                "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS time_from TEXT",
+                "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS time_to TEXT",
             ]:
                 try: cur.execute(col_sql)
                 except Exception: pass
