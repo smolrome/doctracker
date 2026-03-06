@@ -2398,119 +2398,128 @@ def office_qr_png(action):
         office_display = action.replace("-", " ").title()
         sub_label = "OFFICE QR"
 
-    # Generate QR module — larger box_size for crisp print quality
+    # ── Build QR image at high resolution then composite with text ──
+    # Strategy: render everything at 4x scale so text is huge,
+    # then the final PNG is crisp at any display size.
+    SCALE    = 4          # 4x internal render
+    QR_PX    = 420        # QR code square size at 1x
+    PAD      = 20         # padding around QR at 1x
+    BAR_H    = 110        # top bar height at 1x  — very tall
+    FOOT_H   = 140        # bottom bar height at 1x — very tall
+
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=12, border=3
+        box_size=10, border=3
     )
     qr.add_data(url)
     qr.make(fit=True)
-    qr_img = qr.make_image(fill_color="#0A2540", back_color="white").convert("RGB")
-    qr_size = qr_img.size[0]  # square
+    qr_raw = qr.make_image(fill_color="#0A2540", back_color="white").convert("RGB")
 
-    # ── FONTS — try multiple paths for compatibility ──
-    def load_font(bold=True, size=24):
-        paths_bold = [
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-            "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
-        ]
-        paths_reg  = [
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-            "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
-        ]
-        paths = paths_bold if bold else paths_reg
-        for p in paths:
+    # Scale QR to fixed QR_PX × SCALE
+    qr_px_s = QR_PX * SCALE
+    qr_img  = qr_raw.resize((qr_px_s, qr_px_s), Image.NEAREST)
+
+    W = (QR_PX + PAD * 2) * SCALE
+    H = (BAR_H + PAD + QR_PX + PAD + FOOT_H) * SCALE
+
+    canvas = Image.new("RGB", (W, H), "white")
+    draw   = ImageDraw.Draw(canvas)
+
+    # ── Scaled dimensions ──
+    bar_h_s  = BAR_H  * SCALE
+    foot_h_s = FOOT_H * SCALE
+    pad_s    = PAD    * SCALE
+
+    # ── FONT SIZES (in scaled pixels — huge so they look right at 1x) ──
+    # At SCALE=4, font size 80 → looks like 20px;  200 → looks like 50px
+    SZ_TOP    = 200   # short label  "REG" / "SUB"
+    SZ_OFFICE = 168   # office name  "Personnel Unit"
+    SZ_TYPE   = 136   # type desc    "CLIENT REGISTRATION"
+
+    FONT_PATHS_BOLD = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        "/usr/share/fonts/truetype/ubuntu/Ubuntu-Bold.ttf",
+    ]
+    FONT_PATHS_REG = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+        "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
+    ]
+
+    def load_font(bold, size):
+        for p in (FONT_PATHS_BOLD if bold else FONT_PATHS_REG):
             try:
                 return ImageFont.truetype(p, size)
             except:
                 pass
-        return ImageFont.load_default()
+        return None   # will use fallback drawing below
 
-    # Fonts sized relative to QR width so they always look proportional
-    # QR is typically ~420-500px wide at box_size=12
-    font_label   = load_font(bold=True,  size=max(40, qr_size // 11))   # top short label e.g. "SUB"
-    font_sublbl  = load_font(bold=True,  size=max(28, qr_size // 16))   # bottom bold type e.g. "OFFICE QR"
-    font_office  = load_font(bold=True,  size=max(26, qr_size // 17))   # bottom office name
-    font_subname = load_font(bold=False, size=max(22, qr_size // 20))   # bottom sub-label type description
+    font_top    = load_font(True,  SZ_TOP)
+    font_office = load_font(True,  SZ_OFFICE)
+    font_type   = load_font(False, SZ_TYPE)
 
-    pad    = 16
-    total_w = qr_size + pad * 2
+    def draw_centered(draw, text, font, y, fill, canvas_w, fallback_size=None):
+        """Draw text centered horizontally. If font is None, skip (no ugly tiny text)."""
+        if font is None:
+            return y  # skip drawing if font failed to load
+        bb  = draw.textbbox((0, 0), text, font=font)
+        tw_ = bb[2] - bb[0]
+        th_ = bb[3] - bb[1]
+        x   = (canvas_w - tw_) / 2
+        draw.text((x, y), text, font=font, fill=fill)
+        return y + th_
 
-    # ── Measure all text to size bars correctly ──
-    def text_w(text, font):
-        bb = ImageDraw.Draw(Image.new("RGB",(1,1))).textbbox((0,0), text, font=font)
-        return bb[2] - bb[0]
-    def text_h(text, font):
-        bb = ImageDraw.Draw(Image.new("RGB",(1,1))).textbbox((0,0), text, font=font)
-        return bb[3] - bb[1]
+    # ── TOP BAR ──
+    draw.rectangle([0, 0, W, bar_h_s], fill=bg_color)
+    draw.rectangle([0, 0, W, 10 * SCALE], fill=label_color)  # top accent stripe
 
-    label_h   = text_h(short_label, font_label)
-    bar_h     = label_h + 32           # top bar: label + generous vertical padding
+    if font_top:
+        bb   = draw.textbbox((0, 0), short_label, font=font_top)
+        lw_  = bb[2] - bb[0]
+        lh_  = bb[3] - bb[1]
+        draw.text(((W - lw_) / 2, (bar_h_s - lh_) / 2), short_label, font=font_top, fill=label_color)
 
-    # Bottom: two lines — office name (bold) + sub description
-    # Truncate office name if needed
-    office_text = office_display
-    while text_w(office_text, font_office) > total_w - 24 and len(office_text) > 4:
-        office_text = office_text[:-4] + "…"
-
-    oh = text_h(office_text, font_office)
-    sh = text_h(sub_label,   font_subname)
-    foot_h = oh + sh + 36              # bottom bar: two lines + padding
-
-    total_h = bar_h + pad + qr_size + pad + foot_h
-
-    canvas = Image.new("RGB", (total_w, total_h), "white")
-    draw   = ImageDraw.Draw(canvas)
-
-    # ── TOP BAR ── colored background
-    draw.rectangle([0, 0, total_w, bar_h], fill=bg_color)
-
-    # Accent stripe at very top
-    draw.rectangle([0, 0, total_w, 6], fill=label_color)
-
-    # Short label centered vertically & horizontally in top bar
-    lw = text_w(short_label, font_label)
-    lh = text_h(short_label, font_label)
-    draw.text(
-        ((total_w - lw) / 2, (bar_h - lh) / 2),
-        short_label, font=font_label, fill=label_color
-    )
-
-    # ── QR CODE ──
-    canvas.paste(qr_img, (pad, bar_h + pad))
+    # ── QR ──
+    canvas.paste(qr_img, (pad_s, bar_h_s + pad_s))
 
     # ── BOTTOM BAR ──
-    foot_y = bar_h + pad + qr_size + pad
+    foot_y_s = bar_h_s + pad_s + qr_px_s + pad_s
+    draw.rectangle([0, foot_y_s, W, foot_y_s + 8 * SCALE], fill=bg_color)
 
-    # Light separator line
-    draw.rectangle([0, foot_y, total_w, foot_y + 3], fill=bg_color)
-    foot_y += 3
+    # Truncate office name if still too wide
+    office_text = office_display
+    if font_office:
+        while True:
+            bb = draw.textbbox((0,0), office_text, font=font_office)
+            if bb[2] - bb[0] <= W - 40*SCALE or len(office_text) < 5:
+                break
+            office_text = office_text[:-4] + "…"
 
-    inner_y = foot_y + 12
+    inner_y = foot_y_s + 8 * SCALE + 20 * SCALE
+    inner_y = draw_centered(draw, office_text, font_office, inner_y, "#0A2540", W)
+    inner_y += 12 * SCALE
+    draw_centered(draw, sub_label, font_type, inner_y, label_color, W)
 
-    # Line 1: Office name — bold, dark, big
-    ow = text_w(office_text, font_office)
-    draw.text(
-        ((total_w - ow) / 2, inner_y),
-        office_text, font=font_office, fill="#0A2540"
-    )
-    inner_y += oh + 8
+    # Bottom accent line
+    draw.rectangle([0, H - 10 * SCALE, W, H], fill=label_color)
 
-    # Line 2: Sub-label type description — colored, medium
-    sw = text_w(sub_label, font_subname)
-    draw.text(
-        ((total_w - sw) / 2, inner_y),
-        sub_label, font=font_subname, fill=label_color
-    )
+    # ── FINAL: scale DOWN to 1x — handle Pillow version differences ──
+    try:
+        resample = Image.Resampling.LANCZOS   # Pillow >= 9.1
+    except AttributeError:
+        try:
+            resample = Image.LANCZOS           # Pillow 7-9
+        except AttributeError:
+            resample = Image.ANTIALIAS         # Pillow < 7
 
-    # Colored line at bottom
-    draw.rectangle([0, total_h - 6, total_w, total_h], fill=label_color)
+    final = canvas.resize((W // SCALE, H // SCALE), resample)
 
     buf = BytesIO()
-    canvas.save(buf, format="PNG")
+    final.save(buf, format="PNG")
     buf.seek(0)
     safe = re.sub(r'[^a-zA-Z0-9_-]', '_', action)
     return send_file(buf, mimetype="image/png", download_name=f"qr-{safe}.png")
