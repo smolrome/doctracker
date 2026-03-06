@@ -393,17 +393,21 @@ function clearField(name, val='') {
       <label>📅 Slip Date</label>
       <input type="date" class="rp-input" id="slip-date"/>
     </div>
-    <!-- Time From -->
-    <div class="rp-field">
-      <label>🕐 Time From</label>
-      <input type="time" class="rp-input" id="time-from"
-             placeholder="08:00"/>
+    <!-- Time Range (optional) -->
+    <div class="rp-field" style="grid-column:span 2">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
+        <input type="checkbox" id="use-time-range" onchange="toggleTimeRange(this.checked)"
+               style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"/>
+        🕐 Include Time Range <span style="font-size:12px;font-weight:400;color:var(--muted)">(optional — for Auto-select by Time)</span>
+      </label>
     </div>
-    <!-- Time To -->
-    <div class="rp-field">
-      <label>🕐 Time To</label>
-      <input type="time" class="rp-input" id="time-to"
-             placeholder="12:00"/>
+    <div class="rp-field" id="time-from-field" style="display:none">
+      <label>From</label>
+      <input type="time" class="rp-input" id="time-from" placeholder="08:00"/>
+    </div>
+    <div class="rp-field" id="time-to-field" style="display:none">
+      <label>To</label>
+      <input type="time" class="rp-input" id="time-to" placeholder="12:00"/>
     </div>
     <!-- Notes -->
     <div class="rp-field notes-field">
@@ -415,10 +419,9 @@ function clearField(name, val='') {
 
   <div class="rp-bottom">
     <div class="rp-hint">
-      💡 Set a <strong>time range</strong> then click <strong>Auto-select</strong> to automatically
-      check all documents received in that window — or manually check rows in the table.
+      💡 Manually check rows in the table, or enable <strong>Time Range</strong> above and click <strong>Auto-select</strong> to automatically check all documents in that window.
     </div>
-    <button class="btn-time-filter" onclick="autoSelectByTime()" title="Auto-check docs in time range">
+    <button class="btn-time-filter" id="btn-auto-select" onclick="autoSelectByTime()" title="Auto-check docs in time range" style="display:none">
       ⏱️ Auto-select by Time
     </button>
     <button class="btn-route" onclick="submitRouting()">
@@ -574,13 +577,24 @@ if (selAll) {
 // ── AUTO-SELECT docs by time range ──
 // Each row has data-received-time set from the date_received field
 // (We use created_at as fallback for time matching)
+function toggleTimeRange(on) {
+  document.getElementById('time-from-field').style.display  = on ? '' : 'none';
+  document.getElementById('time-to-field').style.display    = on ? '' : 'none';
+  document.getElementById('btn-auto-select').style.display  = on ? '' : 'none';
+  if (!on) {
+    document.getElementById('time-from').value = '';
+    document.getElementById('time-to').value   = '';
+  }
+}
+
 function autoSelectByTime() {
+  const useTime = document.getElementById('use-time-range').checked;
   const tf = document.getElementById('time-from').value;
   const tt = document.getElementById('time-to').value;
   const sd = document.getElementById('slip-date').value;
 
-  if (!tf || !tt) {
-    alert('Please set both a Time From and Time To before auto-selecting.');
+  if (useTime && (!tf || !tt)) {
+    alert('Please set both a Time From and Time To, or uncheck Include Time Range.');
     return;
   }
 
