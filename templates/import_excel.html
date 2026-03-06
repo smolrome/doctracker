@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+{% block title %}Import from Excel — DocTracker{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --navy:#0A2540; --teal:#0E7490; --green:#065F46; --blue:#1D4ED8;
+    --red:#991B1B; --gold:#C8922A; --border:#CBD5E1; --muted:#64748B;
+    --paper:#F8FAFC;
+  }
+  .wrap { max-width:900px; margin:0 auto; padding:32px 16px 64px; }
+
+  .page-header {
+    display:flex; align-items:center; gap:16px;
+    background:linear-gradient(135deg,#064E3B,#065F46);
+    color:#fff; border-radius:16px; padding:28px 32px; margin-bottom:32px;
+    box-shadow:0 4px 24px rgba(6,79,60,.2);
+  }
+  .page-header .icon { font-size:2.4rem; }
+  .page-header h1    { font-size:1.6rem; font-weight:800; margin:0 0 4px; }
+  .page-header p     { margin:0; opacity:.75; font-size:.93rem; }
+
+  .card {
+    background:#fff; border:1px solid var(--border);
+    border-radius:14px; padding:28px 32px; margin-bottom:24px;
+    box-shadow:0 2px 8px rgba(0,0,0,.05);
+  }
+  .card-title { font-size:1.05rem; font-weight:700; color:var(--navy);
+                margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+
+  /* Drop zone */
+  .drop-zone {
+    border:2.5px dashed var(--border); border-radius:12px;
+    padding:44px 32px; text-align:center; cursor:pointer;
+    transition:border-color .2s, background .2s; background:var(--paper);
+    margin-bottom:16px;
+  }
+  .drop-zone:hover, .drop-zone.drag-over { border-color:#059669; background:#F0FDF4; }
+  .drop-zone .dz-icon  { font-size:2.8rem; margin-bottom:8px; }
+  .drop-zone .dz-label { font-weight:700; color:var(--navy); font-size:1.05rem; }
+  .drop-zone .dz-hint  { font-size:.85rem; color:var(--muted); margin-top:4px; }
+  .drop-zone .dz-file  { display:none; margin-top:10px; font-size:.9rem;
+                          color:#059669; font-weight:600; }
+  #file-input { display:none; }
+
+  /* Buttons */
+  .btn {
+    display:inline-flex; align-items:center; gap:8px;
+    padding:11px 26px; border-radius:9px; font-weight:700;
+    font-size:.93rem; border:none; cursor:pointer; text-decoration:none;
+    transition:filter .15s, transform .1s;
+  }
+  .btn:active { transform:scale(.97); }
+  .btn-green  { background:#059669; color:#fff; }
+  .btn-green:hover { filter:brightness(1.1); }
+  .btn-blue   { background:var(--blue); color:#fff; }
+  .btn-blue:hover  { filter:brightness(1.1); }
+  .btn-ghost  { background:var(--paper); color:var(--navy);
+                border:1.5px solid var(--border); }
+  .btn-ghost:hover { background:#EFF6FF; }
+
+  /* Status badge */
+  .badge {
+    font-size:.75rem; font-weight:700; padding:3px 10px;
+    border-radius:99px; text-transform:uppercase; letter-spacing:.05em;
+  }
+  .badge-green { background:#D1FAE5; color:var(--green); }
+  .badge-blue  { background:#DBEAFE; color:var(--blue); }
+  .badge-gold  { background:#FEF3C7; color:var(--gold); }
+
+  /* Warnings */
+  .warn-box {
+    background:#FFFBEB; border:1.5px solid #FCD34D;
+    border-radius:10px; padding:12px 16px; margin-bottom:16px;
+    font-size:.88rem; color:#92400E;
+  }
+  .warn-box ul { margin:6px 0 0; padding-left:18px; }
+
+  /* Column map info */
+  .col-grid {
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:6px 24px; margin-top:12px;
+  }
+  .col-row { display:flex; gap:8px; align-items:center;
+             font-size:.85rem; padding:5px 0;
+             border-bottom:1px solid #F1F5F9; }
+  .col-row .excel-col { color:var(--muted); flex:1; font-family:monospace; }
+  .col-row .arrow     { color:var(--border); }
+  .col-row .dt-field  { color:var(--navy); font-weight:600; flex:1; }
+
+  /* Preview table */
+  .preview-wrap { overflow-x:auto; margin-top:16px; border-radius:10px;
+                  border:1px solid var(--border); }
+  table { width:100%; border-collapse:collapse; font-size:.82rem; }
+  thead th {
+    background:var(--navy); color:#fff; padding:10px 12px;
+    text-align:left; font-weight:700; white-space:nowrap;
+    position:sticky; top:0;
+  }
+  tbody tr:nth-child(even) { background:#F8FAFC; }
+  tbody td { padding:8px 12px; color:#374151; border-bottom:1px solid #F1F5F9;
+             max-width:200px; overflow:hidden; text-overflow:ellipsis;
+             white-space:nowrap; }
+  tbody tr:hover td { background:#EFF6FF; }
+
+  /* Summary */
+  .summary-box {
+    background:linear-gradient(135deg,#ECFDF5,#D1FAE5);
+    border:1.5px solid #6EE7B7; border-radius:12px; padding:24px 28px;
+  }
+  .summary-box h3 { color:var(--green); margin:0 0 16px; font-size:1.1rem; }
+  .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+               gap:12px; margin-bottom:16px; }
+  .stat { background:#fff; border-radius:8px; padding:12px 16px;
+          text-align:center; border:1px solid #A7F3D0; }
+  .stat .num { font-size:1.9rem; font-weight:800; color:var(--green); }
+  .stat .lbl { font-size:.78rem; color:var(--muted); text-transform:uppercase;
+               letter-spacing:.05em; }
+  .stat.warn .num { color:#92400E; }
+  .stat.warn { border-color:#FCD34D; }
+
+  /* Status select */
+  select {
+    padding:9px 14px; border:1.5px solid var(--border); border-radius:8px;
+    font-size:.9rem; color:var(--navy); background:#fff;
+    appearance:auto; cursor:pointer;
+  }
+  select:focus { outline:2px solid #059669; border-color:#059669; }
+
+  /* Doc list */
+  .doc-list { max-height:220px; overflow-y:auto; margin-top:12px;
+              border:1px solid var(--border); border-radius:8px; }
+  .doc-list li { padding:7px 14px; border-bottom:1px solid #F1F5F9;
+                 font-size:.85rem; color:#374151; list-style:none; }
+  .doc-list li:last-child { border-bottom:none; }
+  .doc-list li .ref { font-family:monospace; color:var(--teal);
+                      font-size:.8rem; margin-right:8px; }
+
+  .error-list { background:#FEF2F2; border:1.5px solid #FECACA;
+                border-radius:8px; padding:12px 16px; margin-top:12px; }
+  .error-list p  { font-size:.85rem; color:var(--red); margin:0 0 6px; font-weight:600; }
+  .error-list li { font-size:.82rem; color:#7F1D1D; margin-bottom:3px; }
+
+  @media(max-width:640px) {
+    .col-grid { grid-template-columns:1fr; }
+    .page-header { flex-direction:column; text-align:center; }
+  }
+</style>
+
+<div class="wrap">
+
+  <div class="page-header">
+    <div class="icon">📥</div>
+    <div>
+      <h1>Import from Excel</h1>
+      <p>Upload your DepEd tracking spreadsheet — all rows become documents in DocTracker automatically.</p>
+    </div>
+  </div>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div style="padding:14px 18px;border-radius:10px;margin-bottom:16px;font-weight:600;
+                  background:{% if cat=='success' %}#D1FAE5{% else %}#FEE2E2{% endif %};
+                  color:{% if cat=='success' %}#065F46{% else %}#991B1B{% endif %};">
+        {{ '✅' if cat=='success' else '❌' }} {{ msg }}
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  <!-- ── SUCCESS SUMMARY ── -->
+  {% if summary %}
+  <div class="summary-box" style="margin-bottom:24px;">
+    <h3>✅ Import Complete — {{ filename }}</h3>
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="num">{{ summary.total }}</div>
+        <div class="lbl">Rows Found</div>
+      </div>
+      <div class="stat">
+        <div class="num">{{ summary.imported }}</div>
+        <div class="lbl">Imported</div>
+      </div>
+      <div class="stat warn">
+        <div class="num">{{ summary.skipped }}</div>
+        <div class="lbl">Skipped</div>
+      </div>
+      <div class="stat {% if summary.errors %}warn{% endif %}">
+        <div class="num">{{ summary.errors|length }}</div>
+        <div class="lbl">Errors</div>
+      </div>
+    </div>
+
+    {% if summary.docs %}
+    <p style="font-size:.88rem;color:#065F46;font-weight:600;margin:0 0 6px;">
+      Imported documents:
+    </p>
+    <ul class="doc-list">
+      {% for d in summary.docs %}
+      <li><span class="ref">{{ d.doc_id }}</span>{{ d.doc_name }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if summary.errors %}
+    <div class="error-list">
+      <p>⚠️ {{ summary.errors|length }} row(s) failed:</p>
+      <ul>{% for e in summary.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+
+    {% if summary.warnings %}
+    <div class="warn-box" style="margin-top:12px;">
+      <ul>{% for w in summary.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+
+    <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap;">
+      <a href="{{ url_for('dashboard.index') }}" class="btn btn-green">📋 View Documents</a>
+      <a href="{{ url_for('import_excel.import_page') }}" class="btn btn-ghost">📥 Import Another File</a>
+    </div>
+  </div>
+
+  <!-- ── PREVIEW (confirm step) ── -->
+  {% elif preview is defined %}
+  <div class="card">
+    <div class="card-title">
+      👁️ Preview — {{ filename }}
+      <span class="badge badge-blue">{{ total }} row{{ 's' if total != 1 }}</span>
+    </div>
+
+    {% if warnings %}
+    <div class="warn-box">
+      ⚠️ <strong>Heads up:</strong>
+      <ul>{% for w in warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+
+    <div class="preview-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Document / Content</th>
+            <th>Sender</th>
+            <th>Unit / Office</th>
+            <th>Received By</th>
+            <th>Date Received</th>
+            <th>Referred To</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in preview %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td title="{{ row.doc_name }}">{{ row.doc_name[:60] }}{% if row.doc_name|length > 60 %}…{% endif %}</td>
+            <td>{{ row.sender_name }}</td>
+            <td>{{ row.sender_org }}</td>
+            <td>{{ row.received_by }}</td>
+            <td>{{ row.date_received }}</td>
+            <td>{{ row.referred_to }}</td>
+            <td>{{ row.notes }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if total > 50 %}
+    <p style="font-size:.83rem;color:var(--muted);margin:8px 0 0;">
+      Showing first 50 of {{ total }} rows. All {{ total }} will be imported.
+    </p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚙️ Import Settings</div>
+    <form method="POST" action="{{ url_for('import_excel.import_confirm') }}">
+      <label style="display:block;margin-bottom:8px;font-size:.9rem;font-weight:600;color:var(--navy);">
+        Set initial status for all imported documents:
+      </label>
+      <select name="default_status" style="margin-bottom:20px;">
+        <option value="Received" selected>Received</option>
+        <option value="Pending">Pending</option>
+        <option value="In Transit">In Transit</option>
+        <option value="In Review">In Review</option>
+        <option value="Released">Released</option>
+      </select>
+      <br>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-green">
+          ✅ Confirm — Import {{ total }} Document{{ 's' if total != 1 }}
+        </button>
+        <a href="{{ url_for('import_excel.import_page') }}" class="btn btn-ghost">
+          ✕ Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── UPLOAD FORM (initial state) ── -->
+  {% else %}
+
+  <div class="card">
+    <div class="card-title">📂 Upload Spreadsheet</div>
+    <form method="POST" action="{{ url_for('import_excel.import_preview') }}"
+          enctype="multipart/form-data" id="upload-form">
+
+      <div class="drop-zone" id="drop-zone"
+           onclick="document.getElementById('file-input').click()">
+        <div class="dz-icon">📊</div>
+        <div class="dz-label">Click to choose your Excel file</div>
+        <div class="dz-hint">or drag &amp; drop — .xlsx, .xls files supported</div>
+        <div class="dz-file" id="dz-file-name"></div>
+      </div>
+      <input type="file" id="file-input" name="excel_file"
+             accept=".xlsx,.xls,.xlsm" onchange="handleFile(this)">
+
+      <button type="submit" class="btn btn-green" id="upload-btn" disabled>
+        👁️ Preview Import
+      </button>
+    </form>
+  </div>
+
+  <!-- Column mapping reference -->
+  <div class="card">
+    <div class="card-title">📋 Supported Column Names</div>
+    <p style="font-size:.88rem;color:var(--muted);margin:0 0 8px;">
+      DocTracker automatically recognises these column headers from your spreadsheet.
+      Column names are case-insensitive and extra spaces are ignored.
+    </p>
+    <div class="col-grid">
+      <div class="col-row"><span class="excel-col">INITIAL DATE / DATE RECEIVED</span><span class="arrow">→</span><span class="dt-field">Date Received</span></div>
+      <div class="col-row"><span class="excel-col">TIME</span><span class="arrow">→</span><span class="dt-field">Time Received</span></div>
+      <div class="col-row"><span class="excel-col">RECEIVED BY</span><span class="arrow">→</span><span class="dt-field">Received By</span></div>
+      <div class="col-row"><span class="excel-col">UNIT/OFFICE/SCHOOL/DISTRICT</span><span class="arrow">→</span><span class="dt-field">Unit / Office</span></div>
+      <div class="col-row"><span class="excel-col">SOURCE|SENDER</span><span class="arrow">→</span><span class="dt-field">Sender Name</span></div>
+      <div class="col-row"><span class="excel-col">CONTENT PARTICULARS</span><span class="arrow">→</span><span class="dt-field">Document Title</span></div>
+      <div class="col-row"><span class="excel-col">REFERRED TO</span><span class="arrow">→</span><span class="dt-field">Referred To</span></div>
+      <div class="col-row"><span class="excel-col">FORWARDED TO</span><span class="arrow">→</span><span class="dt-field">Forwarded To</span></div>
+      <div class="col-row"><span class="excel-col">DATE &amp; RELEASE TIME</span><span class="arrow">→</span><span class="dt-field">Date Released</span></div>
+      <div class="col-row"><span class="excel-col">ROUTED TO</span><span class="arrow">→</span><span class="dt-field">Routed To</span></div>
+      <div class="col-row"><span class="excel-col">RECEIVED BY/REMARKS</span><span class="arrow">→</span><span class="dt-field">Notes</span></div>
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+
+<script>
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('dz-file-name').textContent = '📄 ' + file.name;
+  document.getElementById('dz-file-name').style.display = 'block';
+  document.getElementById('upload-btn').disabled = false;
+}
+
+const zone = document.getElementById('drop-zone');
+if (zone) {
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const input = document.getElementById('file-input');
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      handleFile(input);
+    }
+  });
+}
+</script>
+{% endblock %}

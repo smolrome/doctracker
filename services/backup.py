@@ -150,11 +150,12 @@ def create_excel_backup() -> bytes:
     wd.sheet_view.showGridLines = False
     add_title(wd, "All Documents", f"Exported {now}")
 
-    doc_headers = ["#", "ID", "Reference No.", "Document / Content",
-                   "Category", "Status", "Sender", "Unit / Office",
-                   "Referred To", "Forwarded To", "Received By",
-                   "Date Received", "Date Released", "Date Logged", "Notes"]
-    doc_widths  = [5, 10, 16, 40, 18, 14, 22, 28, 22, 22, 20, 14, 14, 18, 30]
+    doc_headers = ["#", "Date Received", "Time", "Received By",
+                   "Unit / Office / School / District", "Source / Sender",
+                   "Document / Content Particulars",
+                   "Referred To", "Forwarded To", "Date & Release Time",
+                   "Status", "Category", "Reference No.", "Notes"]
+    doc_widths  = [5, 14, 12, 22, 30, 26, 48, 22, 22, 18, 14, 16, 14, 30]
 
     for c, h in enumerate(doc_headers, 1):
         wd.cell(row=3, column=c, value=h)
@@ -167,19 +168,18 @@ def create_excel_backup() -> bytes:
         alt = (r % 2 == 0)
         row = [
             r - 3,
-            doc.get("id", ""),
-            doc.get("doc_id", ""),
-            doc.get("doc_name", ""),
-            doc.get("category", ""),
-            doc.get("status", ""),
-            doc.get("sender_name", ""),
+            doc.get("date_received", ""),
+            (doc.get("created_at", "") or "")[11:16],
+            doc.get("received_by", ""),
             doc.get("sender_org", ""),
+            doc.get("sender_name", ""),
+            doc.get("doc_name", ""),
             doc.get("referred_to", ""),
             doc.get("forwarded_to", ""),
-            doc.get("received_by", ""),
-            doc.get("date_received", ""),
             doc.get("date_released", ""),
-            (doc.get("created_at", "") or "")[:10],
+            doc.get("status", ""),
+            doc.get("category", ""),
+            doc.get("doc_id", ""),
             doc.get("notes", ""),
         ]
         for c, val in enumerate(row, 1):
@@ -198,8 +198,8 @@ def create_excel_backup() -> bytes:
         status = doc.get("status", "")
         if status in status_colors:
             bg, fg = status_colors[status]
-            wd.cell(row=r, column=6).fill = PatternFill("solid", fgColor=bg)
-            wd.cell(row=r, column=6).font = Font(name="Arial", size=9,
+            wd.cell(row=r, column=11).fill = PatternFill("solid", fgColor=bg)
+            wd.cell(row=r, column=11).font = Font(name="Arial", size=9,
                                                   bold=True, color=fg)
     wd.auto_filter.ref = f"A3:{get_column_letter(len(doc_headers))}3"
 
