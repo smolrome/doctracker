@@ -82,6 +82,29 @@ except Exception:
 
 app = Flask(__name__)
 
+@app.template_filter('time12')
+def time12_filter(ts):
+    """Convert 'YYYY-MM-DD HH:MM:SS' or 'HH:MM' to 12-hr format like '9:45 AM'."""
+    if not ts:
+        return '—'
+    try:
+        # extract HH:MM portion
+        t = str(ts).strip()
+        if len(t) >= 16 and 'T' not in t:   # full datetime
+            hhmm = t[11:16]
+        elif 'T' in t:                        # ISO format
+            hhmm = t[11:16]
+        elif ':' in t and len(t) <= 5:        # bare HH:MM
+            hhmm = t
+        else:
+            return t
+        h, m = int(hhmm[:2]), int(hhmm[3:5])
+        period = 'AM' if h < 12 else 'PM'
+        h12 = h % 12 or 12
+        return f'{h12}:{m:02d} {period}'
+    except Exception:
+        return str(ts)
+
 # ── Secret key — MUST be set in Railway env vars for production ──
 _secret = os.environ.get("SECRET_KEY", "")
 if not _secret:
@@ -313,6 +336,7 @@ def init_db():
             for col_sql in [
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT TRUE",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS office TEXT DEFAULT ''",
             ]:
                 try:
                     cur.execute(col_sql)
@@ -551,14 +575,14 @@ def verify_password(plain, stored_hash):
     # Legacy SHA-256 fallback
     return hashlib.sha256(plain.encode()).hexdigest() == stored_hash
 
-def create_user(username, password, full_name="", role="staff"):
+def create_user(username, password, full_name="", role="staff", office=""):
     if USE_DB:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
-                        "INSERT INTO users (username, password_hash, full_name, role) VALUES (%s, %s, %s, %s)",
-                        (username.lower().strip(), hash_password(password), full_name.strip(), role)
+                        "INSERT INTO users (username, password_hash, full_name, role, office) VALUES (%s, %s, %s, %s, %s)",
+                        (username.lower().strip(), hash_password(password), full_name.strip(), role, office.strip())
                     )
                 conn.commit()
             return True, None
@@ -575,7 +599,8 @@ def create_user(username, password, full_name="", role="staff"):
             "username": username.lower().strip(),
             "password_hash": hash_password(password),
             "full_name": full_name.strip(),
-            "role": role
+            "role": role,
+            "office": office.strip()
         })
         with open("users.json","w") as f:
             json.dump(users, f, indent=2)
@@ -637,7 +662,7 @@ def get_all_users():
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
-                        "SELECT username, full_name, role, active, last_login, created_at FROM users ORDER BY created_at DESC"
+                        "SELECT username, full_name, role, active, last_login, created_at, COALESCE(office,'') as office FROM users ORDER BY created_at DESC"
                     )
                     return [dict(r) for r in cur.fetchall()]
         except Exception as e:
@@ -1021,12 +1046,15 @@ def register():
         if not token_valid:
             error = "Invalid or expired invite link. Please ask the admin to send a new one."
         else:
-            username = request.form.get("username","").strip()
-            full_name= request.form.get("full_name","").strip()
-            password = request.form.get("password","").strip()
-            confirm  = request.form.get("confirm_password","").strip()
+            username  = request.form.get("username","").strip()
+            full_name = request.form.get("full_name","").strip()
+            password  = request.form.get("password","").strip()
+            confirm   = request.form.get("confirm_password","").strip()
+            office    = request.form.get("office","").strip()
             if not username or not password:
                 error = "Username and password are required."
+            elif not office:
+                error = "Please enter your office or unit name."
             elif len(password) < 8:
                 error = "Password must be at least 8 characters."
             elif not re.search(r'[0-9]', password):
@@ -1034,10 +1062,13 @@ def register():
             elif password != confirm:
                 error = "Passwords do not match."
             else:
-                ok, err = create_user(username, password, full_name or token_name)
+                ok, err = create_user(username, password, full_name or token_name, office=office)
                 if ok:
                     consume_invite_token(token)
-                    flash("Account created! You can now log in.", "success")
+                    # Auto-create the office QR so it's immediately available
+                    save_office(office, username)
+                    audit_log("staff_registered", f"username={username} office={office}")
+                    flash(f"Account created! Your office '{office}' QR code has been generated automatically.", "success")
                     return redirect(url_for("login"))
                 else:
                     error = err

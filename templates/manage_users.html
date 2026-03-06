@@ -114,10 +114,15 @@
         <div>
           <div class="user-name">{{ user.full_name or user.username }}</div>
           <div class="user-username">@{{ user.username }}</div>
+          {% if user.office %}
+          <div style="font-size:13px;color:#0E7490;font-weight:700;margin-top:2px;">
+            🏢 {{ user.office }}
+          </div>
+          {% endif %}
           <div class="user-meta">
             Joined: {{ user.created_at.strftime('%b %d, %Y') if user.created_at and user.created_at is not string else (user.created_at or '—')[:10] }}
             {% if user.last_login %}
-            · Last login: {{ user.last_login.strftime('%b %d %H:%M') if user.last_login is not string else user.last_login[:16] }}
+            · Last login: {{ user.last_login.strftime('%b %d %I:%M %p') if user.last_login is not string else (user.last_login[:10] + ' ' + (user.last_login[11:16] | time12 if user.last_login|length > 10 else '')) }}
             {% endif %}
           </div>
         </div>

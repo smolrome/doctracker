@@ -328,7 +328,7 @@
     </div>
     <div class="field">
       <div class="field-label">Date Submitted / Logged</div>
-      <div class="field-val">{{ doc.created_at[:10] if doc.created_at else '—' }}</div>
+      <div class="field-val">{{ doc.created_at[:10] if doc.created_at else '—' }} <span style="color:var(--teal);font-size:14px;">{{ doc.created_at | time12 }}</span></div>
     </div>
     <div class="field">
       <div class="field-label">Date Received</div>
@@ -469,7 +469,7 @@
               {% endif %}
             </td>
             <td style="color:var(--text);">{{ entry.officer or '—' }}</td>
-            <td class="tlog-ts">{{ entry.timestamp }}</td>
+            <td class="tlog-ts">{{ entry.timestamp[:10] if entry.timestamp else "—" }}<br/><span style="color:var(--teal);font-weight:600;">{{ entry.timestamp | time12 }}</span></td>
             <td style="font-size:13px;color:var(--muted);">{{ entry.remarks or '—' }}</td>
           </tr>
           {% endfor %}

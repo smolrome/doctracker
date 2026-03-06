@@ -287,7 +287,7 @@
         display:flex;align-items:center;justify-content:space-between;
         font-size:12px;color:#8BA5B5;flex-wrap:wrap;gap:8px;">
       <span>DocTracker — DepEd Leyte Division Office</span>
-      <span>Slip No.: <strong>{{ slip.slip_no }}</strong> &nbsp;|&nbsp; Generated: {{ slip.created_at[:16] }}</span>
+      <span>Slip No.: <strong>{{ slip.slip_no }}</strong> &nbsp;|&nbsp; Generated: {{ slip.created_at[:10] }} {{ slip.created_at | time12 }}</span>
     </div>
 
   </div><!-- end .slip-doc -->
