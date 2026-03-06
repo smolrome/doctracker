@@ -445,8 +445,26 @@ function clearField(name, val='') {
   <div class="table-head">
     <div class="table-title">📋 Document Records</div>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-      <div class="table-count">{{ docs|length }} record{% if docs|length != 1 %}s{% endif %}</div>
+      <div class="table-count">
+        {% if total is defined %}
+          {{ total }} record{% if total != 1 %}s{% endif %}
+          {% if total_pages > 1 %} &nbsp;·&nbsp; page {{ page }} of {{ total_pages }}{% endif %}
+        {% else %}
+          {{ docs|length }} record{% if docs|length != 1 %}s{% endif %}
+        {% endif %}
+      </div>
       {% if logged_in %}
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:13px;color:var(--muted);white-space:nowrap;">Show</label>
+        <select onchange="changePerPage(this.value)"
+                style="padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;
+                       font-size:13px;color:var(--navy);background:#fff;cursor:pointer;">
+          {% for n in [10,25,50,100] %}
+            <option value="{{ n }}" {% if per_page is defined and per_page == n %}selected{% endif %}>{{ n }}</option>
+          {% endfor %}
+        </select>
+        <label style="font-size:13px;color:var(--muted);">per page</label>
+      </div>
       <span style="font-size:13px;color:var(--muted);">☑ Check rows to route</span>
       {% endif %}
     </div>
@@ -460,14 +478,11 @@ function clearField(name, val='') {
           {% if logged_in %}
           <th class="cb-cell"><input type="checkbox" id="select-all" title="Select all"/></th>
           {% endif %}
-          <th>Date Received</th>
-          <th>Received By</th>
+          <th>Document / Content</th>
           <th>Unit / Office / School</th>
           <th>Source / Sender</th>
-          <th>Document / Content</th>
           <th>Referred To</th>
-          <th>Forwarded To</th>
-          <th>Date &amp; Release Time</th>
+          <th>Date &amp; Time Received</th>
           <th>Status</th>
         </tr>
       </thead>
@@ -482,38 +497,27 @@ function clearField(name, val='') {
                    onchange="updateSelection()"/>
           </td>
           {% endif %}
+          <td>
+            <div class="doc-name">{{ doc.doc_name }}</div>
+            {% if doc.doc_id %}<div class="doc-id">{{ doc.doc_id }}</div>{% endif %}
+            {% if doc.category %}<div class="doc-cat">{{ doc.category }}</div>{% endif %}
+            {% if doc.submitted_by %}<div style="font-size:11px;color:var(--emerald);margin-top:2px;font-weight:700;">📱 Client</div>{% endif %}
+            {% if doc.status == 'In Transit' %}
+            <div style="display:inline-flex;align-items:center;gap:5px;margin-top:3px;
+              background:#DBEAFE;border:1.5px solid #93C5FD;border-radius:8px;
+              padding:2px 9px;font-size:12px;font-weight:700;color:#1D4ED8;">
+              🚌 → {{ doc.forwarded_to or 'In Transit' }}
+            </div>{% endif %}
+          </td>
+          <td style="font-size:var(--fs-sm);">{{ doc.sender_org or '—' }}</td>
+          <td style="font-size:var(--fs-sm);">{{ doc.sender_name or '—' }}</td>
+          <td style="font-size:var(--fs-sm);">{{ doc.referred_to or '—' }}</td>
           <td style="white-space:nowrap;font-size:var(--fs-sm);">
             {% if doc.date_received %}
               <div style="font-weight:700;color:var(--navy);">{{ doc.date_received }}</div>
               <div style="font-size:12px;color:var(--teal);margin-top:2px;font-weight:600;">
                 {{ doc.created_at | time12 }}
               </div>
-            {% else %}
-              <span style="color:var(--muted);">—</span>
-            {% endif %}
-          </td>
-          <td style="font-size:var(--fs-sm);">{{ doc.received_by or '—' }}</td>
-          <td style="font-size:var(--fs-sm);">{{ doc.sender_org or '—' }}</td>
-          <td style="font-size:var(--fs-sm);">{{ doc.sender_name or '—' }}</td>
-          <td>
-            <div class="doc-name">{{ doc.doc_name }}</div>
-            {% if doc.doc_id %}<div class="doc-id">{{ doc.doc_id }}</div>{% endif %}
-            {% if doc.category %}<div class="doc-cat">{{ doc.category }}</div>{% endif %}
-            {% if doc.submitted_by %}<div style="font-size:11px;color:var(--emerald);margin-top:2px;font-weight:700;">📱 Client</div>{% endif %}
-          </td>
-          <td style="font-size:var(--fs-sm);">{{ doc.referred_to or '—' }}</td>
-          <td style="font-size:var(--fs-sm);">
-            {% if doc.forwarded_to %}
-              <div style="display:inline-flex;align-items:center;gap:5px;
-                background:#DBEAFE;border:1.5px solid #93C5FD;border-radius:8px;
-                padding:2px 9px;font-size:12px;font-weight:700;color:#1D4ED8;">
-                🚌 {{ doc.forwarded_to }}
-              </div>
-            {% else %}—{% endif %}
-          </td>
-          <td style="white-space:nowrap;font-size:var(--fs-sm);">
-            {% if doc.date_released %}
-              <div style="font-weight:700;color:var(--green);">{{ doc.date_released }}</div>
             {% else %}
               <span style="color:var(--muted);">—</span>
             {% endif %}
@@ -533,6 +537,77 @@ function clearField(name, val='') {
       </tbody>
     </table>
   </div>
+
+  {% if total_pages is defined and total_pages > 1 %}
+  <div style="display:flex;align-items:center;justify-content:center;gap:6px;
+              padding:16px 20px;border-top:1.5px solid var(--border);flex-wrap:wrap;">
+
+    {# Build base query string without page #}
+    {% set qs %}search={{ search }}&status={{ filter_status }}&type={{ filter_type }}&date={{ filter_date }}&time_from={{ filter_time_from }}&time_to={{ filter_time_to }}&per_page={{ per_page }}{% endset %}
+
+    {# Prev #}
+    {% if page > 1 %}
+      <a href="/?{{ qs }}&page={{ page - 1 }}"
+         style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);
+                background:#fff;color:var(--navy);font-weight:700;font-size:13px;
+                text-decoration:none;transition:all .15s;"
+         onmouseover="this.style.background='var(--surface)'"
+         onmouseout="this.style.background='#fff'">‹ Prev</a>
+    {% else %}
+      <span style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);
+                   background:var(--surface);color:var(--muted);font-size:13px;">‹ Prev</span>
+    {% endif %}
+
+    {# Page numbers — show window of 5 around current page #}
+    {% set start_p = [1, page - 2] | max %}
+    {% set end_p   = [total_pages, page + 2] | min %}
+
+    {% if start_p > 1 %}
+      <a href="/?{{ qs }}&page=1"
+         style="padding:7px 11px;border-radius:8px;border:1.5px solid var(--border);
+                background:#fff;color:var(--navy);font-weight:600;font-size:13px;
+                text-decoration:none;">1</a>
+      {% if start_p > 2 %}<span style="color:var(--muted);font-size:13px;padding:0 2px;">…</span>{% endif %}
+    {% endif %}
+
+    {% for p in range(start_p, end_p + 1) %}
+      {% if p == page %}
+        <span style="padding:7px 11px;border-radius:8px;
+                     background:linear-gradient(135deg,var(--g-start),var(--g-mid));
+                     color:#fff;font-weight:700;font-size:13px;border:none;">{{ p }}</span>
+      {% else %}
+        <a href="/?{{ qs }}&page={{ p }}"
+           style="padding:7px 11px;border-radius:8px;border:1.5px solid var(--border);
+                  background:#fff;color:var(--navy);font-weight:600;font-size:13px;
+                  text-decoration:none;"
+           onmouseover="this.style.background='var(--surface)'"
+           onmouseout="this.style.background='#fff'">{{ p }}</a>
+      {% endif %}
+    {% endfor %}
+
+    {% if end_p < total_pages %}
+      {% if end_p < total_pages - 1 %}<span style="color:var(--muted);font-size:13px;padding:0 2px;">…</span>{% endif %}
+      <a href="/?{{ qs }}&page={{ total_pages }}"
+         style="padding:7px 11px;border-radius:8px;border:1.5px solid var(--border);
+                background:#fff;color:var(--navy);font-weight:600;font-size:13px;
+                text-decoration:none;">{{ total_pages }}</a>
+    {% endif %}
+
+    {# Next #}
+    {% if page < total_pages %}
+      <a href="/?{{ qs }}&page={{ page + 1 }}"
+         style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);
+                background:#fff;color:var(--navy);font-weight:700;font-size:13px;
+                text-decoration:none;transition:all .15s;"
+         onmouseover="this.style.background='var(--surface)'"
+         onmouseout="this.style.background='#fff'">Next ›</a>
+    {% else %}
+      <span style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);
+                   background:var(--surface);color:var(--muted);font-size:13px;">Next ›</span>
+    {% endif %}
+
+  </div>
+  {% endif %}
   {% else %}
   <div class="empty">
     <div class="empty-icon">📭</div>
@@ -548,6 +623,13 @@ function clearField(name, val='') {
   const sd = document.getElementById('slip-date');
   if (sd) sd.value = new Date().toISOString().slice(0,10);
 })();
+
+function changePerPage(val) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('per_page', val);
+  url.searchParams.set('page', 1);
+  window.location = url.toString();
+}
 
 function rowClick(e, docId) {
   if (e.target.type === 'checkbox') return;

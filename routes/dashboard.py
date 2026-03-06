@@ -66,13 +66,33 @@ def index():
         filtered = [d for d in filtered
                     if (d.get("created_at", "") or "")[11:16] <= filter_time_to]
 
+    # Pagination
+    try:
+        per_page = int(request.args.get("per_page", 25))
+    except ValueError:
+        per_page = 25
+    if per_page not in (10, 25, 50, 100):
+        per_page = 25
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except ValueError:
+        page = 1
+
+    total       = len(filtered)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page        = min(page, total_pages)
+    start       = (page - 1) * per_page
+    paginated   = filtered[start : start + per_page]
+
     return render_template("index.html",
-        docs=filtered, stats=get_stats(docs),
+        docs=paginated, stats=get_stats(docs),
         search=search, filter_status=filter_status,
         filter_type=filter_type, filter_date=filter_date,
         filter_time_from=filter_time_from, filter_time_to=filter_time_to,
         status_options=["All"] + STATUS_OPTIONS,
-        saved_offices=load_saved_offices())
+        saved_offices=load_saved_offices(),
+        page=page, total_pages=total_pages,
+        per_page=per_page, total=total)
 
 
 @dashboard_bp.route("/dashboard")

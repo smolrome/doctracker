@@ -137,8 +137,9 @@ def clear_database():
         if USE_DB:
             with get_conn() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT COUNT(*) FROM documents")
-                    count = cur.fetchone()[0]
+                    cur.execute("SELECT COUNT(*) AS cnt FROM documents")
+                    row = cur.fetchone()
+                    count = row["cnt"] if row else 0
                     cur.execute("DELETE FROM documents")
                 conn.commit()
         else:
