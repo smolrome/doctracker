@@ -69,3 +69,4 @@ doctracker/
 ```
 GET /api/docs    → All documents as JSON
 ```
+ WORK
