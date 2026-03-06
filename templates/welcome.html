@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Welcome — DepEd Leyte DocTracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --teal:#0E7490;--dark:#0A4D68;--navy:#0A2540;
+      --emerald:#059669;--surface:#F0F7FA;--border:#C8DDE8;
+      --text:#0A2540;--muted:#5A7A91;
+    }
+    body{font-family:'Source Sans 3',sans-serif;background:var(--surface);
+      min-height:100vh;color:var(--text);}
+
+    /* ── HERO ── */
+    .hero{background:linear-gradient(135deg,#0A2540 0%,#0A4D68 45%,#0E7490 80%,#059669 100%);
+      padding:0 0 0 0;position:relative;overflow:hidden;}
+    .hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:4px;
+      background:linear-gradient(90deg,#22D3EE,#34D399,#22D3EE);}
+    .hero-inner{max-width:680px;margin:0 auto;padding:40px 20px 48px;
+      display:flex;flex-direction:column;align-items:center;text-align:center;}
+    .hero-logo{width:96px;height:96px;border-radius:50%;object-fit:cover;
+      border:4px solid rgba(255,255,255,.5);box-shadow:0 12px 40px rgba(0,0,0,.35);
+      margin-bottom:20px;background:#fff;}
+    .hero-title{font-family:'Outfit',sans-serif;font-size:30px;font-weight:900;
+      color:#fff;line-height:1.2;margin-bottom:10px;}
+    .hero-sub{font-size:17px;color:rgba(255,255,255,.8);max-width:480px;line-height:1.6;}
+    .hero-badge{display:inline-flex;align-items:center;gap:8px;
+      background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.25);
+      border-radius:20px;padding:5px 16px;font-size:14px;font-weight:700;
+      color:rgba(255,255,255,.9);margin-top:14px;}
+
+    /* ── LOGGED IN STRIP ── */
+    .user-strip{background:rgba(255,255,255,.12);border-bottom:1.5px solid rgba(255,255,255,.15);
+      padding:10px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+    .user-strip-info{font-size:15px;color:rgba(255,255,255,.9);font-weight:600;}
+    .strip-btn{padding:7px 16px;border-radius:8px;font-size:14px;font-weight:700;
+      text-decoration:none;border:1.5px solid rgba(255,255,255,.35);
+      color:rgba(255,255,255,.9);background:rgba(255,255,255,.12);transition:all .15s;}
+    .strip-btn:hover{background:rgba(255,255,255,.25);}
+    .strip-btn.dashboard{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.5);}
+
+    /* ── PAGE BODY ── */
+    .page{max-width:680px;margin:0 auto;padding:28px 16px 60px;}
+
+    /* ── REGISTER/LOGIN SECTION (shown when not logged in) ── */
+    .auth-section{margin-bottom:28px;}
+    .auth-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+    .auth-card{background:#fff;border:2px solid var(--border);border-radius:20px;
+      padding:28px 22px;text-align:center;transition:all .2s;cursor:pointer;
+      text-decoration:none;display:block;}
+    .auth-card:hover{border-color:var(--teal);box-shadow:0 8px 28px rgba(14,116,144,.15);
+      transform:translateY(-3px);}
+    .auth-card.primary{border-color:#059669;background:linear-gradient(135deg,#ECFDF5,#F0FFF4);}
+    .auth-card.primary:hover{border-color:#059669;box-shadow:0 8px 28px rgba(5,150,105,.2);}
+    .auth-icon{font-size:44px;margin-bottom:12px;display:block;}
+    .auth-card-title{font-family:'Outfit',sans-serif;font-size:20px;font-weight:900;
+      color:var(--navy);margin-bottom:6px;}
+    .auth-card-sub{font-size:15px;color:var(--muted);line-height:1.5;}
+    .auth-card.primary .auth-card-title{color:#065F46;}
+
+    /* ── SECTION HEADER ── */
+    .section-hdr{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+    .section-title{font-family:'Outfit',sans-serif;font-size:20px;font-weight:900;color:var(--navy);}
+    .section-count{background:var(--teal);color:#fff;border-radius:20px;
+      padding:3px 12px;font-size:14px;font-weight:800;}
+
+    /* ── HOW IT WORKS (for non-logged-in) ── */
+    .steps-card{background:#fff;border:2px solid var(--border);border-radius:18px;
+      padding:24px;margin-bottom:24px;}
+    .steps-title{font-family:'Outfit',sans-serif;font-size:16px;font-weight:900;
+      color:var(--navy);margin-bottom:16px;padding-bottom:10px;
+      border-bottom:2px solid var(--border);}
+    .step-row{display:flex;align-items:flex-start;gap:14px;padding:10px 0;
+      border-bottom:1.5px solid var(--surface);}
+    .step-row:last-child{border-bottom:none;padding-bottom:0;}
+    .step-num{width:36px;height:36px;border-radius:50%;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;font-size:18px;
+      font-weight:900;font-family:'Outfit',sans-serif;background:var(--surface);
+      border:2px solid var(--border);}
+    .step-num.active{background:linear-gradient(135deg,var(--dark),var(--teal));
+      color:#fff;border-color:transparent;}
+    .step-body{flex:1;}
+    .step-label{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:3px;}
+    .step-desc{font-size:14px;color:var(--muted);line-height:1.5;}
+
+    /* ── OFFICE GRID ── */
+    .offices-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;}
+    .office-card{background:#fff;border:2px solid #7C3AED;border-radius:16px;
+      padding:18px;text-align:center;transition:all .2s;}
+    .office-card:hover{box-shadow:0 6px 24px rgba(124,58,237,.18);transform:translateY(-2px);}
+    .office-badge{display:inline-flex;align-items:center;gap:5px;
+      background:#EDE9FE;color:#5B21B6;border-radius:20px;padding:3px 12px;
+      font-size:12px;font-weight:800;margin-bottom:8px;}
+    .office-name{font-family:'Outfit',sans-serif;font-size:16px;font-weight:900;
+      color:var(--navy);margin-bottom:10px;line-height:1.3;}
+    .office-qr-img{width:min(130px,100%);aspect-ratio:1;border-radius:8px;
+      border:2px solid var(--border);display:block;margin:0 auto 10px;object-fit:contain;}
+    .office-btns{display:flex;flex-direction:column;gap:7px;}
+    .btn-submit-office{display:flex;align-items:center;justify-content:center;gap:6px;
+      padding:10px;border-radius:9px;font-size:15px;font-weight:800;font-family:inherit;
+      text-decoration:none;border:none;cursor:pointer;min-height:44px;
+      background:linear-gradient(135deg,#5B21B6,#7C3AED);color:#fff;
+      box-shadow:0 4px 12px rgba(124,58,237,.3);transition:all .15s;}
+    .btn-submit-office:hover{box-shadow:0 6px 18px rgba(124,58,237,.45);}
+    .btn-dl-office{display:flex;align-items:center;justify-content:center;gap:6px;
+      padding:8px;border-radius:9px;font-size:13px;font-weight:700;
+      border:2px solid var(--border);color:var(--muted);background:var(--surface);
+      text-decoration:none;transition:all .15s;}
+    .btn-dl-office:hover{border-color:#7C3AED;color:#5B21B6;}
+
+    .offices-empty{background:#fff;border:2px dashed var(--border);border-radius:16px;
+      padding:40px;text-align:center;color:var(--muted);font-size:16px;}
+
+    /* Search */
+    .offices-search{width:100%;padding:12px 16px;border:2px solid var(--border);
+      border-radius:12px;font-family:inherit;font-size:16px;background:#fff;
+      outline:none;margin-bottom:16px;transition:border .15s;}
+    .offices-search:focus{border-color:var(--teal);}
+
+    /* ── FOOTER ── */
+    .wfooter{text-align:center;padding:24px 16px;font-size:14px;color:var(--muted);
+      border-top:2px solid var(--border);margin-top:20px;}
+    .wfooter a{color:var(--teal);font-weight:700;text-decoration:none;}
+
+    @media(max-width:520px){
+      .auth-cards{grid-template-columns:1fr;}
+      .hero-title{font-size:24px;}
+      .offices-grid{grid-template-columns:1fr 1fr;}
+      .hero-inner{padding:32px 16px 40px;}
+    }
+    @media(max-width:360px){
+      .offices-grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  {% if logged_in %}
+  <div class="user-strip">
+    <div class="user-strip-info">👋 Welcome back, <strong>{{ current_user }}</strong></div>
+    <div style="display:flex;gap:8px;">
+      <a href="/" class="strip-btn dashboard">📋 Dashboard</a>
+      <a href="/logout" class="strip-btn">Sign Out</a>
+    </div>
+  </div>
+  {% endif %}
+  <div class="hero-inner">
+    <img src="/logo.png" alt="DepEd Leyte" class="hero-logo"/>
+    <div class="hero-title">DepEd Leyte Division<br/>Document Tracker</div>
+    <div class="hero-sub">
+      Submit your documents, track their status in real time, and receive a QR code to pick them up — all from your phone.
+    </div>
+    <div class="hero-badge">🏫 Schools Division of Leyte — Division Office</div>
+  </div>
+</div>
+
+<div class="page">
+
+  {% if not logged_in %}
+  <!-- ══════════════════════════════════
+       NOT LOGGED IN: Register / Login + How It Works
+  ══════════════════════════════════ -->
+  <div class="auth-section">
+    <div class="auth-cards" style="margin-bottom:20px;">
+
+      <a href="/client/register" class="auth-card primary">
+        <span class="auth-icon">✍️</span>
+        <div class="auth-card-title">I'm New — Register</div>
+        <div class="auth-card-sub">Create a free account to start submitting documents and tracking their status.</div>
+      </a>
+
+      <a href="/client/login" class="auth-card">
+        <span class="auth-icon">🔑</span>
+        <div class="auth-card-title">I Have an Account</div>
+        <div class="auth-card-sub">Sign in to view your documents and submit new ones.</div>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="steps-card" style="margin-bottom:24px;">
+    <div class="steps-title">📖 How It Works</div>
+    <div class="step-row">
+      <div class="step-num active">1</div>
+      <div class="step-body">
+        <div class="step-label">Create your account</div>
+        <div class="step-desc">Register for free using just your name and a password. No email required.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num active">2</div>
+      <div class="step-body">
+        <div class="step-label">Submit your documents</div>
+        <div class="step-desc">Choose the office you're submitting to, enter your document details, and submit your list.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num active">3</div>
+      <div class="step-body">
+        <div class="step-label">Get a QR code receipt</div>
+        <div class="step-desc">Each document gets a unique QR code. Present it at the office window when dropping off your physical documents.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num active">4</div>
+      <div class="step-body">
+        <div class="step-label">Track & pick up</div>
+        <div class="step-desc">Check your document status anytime. When it's ready, the staff scans your pickup QR to release it.</div>
+      </div>
+    </div>
+  </div>
+
+  {% if saved_offices %}
+  <!-- Show office list even before login so they know what offices are here -->
+  <div class="section-hdr">
+    <div class="section-title">🏢 Available Offices</div>
+    <span class="section-count">{{ saved_offices|length }}</span>
+  </div>
+  <p style="font-size:15px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+    After registering, you can submit documents to any of these offices.
+  </p>
+  <div class="offices-grid">
+    {% for office in saved_offices %}
+    <div class="office-card">
+      <div class="office-badge">🏢 Office</div>
+      <div class="office-name">{{ office.office_name }}</div>
+      <a href="/client/register" class="btn-submit-office">✍️ Register to Submit</a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <!-- ══════════════════════════════════
+       LOGGED IN: Show office submission QRs
+  ══════════════════════════════════ -->
+
+  {% if current_role == 'client' %}
+  <!-- Client: submit button + office grid -->
+  <div style="background:linear-gradient(135deg,#ECFDF5,#F0FFF4);border:2px solid #059669;
+      border-radius:18px;padding:20px 22px;margin-bottom:22px;
+      display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:200px;">
+      <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;color:#065F46;margin-bottom:4px;">
+        ✅ You're signed in, {{ current_user }}!
+      </div>
+      <div style="font-size:15px;color:#047857;line-height:1.5;">
+        Choose an office below to submit your documents.
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a href="/client" style="padding:11px 20px;border-radius:10px;background:#059669;color:#fff;
+          font-weight:800;font-size:15px;text-decoration:none;border:none;">📋 My Documents</a>
+    </div>
+  </div>
+
+  {% else %}
+  <!-- Staff/Admin: dashboard button -->
+  <div style="background:linear-gradient(135deg,#EFF6FF,#F0F9FF);border:2px solid #BFDBFE;
+      border-radius:18px;padding:20px 22px;margin-bottom:22px;
+      display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:200px;">
+      <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;color:#1D4ED8;margin-bottom:4px;">
+        👋 Welcome back, {{ current_user }}!
+      </div>
+      <div style="font-size:15px;color:#3B82F6;">
+        You're viewing the client welcome page.
+      </div>
+    </div>
+    <a href="/" style="padding:11px 20px;border-radius:10px;background:#1D4ED8;color:#fff;
+        font-weight:800;font-size:15px;text-decoration:none;">📊 Go to Dashboard</a>
+  </div>
+  {% endif %}
+
+  <!-- Office QR grid -->
+  {% if saved_offices %}
+  <div class="section-hdr">
+    <div class="section-title">📋 Submit to an Office</div>
+    <span class="section-count">{{ saved_offices|length }}</span>
+  </div>
+
+  {% if saved_offices|length > 4 %}
+  <input type="text" class="offices-search" id="office-search"
+         placeholder="🔍 Search office name..." oninput="filterOffices(this.value)"
+         autocomplete="off"/>
+  {% endif %}
+
+  <div class="offices-grid" id="offices-grid">
+    {% for office in saved_offices %}
+    {% set sub_slug = office.office_slug + '-sub' %}
+    <div class="office-card" data-name="{{ office.office_name | lower }}">
+      <div class="office-badge">📋 Submit</div>
+      <div class="office-name">{{ office.office_name }}</div>
+      <img src="/office-qr/{{ sub_slug }}.png" alt="{{ office.office_name }} QR"
+           class="office-qr-img" loading="lazy"/>
+      <div class="office-btns">
+        {% if current_role == 'client' %}
+        <a href="/client/submit?office_slug={{ office.office_slug|urlencode }}&office_name={{ office.office_name|urlencode }}"
+           class="btn-submit-office">📋 Submit Here</a>
+        {% else %}
+        <a href="/office-action/{{ sub_slug }}" class="btn-submit-office">📋 Submit Docs</a>
+        {% endif %}
+        <a href="/office-qr/{{ sub_slug }}.png" download="{{ sub_slug }}.png" class="btn-dl-office">
+          ⬇️ Download QR
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="offices-empty">
+    <div style="font-size:48px;margin-bottom:12px;">🏢</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;color:var(--navy);margin-bottom:6px;">No offices set up yet</div>
+    <div>Check back soon — offices will appear here once they are registered in the system.</div>
+  </div>
+  {% endif %}
+
+  {% endif %}
+
+</div>
+
+<div class="wfooter">
+  DepEd Leyte Division — Document Tracker &nbsp;|&nbsp;
+  {% if not logged_in %}
+  <a href="/client/login">Sign In</a> &nbsp;·&nbsp; <a href="/client/register">Register</a>
+  {% else %}
+  <a href="/">Staff Dashboard</a>
+  {% endif %}
+</div>
+
+{% if saved_offices|length > 4 %}
+<script>
+function filterOffices(q) {
+  q = q.toLowerCase().trim();
+  document.querySelectorAll('#offices-grid .office-card').forEach(card => {
+    card.style.display = (!q || card.dataset.name.includes(q)) ? '' : 'none';
+  });
+}
+</script>
+{% endif %}
+
+</body>
+</html>

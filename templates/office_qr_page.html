@@ -6,6 +6,66 @@
   <div class="page-title">🖨️ Office QR Codes</div>
 </div>
 
+{% if current_role == 'admin' %}
+<!-- ── APP WELCOME QR — admin only ── -->
+<style>
+  .app-qr-banner{background:linear-gradient(135deg,#0A2540,#1D4ED8);
+    border-radius:18px;padding:20px 22px;margin-bottom:22px;
+    display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+  .app-qr-left{flex:1;min-width:200px;}
+  .app-qr-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;
+    color:#fff;margin-bottom:6px;display:flex;align-items:center;gap:10px;}
+  .app-qr-desc{font-size:15px;color:rgba(255,255,255,.8);line-height:1.6;margin-bottom:14px;}
+  .app-qr-badges{display:flex;gap:8px;flex-wrap:wrap;}
+  .app-qr-badge{padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700;
+    background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.25);
+    color:rgba(255,255,255,.9);}
+  .app-qr-right{display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0;}
+  .app-qr-img{width:140px;height:140px;border-radius:14px;border:4px solid rgba(255,255,255,.3);
+    background:#fff;display:block;}
+  .app-qr-actions{display:flex;gap:8px;}
+  .btn-app-qr{padding:10px 18px;border-radius:10px;font-family:inherit;
+    font-size:14px;font-weight:800;text-decoration:none;cursor:pointer;
+    border:none;min-height:42px;display:inline-flex;align-items:center;gap:7px;
+    transition:all .15s;}
+  .btn-app-qr.primary{background:#fff;color:#1D4ED8;}
+  .btn-app-qr.primary:hover{background:#DBEAFE;}
+  .btn-app-qr.secondary{background:rgba(255,255,255,.15);color:#fff;
+    border:1.5px solid rgba(255,255,255,.3);}
+  .btn-app-qr.secondary:hover{background:rgba(255,255,255,.25);}
+</style>
+
+<div class="app-qr-banner">
+  <div class="app-qr-left">
+    <div class="app-qr-title">
+      📱 App Welcome QR Code
+      <span style="background:rgba(255,255,255,.2);border-radius:8px;padding:2px 10px;font-size:12px;">Admin Only</span>
+    </div>
+    <div class="app-qr-desc">
+      Print this QR code and post it anywhere — office entrances, bulletin boards, waiting areas.
+      When clients scan it, they land on the <strong>welcome page</strong> which explains the app,
+      lets them register or log in, and shows all available offices to submit documents to.
+    </div>
+    <div class="app-qr-badges">
+      <span class="app-qr-badge">✍️ Register new clients</span>
+      <span class="app-qr-badge">🔑 Returning clients sign in</span>
+      <span class="app-qr-badge">🏢 Browse all offices</span>
+    </div>
+  </div>
+  <div class="app-qr-right">
+    <img src="/app-qr.png" alt="App Welcome QR" class="app-qr-img"/>
+    <div class="app-qr-actions">
+      <a href="/app-qr.png" download="doctracker-app-qr.png" class="btn-app-qr primary">
+        ⬇️ Download
+      </a>
+      <a href="/welcome" target="_blank" class="btn-app-qr secondary">
+        👁️ Preview
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <style>
   .gen-card{background:#fff;border:2px solid var(--border);border-radius:var(--radius);
     padding:22px;margin-bottom:20px;box-shadow:0 2px 10px rgba(10,45,100,.05);}

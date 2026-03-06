@@ -2470,24 +2470,45 @@ def office_qr_png(action):
     safe = re.sub(r'[^a-zA-Z0-9_-]', '_', action)
     return send_file(buf, mimetype="image/png", download_name=f"qr-{safe}.png")
 
-@app.route("/client-reg-qr.png")
+@app.route("/welcome")
+def welcome():
+    """Public welcome/landing page — linked from the app QR code.
+       Shows register/login for new visitors; shows office QRs once logged in.
+    """
+    saved_offices = load_saved_offices()
+    base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
+    return render_template("welcome.html",
+        saved_offices=saved_offices,
+        base=base,
+        logged_in=is_logged_in(),
+        current_role=session.get("role",""),
+        current_user=session.get("full_name") or session.get("username",""),
+    )
+
+@app.route("/app-qr.png")
 @login_required
-def client_reg_qr():
-    """QR code for client registration — admin prints and posts at office."""
+def app_qr():
+    """QR code pointing to /welcome — admin prints and posts anywhere to introduce the app."""
     if session.get("role") != "admin":
         return "Admin only", 403
     base = os.environ.get("APP_URL", request.host_url.rstrip("/"))
-    url = base + "/client/register"
+    url  = base + "/welcome"
     qr = qrcode.QRCode(version=None,
                         error_correction=qrcode.constants.ERROR_CORRECT_M,
                         box_size=10, border=4)
     qr.add_data(url)
     qr.make(fit=True)
-    img = qr.make_image(fill_color="#0D1B2A", back_color="white")
+    img = qr.make_image(fill_color="#0A2540", back_color="white")
     buf = BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
-    return send_file(buf, mimetype="image/png", download_name="client-registration-qr.png")
+    return send_file(buf, mimetype="image/png", download_name="doctracker-app-qr.png")
+
+@app.route("/client-reg-qr.png")
+@login_required
+def client_reg_qr():
+    """Legacy — redirect to app-qr."""
+    return redirect(url_for("app_qr"))
 
 def make_office_reg_code(office_slug):
     """Generate a stable per-office registration code using HMAC."""
