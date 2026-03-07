@@ -183,7 +183,7 @@ def create_routing_slip():
 @login_required
 def view_routing_slip(slip_id):
     import base64
-    from services.qr import make_slip_qr_png, APP_URL
+    from services.qr import make_slip_qr_png, get_base_url
 
     slip = get_routing_slip(slip_id)
     if not slip:
@@ -191,16 +191,20 @@ def view_routing_slip(slip_id):
         return redirect(url_for("dashboard.index"))
     docs = [d for d in (get_doc(did) for did in slip["doc_ids"]) if d]
 
-    # Generate QR PNGs for both tokens (embedded as base64 for immediate display/print)
-    recv_qr_b64 = rel_qr_b64 = None
     from_office = slip.get("from_office", "DepEd Leyte Division")
     destination = slip.get("destination", "")
     slip_no     = slip.get("slip_no", slip_id)
 
+    # Use APP_URL if set, otherwise fall back to current request host
+    base_url = get_base_url(request.host_url)
+
+    recv_qr_b64 = rel_qr_b64 = None
+
     if slip.get("recv_token"):
         try:
             png = make_slip_qr_png(slip["recv_token"], "SLIP_RECEIVE",
-                                   slip_no, destination, from_office)
+                                   slip_no, destination, from_office,
+                                   base_url=base_url)
             recv_qr_b64 = base64.b64encode(png).decode()
         except Exception as e:
             print(f"recv QR error: {e}")
@@ -208,7 +212,8 @@ def view_routing_slip(slip_id):
     if slip.get("rel_token"):
         try:
             png = make_slip_qr_png(slip["rel_token"], "SLIP_RELEASE",
-                                   slip_no, destination, from_office)
+                                   slip_no, destination, from_office,
+                                   base_url=base_url)
             rel_qr_b64 = base64.b64encode(png).decode()
         except Exception as e:
             print(f"rel QR error: {e}")

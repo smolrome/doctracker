@@ -525,12 +525,6 @@ function clearField(name, val='') {
             {% if doc.doc_id %}<div class="doc-id">{{ doc.doc_id }}</div>{% endif %}
             {% if doc.category %}<div class="doc-cat">{{ doc.category }}</div>{% endif %}
             {% if doc.submitted_by %}<div style="font-size:11px;color:var(--emerald);margin-top:2px;font-weight:700;">📱 Client</div>{% endif %}
-            {% if doc.status == 'In Transit' %}
-            <div style="display:inline-flex;align-items:center;gap:5px;margin-top:3px;
-              background:#DBEAFE;border:1.5px solid #93C5FD;border-radius:8px;
-              padding:2px 9px;font-size:12px;font-weight:700;color:#1D4ED8;">
-              🚌 → {{ doc.forwarded_to or 'In Transit' }}
-            </div>{% endif %}
           </td>
           <td style="font-size:var(--fs-sm);">{{ doc.sender_org or '—' }}</td>
           <td style="font-size:var(--fs-sm);">{{ doc.sender_name or '—' }}</td>
@@ -551,19 +545,14 @@ function clearField(name, val='') {
             {% elif s=='Received' %}<span class="badge badge-received">{{ s }}</span>
             {% elif s=='In Review'%}<span class="badge badge-review">{{ s }}</span>
             {% elif s=='In Transit' %}
-              <span class="badge badge-transit">{{ s }}</span>
-              {% if doc.from_office or doc.forwarded_to %}
-              <div style="margin-top:5px;font-size:11px;font-weight:700;color:#374151;
-                          display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
-                {% if doc.from_office %}
-                <span style="background:#F1F5F9;border:1px solid #CBD5E1;border-radius:5px;
-                             padding:2px 6px;color:#475569;">{{ doc.from_office[:20] }}</span>
-                <span style="color:#0E7490;">→</span>
-                {% endif %}
-                {% if doc.forwarded_to %}
-                <span style="background:#DBEAFE;border:1px solid #93C5FD;border-radius:5px;
-                             padding:2px 6px;color:#1D4ED8;">{{ doc.forwarded_to[:20] }}</span>
-                {% endif %}
+              <span class="badge badge-transit">🚌 In Transit</span>
+              {% if doc.forwarded_to %}
+              <div style="margin-top:5px;display:flex;align-items:center;gap:4px;">
+                <span style="font-size:11px;color:var(--muted);font-weight:600;">→</span>
+                <span style="background:#DBEAFE;border:1px solid #93C5FD;border-radius:6px;
+                             padding:2px 8px;font-size:11px;font-weight:700;color:#1D4ED8;
+                             max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+                             display:inline-block;">{{ doc.forwarded_to }}</span>
               </div>
               {% endif %}
             {% elif s=='Released' %}<span class="badge badge-released">{{ s }}</span>

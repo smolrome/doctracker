@@ -530,11 +530,11 @@ def use_slip_token(token: str):
 
 def make_slip_qr_png(token: str, token_type: str,
                      slip_no: str, destination: str, from_office: str,
-                     box_size: int = 10) -> bytes:
+                     box_size: int = 10, base_url: str = "") -> bytes:
     """Labeled QR PNG for routing slip RECEIVE or RELEASE scan."""
     from PIL import Image, ImageDraw, ImageFont
 
-    base = APP_URL or ""
+    base = base_url.rstrip("/") or APP_URL or ""
     url  = f"{base}/slip-scan/{token}"
 
     if "RECEIVE" in token_type:

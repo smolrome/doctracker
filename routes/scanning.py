@@ -442,14 +442,16 @@ def slip_scan(token):
 
     # If SLIP_RECEIVE: generate fresh RELEASE QR for the receiving office
     if token_type == "SLIP_RECEIVE":
+        from services.qr import get_base_url
+        base_url = get_base_url(request.host_url)
         new_rel_token = create_slip_token(slip_id, "SLIP_RELEASE")
         png = make_slip_qr_png(new_rel_token, "SLIP_RELEASE",
-                               slip_no, destination, from_office)
+                               slip_no, destination, from_office,
+                               base_url=base_url)
         next_qr_b64 = base64.b64encode(png).decode()
         slip["rel_token"] = new_rel_token
         from services.misc import save_routing_slip
         save_routing_slip(slip)
-
     audit_log(f"slip_scan_{token_type.lower()}",
               f"slip={slip_no} docs={len(docs_updated)} by={actor}",
               username=session.get("username", ""), ip=get_client_ip())
