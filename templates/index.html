@@ -1,32 +1,108 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- Stats Row -->
+<!-- Stats Row — clickable filters -->
+<style>
+  .stat-card {
+    cursor: pointer; text-decoration: none; display: block;
+    transition: transform .18s, box-shadow .18s, border-color .18s;
+  }
+  .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(10,45,100,.14); }
+  .stat-card.active {
+    border-color: transparent;
+    box-shadow: 0 0 0 3px var(--stat-accent, #0E7490), 0 6px 24px rgba(10,45,100,.12);
+  }
+  .stat-card.active .stat-label { color: var(--stat-accent, #0E7490); }
+  .stat-card.active .stat-num   { color: var(--stat-accent, #0E7490); }
+  .stat-card.yellow { --stat-accent: #D97706; }
+  .stat-card.teal   { --stat-accent: #0E7490; }
+  .stat-card.blue   { --stat-accent: #1D4ED8; }
+  .stat-card.green  { --stat-accent: #059669; }
+  .stat-card.red    { --stat-accent: #DC2626; }
+  .stat-card.blue::before { background: linear-gradient(90deg, #1D4ED8, #3B82F6); }
+  .stat-card-inner { pointer-events: none; }
+  .stat-clear {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 700; color: var(--stat-accent, #0E7490);
+    margin-top: 5px; opacity: 0;
+    transition: opacity .15s;
+  }
+  .stat-card.active .stat-clear { opacity: 1; }
+  .stat-card:not(.active):hover::after {
+    content: 'click to filter';
+    position: absolute; bottom: 8px; right: 10px;
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted); opacity: .7;
+  }
+  .stat-card { position: relative; }
+</style>
+
+<script>
+function statFilter(status) {
+  // Preserve current search/date/per_page, just swap status
+  const params = new URLSearchParams(window.location.search);
+  params.set('status', status);
+  params.delete('page'); // reset to page 1
+  window.location.href = '/?' + params.toString();
+}
+</script>
+
 <div class="stats-grid">
-  <div class="stat-card">
-    <div class="stat-num">{{ stats.total }}</div>
-    <div class="stat-label">📋 Total</div>
-  </div>
-  <div class="stat-card yellow">
-    <div class="stat-num">{{ stats.pending }}</div>
-    <div class="stat-label">⏳ Pending</div>
-  </div>
-  <div class="stat-card teal">
-    <div class="stat-num">{{ stats.in_review }}</div>
-    <div class="stat-label">🔍 In Review</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-num">{{ stats.in_transit }}</div>
-    <div class="stat-label">🚌 In Transit</div>
-  </div>
-  <div class="stat-card green">
-    <div class="stat-num">{{ stats.released }}</div>
-    <div class="stat-label">✅ Released</div>
-  </div>
-  <div class="stat-card red">
-    <div class="stat-num">{{ stats.on_hold }}</div>
-    <div class="stat-label">⏸️ On Hold</div>
-  </div>
+
+  <a class="stat-card {% if filter_status == 'All' %}active{% endif %}"
+     href="#" onclick="event.preventDefault();statFilter('All')" title="Show all documents">
+    <div class="stat-card-inner">
+      <div class="stat-num">{{ stats.total }}</div>
+      <div class="stat-label">📋 Total</div>
+      {% if filter_status == 'All' %}<div class="stat-clear">● Showing all</div>{% endif %}
+    </div>
+  </a>
+
+  <a class="stat-card yellow {% if filter_status == 'Pending' %}active{% endif %}"
+     href="#" onclick="event.preventDefault();statFilter('Pending')" title="Filter: Pending">
+    <div class="stat-card-inner">
+      <div class="stat-num">{{ stats.pending }}</div>
+      <div class="stat-label">⏳ Pending</div>
+      {% if filter_status == 'Pending' %}<div class="stat-clear">● Filtered</div>{% endif %}
+    </div>
+  </a>
+
+  <a class="stat-card teal {% if filter_status == 'In Review' %}active{% endif %}"
+     href="#" onclick="event.preventDefault();statFilter('In Review')" title="Filter: In Review">
+    <div class="stat-card-inner">
+      <div class="stat-num">{{ stats.in_review }}</div>
+      <div class="stat-label">🔍 In Review</div>
+      {% if filter_status == 'In Review' %}<div class="stat-clear">● Filtered</div>{% endif %}
+    </div>
+  </a>
+
+  <a class="stat-card blue {% if filter_status == 'In Transit' %}active{% endif %}"
+     href="#" onclick="event.preventDefault();statFilter('In Transit')" title="Filter: In Transit">
+    <div class="stat-card-inner">
+      <div class="stat-num">{{ stats.in_transit }}</div>
+      <div class="stat-label">🚌 In Transit</div>
+      {% if filter_status == 'In Transit' %}<div class="stat-clear">● Filtered</div>{% endif %}
+    </div>
+  </a>
+
+  <a class="stat-card green {% if filter_status == 'Released' %}active{% endif %}"
+     href="#" onclick="event.preventDefault();statFilter('Released')" title="Filter: Released">
+    <div class="stat-card-inner">
+      <div class="stat-num">{{ stats.released }}</div>
+      <div class="stat-label">✅ Released</div>
+      {% if filter_status == 'Released' %}<div class="stat-clear">● Filtered</div>{% endif %}
+    </div>
+  </a>
+
+  <a class="stat-card red {% if filter_status == 'On Hold' %}active{% endif %}"
+     href="#" onclick="event.preventDefault();statFilter('On Hold')" title="Filter: On Hold">
+    <div class="stat-card-inner">
+      <div class="stat-num">{{ stats.on_hold }}</div>
+      <div class="stat-label">⏸️ On Hold</div>
+      {% if filter_status == 'On Hold' %}<div class="stat-clear">● Filtered</div>{% endif %}
+    </div>
+  </a>
+
 </div>
 
 <!-- ══════════════════════════════════════════

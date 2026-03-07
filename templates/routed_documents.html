@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block title %}Routed Documents — DocTracker{% endblock %}
+
+{% block content %}
+<style>
+  .rd-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 24px; flex-wrap: wrap;
+  }
+  .rd-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.55rem; font-weight: 900; color: var(--navy); flex: 1;
+  }
+  .rd-subtitle { font-size: .82rem; color: var(--muted); font-weight: 500; margin-top: 1px; }
+
+  /* slip card */
+  .slip-block {
+    background: #fff; border-radius: 16px; margin-bottom: 28px;
+    box-shadow: 0 4px 24px rgba(10,37,64,.09), 0 1px 4px rgba(10,37,64,.05);
+    overflow: hidden; border: 1.5px solid #E2EAF1;
+  }
+
+  /* slip header */
+  .slip-head {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 22px; border-bottom: 1.5px solid #E2EAF1;
+    background: linear-gradient(135deg, #F8FAFC, #EFF6FF);
+    flex-wrap: wrap;
+  }
+  .slip-no-badge {
+    font-family: 'JetBrains Mono', monospace; font-size: .78rem;
+    font-weight: 700; background: var(--navy); color: #fff;
+    padding: 4px 12px; border-radius: 7px; white-space: nowrap;
+  }
+  .slip-route {
+    display: flex; align-items: center; gap: 8px; flex: 1;
+    flex-wrap: wrap; min-width: 180px;
+  }
+  .slip-from {
+    background: #F1F5F9; border: 1px solid #CBD5E1;
+    border-radius: 7px; padding: 4px 11px;
+    font-size: .8rem; font-weight: 700; color: #475569;
+  }
+  .slip-arrow { font-size: 1.1rem; color: var(--teal); font-weight: 900; }
+  .slip-to {
+    background: #DBEAFE; border: 1px solid #93C5FD;
+    border-radius: 7px; padding: 4px 11px;
+    font-size: .8rem; font-weight: 700; color: #1D4ED8;
+  }
+  .slip-meta {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    font-size: .75rem; color: var(--muted); font-weight: 600;
+  }
+  .slip-meta span { display: flex; align-items: center; gap: 4px; }
+
+  .slip-view-link {
+    font-size: .78rem; font-weight: 700; color: var(--teal);
+    text-decoration: none; padding: 5px 12px;
+    border: 1.5px solid var(--teal); border-radius: 8px;
+    transition: all .15s; white-space: nowrap;
+  }
+  .slip-view-link:hover { background: var(--teal); color: #fff; }
+
+  /* documents mini-table */
+  .doc-table-wrap { padding: 0 22px 16px; }
+  .doc-mini-table {
+    width: 100%; border-collapse: collapse; font-size: .82rem;
+    margin-top: 14px;
+  }
+  .doc-mini-table th {
+    padding: 8px 12px; text-align: left;
+    font-size: .7rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--muted);
+    border-bottom: 2px solid #E2EAF1;
+  }
+  .doc-mini-table td {
+    padding: 9px 12px; border-bottom: 1px solid #F1F5F9;
+    color: var(--navy); vertical-align: middle;
+  }
+  .doc-mini-table tr:last-child td { border-bottom: none; }
+  .doc-mini-table tbody tr:hover td { background: #F8FAFC; }
+  .doc-name-cell { font-weight: 700; }
+  .doc-ref-cell  { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--muted); margin-top: 2px; }
+
+  /* batch update bar */
+  .batch-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 22px; background: #F8FAFC;
+    border-top: 1.5px solid #E2EAF1; flex-wrap: wrap;
+  }
+  .batch-label {
+    font-size: .78rem; font-weight: 800; color: var(--navy);
+    text-transform: uppercase; letter-spacing: .06em; white-space: nowrap;
+  }
+  .batch-select {
+    padding: 7px 12px; border-radius: 8px; border: 1.5px solid #CBD5E1;
+    font-family: 'Outfit', sans-serif; font-size: .82rem; font-weight: 600;
+    color: var(--navy); background: #fff; cursor: pointer;
+    transition: border-color .15s;
+  }
+  .batch-select:focus { outline: none; border-color: var(--teal); }
+  .batch-notes {
+    flex: 1; min-width: 160px;
+    padding: 7px 12px; border-radius: 8px; border: 1.5px solid #CBD5E1;
+    font-family: 'Outfit', sans-serif; font-size: .82rem; font-weight: 500;
+    color: var(--navy); background: #fff;
+  }
+  .batch-notes:focus { outline: none; border-color: var(--teal); }
+  .batch-btn {
+    padding: 8px 20px; border-radius: 9px; border: none; cursor: pointer;
+    font-family: 'Outfit', sans-serif; font-size: .82rem; font-weight: 800;
+    background: var(--teal); color: #fff;
+    box-shadow: 0 2px 8px rgba(14,116,144,.25);
+    transition: all .15s; white-space: nowrap;
+  }
+  .batch-btn:hover { background: #0891B2; transform: translateY(-1px); }
+
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+    color: var(--muted); font-size: .95rem;
+  }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+
+  /* status badges inline */
+  .s-badge {
+    display: inline-block; padding: 2px 9px; border-radius: 6px;
+    font-size: .72rem; font-weight: 700;
+  }
+  .s-pending   { background:#FEF3C7; color:#92400E; }
+  .s-transit   { background:#DBEAFE; color:#1E40AF; }
+  .s-received  { background:#D1FAE5; color:#065F46; }
+  .s-review    { background:#EDE9FE; color:#5B21B6; }
+  .s-released  { background:#F0FDF4; color:#166534; }
+  .s-hold      { background:#FEE2E2; color:#991B1B; }
+  .s-archived  { background:#F1F5F9; color:#475569; }
+</style>
+
+<div class="rd-header">
+  <div>
+    <div class="rd-title">🚌 Routed Documents</div>
+    <div class="rd-subtitle">View all routing slips and update document statuses in batch</div>
+  </div>
+  <a href="/" class="btn" style="font-size:.82rem;padding:8px 18px;">← Back to Dashboard</a>
+</div>
+
+{% if not slips %}
+<div class="empty-state">
+  <div class="icon">📭</div>
+  <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">No routing slips yet</div>
+  <div>When documents are routed via a routing slip, they will appear here.</div>
+</div>
+{% else %}
+
+{% for slip in slips %}
+<div class="slip-block">
+
+  <!-- Slip header -->
+  <div class="slip-head">
+    <span class="slip-no-badge">{{ slip.slip_no }}</span>
+    <div class="slip-route">
+      <span class="slip-from">{{ slip.from_office or 'DepEd Leyte Division' }}</span>
+      <span class="slip-arrow">→</span>
+      <span class="slip-to">{{ slip.destination }}</span>
+    </div>
+    <div class="slip-meta">
+      <span>📅 {{ slip.slip_date or slip.created_at[:10] }}</span>
+      <span>📄 {{ slip.docs|length }} doc{{ 's' if slip.docs|length != 1 else '' }}</span>
+      <span>👤 {{ slip.prepared_by }}</span>
+    </div>
+    <a href="/routing-slip/{{ slip.id }}" class="slip-view-link">View Slip →</a>
+  </div>
+
+  <!-- Documents table -->
+  <div class="doc-table-wrap">
+    {% if slip.docs %}
+    <table class="doc-mini-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Document</th>
+          <th>Unit / Office</th>
+          <th>Sender</th>
+          <th>Current Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for doc in slip.docs %}
+        <tr>
+          <td style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.75rem;">{{ loop.index }}</td>
+          <td>
+            <div class="doc-name-cell">{{ doc.doc_name }}</div>
+            {% if doc.doc_id %}<div class="doc-ref-cell">{{ doc.doc_id }}</div>{% endif %}
+          </td>
+          <td>{{ doc.sender_org or '—' }}</td>
+          <td>{{ doc.sender_name or '—' }}</td>
+          <td>
+            {% set s = doc.status %}
+            {% if s == 'Pending' %}     <span class="s-badge s-pending">{{ s }}</span>
+            {% elif s == 'In Transit' %}<span class="s-badge s-transit">🚌 {{ s }}</span>
+            {% elif s == 'Received' %}  <span class="s-badge s-received">{{ s }}</span>
+            {% elif s == 'In Review' %} <span class="s-badge s-review">{{ s }}</span>
+            {% elif s == 'Released' %}  <span class="s-badge s-released">{{ s }}</span>
+            {% elif s == 'On Hold' %}   <span class="s-badge s-hold">{{ s }}</span>
+            {% else %}                  <span class="s-badge s-archived">{{ s }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div style="padding:16px;color:var(--muted);font-size:.82rem;">No documents found for this slip.</div>
+    {% endif %}
+  </div>
+
+  <!-- Batch status update bar -->
+  <form method="POST" action="/routing-slip/{{ slip.id }}/batch-status">
+    <div class="batch-bar">
+      <span class="batch-label">⚡ Update all {{ slip.docs|length }} docs:</span>
+      <select name="status" class="batch-select" required>
+        <option value="" disabled selected>— Select new status —</option>
+        <option value="Received">✅ Received</option>
+        <option value="In Review">🔍 In Review</option>
+        <option value="In Transit">🚌 In Transit</option>
+        <option value="Released">📤 Released</option>
+        <option value="On Hold">⏸ On Hold</option>
+        <option value="Pending">🕐 Pending</option>
+        <option value="Archived">🗄️ Archived</option>
+      </select>
+      <input type="text" name="notes" class="batch-notes"
+             placeholder="Optional note (e.g. Received by Chief)"/>
+      <button type="submit" class="batch-btn">Apply to All</button>
+    </div>
+  </form>
+
+</div>
+{% endfor %}
+
+{% endif %}
+{% endblock %}

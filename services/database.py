@@ -144,9 +144,12 @@ def _run_migrations(cur):
         # doc_qr_tokens
         "ALTER TABLE doc_qr_tokens ADD COLUMN IF NOT EXISTS used BOOLEAN DEFAULT FALSE",
         # routing_slips (added after initial deploy)
-        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS slip_date TEXT",
-        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS time_from TEXT",
-        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS time_to   TEXT",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS slip_date   TEXT",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS time_from   TEXT",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS time_to     TEXT",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS recv_token  TEXT",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS rel_token   TEXT",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS from_office TEXT",
     ]
     for sql in migrations:
         try:

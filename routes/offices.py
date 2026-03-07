@@ -198,25 +198,99 @@ def view_routing_slip(slip_id):
     # Use APP_URL if set, otherwise fall back to current request host
     base_url = get_base_url(request.host_url)
 
+    from services.qr import create_slip_token
+    from services.misc import save_routing_slip
+
     recv_qr_b64 = rel_qr_b64 = None
 
-    if slip.get("recv_token"):
-        try:
-            png = make_slip_qr_png(slip["recv_token"], "SLIP_RECEIVE",
-                                   slip_no, destination, from_office,
-                                   base_url=base_url)
-            recv_qr_b64 = base64.b64encode(png).decode()
-        except Exception as e:
-            print(f"recv QR error: {e}")
+    # Regenerate missing tokens (old slips created before token columns existed)
+    changed = False
+    if not slip.get("recv_token"):
+        slip["recv_token"] = create_slip_token(slip_id, "SLIP_RECEIVE")
+        changed = True
+    if not slip.get("rel_token"):
+        slip["rel_token"] = create_slip_token(slip_id, "SLIP_RELEASE")
+        changed = True
+    if changed:
+        save_routing_slip(slip)
 
-    if slip.get("rel_token"):
-        try:
-            png = make_slip_qr_png(slip["rel_token"], "SLIP_RELEASE",
-                                   slip_no, destination, from_office,
-                                   base_url=base_url)
-            rel_qr_b64 = base64.b64encode(png).decode()
-        except Exception as e:
-            print(f"rel QR error: {e}")
+    try:
+        png = make_slip_qr_png(slip["recv_token"], "SLIP_RECEIVE",
+                               slip_no, destination, from_office,
+                               base_url=base_url)
+        recv_qr_b64 = base64.b64encode(png).decode()
+    except Exception as e:
+        print(f"recv QR error: {e}")
+
+    try:
+        png = make_slip_qr_png(slip["rel_token"], "SLIP_RELEASE",
+                               slip_no, destination, from_office,
+                               base_url=base_url)
+        rel_qr_b64 = base64.b64encode(png).decode()
+    except Exception as e:
+        print(f"rel QR error: {e}")
 
     return render_template("routing_slip.html", slip=slip, docs=docs,
                            recv_qr_b64=recv_qr_b64, rel_qr_b64=rel_qr_b64)
+
+
+@offices_bp.route("/routed-documents")
+@login_required
+def routed_documents():
+    """Staff view — all routing slips with their documents and batch status update."""
+    from services.misc import get_all_routing_slips
+    from services.documents import get_doc
+    slips = get_all_routing_slips()
+    # Attach full doc objects to each slip
+    for slip in slips:
+        slip["docs"] = [d for d in (get_doc(did) for did in slip.get("doc_ids", [])) if d]
+    return render_template("routed_documents.html", slips=slips)
+
+
+@offices_bp.route("/routing-slip/<slip_id>/batch-status", methods=["POST"])
+@login_required
+def batch_update_slip_status(slip_id):
+    """Batch update status for all documents in a routing slip."""
+    from services.misc import get_routing_slip
+    from services.documents import get_doc, save_doc
+    from services.misc import audit_log as _audit
+    from utils import get_client_ip
+
+    slip = get_routing_slip(slip_id)
+    if not slip:
+        flash("Routing slip not found.", "error")
+        return redirect(url_for("offices.routed_documents"))
+
+    new_status = request.form.get("status", "").strip()
+    notes      = request.form.get("notes", "").strip()
+    actor      = session.get("full_name") or session.get("username", "Staff")
+
+    if not new_status:
+        flash("Please select a status.", "error")
+        return redirect(url_for("offices.routed_documents"))
+
+    updated = 0
+    for doc_id in slip.get("doc_ids", []):
+        doc = get_doc(doc_id)
+        if not doc:
+            continue
+        doc["status"] = new_status
+        # Travel log entry
+        log_entry = f"{new_status} — updated via Routing Slip {slip['slip_no']} by {actor}"
+        if notes:
+            log_entry += f" | Note: {notes}"
+        tl = doc.get("travel_log") or []
+        from services.misc import now_str
+        tl.append({"ts": now_str(), "entry": log_entry, "actor": actor})
+        doc["travel_log"] = tl
+        if new_status == "Received":
+            doc["received_by"] = actor
+        save_doc(doc)
+        updated += 1
+
+    _audit("batch_status_update",
+           f"slip={slip_id} status={new_status} docs={updated}",
+           username=session.get("username"), ip=get_client_ip())
+
+    flash(f"✅ {updated} document{'s' if updated != 1 else ''} updated to \"{new_status}\".", "success")
+    return redirect(url_for("offices.routed_documents"))

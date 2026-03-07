@@ -243,20 +243,26 @@ def save_routing_slip(slip: dict):
                     cur.execute(
                         """INSERT INTO routing_slips
                                (id, slip_no, destination, prepared_by,
-                                doc_ids, notes, slip_date, time_from, time_to)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                doc_ids, notes, slip_date, time_from, time_to,
+                                recv_token, rel_token, from_office)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                            ON CONFLICT (id) DO UPDATE SET
                                destination = EXCLUDED.destination,
                                doc_ids     = EXCLUDED.doc_ids,
                                notes       = EXCLUDED.notes,
                                slip_date   = EXCLUDED.slip_date,
                                time_from   = EXCLUDED.time_from,
-                               time_to     = EXCLUDED.time_to""",
+                               time_to     = EXCLUDED.time_to,
+                               recv_token  = EXCLUDED.recv_token,
+                               rel_token   = EXCLUDED.rel_token,
+                               from_office = EXCLUDED.from_office""",
                         (
                             slip["id"], slip["slip_no"], slip["destination"],
                             slip["prepared_by"], json.dumps(slip["doc_ids"]),
                             slip.get("notes", ""), slip.get("slip_date", ""),
                             slip.get("time_from", ""), slip.get("time_to", ""),
+                            slip.get("recv_token", ""), slip.get("rel_token", ""),
+                            slip.get("from_office", ""),
                         )
                     )
                 conn.commit()
@@ -295,3 +301,32 @@ def get_routing_slip(slip_id: str) -> dict | None:
         return None
     with open(path) as f:
         return json.load(f).get(slip_id)
+
+
+def get_all_routing_slips() -> list[dict]:
+    """Return all routing slips, newest first."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM routing_slips ORDER BY created_at DESC")
+                    rows = cur.fetchall()
+                    slips = []
+                    for row in rows:
+                        r = dict(row)
+                        if isinstance(r.get("doc_ids"), str):
+                            r["doc_ids"] = json.loads(r["doc_ids"])
+                        r["created_at"] = str(r["created_at"])[:19] if r.get("created_at") else ""
+                        slips.append(r)
+                    return slips
+        except Exception as e:
+            print(f"get_all_routing_slips error: {e}")
+            return []
+    path = "routing_slips.json"
+    if not os.path.exists(path):
+        return []
+    with open(path) as f:
+        data = json.load(f)
+    slips = list(data.values())
+    slips.sort(key=lambda s: s.get("created_at", ""), reverse=True)
+    return slips

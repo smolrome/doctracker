@@ -638,6 +638,10 @@
               <span class="dd-icon">🖨️</span>
               <span class="dd-text">Office QR Codes<span class="dd-desc">Print QR for offices</span></span>
             </a>
+            <a href="/routed-documents" class="dd-item">
+              <span class="dd-icon">🚌</span>
+              <span class="dd-text">Routed Documents<span class="dd-desc">View slips &amp; update status</span></span>
+            </a>
             {% endif %}
           </div>
         </div>
@@ -1155,22 +1159,19 @@
     }
   }
 
-  function startSSEProgress(url) {
-    if (_sseSource) _sseSource.close();
-    try {
-      _sseSource = new EventSource(url);
-      _sseSource.onmessage = function(e) {
-        try {
-          const data = JSON.parse(e.data);
+  function startSSEProgress() {
+    // Poll /progress/status every 600ms — SSE causes gunicorn worker timeout
+    if (_sseSource) { clearInterval(_sseSource); _sseSource = null; }
+    _sseSource = setInterval(function() {
+      fetch('/progress/status', {credentials: 'same-origin'})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
           if (data.pct !== undefined) setProgress(data.pct);
-          if (data.msg) {
-            document.getElementById('loading-sub').textContent = data.msg;
-          }
-          if (data.done) { hideLoading(); _sseSource.close(); }
-        } catch(_) {}
-      };
-      _sseSource.onerror = function() { _sseSource.close(); _sseSource = null; };
-    } catch(_) {}
+          if (data.msg) document.getElementById('loading-sub').textContent = data.msg;
+          if (data.done) { hideLoading(); clearInterval(_sseSource); _sseSource = null; }
+        })
+        .catch(function() {});
+    }, 600);
   }
 
   // ── Auto-attach to forms and nav links ───────────────────
@@ -1183,7 +1184,7 @@
         const loader = _getLoader(a, m);
         showLoading(loader);
         if (a.includes('/import-excel/confirm')) {
-          startSSEProgress('/progress/import');
+          startSSEProgress();
         } else {
           startFakeProgress(loader);
         }
