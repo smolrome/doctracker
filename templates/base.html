@@ -471,55 +471,91 @@
     .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; flex-wrap: wrap; }
 
     /* ════════════════════════════════════
-       LOADING OVERLAY — Progress Bar
+       LOADING OVERLAY — Per-action themed
     ════════════════════════════════════ */
     #loading-overlay {
       display: none; position: fixed; inset: 0;
-      background: rgba(10,37,64,.65); backdrop-filter: blur(6px);
+      background: rgba(10,37,64,.72); backdrop-filter: blur(8px);
       z-index: 9999; align-items: center; justify-content: center;
     }
     #loading-overlay.active { display: flex; }
+
     .loading-box {
-      background: #fff; border-radius: 20px;
-      padding: 36px 44px; text-align: center;
-      box-shadow: 0 24px 80px rgba(0,0,0,.35);
-      min-width: 320px; max-width: 420px; width: 90%;
+      border-radius: 24px; padding: 36px 40px; text-align: center;
+      box-shadow: 0 32px 96px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.2);
+      min-width: 300px; max-width: 400px; width: 90%;
+      background: #fff;
+      border-top: 5px solid var(--loader-accent, #0E7490);
+      transition: border-color .2s;
+      position: relative; overflow: hidden;
     }
+    /* Subtle background tint from accent */
+    .loading-box::before {
+      content: ''; position: absolute; inset: 0;
+      background: var(--loader-bg, rgba(14,116,144,.04));
+      pointer-events: none;
+    }
+
     .loading-icon {
-      font-size: 2.4rem; margin-bottom: 14px;
-      animation: loadPulse 1.4s ease-in-out infinite;
+      font-size: 3rem; margin-bottom: 14px; display: block;
+      animation: loaderBounce .7s ease-in-out infinite alternate;
+      position: relative;
     }
-    @keyframes loadPulse {
-      0%,100% { transform: scale(1);   opacity: 1; }
-      50%      { transform: scale(1.1); opacity: .7; }
+    @keyframes loaderBounce {
+      from { transform: translateY(0) scale(1); }
+      to   { transform: translateY(-6px) scale(1.08); }
     }
+
     .loading-text {
-      font-family: 'Outfit', sans-serif; font-size: var(--fs-lg);
-      font-weight: 700; color: var(--navy); margin-bottom: 6px;
+      font-family: 'Outfit', sans-serif; font-size: 1.15rem;
+      font-weight: 800; color: var(--navy); margin-bottom: 5px;
+      position: relative;
     }
-    .loading-sub { font-size: var(--fs-sm); color: var(--muted); margin-bottom: 20px; min-height: 20px; }
+    .loading-sub {
+      font-size: .82rem; color: var(--muted); margin-bottom: 22px;
+      min-height: 18px; font-weight: 500; position: relative;
+    }
+
     .progress-track {
-      width: 100%; height: 10px; background: var(--border);
-      border-radius: 99px; overflow: hidden; margin-bottom: 10px;
+      width: 100%; height: 8px;
+      background: #E2E8F0; border-radius: 99px; overflow: hidden;
+      margin-bottom: 8px; position: relative;
     }
     .progress-bar {
       height: 100%; width: 0%;
-      background: linear-gradient(90deg, var(--teal), var(--emerald));
+      background: var(--loader-gradient, linear-gradient(90deg,#0E7490,#0891B2));
       border-radius: 99px;
-      transition: width 0.3s ease;
+      transition: width .3s cubic-bezier(.4,0,.2,1);
       position: relative; overflow: hidden;
     }
     .progress-bar::after {
       content: '';
-      position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
-      animation: shimmer 1.2s infinite;
+      position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+      animation: shimmer 1.1s ease-in-out infinite;
     }
     @keyframes shimmer { to { left: 200%; } }
+
     .progress-pct {
-      font-size: 12px; font-weight: 700; color: var(--muted);
-      text-align: right;
+      font-size: 11px; font-weight: 800; letter-spacing: .04em;
+      color: var(--loader-accent, #0E7490); text-align: right;
+      position: relative;
     }
+
+    /* Step dots — shown for multi-step actions */
+    .loader-steps {
+      display: flex; justify-content: center; gap: 6px;
+      margin-top: 14px; position: relative;
+    }
+    .loader-step {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #E2E8F0; transition: background .3s, transform .3s;
+    }
+    .loader-step.active {
+      background: var(--loader-accent, #0E7490);
+      transform: scale(1.3);
+    }
+    .loader-step.done { background: var(--loader-accent, #0E7490); opacity: .4; }
 
     /* ════════════════════════════════════
        RESPONSIVE
@@ -750,14 +786,15 @@
 
 <!-- ═══ LOADING OVERLAY ═══ -->
 <div id="loading-overlay">
-  <div class="loading-box">
-    <div class="loading-icon" id="loading-icon">⏳</div>
+  <div class="loading-box" id="loading-box">
+    <span class="loading-icon" id="loading-icon">⏳</span>
     <div class="loading-text" id="loading-text">Please wait...</div>
-    <div class="loading-sub"  id="loading-sub"></div>
+    <div class="loading-sub"  id="loading-sub">Hang on a moment</div>
     <div class="progress-track">
       <div class="progress-bar" id="progress-bar"></div>
     </div>
     <div class="progress-pct" id="progress-pct">0%</div>
+    <div class="loader-steps" id="loader-steps"></div>
   </div>
 </div>
 
@@ -807,41 +844,266 @@
     document.getElementById('clear-db-modal').style.display = 'flex';
   }
 
-  // ── Progress bar loading system ──
-  let _sseSource = null;
-  let _progressInterval = null;
+  // ══════════════════════════════════════════════════════════
+  //  PER-ACTION THEMED LOADER
+  //  Each action: [icon, title, steps[], accent, gradient, bg]
+  // ══════════════════════════════════════════════════════════
+  const LOADERS = {
 
-  const LOAD_STAGES = {
-    // action keyword → [icon, title, sub, fake-end%]
-    'delete':          ['🗑️',  'Deleting...',          'Removing document',            90],
-    'add':             ['💾',  'Saving...',             'Creating document record',      90],
-    'edit':            ['💾',  'Saving...',             'Updating record',               90],
-    'update-status':   ['🔄',  'Updating status...',    '',                              90],
-    'scan':            ['🤖',  'Scanning...',           'AI is reading the document',    80],
-    'clear-database':  ['⚠️',  'Clearing database...',  'Deleting all documents',        90],
-    'import-excel':    ['📥',  'Importing...',          'Processing spreadsheet rows',   95],
-    'backup':          ['🗄️',  'Generating backup...',  'Collecting all data',           90],
-    'restore':         ['📤',  'Restoring...',          'Loading backup data',           90],
-    'routing-slip':    ['📋',  'Creating routing slip...', 'Preparing documents',        90],
-    'search':          ['🔍',  'Searching...',          'Filtering documents',           80],
-    'default':         ['⏳',  'Processing...',         'Please wait',                   85],
+    // ── Document actions ──
+    'add': {
+      icon: '📝', title: 'Saving Document...',
+      steps: ['Validating fields', 'Generating reference number', 'Saving to database'],
+      accent: '#0E7490', gradient: 'linear-gradient(90deg,#0E7490,#0891B2)',
+      bg: 'rgba(14,116,144,.05)', duration: 1800,
+    },
+    'edit': {
+      icon: '✏️', title: 'Updating Document...',
+      steps: ['Checking changes', 'Writing to database', 'Done'],
+      accent: '#7C3AED', gradient: 'linear-gradient(90deg,#7C3AED,#8B5CF6)',
+      bg: 'rgba(124,58,237,.05)', duration: 1600,
+    },
+    'delete': {
+      icon: '🗑️', title: 'Deleting Document...',
+      steps: ['Checking permissions', 'Moving to trash'],
+      accent: '#DC2626', gradient: 'linear-gradient(90deg,#DC2626,#EF4444)',
+      bg: 'rgba(220,38,38,.04)', duration: 1400,
+    },
+    'restore': {
+      icon: '♻️', title: 'Restoring Document...',
+      steps: ['Locating document', 'Restoring from trash'],
+      accent: '#059669', gradient: 'linear-gradient(90deg,#059669,#10B981)',
+      bg: 'rgba(5,150,105,.05)', duration: 1400,
+    },
+    'update-status': {
+      icon: '🔄', title: 'Updating Status...',
+      steps: ['Applying new status', 'Logging change'],
+      accent: '#D97706', gradient: 'linear-gradient(90deg,#D97706,#F59E0B)',
+      bg: 'rgba(217,119,6,.05)', duration: 1200,
+    },
+    'view': {
+      icon: '👁️', title: 'Opening Document...',
+      steps: ['Loading details'],
+      accent: '#0E7490', gradient: 'linear-gradient(90deg,#0E7490,#06B6D4)',
+      bg: 'rgba(14,116,144,.04)', duration: 800,
+    },
+
+    // ── Routing ──
+    'routing-slip': {
+      icon: '📋', title: 'Creating Routing Slip...',
+      steps: ['Collecting documents', 'Generating QR codes', 'Updating statuses', 'Finalising slip'],
+      accent: '#1D4ED8', gradient: 'linear-gradient(90deg,#1D4ED8,#3B82F6)',
+      bg: 'rgba(29,78,216,.05)', duration: 2400,
+    },
+    'slip-scan': {
+      icon: '📡', title: 'Processing Slip Scan...',
+      steps: ['Reading QR token', 'Updating all documents'],
+      accent: '#0891B2', gradient: 'linear-gradient(90deg,#0891B2,#06B6D4)',
+      bg: 'rgba(8,145,178,.05)', duration: 1600,
+    },
+
+    // ── Scanning ──
+    'scan': {
+      icon: '🤖', title: 'AI Scanning Document...',
+      steps: ['Uploading image', 'Reading with AI', 'Extracting fields', 'Done'],
+      accent: '#6D28D9', gradient: 'linear-gradient(90deg,#6D28D9,#8B5CF6)',
+      bg: 'rgba(109,40,217,.05)', duration: 4000,
+    },
+    'upload-qr': {
+      icon: '📷', title: 'Reading QR Code...',
+      steps: ['Decoding image', 'Looking up document'],
+      accent: '#0891B2', gradient: 'linear-gradient(90deg,#0891B2,#06B6D4)',
+      bg: 'rgba(8,145,178,.05)', duration: 1800,
+    },
+    'doc-scan': {
+      icon: '✅', title: 'Processing QR Scan...',
+      steps: ['Verifying token', 'Updating status'],
+      accent: '#059669', gradient: 'linear-gradient(90deg,#059669,#10B981)',
+      bg: 'rgba(5,150,105,.05)', duration: 1400,
+    },
+    'receive': {
+      icon: '📥', title: 'Recording Receipt...',
+      steps: ['Logging receipt', 'Updating status'],
+      accent: '#1D4ED8', gradient: 'linear-gradient(90deg,#1D4ED8,#3B82F6)',
+      bg: 'rgba(29,78,216,.04)', duration: 1400,
+    },
+
+    // ── Import / Export ──
+    'import-excel': {
+      icon: '📊', title: 'Importing Spreadsheet...',
+      steps: ['Reading file', 'Mapping columns', 'Inserting rows', 'Verifying data'],
+      accent: '#15803D', gradient: 'linear-gradient(90deg,#15803D,#16A34A)',
+      bg: 'rgba(21,128,61,.05)', duration: 6000,
+    },
+    'backup': {
+      icon: '🗄️', title: 'Generating Backup...',
+      steps: ['Collecting documents', 'Packaging data', 'Preparing download'],
+      accent: '#374151', gradient: 'linear-gradient(90deg,#374151,#6B7280)',
+      bg: 'rgba(55,65,81,.04)', duration: 2000,
+    },
+    'backup/restore': {
+      icon: '📤', title: 'Restoring from Backup...',
+      steps: ['Reading backup file', 'Validating data', 'Writing to database', 'Done'],
+      accent: '#B45309', gradient: 'linear-gradient(90deg,#B45309,#D97706)',
+      bg: 'rgba(180,83,9,.05)', duration: 3000,
+    },
+
+    // ── User management ──
+    'send-invite': {
+      icon: '📧', title: 'Sending Invite...',
+      steps: ['Generating secure link', 'Sending email'],
+      accent: '#0E7490', gradient: 'linear-gradient(90deg,#0E7490,#0891B2)',
+      bg: 'rgba(14,116,144,.05)', duration: 2000,
+    },
+    'register': {
+      icon: '🔐', title: 'Creating Account...',
+      steps: ['Checking username', 'Hashing password', 'Creating account'],
+      accent: '#7C3AED', gradient: 'linear-gradient(90deg,#7C3AED,#8B5CF6)',
+      bg: 'rgba(124,58,237,.05)', duration: 2000,
+    },
+    'delete-user': {
+      icon: '👤', title: 'Removing User...',
+      steps: ['Verifying admin', 'Deleting account'],
+      accent: '#DC2626', gradient: 'linear-gradient(90deg,#DC2626,#EF4444)',
+      bg: 'rgba(220,38,38,.04)', duration: 1400,
+    },
+    'disable-user': {
+      icon: '🔒', title: 'Disabling Account...',
+      steps: ['Revoking access', 'Logging action'],
+      accent: '#D97706', gradient: 'linear-gradient(90deg,#D97706,#F59E0B)',
+      bg: 'rgba(217,119,6,.05)', duration: 1200,
+    },
+    'enable-user': {
+      icon: '🔓', title: 'Enabling Account...',
+      steps: ['Restoring access', 'Logging action'],
+      accent: '#059669', gradient: 'linear-gradient(90deg,#059669,#10B981)',
+      bg: 'rgba(5,150,105,.05)', duration: 1200,
+    },
+
+    // ── Auth ──
+    'login': {
+      icon: '🔑', title: 'Signing In...',
+      steps: ['Checking credentials', 'Starting session'],
+      accent: '#1D4ED8', gradient: 'linear-gradient(90deg,#0A2540,#1D4ED8)',
+      bg: 'rgba(29,78,216,.05)', duration: 1600,
+    },
+    'logout': {
+      icon: '👋', title: 'Signing Out...',
+      steps: ['Ending session'],
+      accent: '#6B7280', gradient: 'linear-gradient(90deg,#6B7280,#9CA3AF)',
+      bg: 'rgba(107,114,128,.04)', duration: 800,
+    },
+
+    // ── Admin ──
+    'clear-database': {
+      icon: '⚠️', title: 'Clearing All Data...',
+      steps: ['Verifying admin', 'Deleting all documents', 'Logging action'],
+      accent: '#DC2626', gradient: 'linear-gradient(90deg,#991B1B,#DC2626)',
+      bg: 'rgba(220,38,38,.06)', duration: 2000,
+    },
+    'office-qr-page': {
+      icon: '🏢', title: 'Generating Office QR...',
+      steps: ['Creating QR codes', 'Saving office'],
+      accent: '#7C3AED', gradient: 'linear-gradient(90deg,#7C3AED,#8B5CF6)',
+      bg: 'rgba(124,58,237,.05)', duration: 1600,
+    },
+
+    // ── Navigation / search ──
+    'search': {
+      icon: '🔍', title: 'Searching...',
+      steps: ['Filtering records'],
+      accent: '#0891B2', gradient: 'linear-gradient(90deg,#0891B2,#06B6D4)',
+      bg: 'rgba(8,145,178,.04)', duration: 700,
+    },
+
+    // ── Client ──
+    'submit': {
+      icon: '📬', title: 'Submitting Document...',
+      steps: ['Uploading details', 'Logging submission'],
+      accent: '#059669', gradient: 'linear-gradient(90deg,#059669,#10B981)',
+      bg: 'rgba(5,150,105,.05)', duration: 1800,
+    },
+
+    // ── Fallback ──
+    'default': {
+      icon: '⏳', title: 'Processing...',
+      steps: ['Working on it'],
+      accent: '#0E7490', gradient: 'linear-gradient(90deg,#0E7490,#0891B2)',
+      bg: 'rgba(14,116,144,.04)', duration: 2000,
+    },
   };
 
-  function _getStage(url, method) {
-    if (method === 'get') return LOAD_STAGES['search'];
-    for (const [k, v] of Object.entries(LOAD_STAGES)) {
-      if (url.includes('/' + k) || url.includes(k)) return v;
+  function _getLoader(url, method) {
+    if (method === 'get') {
+      if (url.includes('/view/'))   return LOADERS['view'];
+      if (url.includes('/logout'))  return LOADERS['logout'];
+      return LOADERS['search'];
     }
-    return LOAD_STAGES['default'];
+    // Match by URL keyword (longest match wins)
+    const order = ['backup/restore','clear-database','update-status','routing-slip',
+                   'import-excel','send-invite','delete-user','disable-user','enable-user',
+                   'upload-qr','doc-scan','slip-scan','office-qr','register','login',
+                   'logout','delete','restore','backup','receive','submit','edit','add',
+                   'scan'];
+    for (const k of order) {
+      if (url.includes(k)) return LOADERS[k] || LOADERS['default'];
+    }
+    return LOADERS['default'];
   }
 
-  function showLoading(msg, sub, icon) {
-    const overlay = document.getElementById('loading-overlay');
-    document.getElementById('loading-text').textContent = msg || 'Please wait...';
-    document.getElementById('loading-sub').textContent  = sub || '';
-    document.getElementById('loading-icon').textContent = icon || '⏳';
+  // ── Core loading functions ────────────────────────────────
+  let _sseSource = null;
+  let _progressInterval = null;
+  let _stepInterval = null;
+  let _currentSteps = [];
+  let _currentStep = 0;
+
+  function _applyTheme(loader) {
+    const box = document.getElementById('loading-box');
+    box.style.setProperty('--loader-accent',    loader.accent);
+    box.style.setProperty('--loader-gradient',  loader.gradient);
+    box.style.setProperty('--loader-bg',        loader.bg);
+    document.getElementById('progress-bar').style.background = loader.gradient;
+  }
+
+  function _buildSteps(steps) {
+    const el = document.getElementById('loader-steps');
+    el.innerHTML = '';
+    if (!steps || steps.length <= 1) { el.style.display = 'none'; return; }
+    el.style.display = 'flex';
+    steps.forEach(function(_, i) {
+      const dot = document.createElement('div');
+      dot.className = 'loader-step' + (i === 0 ? ' active' : '');
+      dot.id = 'lstep-' + i;
+      el.appendChild(dot);
+    });
+  }
+
+  function _advanceStep(stepIndex) {
+    const sub = document.getElementById('loading-sub');
+    const steps = _currentSteps;
+    if (!steps.length) return;
+    const idx = Math.min(stepIndex, steps.length - 1);
+    if (sub) sub.textContent = steps[idx];
+    for (let i = 0; i < steps.length; i++) {
+      const dot = document.getElementById('lstep-' + i);
+      if (!dot) continue;
+      dot.className = 'loader-step' + (i < idx ? ' done' : i === idx ? ' active' : '');
+    }
+  }
+
+  function showLoading(loader) {
+    if (typeof loader === 'string') loader = LOADERS[loader] || LOADERS['default'];
+    _currentSteps = loader.steps || [];
+    _currentStep  = 0;
+
+    document.getElementById('loading-icon').textContent = loader.icon;
+    document.getElementById('loading-text').textContent = loader.title;
+    document.getElementById('loading-sub').textContent  = _currentSteps[0] || '';
+    _applyTheme(loader);
+    _buildSteps(_currentSteps);
     setProgress(0);
-    overlay.classList.add('active');
+    document.getElementById('loading-overlay').classList.add('active');
   }
 
   function hideLoading() {
@@ -850,8 +1112,9 @@
       document.getElementById('loading-overlay').classList.remove('active');
       setProgress(0);
       if (_progressInterval) { clearInterval(_progressInterval); _progressInterval = null; }
-      if (_sseSource) { _sseSource.close(); _sseSource = null; }
-    }, 300);
+      if (_stepInterval)     { clearInterval(_stepInterval);     _stepInterval = null; }
+      if (_sseSource)        { _sseSource.close(); _sseSource = null; }
+    }, 350);
   }
 
   function setProgress(pct) {
@@ -862,19 +1125,34 @@
     if (lbl) lbl.textContent = Math.round(pct) + '%';
   }
 
-  function startFakeProgress(endPct, durationMs) {
-    // Smoothly animate from 0 → endPct over durationMs
+  function startFakeProgress(loader) {
     if (_progressInterval) clearInterval(_progressInterval);
-    const steps = 60;
-    const stepMs = durationMs / steps;
+    if (_stepInterval)     clearInterval(_stepInterval);
+
+    const endPct   = 90;
+    const duration = loader.duration || 2000;
+    const steps    = loader.steps || [];
+    const stepCount = steps.length;
+
+    // Progress animation
     let current = 0;
     _progressInterval = setInterval(function() {
-      // Ease-out: progress slows as it approaches endPct
       const remaining = endPct - current;
-      current += remaining * 0.07 + 0.3;
+      current += remaining * 0.055 + 0.2;
       if (current >= endPct) { current = endPct; clearInterval(_progressInterval); _progressInterval = null; }
       setProgress(current);
-    }, stepMs);
+    }, duration / 80);
+
+    // Step advancement
+    if (stepCount > 1) {
+      const stepDelay = duration / stepCount;
+      let step = 0;
+      _stepInterval = setInterval(function() {
+        step++;
+        if (step >= stepCount) { clearInterval(_stepInterval); _stepInterval = null; return; }
+        _advanceStep(step);
+      }, stepDelay);
+    }
   }
 
   function startSSEProgress(url) {
@@ -885,7 +1163,9 @@
         try {
           const data = JSON.parse(e.data);
           if (data.pct !== undefined) setProgress(data.pct);
-          if (data.msg) document.getElementById('loading-sub').textContent = data.msg;
+          if (data.msg) {
+            document.getElementById('loading-sub').textContent = data.msg;
+          }
           if (data.done) { hideLoading(); _sseSource.close(); }
         } catch(_) {}
       };
@@ -893,38 +1173,38 @@
     } catch(_) {}
   }
 
+  // ── Auto-attach to forms and nav links ───────────────────
   document.addEventListener('DOMContentLoaded', function(){
     document.querySelectorAll('form').forEach(function(form){
       form.addEventListener('submit', function(){
-        if(form.dataset.noLoading) return;
-        const a = form.action || '';
+        if (form.dataset.noLoading) return;
+        const a = (form.action || '').toLowerCase();
         const m = (form.method || 'get').toLowerCase();
-        const [icon, title, sub, endPct] = _getStage(a, m);
-        showLoading(title, sub, icon);
-        // For SSE-enabled endpoints, connect to progress stream
+        const loader = _getLoader(a, m);
+        showLoading(loader);
         if (a.includes('/import-excel/confirm')) {
           startSSEProgress('/progress/import');
         } else {
-          startFakeProgress(endPct, m === 'get' ? 800 : 2200);
+          startFakeProgress(loader);
         }
       });
     });
 
     document.querySelectorAll('a.nav-btn, a.btn, a.btn-filter, a.page-back').forEach(function(link){
       link.addEventListener('click', function(){
-        const h = link.getAttribute('href');
+        const h = (link.getAttribute('href') || '').toLowerCase();
         if (!h || h.startsWith('#') || h.startsWith('javascript') || h.startsWith('http')) return;
         if (link.hasAttribute('download') || h.endsWith('.png') || h.endsWith('.xlsx') || h.endsWith('.json')) return;
-        const [icon, title, sub, endPct] = _getStage(h, 'get');
-        showLoading(title, sub, icon);
-        startFakeProgress(endPct, 900);
+        const loader = _getLoader(h, 'get');
+        showLoading(loader);
+        startFakeProgress(loader);
       });
     });
 
     document.querySelectorAll('a[href$=".png"],a[href$=".xlsx"],a[href$=".json"]').forEach(function(l){
       l.addEventListener('click', function(e){ e.stopPropagation(); });
     });
-    window.addEventListener('pageshow', function(e){ if(e.persisted) hideLoading(); });
+    window.addEventListener('pageshow', function(e){ if (e.persisted) hideLoading(); });
     document.getElementById('loading-overlay').addEventListener('click', hideLoading);
   });
 </script>
