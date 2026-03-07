@@ -105,36 +105,36 @@ def create_user(username: str, password: str, full_name: str = "",
         return True, None
 
 
-def verify_user(username: str, password: str) -> tuple[str | None, str | None]:
-    """Verify credentials. Returns (full_name, role) or (None, None)."""
+def verify_user(username: str, password: str) -> tuple[str | None, str | None, str]:
+    """Verify credentials. Returns (full_name, role, office) or (None, None, "")."""
     uname = username.strip().lower()
 
     # Admin via env var — constant-time compare prevents timing attacks
     if (secrets.compare_digest(uname, ADMIN_USERNAME.lower())
             and secrets.compare_digest(password, ADMIN_PASSWORD)):
-        return ADMIN_USERNAME, "admin"
+        return ADMIN_USERNAME, "admin", "DepEd Leyte Division"
 
     if USE_DB:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
-                        """SELECT full_name, role, password_hash FROM users
-                           WHERE username=%s AND active=TRUE""",
+                        """SELECT full_name, role, password_hash, COALESCE(office,'') AS office
+                           FROM users WHERE username=%s AND active=TRUE""",
                         (uname,)
                     )
                     row = cur.fetchone()
                     if row and verify_password(password, row["password_hash"]):
                         _upgrade_hash_if_needed(uname, password, row["password_hash"])
-                        return row["full_name"] or uname, row["role"]
+                        return row["full_name"] or uname, row["role"], row["office"] or ""
         except Exception as e:
             print(f"verify_user error: {e}")
     else:
         for u in _load_users_json():
             if u["username"] == uname and verify_password(password, u.get("password_hash", "")):
-                return u.get("full_name") or uname, u.get("role", "staff")
+                return u.get("full_name") or uname, u.get("role", "staff"), u.get("office", "")
 
-    return None, None
+    return None, None, ""
 
 
 def _upgrade_hash_if_needed(username: str, password: str, stored_hash: str):

@@ -471,12 +471,28 @@ function clearField(name, val='') {
     </div>
   </div>
 
+  <!-- From office (read-only, pulled from session) -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;
+              padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.1);
+              border:1.5px solid rgba(255,255,255,.15);">
+    <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.55);white-space:nowrap;">FROM:</span>
+    <span style="font-size:14px;font-weight:800;color:#fff;">
+      {{ current_office or current_full_name or current_user or 'Your Office' }}
+    </span>
+    <span style="margin:0 4px;color:rgba(255,255,255,.4);">→</span>
+    <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.55);white-space:nowrap;">TO:</span>
+    <span style="font-size:14px;font-weight:700;color:#93C5FD;" id="modal-dest-preview">
+      (enter destination below)
+    </span>
+  </div>
+
   <div class="rp-fields">
     <div class="rp-field">
       <label>📍 Destination Office *</label>
       <input type="text" class="rp-input" id="route-dest"
              placeholder="e.g. Budget Section, HR Unit..."
-             list="office-suggestions" autocomplete="off"/>
+             list="office-suggestions" autocomplete="off"
+             oninput="document.getElementById('modal-dest-preview').textContent = this.value || '(enter destination below)'"/>
     </div>
     <div class="rp-field">
       <label>📅 Slip Date</label>

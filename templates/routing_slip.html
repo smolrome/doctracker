@@ -356,37 +356,6 @@
 
     </div><!-- /slip-body -->
 
-    <!-- ── QR CODES for scanning ── -->
-    {% if recv_qr_b64 or rel_qr_b64 %}
-    <div class="qr-strip" style="padding:20px 28px;border-top:2px dashed var(--border);
-         display:flex;gap:24px;justify-content:center;flex-wrap:wrap;background:#FAFCFF;">
-      {% if recv_qr_b64 %}
-      <div style="text-align:center;">
-        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;
-                    color:#1D4ED8;margin-bottom:8px;">📥 RECEIVE QR</div>
-        <img src="data:image/png;base64,{{ recv_qr_b64 }}"
-             style="width:160px;border-radius:10px;border:2px solid #93C5FD;"
-             alt="Receive QR"/>
-        <div style="font-size:11px;color:var(--muted);margin-top:6px;font-weight:600;">
-          {{ slip.destination }} scans this<br>when documents arrive
-        </div>
-      </div>
-      {% endif %}
-      {% if rel_qr_b64 %}
-      <div style="text-align:center;">
-        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;
-                    color:#065F46;margin-bottom:8px;">📤 RELEASE QR</div>
-        <img src="data:image/png;base64,{{ rel_qr_b64 }}"
-             style="width:160px;border-radius:10px;border:2px solid #6EE7B7;"
-             alt="Release QR"/>
-        <div style="font-size:11px;color:var(--muted);margin-top:6px;font-weight:600;">
-          {{ slip.from_office or 'Originating office' }} scans this<br>when releasing documents
-        </div>
-      </div>
-      {% endif %}
-    </div>
-    {% endif %}
-
     <!-- Bottom bar -->
     <div class="slip-footer-bar">
       <span>DocTracker — DepEd Leyte Division Office</span>

@@ -35,7 +35,7 @@ def login():
             audit_log("login_blocked", f"username={username}",
                       username=username, ip=ip)
         else:
-            full_name, role = verify_user(username, password)
+            full_name, role, office = verify_user(username, password)
             if full_name:
                 reset_rate_limit("login", f"{ip}:{username.lower()}")
                 session.clear()
@@ -44,6 +44,7 @@ def login():
                     "username":    username.lower().strip(),
                     "full_name":   full_name,
                     "role":        role,
+                    "office":      office,
                     "last_active": time.time(),
                 })
                 session.permanent = True

@@ -113,6 +113,7 @@ def create_app() -> Flask:
             current_user    = session.get("username", ""),
             current_role    = session.get("role", "guest"),
             current_full_name = session.get("full_name", ""),
+            current_office  = session.get("office", ""),
             now             = datetime.now,
         )
 
