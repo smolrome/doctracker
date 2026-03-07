@@ -135,11 +135,12 @@ def restore_doc(doc_id: str):
 def get_stats(docs: list[dict]) -> dict:
     return {
         "total":      len(docs),
-        "pending":    sum(1 for d in docs if d["status"] == "Pending"),
-        "released":   sum(1 for d in docs if d["status"] == "Released"),
-        "on_hold":    sum(1 for d in docs if d["status"] == "On Hold"),
-        "in_review":  sum(1 for d in docs if d["status"] == "In Review"),
-        "in_transit": sum(1 for d in docs if d["status"] == "In Transit"),
+        "pending":    sum(1 for d in docs if d.get("status") == "Pending"),
+        "received":   sum(1 for d in docs if d.get("status") == "Received"),
+        "in_review":  sum(1 for d in docs if d.get("status") == "In Review"),
+        "in_transit": sum(1 for d in docs if d.get("status") == "In Transit"),
+        "released":   sum(1 for d in docs if d.get("status") == "Released"),
+        "on_hold":    sum(1 for d in docs if d.get("status") == "On Hold"),
     }
 
 

@@ -42,13 +42,22 @@ def index():
     filtered = docs
 
     if search:
-        filtered = [d for d in filtered if search in (
-            d.get("doc_name", "") + d.get("doc_id", "") +
-            d.get("sender_name", "") + d.get("recipient_name", "") +
-            d.get("sender_org", "") + d.get("category", "")).lower()]
+        def _matches(d, q):
+            haystack = " ".join([
+                d.get("doc_name",    "") or "",
+                d.get("doc_id",      "") or "",
+                d.get("sender_name", "") or "",
+                d.get("sender_org",  "") or "",
+                d.get("referred_to", "") or "",
+                d.get("category",    "") or "",
+                d.get("source",      "") or "",
+                d.get("notes",       "") or "",
+            ]).lower()
+            return q in haystack
+        filtered = [d for d in filtered if _matches(d, search)]
 
     if filter_status != "All":
-        filtered = [d for d in filtered if d["status"] == filter_status]
+        filtered = [d for d in filtered if d.get("status") == filter_status]
 
     if filter_type == "Received":
         filtered = [d for d in filtered
@@ -57,14 +66,19 @@ def index():
         filtered = [d for d in filtered if d.get("date_released")]
 
     if filter_date:
-        filtered = [d for d in filtered
-                    if (d.get("created_at", "") or "")[:10] == filter_date]
-    if filter_time_from:
-        filtered = [d for d in filtered
-                    if (d.get("created_at", "") or "")[11:16] >= filter_time_from]
-    if filter_time_to:
-        filtered = [d for d in filtered
-                    if (d.get("created_at", "") or "")[11:16] <= filter_time_to]
+        def _doc_date(d):
+            # Prefer the explicitly recorded date_received, fall back to created_at
+            return (d.get("date_received") or d.get("created_at", "") or "")[:10]
+        filtered = [d for d in filtered if _doc_date(d) == filter_date]
+
+    if filter_time_from or filter_time_to:
+        def _doc_time(d):
+            # Time comes from created_at (the log timestamp)
+            return (d.get("created_at", "") or "")[11:16]
+        if filter_time_from:
+            filtered = [d for d in filtered if _doc_time(d) >= filter_time_from]
+        if filter_time_to:
+            filtered = [d for d in filtered if _doc_time(d) <= filter_time_to]
 
     # Pagination
     try:

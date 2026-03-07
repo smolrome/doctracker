@@ -14,96 +14,98 @@
   }
   .stat-card.active .stat-label { color: var(--stat-accent, #0E7490); }
   .stat-card.active .stat-num   { color: var(--stat-accent, #0E7490); }
-  .stat-card.yellow { --stat-accent: #D97706; }
-  .stat-card.teal   { --stat-accent: #0E7490; }
-  .stat-card.blue   { --stat-accent: #1D4ED8; }
-  .stat-card.green  { --stat-accent: #059669; }
-  .stat-card.red    { --stat-accent: #DC2626; }
-  .stat-card.blue::before { background: linear-gradient(90deg, #1D4ED8, #3B82F6); }
+  .stat-card.yellow  { --stat-accent: #D97706; }
+  .stat-card.emerald { --stat-accent: #059669; }
+  .stat-card.teal    { --stat-accent: #0E7490; }
+  .stat-card.blue    { --stat-accent: #1D4ED8; }
+  .stat-card.green   { --stat-accent: #16A34A; }
+  .stat-card.red     { --stat-accent: #DC2626; }
+  .stat-card.yellow::before  { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
+  .stat-card.emerald::before { background: linear-gradient(90deg, #059669, #10B981); }
+  .stat-card.blue::before    { background: linear-gradient(90deg, #1D4ED8, #3B82F6); }
+  .stat-card.green::before   { background: linear-gradient(90deg, #16A34A, #22C55E); }
   .stat-card-inner { pointer-events: none; }
   .stat-clear {
     display: inline-flex; align-items: center; gap: 5px;
     font-size: 11px; font-weight: 700; color: var(--stat-accent, #0E7490);
-    margin-top: 5px; opacity: 0;
-    transition: opacity .15s;
+    margin-top: 5px; opacity: 0; transition: opacity .15s;
   }
   .stat-card.active .stat-clear { opacity: 1; }
   .stat-card:not(.active):hover::after {
-    content: 'click to filter';
-    position: absolute; bottom: 8px; right: 10px;
+    content: 'filter'; position: absolute; bottom: 7px; right: 10px;
     font-size: 9px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .06em; color: var(--muted); opacity: .7;
+    letter-spacing: .06em; color: var(--muted); opacity: .5;
   }
   .stat-card { position: relative; }
 </style>
-
 <script>
 function statFilter(status) {
-  // Preserve current search/date/per_page, just swap status
   const params = new URLSearchParams(window.location.search);
   params.set('status', status);
-  params.delete('page'); // reset to page 1
+  params.delete('page');
   window.location.href = '/?' + params.toString();
 }
 </script>
 
 <div class="stats-grid">
-
-  <a class="stat-card {% if filter_status == 'All' %}active{% endif %}"
-     href="#" onclick="event.preventDefault();statFilter('All')" title="Show all documents">
+  <a class="stat-card {% if filter_status=='All' %}active{% endif %}"
+     href="#" onclick="event.preventDefault();statFilter('All')" title="All documents">
     <div class="stat-card-inner">
       <div class="stat-num">{{ stats.total }}</div>
       <div class="stat-label">📋 Total</div>
-      {% if filter_status == 'All' %}<div class="stat-clear">● Showing all</div>{% endif %}
+      <div class="stat-clear">● All</div>
     </div>
   </a>
-
-  <a class="stat-card yellow {% if filter_status == 'Pending' %}active{% endif %}"
-     href="#" onclick="event.preventDefault();statFilter('Pending')" title="Filter: Pending">
+  <a class="stat-card yellow {% if filter_status=='Pending' %}active{% endif %}"
+     href="#" onclick="event.preventDefault();statFilter('Pending')" title="Pending">
     <div class="stat-card-inner">
       <div class="stat-num">{{ stats.pending }}</div>
       <div class="stat-label">⏳ Pending</div>
-      {% if filter_status == 'Pending' %}<div class="stat-clear">● Filtered</div>{% endif %}
+      <div class="stat-clear">● Filtered</div>
     </div>
   </a>
-
-  <a class="stat-card teal {% if filter_status == 'In Review' %}active{% endif %}"
-     href="#" onclick="event.preventDefault();statFilter('In Review')" title="Filter: In Review">
+  <a class="stat-card emerald {% if filter_status=='Received' %}active{% endif %}"
+     href="#" onclick="event.preventDefault();statFilter('Received')" title="Received">
+    <div class="stat-card-inner">
+      <div class="stat-num">{{ stats.received }}</div>
+      <div class="stat-label">📥 Received</div>
+      <div class="stat-clear">● Filtered</div>
+    </div>
+  </a>
+  <a class="stat-card teal {% if filter_status=='In Review' %}active{% endif %}"
+     href="#" onclick="event.preventDefault();statFilter('In Review')" title="In Review">
     <div class="stat-card-inner">
       <div class="stat-num">{{ stats.in_review }}</div>
       <div class="stat-label">🔍 In Review</div>
-      {% if filter_status == 'In Review' %}<div class="stat-clear">● Filtered</div>{% endif %}
+      <div class="stat-clear">● Filtered</div>
     </div>
   </a>
-
-  <a class="stat-card blue {% if filter_status == 'In Transit' %}active{% endif %}"
-     href="#" onclick="event.preventDefault();statFilter('In Transit')" title="Filter: In Transit">
+  <a class="stat-card blue {% if filter_status=='In Transit' %}active{% endif %}"
+     href="#" onclick="event.preventDefault();statFilter('In Transit')" title="In Transit">
     <div class="stat-card-inner">
       <div class="stat-num">{{ stats.in_transit }}</div>
       <div class="stat-label">🚌 In Transit</div>
-      {% if filter_status == 'In Transit' %}<div class="stat-clear">● Filtered</div>{% endif %}
+      <div class="stat-clear">● Filtered</div>
     </div>
   </a>
-
-  <a class="stat-card green {% if filter_status == 'Released' %}active{% endif %}"
-     href="#" onclick="event.preventDefault();statFilter('Released')" title="Filter: Released">
+  <a class="stat-card green {% if filter_status=='Released' %}active{% endif %}"
+     href="#" onclick="event.preventDefault();statFilter('Released')" title="Released">
     <div class="stat-card-inner">
       <div class="stat-num">{{ stats.released }}</div>
       <div class="stat-label">✅ Released</div>
-      {% if filter_status == 'Released' %}<div class="stat-clear">● Filtered</div>{% endif %}
+      <div class="stat-clear">● Filtered</div>
     </div>
   </a>
-
-  <a class="stat-card red {% if filter_status == 'On Hold' %}active{% endif %}"
-     href="#" onclick="event.preventDefault();statFilter('On Hold')" title="Filter: On Hold">
+  <a class="stat-card red {% if filter_status=='On Hold' %}active{% endif %}"
+     href="#" onclick="event.preventDefault();statFilter('On Hold')" title="On Hold">
     <div class="stat-card-inner">
       <div class="stat-num">{{ stats.on_hold }}</div>
       <div class="stat-label">⏸️ On Hold</div>
-      {% if filter_status == 'On Hold' %}<div class="stat-clear">● Filtered</div>{% endif %}
+      <div class="stat-clear">● Filtered</div>
     </div>
   </a>
-
 </div>
+
 
 <!-- ══════════════════════════════════════════
      OFFICE SUBMISSION QR FINDER
@@ -220,40 +222,45 @@ document.addEventListener('keydown', e => {
     box-shadow:0 2px 10px rgba(10,45,100,.05);}
   .filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
   .filter-group{display:flex;flex-direction:column;gap:5px;min-width:0;}
-  .filter-group.grow{flex:1;min-width:180px;}
-  .filter-group.w-date{width:148px;}
-  .filter-group.w-time{width:118px;}
-  .filter-group.w-status{width:155px;}
+  .filter-group.grow{flex:1;min-width:200px;}
+  .filter-group.w-date{width:150px;}
+  .filter-group.w-time{width:120px;}
+  .filter-group.w-status{width:160px;}
   .filter-label{font-size:11px;font-weight:700;text-transform:uppercase;
     letter-spacing:.06em;color:var(--muted);}
   .filter-input{padding:9px 12px;border:2px solid var(--border);border-radius:10px;
-    font-family:inherit;font-size:15px;color:var(--text);background:var(--surface);
+    font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);
     outline:none;min-height:42px;width:100%;transition:border .15s;}
   .filter-input:focus{border-color:var(--teal);background:#fff;}
   .filter-input.has-value{border-color:var(--teal);background:#EFF6FF;}
   .filter-divider{width:1px;background:var(--border);align-self:stretch;
     margin:0 2px;flex-shrink:0;}
-  .filter-type-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;
-    align-items:center;}
-  .type-btn{padding:7px 14px;border-radius:20px;font-size:14px;font-weight:700;
+  /* Time range row — hidden until checkbox ticked */
+  .time-range-row{display:none;gap:10px;flex-wrap:wrap;align-items:flex-end;
+    margin-top:10px;padding-top:10px;border-top:1.5px dashed var(--border);}
+  .time-range-row.visible{display:flex;}
+  .time-toggle-label{display:flex;align-items:center;gap:8px;cursor:pointer;
+    font-size:13px;font-weight:700;color:var(--muted);margin-top:10px;
+    padding-top:10px;border-top:1.5px dashed var(--border);}
+  .time-toggle-label input[type=checkbox]{
+    width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0;}
+  /* Bottom row */
+  .filter-type-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;}
+  .type-btn{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;
     border:2px solid var(--border);background:var(--surface);color:var(--muted);
-    text-decoration:none;transition:all .15s;white-space:nowrap;}
+    text-decoration:none;transition:all .15s;white-space:nowrap;cursor:pointer;}
   .type-btn:hover{border-color:var(--teal);color:var(--teal);}
   .type-btn.active{background:var(--teal);border-color:var(--teal);color:#fff;}
-  .filter-actions{display:flex;gap:8px;margin-left:auto;}
-  .btn-clear-filters{padding:7px 14px;border-radius:20px;font-size:14px;font-weight:700;
+  .btn-clear-filters{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;
     border:2px solid var(--border);background:#fff;color:var(--muted);
     text-decoration:none;cursor:pointer;transition:all .15s;}
   .btn-clear-filters:hover{border-color:#DC2626;color:#DC2626;}
-
-  /* Active filter indicator */
-  .filter-active-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .filter-active-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:0;margin-left:8px;}
   .filter-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;
-    border-radius:20px;font-size:13px;font-weight:700;
+    border-radius:20px;font-size:12px;font-weight:700;
     background:#EFF6FF;border:1.5px solid #BFDBFE;color:#1D4ED8;}
-  .pill-x{color:#93C5FD;cursor:pointer;font-size:15px;line-height:1;}
+  .pill-x{color:#93C5FD;cursor:pointer;font-size:14px;line-height:1;}
   .pill-x:hover{color:#1D4ED8;}
-
   @media(max-width:700px){
     .filter-row{gap:8px;}
     .filter-group.w-date,.filter-group.w-time,.filter-group.w-status{width:100%;}
@@ -265,22 +272,25 @@ document.addEventListener('keydown', e => {
 <!-- ── FILTER BAR ── -->
 <form method="get" action="/" id="filter-form">
   <div class="filter-bar">
+
+    <!-- Row 1: Search + Status + Date + Actions -->
     <div class="filter-row">
 
-      <!-- Search -->
       <div class="filter-group grow">
         <span class="filter-label">🔍 Search</span>
-        <input type="text" name="search" class="filter-input {% if search %}has-value{% endif %}"
+        <input type="text" name="search"
+               class="filter-input {% if search %}has-value{% endif %}"
                value="{{ search }}"
-               placeholder="Document name, ID, sender, office..."/>
+               placeholder="Document name, ID, sender, office, referred to…"
+               autocomplete="off"/>
       </div>
 
       <div class="filter-divider"></div>
 
-      <!-- Status -->
       <div class="filter-group w-status">
         <span class="filter-label">📌 Status</span>
-        <select name="status" class="filter-input {% if filter_status != 'All' %}has-value{% endif %}"
+        <select name="status"
+                class="filter-input {% if filter_status != 'All' %}has-value{% endif %}"
                 onchange="this.form.submit()">
           {% for s in status_options %}
             <option value="{{ s }}" {% if filter_status==s %}selected{% endif %}>{{ s }}</option>
@@ -290,77 +300,103 @@ document.addEventListener('keydown', e => {
 
       <div class="filter-divider"></div>
 
-      <!-- Date -->
       <div class="filter-group w-date">
         <span class="filter-label">📅 Date</span>
-        <input type="date" name="date" class="filter-input {% if filter_date %}has-value{% endif %}"
+        <input type="date" name="date"
+               class="filter-input {% if filter_date %}has-value{% endif %}"
                value="{{ filter_date }}"
-               title="Filter by date document was logged"/>
-      </div>
-
-      <!-- Time From -->
-      <div class="filter-group w-time">
-        <span class="filter-label">🕐 From</span>
-        <input type="time" name="time_from" class="filter-input {% if filter_time_from %}has-value{% endif %}"
-               value="{{ filter_time_from }}"
-               title="Show documents logged at or after this time"/>
-      </div>
-
-      <!-- Time To -->
-      <div class="filter-group w-time">
-        <span class="filter-label">🕑 To</span>
-        <input type="time" name="time_to" class="filter-input {% if filter_time_to %}has-value{% endif %}"
-               value="{{ filter_time_to }}"
-               title="Show documents logged at or before this time"/>
+               title="Filter by date received / logged"
+               onchange="this.form.submit()"/>
       </div>
 
       <div class="filter-divider"></div>
 
-      <!-- Actions -->
       <div class="filter-group" style="flex-shrink:0;">
         <span class="filter-label">&nbsp;</span>
         <div style="display:flex;gap:8px;">
-          <button type="submit" class="btn btn-primary btn-sm" style="min-height:42px;">Apply</button>
-          <a href="/" class="btn-clear-filters" title="Clear all filters">✕ Clear</a>
+          <button type="submit" class="btn btn-primary btn-sm" style="min-height:42px;white-space:nowrap;">🔍 Search</button>
+          <a href="/" class="btn-clear-filters" style="min-height:42px;display:flex;align-items:center;" title="Clear all filters">✕ Clear</a>
         </div>
       </div>
-
     </div>
 
-    <!-- Type quick filters + active pills row -->
-    <div class="filter-type-row">
-      <a href="/?type=All&search={{ search }}&status={{ filter_status }}&date={{ filter_date }}&time_from={{ filter_time_from }}&time_to={{ filter_time_to }}"
-         class="type-btn {% if filter_type=='All' %}active{% endif %}">All</a>
-      <a href="/?type=Received&search={{ search }}&status={{ filter_status }}&date={{ filter_date }}&time_from={{ filter_time_from }}&time_to={{ filter_time_to }}"
-         class="type-btn {% if filter_type=='Received' %}active{% endif %}">📥 Received</a>
-      <a href="/?type=Released&search={{ search }}&status={{ filter_status }}&date={{ filter_date }}&time_from={{ filter_time_from }}&time_to={{ filter_time_to }}"
-         class="type-btn {% if filter_type=='Released' %}active{% endif %}">✅ Released</a>
+    <!-- Time range toggle checkbox -->
+    <label class="time-toggle-label" for="toggle-time-range">
+      <input type="checkbox" id="toggle-time-range"
+             onchange="toggleTimeRange(this.checked)"
+             {% if filter_time_from or filter_time_to %}checked{% endif %}/>
+      🕐 Filter by time range
+      {% if filter_time_from or filter_time_to %}
+        <span style="color:var(--teal);font-size:12px;">
+          ({{ filter_time_from or '00:00' }} – {{ filter_time_to or '23:59' }})
+        </span>
+      {% endif %}
+    </label>
 
-      <!-- Shortcut: Today button -->
-      <button type="button" class="type-btn" onclick="setToday()" title="Filter to today's documents">
-        📆 Today
-      </button>
+    <!-- Time range inputs — hidden until checkbox ticked -->
+    <div class="time-range-row {% if filter_time_from or filter_time_to %}visible{% endif %}"
+         id="time-range-row">
+      <div class="filter-group w-time">
+        <span class="filter-label">🕐 From time</span>
+        <input type="time" name="time_from"
+               class="filter-input {% if filter_time_from %}has-value{% endif %}"
+               value="{{ filter_time_from }}"/>
+      </div>
+      <div class="filter-group w-time">
+        <span class="filter-label">🕑 To time</span>
+        <input type="time" name="time_to"
+               class="filter-input {% if filter_time_to %}has-value{% endif %}"
+               value="{{ filter_time_to }}"/>
+      </div>
+      <div class="filter-group" style="flex-shrink:0;">
+        <span class="filter-label">&nbsp;</span>
+        <button type="submit" class="btn btn-primary btn-sm" style="min-height:42px;">Apply</button>
+      </div>
+    </div>
+
+    <!-- Quick filters + active pills -->
+    <div class="filter-type-row">
+      <button type="button" class="type-btn {% if filter_type=='All' %}active{% endif %}"
+              onclick="setType('All')">All</button>
+      <button type="button" class="type-btn {% if filter_type=='Received' %}active{% endif %}"
+              onclick="setType('Received')">📥 Received</button>
+      <button type="button" class="type-btn {% if filter_type=='Released' %}active{% endif %}"
+              onclick="setType('Released')">✅ Released</button>
+      <button type="button" class="type-btn" onclick="setToday()">📆 Today</button>
 
       {% set any_filter = search or filter_status != 'All' or filter_type != 'All' or filter_date or filter_time_from or filter_time_to %}
       {% if any_filter %}
-      <div class="filter-active-pills" style="margin-top:0;margin-left:8px;">
-        {% if filter_date %}<span class="filter-pill">📅 {{ filter_date }} <span class="pill-x" onclick="clearField('date')">×</span></span>{% endif %}
-        {% if filter_time_from or filter_time_to %}<span class="filter-pill">🕐 {{ filter_time_from or '00:00' }} – {{ filter_time_to or '23:59' }} <span class="pill-x" onclick="clearField('time_from');clearField('time_to');">×</span></span>{% endif %}
-        {% if filter_status != 'All' %}<span class="filter-pill">{{ filter_status }} <span class="pill-x" onclick="clearField('status','All')">×</span></span>{% endif %}
-        {% if search %}<span class="filter-pill">🔍 "{{ search }}" <span class="pill-x" onclick="clearField('search','')">×</span></span>{% endif %}
+      <div class="filter-active-pills">
+        {% if filter_date %}<span class="filter-pill">📅 {{ filter_date }}<span class="pill-x" onclick="clearField('date')"> ×</span></span>{% endif %}
+        {% if filter_time_from or filter_time_to %}<span class="filter-pill">🕐 {{ filter_time_from or '00:00' }}–{{ filter_time_to or '23:59' }}<span class="pill-x" onclick="clearField('time_from');clearField('time_to');"> ×</span></span>{% endif %}
+        {% if filter_status != 'All' %}<span class="filter-pill">{{ filter_status }}<span class="pill-x" onclick="clearField('status','All')"> ×</span></span>{% endif %}
+        {% if search %}<span class="filter-pill">🔍 "{{ search }}"<span class="pill-x" onclick="clearField('search','')"> ×</span></span>{% endif %}
+        {% if filter_type != 'All' %}<span class="filter-pill">{{ filter_type }}<span class="pill-x" onclick="clearField('type','All')"> ×</span></span>{% endif %}
       </div>
       {% endif %}
     </div>
 
   </div>
-  <!-- carry type through form submission -->
-  <input type="hidden" name="type" value="{{ filter_type }}"/>
+  <input type="hidden" name="type" id="type-hidden" value="{{ filter_type }}"/>
+  <input type="hidden" name="per_page" value="{{ per_page }}"/>
 </form>
 
 <script>
+function toggleTimeRange(on) {
+  document.getElementById('time-range-row').classList.toggle('visible', on);
+  if (!on) {
+    // Clear time values when hiding
+    document.querySelector('[name="time_from"]').value = '';
+    document.querySelector('[name="time_to"]').value   = '';
+  }
+}
 function setToday() {
   const today = new Date().toISOString().slice(0,10);
-  document.querySelector('input[name="date"]').value = today;
+  document.querySelector('[name="date"]').value = today;
+  document.getElementById('filter-form').submit();
+}
+function setType(val) {
+  document.getElementById('type-hidden').value = val;
   document.getElementById('filter-form').submit();
 }
 function clearField(name, val='') {
