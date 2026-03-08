@@ -9,148 +9,198 @@
   }
   .rd-title {
     font-family: 'Playfair Display', serif;
-    font-size: 1.55rem; font-weight: 900; color: var(--navy); flex: 1;
+    font-size: 1.8rem; font-weight: 900; color: var(--navy); flex: 1;
   }
-  .rd-subtitle { font-size: .82rem; color: var(--muted); font-weight: 500; margin-top: 1px; }
+  .rd-subtitle { font-size: .95rem; color: var(--muted); font-weight: 500; margin-top: 3px; }
 
-  /* slip card */
   .slip-block {
-    background: #fff; border-radius: 16px; margin-bottom: 28px;
-    box-shadow: 0 4px 24px rgba(10,37,64,.09), 0 1px 4px rgba(10,37,64,.05);
-    overflow: hidden; border: 1.5px solid #E2EAF1;
+    background: #fff; border-radius: 18px; margin-bottom: 32px;
+    box-shadow: 0 4px 28px rgba(10,37,64,.10), 0 1px 4px rgba(10,37,64,.05);
+    overflow: hidden; border: 2px solid #E2EAF1;
   }
-
-  /* slip header */
   .slip-head {
-    display: flex; align-items: center; gap: 14px;
-    padding: 16px 22px; border-bottom: 1.5px solid #E2EAF1;
-    background: linear-gradient(135deg, #F8FAFC, #EFF6FF);
+    display: flex; align-items: center; gap: 16px;
+    padding: 18px 24px; border-bottom: 2px solid #E2EAF1;
+    background: linear-gradient(135deg, #F0F7FF, #E8F4FD);
     flex-wrap: wrap;
   }
   .slip-no-badge {
-    font-family: 'JetBrains Mono', monospace; font-size: .78rem;
-    font-weight: 700; background: var(--navy); color: #fff;
-    padding: 4px 12px; border-radius: 7px; white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace; font-size: .92rem;
+    font-weight: 800; background: var(--navy); color: #fff;
+    padding: 6px 16px; border-radius: 9px; white-space: nowrap;
   }
-  .slip-route {
-    display: flex; align-items: center; gap: 8px; flex: 1;
-    flex-wrap: wrap; min-width: 180px;
-  }
+  .slip-route { display: flex; align-items: center; gap: 10px; flex: 1; flex-wrap: wrap; min-width: 200px; }
   .slip-from {
-    background: #F1F5F9; border: 1px solid #CBD5E1;
-    border-radius: 7px; padding: 4px 11px;
-    font-size: .8rem; font-weight: 700; color: #475569;
+    background: #F1F5F9; border: 1.5px solid #CBD5E1;
+    border-radius: 8px; padding: 5px 14px;
+    font-size: .9rem; font-weight: 700; color: #334155;
   }
-  .slip-arrow { font-size: 1.1rem; color: var(--teal); font-weight: 900; }
+  .slip-arrow { font-size: 1.3rem; color: var(--teal); font-weight: 900; }
   .slip-to {
-    background: #DBEAFE; border: 1px solid #93C5FD;
-    border-radius: 7px; padding: 4px 11px;
-    font-size: .8rem; font-weight: 700; color: #1D4ED8;
+    background: #DBEAFE; border: 1.5px solid #93C5FD;
+    border-radius: 8px; padding: 5px 14px;
+    font-size: .9rem; font-weight: 700; color: #1E40AF;
   }
-  .slip-meta {
-    display: flex; gap: 16px; flex-wrap: wrap;
-    font-size: .75rem; color: var(--muted); font-weight: 600;
-  }
-  .slip-meta span { display: flex; align-items: center; gap: 4px; }
-
+  .slip-meta { display: flex; gap: 18px; flex-wrap: wrap; font-size: .88rem; color: var(--muted); font-weight: 600; }
+  .slip-meta span { display: flex; align-items: center; gap: 5px; }
   .slip-view-link {
-    font-size: .78rem; font-weight: 700; color: var(--teal);
-    text-decoration: none; padding: 5px 12px;
-    border: 1.5px solid var(--teal); border-radius: 8px;
+    font-size: .88rem; font-weight: 800; color: var(--teal);
+    text-decoration: none; padding: 7px 16px;
+    border: 2px solid var(--teal); border-radius: 9px;
     transition: all .15s; white-space: nowrap;
   }
   .slip-view-link:hover { background: var(--teal); color: #fff; }
 
-  /* documents mini-table */
-  .doc-table-wrap { padding: 0 22px 16px; }
-  .doc-mini-table {
-    width: 100%; border-collapse: collapse; font-size: .82rem;
-    margin-top: 14px;
+  /* Table header bar */
+  .doc-table-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 22px; border-bottom: 1.5px solid #E2EAF1;
+    flex-wrap: wrap; background: #fff;
   }
+  .doc-table-title { font-size: 1rem; font-weight: 800; color: var(--navy); flex: 1; }
+  .doc-count-badge {
+    background: #EFF6FF; border: 1.5px solid #BFDBFE; color: #1D4ED8;
+    border-radius: 20px; padding: 4px 13px; font-size: .82rem; font-weight: 800;
+  }
+  .btn-add-doc {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 20px; border-radius: 10px; border: none; cursor: pointer;
+    background: linear-gradient(135deg, #059669, #10B981);
+    color: #fff; font-weight: 800; font-size: .92rem;
+    box-shadow: 0 2px 10px rgba(5,150,105,.3);
+    transition: filter .15s, transform .1s;
+    text-decoration: none; white-space: nowrap;
+  }
+  .btn-add-doc:hover { filter: brightness(1.1); transform: translateY(-1px); color: #fff; }
+
+  /* Documents table */
+  .doc-table-wrap { overflow-x: auto; }
+  .doc-mini-table { width: 100%; border-collapse: collapse; font-size: .93rem; }
   .doc-mini-table th {
-    padding: 8px 12px; text-align: left;
-    font-size: .7rem; font-weight: 800; text-transform: uppercase;
+    padding: 10px 16px; text-align: left;
+    font-size: .78rem; font-weight: 800; text-transform: uppercase;
     letter-spacing: .07em; color: var(--muted);
-    border-bottom: 2px solid #E2EAF1;
+    border-bottom: 2px solid #E2EAF1; white-space: nowrap; background: #FAFBFC;
   }
   .doc-mini-table td {
-    padding: 9px 12px; border-bottom: 1px solid #F1F5F9;
+    padding: 12px 16px; border-bottom: 1.5px solid #F1F5F9;
     color: var(--navy); vertical-align: middle;
   }
   .doc-mini-table tr:last-child td { border-bottom: none; }
-  .doc-mini-table tbody tr:hover td { background: #F8FAFC; }
-  .doc-name-cell { font-weight: 700; }
-  .doc-ref-cell  { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--muted); margin-top: 2px; }
+  .doc-mini-table tbody tr:hover td { background: #F0F7FF; cursor: pointer; }
+  .doc-name-cell { font-weight: 700; font-size: .95rem; line-height: 1.4; }
+  .doc-ref-cell { font-family: 'JetBrains Mono', monospace; font-size: .76rem; color: var(--muted); margin-top: 3px; }
 
-  /* batch update bar */
+  .s-badge { display: inline-block; padding: 4px 12px; border-radius: 7px; font-size: .83rem; font-weight: 800; white-space: nowrap; }
+  .s-pending  { background:#FEF3C7; color:#92400E; }
+  .s-transit  { background:#DBEAFE; color:#1E40AF; }
+  .s-received { background:#D1FAE5; color:#065F46; }
+  .s-review   { background:#EDE9FE; color:#5B21B6; }
+  .s-released { background:#F0FDF4; color:#166534; }
+  .s-hold     { background:#FEE2E2; color:#991B1B; }
+  .s-archived { background:#F1F5F9; color:#475569; }
+
+  /* Batch bar */
   .batch-bar {
     display: flex; align-items: center; gap: 12px;
-    padding: 14px 22px; background: #F8FAFC;
-    border-top: 1.5px solid #E2EAF1; flex-wrap: wrap;
+    padding: 16px 22px; background: #F8FAFC;
+    border-top: 2px solid #E2EAF1; flex-wrap: wrap;
   }
-  .batch-label {
-    font-size: .78rem; font-weight: 800; color: var(--navy);
-    text-transform: uppercase; letter-spacing: .06em; white-space: nowrap;
-  }
+  .batch-label { font-size: .88rem; font-weight: 800; color: var(--navy); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
   .batch-select {
-    padding: 7px 12px; border-radius: 8px; border: 1.5px solid #CBD5E1;
-    font-family: 'Outfit', sans-serif; font-size: .82rem; font-weight: 600;
-    color: var(--navy); background: #fff; cursor: pointer;
-    transition: border-color .15s;
+    padding: 9px 14px; border-radius: 9px; border: 2px solid #CBD5E1;
+    font-family: 'Outfit', sans-serif; font-size: .92rem; font-weight: 600;
+    color: var(--navy); background: #fff; cursor: pointer; min-width: 195px;
   }
   .batch-select:focus { outline: none; border-color: var(--teal); }
   .batch-notes {
-    flex: 1; min-width: 160px;
-    padding: 7px 12px; border-radius: 8px; border: 1.5px solid #CBD5E1;
-    font-family: 'Outfit', sans-serif; font-size: .82rem; font-weight: 500;
-    color: var(--navy); background: #fff;
+    flex: 1; min-width: 180px;
+    padding: 9px 14px; border-radius: 9px; border: 2px solid #CBD5E1;
+    font-family: 'Outfit', sans-serif; font-size: .92rem; color: var(--navy); background: #fff;
   }
   .batch-notes:focus { outline: none; border-color: var(--teal); }
   .batch-btn {
-    padding: 8px 20px; border-radius: 9px; border: none; cursor: pointer;
-    font-family: 'Outfit', sans-serif; font-size: .82rem; font-weight: 800;
+    padding: 10px 24px; border-radius: 10px; border: none; cursor: pointer;
+    font-family: 'Outfit', sans-serif; font-size: .92rem; font-weight: 800;
     background: var(--teal); color: #fff;
     box-shadow: 0 2px 8px rgba(14,116,144,.25);
     transition: all .15s; white-space: nowrap;
   }
   .batch-btn:hover { background: #0891B2; transform: translateY(-1px); }
 
-  .empty-state {
-    text-align: center; padding: 60px 20px;
-    color: var(--muted); font-size: .95rem;
+  /* Pagination */
+  .rd-pager {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px; padding: 18px 0; margin-top: 4px;
   }
-  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  .pager-info { font-size: .93rem; font-weight: 600; color: var(--muted); }
+  .pager-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .pager-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 46px; height: 46px; padding: 0 14px;
+    border-radius: 10px; border: 2px solid var(--border);
+    background: #fff; color: var(--navy);
+    font-size: .93rem; font-weight: 700;
+    text-decoration: none; transition: all .15s; white-space: nowrap;
+  }
+  .pager-btn:hover:not(.disabled):not(.active) { border-color: var(--teal); color: var(--teal); }
+  .pager-btn.active { background: var(--teal); border-color: var(--teal); color: #fff; box-shadow: 0 2px 8px rgba(14,116,144,.25); }
+  .pager-btn.disabled { opacity: .4; pointer-events: none; }
+  .pager-perpage { display: flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 600; color: var(--muted); }
+  .pager-perpage select {
+    padding: 7px 11px; border: 2px solid var(--border); border-radius: 8px;
+    font-size: .92rem; font-weight: 600; color: var(--navy); background: #fff; cursor: pointer;
+  }
+  .pager-perpage select:focus { outline: none; border-color: var(--teal); }
 
-  /* status badges inline */
-  .s-badge {
-    display: inline-block; padding: 2px 9px; border-radius: 6px;
-    font-size: .72rem; font-weight: 700;
+  .empty-state { text-align: center; padding: 70px 20px; color: var(--muted); }
+  .empty-state .icon { font-size: 3.5rem; margin-bottom: 14px; }
+  .empty-state .etitle { font-weight: 800; color: var(--navy); font-size: 1.15rem; margin-bottom: 8px; }
+
+  @media(max-width:700px){
+    .slip-head, .doc-table-head, .batch-bar { padding: 14px 16px; }
+    .doc-mini-table th, .doc-mini-table td { padding: 10px 11px; font-size: .88rem; }
+    .rd-title { font-size: 1.45rem; }
+    .btn-add-doc { font-size: .85rem; padding: 8px 14px; }
   }
-  .s-pending   { background:#FEF3C7; color:#92400E; }
-  .s-transit   { background:#DBEAFE; color:#1E40AF; }
-  .s-received  { background:#D1FAE5; color:#065F46; }
-  .s-review    { background:#EDE9FE; color:#5B21B6; }
-  .s-released  { background:#F0FDF4; color:#166534; }
-  .s-hold      { background:#FEE2E2; color:#991B1B; }
-  .s-archived  { background:#F1F5F9; color:#475569; }
 </style>
 
+<!-- PAGE HEADER -->
 <div class="rd-header">
   <div>
     <div class="rd-title">🚌 Routed Documents</div>
-    <div class="rd-subtitle">View all routing slips and update document statuses in batch</div>
+    <div class="rd-subtitle">All routing slips — view documents and update statuses in bulk</div>
   </div>
-  <a href="/" class="btn" style="font-size:.82rem;padding:8px 18px;">← Back to Dashboard</a>
+  <a href="/" class="btn" style="font-size:.92rem;padding:10px 22px;">← Back to Dashboard</a>
 </div>
 
-{% if not slips %}
+{% if not slips and page == 1 %}
 <div class="empty-state">
   <div class="icon">📭</div>
-  <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">No routing slips yet</div>
-  <div>When documents are routed via a routing slip, they will appear here.</div>
+  <div class="etitle">No routing slips yet</div>
+  <div style="font-size:.95rem;">When documents are routed via a routing slip, they will appear here.</div>
 </div>
+
 {% else %}
 
+<!-- TOP BAR: count + per-page -->
+<div class="rd-pager" style="padding-bottom:10px;border-bottom:1.5px solid var(--border);margin-bottom:22px;">
+  <div class="pager-info">
+    Showing <strong>{{ ((page-1)*per_page)+1 }}–{{ [page*per_page, total]|min }}</strong>
+    of <strong>{{ total }}</strong> routing slip{{ 's' if total != 1 else '' }}
+  </div>
+  <div class="pager-perpage">
+    Show
+    <select onchange="changeRdPerPage(this.value)">
+      {% for n in [5, 10, 20, 50] %}
+        <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }}</option>
+      {% endfor %}
+    </select>
+    per page
+  </div>
+</div>
+
+<!-- SLIP CARDS -->
 {% for slip in slips %}
 <div class="slip-block">
 
@@ -170,23 +220,32 @@
     <a href="/routing-slip/{{ slip.id }}" class="slip-view-link">View Slip →</a>
   </div>
 
+  <!-- Table header: title + doc count + Add Document button -->
+  <div class="doc-table-head">
+    <span class="doc-table-title">📋 Documents in this Slip</span>
+    <span class="doc-count-badge">{{ slip.docs|length }} document{{ 's' if slip.docs|length != 1 else '' }}</span>
+    <a href="/add" class="btn-add-doc">➕ Add Document</a>
+  </div>
+
   <!-- Documents table -->
   <div class="doc-table-wrap">
     {% if slip.docs %}
     <table class="doc-mini-table">
       <thead>
         <tr>
-          <th>#</th>
-          <th>Document</th>
-          <th>Unit / Office</th>
+          <th style="width:40px;text-align:center;">#</th>
+          <th>Document / Content</th>
+          <th>Unit / Office / School</th>
           <th>Sender</th>
-          <th>Current Status</th>
+          <th>Status</th>
         </tr>
       </thead>
       <tbody>
         {% for doc in slip.docs %}
-        <tr>
-          <td style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.75rem;">{{ loop.index }}</td>
+        <tr onclick="window.location='/doc/{{ doc.id }}'" title="View document">
+          <td style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.8rem;text-align:center;">
+            {{ loop.index }}
+          </td>
           <td>
             <div class="doc-name-cell">{{ doc.doc_name }}</div>
             {% if doc.doc_id %}<div class="doc-ref-cell">{{ doc.doc_id }}</div>{% endif %}
@@ -195,13 +254,13 @@
           <td>{{ doc.sender_name or '—' }}</td>
           <td>
             {% set s = doc.status %}
-            {% if s == 'Pending' %}     <span class="s-badge s-pending">{{ s }}</span>
+            {% if   s == 'Pending'    %}<span class="s-badge s-pending">⏳ {{ s }}</span>
             {% elif s == 'In Transit' %}<span class="s-badge s-transit">🚌 {{ s }}</span>
-            {% elif s == 'Received' %}  <span class="s-badge s-received">{{ s }}</span>
-            {% elif s == 'In Review' %} <span class="s-badge s-review">{{ s }}</span>
-            {% elif s == 'Released' %}  <span class="s-badge s-released">{{ s }}</span>
-            {% elif s == 'On Hold' %}   <span class="s-badge s-hold">{{ s }}</span>
-            {% else %}                  <span class="s-badge s-archived">{{ s }}</span>
+            {% elif s == 'Received'   %}<span class="s-badge s-received">✅ {{ s }}</span>
+            {% elif s == 'In Review'  %}<span class="s-badge s-review">🔍 {{ s }}</span>
+            {% elif s == 'Released'   %}<span class="s-badge s-released">📤 {{ s }}</span>
+            {% elif s == 'On Hold'    %}<span class="s-badge s-hold">⏸ {{ s }}</span>
+            {% else %}                  <span class="s-badge s-archived">🗄️ {{ s }}</span>
             {% endif %}
           </td>
         </tr>
@@ -209,32 +268,82 @@
       </tbody>
     </table>
     {% else %}
-    <div style="padding:16px;color:var(--muted);font-size:.82rem;">No documents found for this slip.</div>
+    <div style="padding:18px 24px;color:var(--muted);font-size:.92rem;">
+      No documents found for this slip.
+    </div>
     {% endif %}
   </div>
 
-  <!-- Batch status update bar -->
+  <!-- Batch status update -->
   <form method="POST" action="/routing-slip/{{ slip.id }}/batch-status">
     <div class="batch-bar">
-      <span class="batch-label">⚡ Update all {{ slip.docs|length }} docs:</span>
+      <span class="batch-label">⚡ Update all {{ slip.docs|length }} docs to:</span>
       <select name="status" class="batch-select" required>
-        <option value="" disabled selected>— Select new status —</option>
+        <option value="" disabled selected>— Pick a status —</option>
         <option value="Received">✅ Received</option>
         <option value="In Review">🔍 In Review</option>
         <option value="In Transit">🚌 In Transit</option>
         <option value="Released">📤 Released</option>
         <option value="On Hold">⏸ On Hold</option>
-        <option value="Pending">🕐 Pending</option>
+        <option value="Pending">⏳ Pending</option>
         <option value="Archived">🗄️ Archived</option>
       </select>
       <input type="text" name="notes" class="batch-notes"
-             placeholder="Optional note (e.g. Received by Chief)"/>
-      <button type="submit" class="batch-btn">Apply to All</button>
+             placeholder="Optional note  (e.g. Received by Chief, March 8)"/>
+      <button type="submit" class="batch-btn">✔ Apply to All</button>
     </div>
   </form>
 
-</div>
+</div><!-- end slip-block -->
 {% endfor %}
 
+<!-- BOTTOM PAGINATION -->
+{% if total_pages > 1 %}
+<div class="rd-pager">
+  <div class="pager-info">
+    Page <strong>{{ page }}</strong> of <strong>{{ total_pages }}</strong>
+    &nbsp;·&nbsp; {{ total }} slip{{ 's' if total != 1 else '' }} total
+  </div>
+  <div class="pager-controls">
+    {% if page > 1 %}
+      <a href="/routed-documents?page={{ page-1 }}&per_page={{ per_page }}" class="pager-btn">‹ Prev</a>
+    {% else %}
+      <span class="pager-btn disabled">‹ Prev</span>
+    {% endif %}
+
+    {% set sp = [1, page-2]|max %}
+    {% set ep = [total_pages, page+2]|min %}
+    {% if sp > 1 %}
+      <a href="/routed-documents?page=1&per_page={{ per_page }}" class="pager-btn">1</a>
+      {% if sp > 2 %}<span style="color:var(--muted);padding:0 6px;font-size:1.1rem;">…</span>{% endif %}
+    {% endif %}
+    {% for p in range(sp, ep+1) %}
+      {% if p == page %}
+        <span class="pager-btn active">{{ p }}</span>
+      {% else %}
+        <a href="/routed-documents?page={{ p }}&per_page={{ per_page }}" class="pager-btn">{{ p }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if ep < total_pages %}
+      {% if ep < total_pages-1 %}<span style="color:var(--muted);padding:0 6px;font-size:1.1rem;">…</span>{% endif %}
+      <a href="/routed-documents?page={{ total_pages }}&per_page={{ per_page }}" class="pager-btn">{{ total_pages }}</a>
+    {% endif %}
+
+    {% if page < total_pages %}
+      <a href="/routed-documents?page={{ page+1 }}&per_page={{ per_page }}" class="pager-btn">Next ›</a>
+    {% else %}
+      <span class="pager-btn disabled">Next ›</span>
+    {% endif %}
+  </div>
+</div>
 {% endif %}
+
+{% endif %}
+
+<script>
+function changeRdPerPage(val) {
+  window.location.href = '/routed-documents?page=1&per_page=' + val;
+}
+</script>
+
 {% endblock %}

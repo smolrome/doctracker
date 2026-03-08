@@ -201,10 +201,31 @@ def routed_documents():
     slips = get_all_routing_slips()
     # Collect every doc_id needed across all slips, fetch in ONE query
     all_ids = [did for slip in slips for did in slip.get("doc_ids", [])]
-    docs_map = get_docs_by_ids(all_ids)   # {id: doc}
+    docs_map = get_docs_by_ids(all_ids)
     for slip in slips:
         slip["docs"] = [docs_map[did] for did in slip.get("doc_ids", []) if did in docs_map]
-    return render_template("routed_documents.html", slips=slips)
+
+    # Pagination
+    try:
+        per_page = max(1, int(request.args.get("per_page", 10)))
+    except ValueError:
+        per_page = 10
+    if per_page not in (5, 10, 20, 50):
+        per_page = 10
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except ValueError:
+        page = 1
+
+    total       = len(slips)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page        = min(page, total_pages)
+    start       = (page - 1) * per_page
+    paginated   = slips[start : start + per_page]
+
+    return render_template("routed_documents.html",
+                           slips=paginated, total=total,
+                           page=page, total_pages=total_pages, per_page=per_page)
 
 
 @offices_bp.route("/routing-slip/<slip_id>/batch-status", methods=["POST"])
