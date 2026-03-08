@@ -186,7 +186,9 @@ def view_routing_slip(slip_id):
     if not slip:
         flash("Routing slip not found.", "error")
         return redirect(url_for("dashboard.index"))
-    docs = [d for d in (get_doc(did) for did in slip["doc_ids"]) if d]
+    from services.documents import get_docs_by_ids
+    docs_map = get_docs_by_ids(slip.get("doc_ids", []))
+    docs = [docs_map[did] for did in slip.get("doc_ids", []) if did in docs_map]
     return render_template("routing_slip.html", slip=slip, docs=docs)
 
 
@@ -195,11 +197,13 @@ def view_routing_slip(slip_id):
 def routed_documents():
     """Staff view — all routing slips with their documents and batch status update."""
     from services.misc import get_all_routing_slips
-    from services.documents import get_doc
+    from services.documents import get_docs_by_ids
     slips = get_all_routing_slips()
-    # Attach full doc objects to each slip
+    # Collect every doc_id needed across all slips, fetch in ONE query
+    all_ids = [did for slip in slips for did in slip.get("doc_ids", [])]
+    docs_map = get_docs_by_ids(all_ids)   # {id: doc}
     for slip in slips:
-        slip["docs"] = [d for d in (get_doc(did) for did in slip.get("doc_ids", [])) if d]
+        slip["docs"] = [docs_map[did] for did in slip.get("doc_ids", []) if did in docs_map]
     return render_template("routed_documents.html", slips=slips)
 
 
@@ -208,7 +212,6 @@ def routed_documents():
 def batch_update_slip_status(slip_id):
     """Batch update status for all documents in a routing slip."""
     from services.misc import get_routing_slip
-    from services.documents import get_doc, save_doc
     from services.misc import audit_log as _audit
     from utils import get_client_ip
 
@@ -225,24 +228,31 @@ def batch_update_slip_status(slip_id):
         flash("Please select a status.", "error")
         return redirect(url_for("offices.routed_documents"))
 
-    updated = 0
-    for doc_id in slip.get("doc_ids", []):
-        doc = get_doc(doc_id)
+    from services.documents import get_docs_by_ids, batch_save_docs
+    from services.misc import now_str
+
+    doc_ids  = slip.get("doc_ids", [])
+    docs_map = get_docs_by_ids(doc_ids)   # one query
+    log_entry = f"{new_status} — updated via Routing Slip {slip['slip_no']} by {actor}"
+    if notes:
+        log_entry += f" | Note: {notes}"
+    ts = now_str()
+
+    to_save = []
+    for doc_id in doc_ids:
+        doc = docs_map.get(doc_id)
         if not doc:
             continue
         doc["status"] = new_status
-        # Travel log entry
-        log_entry = f"{new_status} — updated via Routing Slip {slip['slip_no']} by {actor}"
-        if notes:
-            log_entry += f" | Note: {notes}"
         tl = doc.get("travel_log") or []
-        from services.misc import now_str
-        tl.append({"ts": now_str(), "entry": log_entry, "actor": actor})
+        tl.append({"ts": ts, "entry": log_entry, "actor": actor})
         doc["travel_log"] = tl
         if new_status == "Received":
             doc["received_by"] = actor
-        save_doc(doc)
-        updated += 1
+        to_save.append(doc)
+
+    batch_save_docs(to_save)   # one transaction
+    updated = len(to_save)
 
     _audit("batch_status_update",
            f"slip={slip_id} status={new_status} docs={updated}",
