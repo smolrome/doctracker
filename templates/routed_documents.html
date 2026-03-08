@@ -62,16 +62,7 @@
     background: #EFF6FF; border: 1.5px solid #BFDBFE; color: #1D4ED8;
     border-radius: 20px; padding: 4px 13px; font-size: .82rem; font-weight: 800;
   }
-  .btn-add-doc {
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 9px 20px; border-radius: 10px; border: none; cursor: pointer;
-    background: linear-gradient(135deg, #059669, #10B981);
-    color: #fff; font-weight: 800; font-size: .92rem;
-    box-shadow: 0 2px 10px rgba(5,150,105,.3);
-    transition: filter .15s, transform .1s;
-    text-decoration: none; white-space: nowrap;
-  }
-  .btn-add-doc:hover { filter: brightness(1.1); transform: translateY(-1px); color: #fff; }
+
 
   /* Documents table */
   .doc-table-wrap { overflow-x: auto; }
@@ -161,7 +152,6 @@
     .slip-head, .doc-table-head, .batch-bar { padding: 14px 16px; }
     .doc-mini-table th, .doc-mini-table td { padding: 10px 11px; font-size: .88rem; }
     .rd-title { font-size: 1.45rem; }
-    .btn-add-doc { font-size: .85rem; padding: 8px 14px; }
   }
 </style>
 
@@ -220,11 +210,10 @@
     <a href="/routing-slip/{{ slip.id }}" class="slip-view-link">View Slip →</a>
   </div>
 
-  <!-- Table header: title + doc count + Add Document button -->
+  <!-- Table header: title + doc count -->
   <div class="doc-table-head">
     <span class="doc-table-title">📋 Documents in this Slip</span>
     <span class="doc-count-badge">{{ slip.docs|length }} document{{ 's' if slip.docs|length != 1 else '' }}</span>
-    <a href="/add" class="btn-add-doc">➕ Add Document</a>
   </div>
 
   <!-- Documents table -->

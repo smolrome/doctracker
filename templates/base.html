@@ -621,10 +621,6 @@
         </div>
         <div class="nav-dropdown-menu">
           <div class="dd-section">
-            <a href="/add" class="dd-item highlight">
-              <span class="dd-icon">＋</span>
-              <span class="dd-text">Add Document<span class="dd-desc">Log a new incoming document</span></span>
-            </a>
             <a href="/scan" class="dd-item">
               <span class="dd-icon">📷</span>
               <span class="dd-text">Scan QR<span class="dd-desc">Scan a document QR code</span></span>
@@ -637,10 +633,6 @@
             <a href="/office-qr-page" class="dd-item">
               <span class="dd-icon">🖨️</span>
               <span class="dd-text">Office QR Codes<span class="dd-desc">Print QR for offices</span></span>
-            </a>
-            <a href="/routed-documents" class="dd-item">
-              <span class="dd-icon">🚌</span>
-              <span class="dd-text">Routed Documents<span class="dd-desc">View slips &amp; update status</span></span>
             </a>
             {% endif %}
           </div>
@@ -715,7 +707,6 @@
 <div class="nav-drawer" id="nav-drawer">
   {% if logged_in %}
     <div class="nav-drawer-section">Actions</div>
-    <a href="/add"       class="nav-btn primary" onclick="closeMenu()">＋ Add Document</a>
     <a href="/scan"      class="nav-btn" onclick="closeMenu()">📷 Scan QR</a>
     <a href="/upload-qr" class="nav-btn" onclick="closeMenu()">📤 Upload QR Image</a>
     {% if current_role in ('admin','staff') %}

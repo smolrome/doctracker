@@ -526,7 +526,7 @@ function clearField(name, val='') {
     </div>
     <div class="rp-field" style="grid-column:span 2">
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
-        <input type="checkbox" id="use-time-range" onchange="toggleTimeRange(this.checked)"
+        <input type="checkbox" id="use-time-range" onchange="toggleModalTimeRange(this.checked)"
                style="width:16px;height:16px;accent-color:#fff;cursor:pointer"/>
         🕐 Include Time Range <span style="font-size:12px;font-weight:400;color:rgba(255,255,255,.5)">(optional)</span>
       </label>
@@ -891,7 +891,7 @@ if (selAll) {
 // ── AUTO-SELECT docs by time range ──
 // Each row has data-received-time set from the date_received field
 // (We use created_at as fallback for time matching)
-function toggleTimeRange(on) {
+function toggleModalTimeRange(on) {
   document.getElementById('time-from-field').style.display  = on ? '' : 'none';
   document.getElementById('time-to-field').style.display    = on ? '' : 'none';
   document.getElementById('btn-auto-select').style.display  = on ? '' : 'none';
