@@ -12,9 +12,7 @@ from services.documents import (
     delete_doc, get_doc, get_stats, insert_doc,
     load_docs, now_str, generate_ref, restore_doc, save_doc,
 )
-from services.misc import (
-    audit_log, load_saved_offices,
-)
+from services.misc import audit_log, load_saved_offices
 from services.qr import generate_qr_b64, make_qr_png
 from utils import get_client_ip, is_logged_in, login_required
 from config import STATUS_OPTIONS
@@ -159,6 +157,10 @@ def add():
             else:
                 actor = session.get("full_name") or session.get("username") or "Staff"
                 for item in cart:
+                    audit_log("doc_created",
+                              f"doc_name={item.get('doc_name','')[:80]} "
+                              f"sender_org={item.get('sender_org','')}",
+                              username=session.get("username","?"), ip=get_client_ip())
                     doc = {
                         "id":             str(uuid.uuid4())[:8].upper(),
                         "doc_id":         generate_ref(),
@@ -253,6 +255,10 @@ def edit(doc_id):
             return render_template("form.html", doc=doc, action="edit",
                                    status_options=STATUS_OPTIONS)
         save_doc(doc)
+        audit_log("doc_edited",
+                  f"doc_id={doc_id} doc_name={doc.get('doc_name','')[:80]} "
+                  f"status={doc.get('status','')}",
+                  username=session.get("username","?"), ip=get_client_ip())
         flash("Document updated.", "success")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
 
@@ -320,6 +326,10 @@ def update_status(doc_id):
         "remarks":   "Manual status update by staff.",
     })
     save_doc(doc)
+    audit_log("status_updated",
+              f"doc_id={doc_id} new_status={new_status} "
+              f"doc_name={doc.get('doc_name','')[:60]}",
+              username=session.get("username","?"), ip=get_client_ip())
     flash(f"Status updated to {new_status}.", "success")
     return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
 

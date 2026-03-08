@@ -25,6 +25,13 @@ def _base_url(fallback: str = "") -> str:
 @admin_bp.route("/manage-users")
 @admin_required
 def manage_users():
+    try:
+        from services.misc import audit_log
+        from utils import get_client_ip
+        audit_log("admin_users_viewed", "Admin accessed user management",
+                  username=session.get("username","admin"), ip=get_client_ip())
+    except Exception:
+        pass
     users = get_all_users()
     return render_template("manage_users.html", users=users,
                            admin_username=ADMIN_USERNAME)
@@ -33,6 +40,13 @@ def manage_users():
 @admin_bp.route("/activity-log")
 @admin_required
 def activity_log():
+    try:
+        from services.misc import audit_log
+        from utils import get_client_ip
+        audit_log("audit_log_viewed", "Admin accessed the audit log",
+                  username=session.get("username","admin"), ip=get_client_ip())
+    except Exception:
+        pass
     logs = get_activity_logs()
     return render_template("activity_log.html", logs=logs)
 

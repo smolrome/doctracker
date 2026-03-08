@@ -119,6 +119,10 @@ def _create_tables(cur):
             created_at TIMESTAMP DEFAULT NOW()
         )
     """)
+    # Performance + audit query indexes
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(username)""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(created_at DESC)""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_documents_created ON documents(created_at DESC)""")
 
 
 def _run_migrations(cur):

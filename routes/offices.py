@@ -174,7 +174,8 @@ def create_routing_slip():
             save_doc(doc)
 
     audit_log("routing_slip_created",
-              f"slip={slip_no} from={from_office} dest={destination} docs={len(doc_ids)}",
+              f"slip_no={slip_no} from={from_office} dest={destination} "
+                  f"docs={len(doc_ids)} ids={','.join(str(x) for x in doc_ids[:5])}",
               username=session.get("username", ""), ip=get_client_ip())
     return redirect(url_for("offices.view_routing_slip", slip_id=slip_id))
 
@@ -189,6 +190,15 @@ def view_routing_slip(slip_id):
     from services.documents import get_docs_by_ids
     docs_map = get_docs_by_ids(slip.get("doc_ids", []))
     docs = [docs_map[did] for did in slip.get("doc_ids", []) if did in docs_map]
+    try:
+        from services.misc import audit_log as _alog
+        from utils import get_client_ip as _ip
+        _alog("slip_viewed",
+              f"slip_id={slip_id} slip_no={slip.get('slip_no','?')} "
+              f"dest={slip.get('destination','?')} docs={len(docs)}",
+              username=session.get("username","?"), ip=_ip())
+    except Exception:
+        pass
     return render_template("routing_slip.html", slip=slip, docs=docs)
 
 
@@ -276,7 +286,9 @@ def batch_update_slip_status(slip_id):
     updated = len(to_save)
 
     _audit("batch_status_update",
-           f"slip={slip_id} status={new_status} docs={updated}",
+           f"slip_id={slip_id} slip_no={slip.get('slip_no','?')} "
+           f"new_status={new_status} docs_updated={updated} "
+           f"note={notes[:60] if notes else ''}",
            username=session.get("username"), ip=get_client_ip())
 
     flash(f"✅ {updated} document{'s' if updated != 1 else ''} updated to \"{new_status}\".", "success")

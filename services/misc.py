@@ -29,7 +29,7 @@ def audit_log(action: str, detail: str = "", username: str = "anonymous",
                     cur.execute(
                         """INSERT INTO activity_log (username, action, ip_address, detail)
                            VALUES (%s,%s,%s,%s)""",
-                        (username, action, ip, (detail[:500] if detail else ""))
+                        (username, action, ip, (detail[:1000] if detail else ""))
                     )
                 conn.commit()
         except Exception as e:
@@ -44,7 +44,7 @@ def audit_log(action: str, detail: str = "", username: str = "anonymous",
             "username": username, "action": action, "ip": ip,
             "detail": detail, "ts": datetime.now().isoformat(),
         })
-        logs = logs[-500:]  # keep last 500
+        logs = logs[-2000:]  # keep last 2000 in JSON fallback
         with open(path, "w") as f:
             json.dump(logs, f, indent=2)
 

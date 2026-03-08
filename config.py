@@ -46,8 +46,11 @@ CLIENT_REG_CODE = os.environ.get("CLIENT_REG_CODE", "client-reg")
 
 # ── Rate limits ────────────────────────────────────────────────────────────────
 RATE_LIMITS = {
-    "login":    {"max": 5,  "window": 300,  "lockout": 900},
-    "register": {"max": 5,  "window": 3600, "lockout": 3600},
+    "login":         {"max": 5,   "window": 300,  "lockout": 900},   # 5 tries/5 min → 15 min lockout
+    "register":      {"max": 3,   "window": 3600, "lockout": 7200},  # 3/hr → 2 hr lockout
+    "status_update": {"max": 100, "window": 60,   "lockout": 60},    # prevent status floods
+    "doc_create":    {"max": 50,  "window": 60,   "lockout": 60},    # prevent doc spam
+    "api":           {"max": 60,  "window": 60,   "lockout": 120},   # API protection
 }
 
 # ── Document statuses ──────────────────────────────────────────────────────────

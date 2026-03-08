@@ -117,6 +117,36 @@ def create_app() -> Flask:
             now             = datetime.now,
         )
 
+    # ── Request audit logger ──────────────────────────────────────────────────
+    AUDIT_WRITE_PATHS = ("/add", "/edit/", "/delete/", "/update-status/",
+                         "/routing-slip/", "/routed-documents",
+                         "/manage-users", "/send-invite", "/import-excel",
+                         "/clear-database", "/backup", "/restore",
+                         "/register", "/logout")
+
+    @app.before_request
+    def log_write_requests():
+        """Log every state-changing HTTP request with IP and user."""
+        if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
+            return
+        path = request.path
+        if any(path.startswith("/static") for _ in [1]):
+            return
+        try:
+            from services.misc import audit_log
+            actor = session.get("username", "anonymous")
+            detail = f"method={request.method} path={path}"
+            if request.form:
+                # Log form fields except passwords and tokens
+                safe_fields = {k: v[:120] for k, v in request.form.items()
+                               if k not in ("password", "confirm_password",
+                                            "_csrf_token", "password_hash")}
+                if safe_fields:
+                    detail += f" fields={safe_fields}"
+            audit_log("http_write", detail, username=actor, ip=get_client_ip())
+        except Exception:
+            pass  # Never let logging crash the request
+
     # ── CSRF Protection ────────────────────────────────────────────────────────
     CSRF_EXEMPT_PREFIXES = ("/office-action/", "/slip-scan/", "/doc-scan/",
                             "/client/", "/static/", "/office-qr/")
@@ -171,7 +201,7 @@ def create_app() -> Flask:
         if is_logged_in():
             last_active = session.get("last_active", 0)
             now = time.time()
-            if last_active and now - last_active > 8 * 3600:
+            if last_active and now - last_active > 4 * 3600:
                 session.clear()
                 flash("Your session expired. Please log in again.", "error")
             else:
@@ -234,24 +264,50 @@ def create_app() -> Flask:
         from flask import send_file
         return send_file(logo, mimetype="image/png")
 
-    # Public API endpoints
+    # API endpoints — require staff/admin login
     @app.route("/api/gen-ref")
     def api_gen_ref():
+        if not is_logged_in() or session.get("role") not in ("staff", "admin"):
+            return jsonify({"error": "unauthorized"}), 401
         from services.documents import generate_ref
         return jsonify({"ref": generate_ref()})
 
     @app.route("/api/docs")
     def api_docs():
+        if not is_logged_in() or session.get("role") not in ("staff", "admin"):
+            return jsonify({"error": "unauthorized"}), 401
         from services.documents import load_docs
+        try:
+            from services.misc import audit_log
+            audit_log("api_docs_export", "Full document list exported via API",
+                      username=session.get("username","?"), ip=get_client_ip())
+        except Exception:
+            pass
         return jsonify(load_docs())
 
     @app.route("/api/docs/<doc_id>/log")
     def api_log(doc_id):
+        if not is_logged_in() or session.get("role") not in ("staff", "admin"):
+            return jsonify({"error": "unauthorized"}), 401
         from services.documents import get_doc
         doc = get_doc(doc_id)
         if not doc:
             return jsonify({"error": "not found"}), 404
         return jsonify(doc.get("travel_log", []))
+
+    # 404 handler
+    @app.errorhandler(404)
+    def not_found(e):
+        try:
+            from services.misc import audit_log
+            audit_log("404_not_found", f"path={request.path}",
+                      username=session.get("username", "anonymous"),
+                      ip=get_client_ip())
+        except Exception:
+            pass
+        return render_template("500.html",
+                               error_title="Page Not Found",
+                               error_msg="The page you requested does not exist."), 404
 
     return app
 
