@@ -262,7 +262,7 @@
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;
                       letter-spacing:.1em;color:var(--muted);margin-bottom:2px;">From Office</div>
           <div style="font-weight:800;color:var(--navy);font-size:.95rem;">
-            {{ slip.from_office or 'DepEd Leyte Division' }}
+            {{ slip.from_office if slip.from_office and slip.from_office != 'DepEd Leyte Division' else (slip.prepared_by + "'s Office" if slip.prepared_by else 'DepEd Leyte Division') }}
           </div>
         </div>
         <div style="padding:0 14px;font-size:1.4rem;color:var(--teal);font-weight:900;">→</div>

@@ -208,7 +208,7 @@
   <div class="slip-head">
     <span class="slip-no-badge">{{ slip.slip_no }}</span>
     <div class="slip-route">
-      <span class="slip-from">{{ slip.from_office or 'DepEd Leyte Division' }}</span>
+      <span class="slip-from">{{ slip.from_office if slip.from_office and slip.from_office != 'DepEd Leyte Division' else (slip.prepared_by + "'s Office" if slip.prepared_by else 'DepEd Leyte Division') }}</span>
       <span class="slip-arrow">→</span>
       <span class="slip-to">{{ slip.destination }}</span>
     </div>

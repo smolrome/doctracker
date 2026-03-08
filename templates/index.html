@@ -104,6 +104,15 @@ function statFilter(status) {
       <div class="stat-clear">● Filtered</div>
     </div>
   </a>
+  <a class="stat-card {% if filter_status=='Archived' %}active{% endif %}"
+     style="--stat-accent:#64748B;"
+     href="#" onclick="event.preventDefault();statFilter('Archived')" title="Archived">
+    <div class="stat-card-inner">
+      <div class="stat-num">{{ stats.archived }}</div>
+      <div class="stat-label">🗄️ Archived</div>
+      <div class="stat-clear">● Filtered</div>
+    </div>
+  </a>
 </div>
 
 
@@ -235,10 +244,7 @@ document.addEventListener('keydown', e => {
   .filter-input.has-value{border-color:var(--teal);background:#EFF6FF;}
   .filter-divider{width:1px;background:var(--border);align-self:stretch;
     margin:0 2px;flex-shrink:0;}
-  /* Time range row — hidden until checkbox ticked */
-  .time-range-row{display:none;gap:10px;flex-wrap:wrap;align-items:flex-end;
-    margin-top:10px;padding-top:10px;border-top:1.5px dashed var(--border);}
-  .time-range-row.visible{display:flex;}
+  /* time-range-row visibility controlled via JS style.display */
   .time-toggle-label{display:flex;align-items:center;gap:8px;cursor:pointer;
     font-size:13px;font-weight:700;color:var(--muted);margin-top:10px;
     padding-top:10px;border-top:1.5px dashed var(--border);}
@@ -287,19 +293,6 @@ document.addEventListener('keydown', e => {
 
       <div class="filter-divider"></div>
 
-      <div class="filter-group w-status">
-        <span class="filter-label">📌 Status</span>
-        <select name="status"
-                class="filter-input {% if filter_status != 'All' %}has-value{% endif %}"
-                onchange="this.form.submit()">
-          {% for s in status_options %}
-            <option value="{{ s }}" {% if filter_status==s %}selected{% endif %}>{{ s }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div class="filter-divider"></div>
-
       <div class="filter-group w-date">
         <span class="filter-label">📅 Date</span>
         <input type="date" name="date"
@@ -320,37 +313,33 @@ document.addEventListener('keydown', e => {
       </div>
     </div>
 
-    <!-- Time range toggle checkbox -->
-    <label class="time-toggle-label" for="toggle-time-range">
-      <input type="checkbox" id="toggle-time-range"
-             onchange="toggleTimeRange(this.checked)"
-             {% if filter_time_from or filter_time_to %}checked{% endif %}/>
-      🕐 Filter by time range
-      {% if filter_time_from or filter_time_to %}
-        <span style="color:var(--teal);font-size:12px;">
-          ({{ filter_time_from or '00:00' }} – {{ filter_time_to or '23:59' }})
-        </span>
-      {% endif %}
-    </label>
-
-    <!-- Time range inputs — hidden until checkbox ticked -->
-    <div class="time-range-row {% if filter_time_from or filter_time_to %}visible{% endif %}"
-         id="time-range-row">
-      <div class="filter-group w-time">
-        <span class="filter-label">🕐 From time</span>
-        <input type="time" name="time_from"
-               class="filter-input {% if filter_time_from %}has-value{% endif %}"
-               value="{{ filter_time_from }}"/>
-      </div>
-      <div class="filter-group w-time">
-        <span class="filter-label">🕑 To time</span>
-        <input type="time" name="time_to"
-               class="filter-input {% if filter_time_to %}has-value{% endif %}"
-               value="{{ filter_time_to }}"/>
-      </div>
-      <div class="filter-group" style="flex-shrink:0;">
-        <span class="filter-label">&nbsp;</span>
-        <button type="submit" class="btn btn-primary btn-sm" style="min-height:42px;">Apply</button>
+    <!-- Time range — checkbox + inputs on same row -->
+    <div class="filter-row" style="margin-top:10px;padding-top:10px;border-top:1.5px dashed var(--border);">
+      <label class="time-toggle-label" for="toggle-time-range" style="border-top:none;margin:0;padding:0;flex-shrink:0;">
+        <input type="checkbox" id="toggle-time-range"
+               onchange="toggleTimeRange(this.checked)"
+               {% if filter_time_from or filter_time_to %}checked{% endif %}/>
+        🕐 Filter by time range
+      </label>
+      <div id="time-range-row" class="{% if filter_time_from or filter_time_to %}visible{% endif %}"
+           style="display:{% if filter_time_from or filter_time_to %}flex{% else %}none{% endif %};
+                  align-items:flex-end;gap:10px;flex-wrap:wrap;flex:1;">
+        <div class="filter-group w-time">
+          <span class="filter-label">🕐 From</span>
+          <input type="time" name="time_from"
+                 class="filter-input {% if filter_time_from %}has-value{% endif %}"
+                 value="{{ filter_time_from }}"/>
+        </div>
+        <div class="filter-group w-time">
+          <span class="filter-label">🕑 To</span>
+          <input type="time" name="time_to"
+                 class="filter-input {% if filter_time_to %}has-value{% endif %}"
+                 value="{{ filter_time_to }}"/>
+        </div>
+        <div class="filter-group" style="flex-shrink:0;">
+          <span class="filter-label">&nbsp;</span>
+          <button type="submit" class="btn btn-primary btn-sm" style="min-height:42px;">Apply</button>
+        </div>
       </div>
     </div>
 
@@ -383,11 +372,12 @@ document.addEventListener('keydown', e => {
 
 <script>
 function toggleTimeRange(on) {
-  document.getElementById('time-range-row').classList.toggle('visible', on);
+  const row = document.getElementById('time-range-row');
+  row.style.display = on ? 'flex' : 'none';
   if (!on) {
-    // Clear time values when hiding
     document.querySelector('[name="time_from"]').value = '';
     document.querySelector('[name="time_to"]').value   = '';
+    document.getElementById('filter-form').submit();
   }
 }
 function setToday() {
@@ -605,17 +595,43 @@ function clearField(name, val='') {
         </select>
         <label style="font-size:13px;color:var(--muted);">per page</label>
       </div>
-      <button onclick="openRoutingModal()"
-              style="display:inline-flex;align-items:center;gap:7px;
+      <a href="/add"
+         style="display:inline-flex;align-items:center;gap:7px;
+                padding:8px 18px;border-radius:9px;border:none;
+                background:linear-gradient(135deg,#059669,#10B981);
+                color:#fff;font-weight:700;font-size:13px;cursor:pointer;
+                box-shadow:0 2px 10px rgba(5,150,105,.3);
+                text-decoration:none;transition:filter .15s,transform .1s;"
+         onmouseover="this.style.filter='brightness(1.1)'"
+         onmouseout="this.style.filter=''"
+         title="Add a new document">
+        ➕ Add Document
+      </a>
+      <a href="/routed-documents"
+         style="display:inline-flex;align-items:center;gap:7px;
+                padding:8px 18px;border-radius:9px;border:none;
+                background:linear-gradient(135deg,#0A2540,#1D4ED8);
+                color:#fff;font-weight:700;font-size:13px;cursor:pointer;
+                box-shadow:0 2px 10px rgba(29,78,216,.3);
+                text-decoration:none;transition:filter .15s,transform .1s;"
+         onmouseover="this.style.filter='brightness(1.15)'"
+         onmouseout="this.style.filter=''"
+         title="View all routing slips">
+        🚌 Routed Documents
+      </a>
+      <button id="btn-create-slip" onclick="openRoutingModal()"
+              style="display:none;align-items:center;gap:7px;
                      padding:8px 18px;border-radius:9px;border:none;
-                     background:linear-gradient(135deg,#0A2540,#1D4ED8);
+                     background:linear-gradient(135deg,#7C3AED,#A855F7);
                      color:#fff;font-weight:700;font-size:13px;cursor:pointer;
-                     box-shadow:0 2px 10px rgba(29,78,216,.3);
+                     box-shadow:0 2px 10px rgba(124,58,237,.3);
                      transition:filter .15s,transform .1s;"
               onmouseover="this.style.filter='brightness(1.15)'"
               onmouseout="this.style.filter=''"
-              title="Select documents then create a routing slip">
+              title="Create routing slip from selected documents">
         📤 Create Routing Slip
+        <span id="slip-sel-badge" style="background:rgba(255,255,255,.25);border-radius:20px;
+              padding:1px 8px;font-size:11px;font-weight:900;"></span>
       </button>
       {% endif %}
     </div>
@@ -841,6 +857,13 @@ function updateSelection() {
   document.querySelectorAll('.doc-checkbox').forEach(cb => {
     cb.closest('tr').classList.toggle('row-selected', cb.checked);
   });
+  // Show / hide "Create Routing Slip" button
+  const slipBtn = document.getElementById('btn-create-slip');
+  if (slipBtn) {
+    slipBtn.style.display = n > 0 ? 'inline-flex' : 'none';
+    const badge = document.getElementById('slip-sel-badge');
+    if (badge) badge.textContent = n > 0 ? n + ' doc' + (n > 1 ? 's' : '') : '';
+  }
   updateSelectedPreview();
 }
 

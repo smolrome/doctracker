@@ -193,6 +193,7 @@ def get_stats(docs: list[dict]) -> dict:
         "in_transit": sum(1 for d in docs if d.get("status") == "In Transit"),
         "released":   sum(1 for d in docs if d.get("status") == "Released"),
         "on_hold":    sum(1 for d in docs if d.get("status") == "On Hold"),
+        "archived":   sum(1 for d in docs if d.get("status") == "Archived"),
     }
 
 
