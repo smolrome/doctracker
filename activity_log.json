@@ -1,0 +1,9 @@
+[
+  {
+    "username": "nobody",
+    "action": "client_login_fail",
+    "ip": "127.0.0.1",
+    "detail": "username=nobody",
+    "ts": "2026-03-08T07:06:29.093733"
+  }
+]
