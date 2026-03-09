@@ -24,16 +24,17 @@ def generate_invite_token(email: str, name: str = "") -> str:
                         "DELETE FROM invite_tokens WHERE email=%s AND used=FALSE", (email,)
                     )
                     cur.execute(
-                        "INSERT INTO invite_tokens (token, email, name) VALUES (%s, %s, %s)",
+                        "INSERT INTO invite_tokens (token, email, name, expires_at) VALUES (%s, %s, %s, NOW() + INTERVAL '48 hours')",
                         (token, email, name)
                     )
                 conn.commit()
         except Exception as e:
             print(f"generate_invite_token error: {e}")
     else:
+        from datetime import datetime, timedelta
         tokens = _load_tokens_json()
         tokens = [t for t in tokens if not (t["email"] == email and not t.get("used"))]
-        tokens.append({"token": token, "email": email, "name": name, "used": False})
+        tokens.append({"token": token, "email": email, "name": name, "used": False, "expires_at": (datetime.now() + timedelta(hours=48)).isoformat()})
         _save_tokens_json(tokens)
     return token
 
@@ -46,7 +47,7 @@ def validate_invite_token(token: str) -> tuple[str | None, str | None]:
                 with conn.cursor() as cur:
                     cur.execute(
                         """SELECT email, name FROM invite_tokens
-                           WHERE token=%s AND used=FALSE AND expires_at > NOW()""",
+                           WHERE token=%s AND used=FALSE AND (expires_at IS NULL OR expires_at > NOW())""",
                         (token,)
                     )
                     row = cur.fetchone()
@@ -55,8 +56,16 @@ def validate_invite_token(token: str) -> tuple[str | None, str | None]:
             print(f"validate_invite_token error: {e}")
             return None, None
     else:
+        from datetime import datetime
         for t in _load_tokens_json():
             if t["token"] == token and not t.get("used"):
+                # Check expiration if present
+                exp = t.get("expires_at")
+                if exp:
+                    from datetime import datetime
+                    exp_dt = datetime.fromisoformat(exp) if isinstance(exp, str) else exp
+                    if exp_dt <= datetime.now():
+                        continue
                 return t["email"], t.get("name", "")
         return None, None
 
