@@ -80,8 +80,8 @@ def create_user(username: str, password: str, full_name: str = "",
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
-                        """INSERT INTO users (username, password_hash, full_name, role, office, active)
-                           VALUES (%s, %s, %s, %s, %s, TRUE)""",
+                        """INSERT INTO users (username, password_hash, full_name, role, office)
+                           VALUES (%s, %s, %s, %s, %s)""",
                         (uname, hash_password(password), full_name.strip(), role, office.strip())
                     )
                 conn.commit()
@@ -100,7 +100,6 @@ def create_user(username: str, password: str, full_name: str = "",
             "full_name": full_name.strip(),
             "role": role,
             "office": office.strip(),
-            "active": True,
         })
         _save_users_json(users)
         return True, None
@@ -132,9 +131,7 @@ def verify_user(username: str, password: str) -> tuple[str | None, str | None, s
             print(f"verify_user error: {e}")
     else:
         for u in _load_users_json():
-            if (u["username"] == uname 
-                and u.get("active", True)
-                and verify_password(password, u.get("password_hash", ""))):
+            if u["username"] == uname and verify_password(password, u.get("password_hash", "")):
                 return u.get("full_name") or uname, u.get("role", "staff"), u.get("office", "")
 
     return None, None, ""

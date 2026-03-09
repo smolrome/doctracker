@@ -132,11 +132,9 @@ def _run_migrations(cur):
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS active     BOOLEAN DEFAULT TRUE",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS office     TEXT DEFAULT ''",
-        # Fix any users with NULL or FALSE active - ensure they can log in
-        "UPDATE users SET active = TRUE WHERE active IS NULL OR active = FALSE",
         # invite_tokens
         """
-        DO $
+        DO $$
         BEGIN
             IF NOT EXISTS (
                 SELECT 1 FROM information_schema.columns
@@ -145,10 +143,8 @@ def _run_migrations(cur):
                 ALTER TABLE invite_tokens
                 ADD COLUMN expires_at TIMESTAMP DEFAULT (NOW() + INTERVAL '48 hours');
             END IF;
-        END$
+        END$$
         """,
-        # Fix any invite tokens with NULL expires_at - allow them to still be used
-        "UPDATE invite_tokens SET expires_at = NOW() + INTERVAL '48 hours' WHERE expires_at IS NULL",
         # doc_qr_tokens
         "ALTER TABLE doc_qr_tokens ADD COLUMN IF NOT EXISTS used BOOLEAN DEFAULT FALSE",
         # routing_slips (added after initial deploy)
