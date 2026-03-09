@@ -120,12 +120,6 @@ def register():
             elif not re.search(r'[0-9]', password):
                 error = "Password must contain at least one number."
                 print(f"[REGISTER] FAIL — password missing number")
-            elif not re.search(r'[A-Z]', password):
-                error = "Password must contain at least one uppercase letter."
-                print(f"[REGISTER] FAIL — password missing uppercase")
-            elif not re.search(r'[^A-Za-z0-9]', password):
-                error = "Password must contain at least one special character (e.g. @, #, !, %)."
-                print(f"[REGISTER] FAIL — password missing special char")
             elif password != confirm:
                 error = "Passwords do not match."
                 print(f"[REGISTER] FAIL — passwords do not match")
