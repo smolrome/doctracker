@@ -68,8 +68,11 @@
       box-shadow:0 0 0 4px rgba(29,78,216,.12);}
     .hint{font-size:13px;color:#8BA5B5;margin-top:5px;}
 
-    .pw-rules{background:#F0F7FA;border-radius:8px;padding:10px 12px;
-      margin-top:6px;font-size:13px;color:#5A7A91;line-height:1.7;}
+    .pw-rules{background:#F0F7FA;border-radius:8px;padding:10px 14px;
+      margin-top:6px;font-size:13px;line-height:2;}
+    .rule{color:#9CA3AF;transition:color .2s;}
+    .rule.ok{color:#059669;font-weight:600;}
+    .rule.fail{color:#DC2626;}
 
     .btn-register{width:100%;padding:15px;border-radius:12px;border:none;
       cursor:pointer;font-family:inherit;font-size:18px;font-weight:800;
@@ -176,8 +179,11 @@
         <input type="password" name="password" id="pw1"
                placeholder="At least 8 characters"
                autocomplete="new-password" required/>
-        <div class="pw-rules">
-          ✓ At least 8 characters &nbsp;·&nbsp; ✓ At least one number
+        <div class="pw-rules" id="pw-rules">
+          <div id="rule-len"  class="rule">✗ At least 8 characters</div>
+          <div id="rule-num"  class="rule">✗ At least one number (0–9)</div>
+          <div id="rule-upper" class="rule">✗ At least one uppercase letter (A–Z)</div>
+          <div id="rule-special" class="rule">✗ At least one special character (@, #, !, %, etc.)</div>
         </div>
       </div>
       <div class="form-group">
@@ -209,23 +215,48 @@
 
 <script>
 const form = document.getElementById('reg-form');
+const pw1El = document.getElementById('pw1');
+
+function checkRules(val) {
+  const rules = {
+    'rule-len':     val.length >= 8,
+    'rule-num':     /[0-9]/.test(val),
+    'rule-upper':   /[A-Z]/.test(val),
+    'rule-special': /[^A-Za-z0-9]/.test(val),
+  };
+  let allOk = true;
+  for (const [id, ok] of Object.entries(rules)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const text = el.textContent.replace(/^[✓✗] /, '');
+    el.textContent = (ok ? '✓ ' : '✗ ') + text;
+    el.classList.toggle('ok', ok);
+    el.classList.remove('fail');
+    if (!ok) allOk = false;
+  }
+  return allOk;
+}
+
+if (pw1El) {
+  pw1El.addEventListener('input', () => checkRules(pw1El.value));
+}
+
 if (form) {
   form.addEventListener('submit', function(e) {
     const p1 = document.getElementById('pw1').value;
     const p2 = document.getElementById('pw2').value;
+    if (!checkRules(p1)) {
+      e.preventDefault();
+      // Mark failing rules red
+      ['rule-len','rule-num','rule-upper','rule-special'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.textContent.startsWith('✗')) el.classList.add('fail');
+      });
+      return;
+    }
     if (p1 !== p2) {
       e.preventDefault();
       alert('Passwords do not match.');
-      return;
-    }
-    if (p1.length < 8) {
-      e.preventDefault();
-      alert('Password must be at least 8 characters.');
-      return;
-    }
-    if (!/[0-9]/.test(p1)) {
-      e.preventDefault();
-      alert('Password must contain at least one number.');
       return;
     }
     document.getElementById('submit-btn').disabled = true;

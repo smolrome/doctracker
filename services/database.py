@@ -44,6 +44,7 @@ def _create_tables(cur):
             password_hash TEXT NOT NULL,
             full_name     TEXT,
             role          TEXT DEFAULT 'staff',
+            office        TEXT DEFAULT '',
             active        BOOLEAN DEFAULT TRUE,
             last_login    TIMESTAMP,
             created_at    TIMESTAMP DEFAULT NOW()
@@ -121,7 +122,7 @@ def _create_tables(cur):
     """)
     # Performance + audit query indexes
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(username)""")
-    cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(created_at DESC)""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(ts DESC)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_documents_created ON documents(created_at DESC)""")
 
 
@@ -157,6 +158,9 @@ def _run_migrations(cur):
     ]
     for sql in migrations:
         try:
+            cur.execute("SAVEPOINT mig")
             cur.execute(sql)
-        except Exception:
-            pass  # column already exists or similar — safe to skip
+            cur.execute("RELEASE SAVEPOINT mig")
+        except Exception as e:
+            cur.execute("ROLLBACK TO SAVEPOINT mig")  # keep transaction alive
+            print(f"Migration skipped (ok): {str(e)[:120]}")
