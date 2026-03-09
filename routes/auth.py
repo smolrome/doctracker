@@ -35,7 +35,9 @@ def login():
             audit_log("login_blocked", f"username={username}",
                       username=username, ip=ip)
         else:
+            print(f"[LOGIN] attempting username={username!r} ip={ip}")
             full_name, role, office = verify_user(username, password)
+            print(f"[LOGIN] verify_user result → full_name={full_name!r} role={role!r}")
             if full_name:
                 reset_rate_limit("login", f"{ip}:{username.lower()}")
                 session.clear()
@@ -51,6 +53,7 @@ def login():
                 update_last_login(username.lower().strip())
                 audit_log("login_ok", f"role={role}",
                           username=username, ip=ip)
+                print(f"[LOGIN] SUCCESS — redirecting role={role!r}")
                 if role == "client":
                     return redirect(url_for("client.portal"))
                 next_raw = request.args.get("next", "")

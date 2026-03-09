@@ -110,10 +110,12 @@ def create_user(username: str, password: str, full_name: str = "",
 def verify_user(username: str, password: str) -> tuple[str | None, str | None, str]:
     """Verify credentials. Returns (full_name, role, office) or (None, None, "")."""
     uname = username.strip().lower()
+    print(f"[verify_user] attempting uname={uname!r} USE_DB={USE_DB}")
 
     # Admin via env var — constant-time compare prevents timing attacks
     if (secrets.compare_digest(uname, ADMIN_USERNAME.lower())
             and secrets.compare_digest(password, ADMIN_PASSWORD)):
+        print(f"[verify_user] matched admin account")
         return ADMIN_USERNAME, "admin", "DepEd Leyte Division"
 
     if USE_DB:
@@ -121,16 +123,30 @@ def verify_user(username: str, password: str) -> tuple[str | None, str | None, s
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
-                        """SELECT full_name, role, password_hash, COALESCE(office,'') AS office
-                           FROM users WHERE username=%s AND active=TRUE""",
+                        """SELECT full_name, role, password_hash, COALESCE(office,'') AS office,
+                                  active
+                           FROM users WHERE username=%s""",
                         (uname,)
                     )
                     row = cur.fetchone()
-                    if row and verify_password(password, row["password_hash"]):
+                    print(f"[verify_user] DB row found: {bool(row)} | active={row['active'] if row else 'N/A'}")
+                    if row is None:
+                        print(f"[verify_user] username not found in DB")
+                        return None, None, ""
+                    if not row["active"]:
+                        print(f"[verify_user] account is disabled")
+                        return None, None, ""
+                    pw_ok = verify_password(password, row["password_hash"])
+                    print(f"[verify_user] password check: {pw_ok} | hash_prefix={row['password_hash'][:10]!r}")
+                    if pw_ok:
                         _upgrade_hash_if_needed(uname, password, row["password_hash"])
+                        print(f"[verify_user] LOGIN OK role={row['role']!r}")
                         return row["full_name"] or uname, row["role"], row["office"] or ""
+                    else:
+                        print(f"[verify_user] WRONG PASSWORD")
         except Exception as e:
-            print(f"verify_user error: {e}")
+            print(f"[verify_user] EXCEPTION: {type(e).__name__}: {e}")
+            import traceback; traceback.print_exc()
     else:
         for u in _load_users_json():
             if u["username"] == uname and verify_password(password, u.get("password_hash", "")):
