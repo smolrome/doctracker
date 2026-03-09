@@ -52,7 +52,7 @@ def validate_invite_token(token: str) -> tuple[str | None, str | None]:
                     row = cur.fetchone()
                     return (row["email"], row["name"]) if row else (None, None)
         except Exception as e:
-            print(f"[validate_invite_token ERROR] {type(e).__name__}: {e}")
+            print(f"validate_invite_token error: {e}")
             return None, None
     else:
         for t in _load_tokens_json():

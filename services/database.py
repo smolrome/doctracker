@@ -14,45 +14,19 @@ except ImportError:
     USE_DB = False
 
 
-class _ConnCtx:
-    """Wraps a psycopg2 connection so `with get_conn() as conn:` auto-closes it."""
-    def __init__(self, conn):
-        self._conn = conn
-    def __enter__(self):
-        return self._conn
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        try:
-            if exc_type:
-                self._conn.rollback()
-            else:
-                self._conn.commit()
-        finally:
-            self._conn.close()  # ALWAYS close, even if commit/rollback raises
-        return False
-    # Forward attribute access so conn.cursor() etc. work directly too
-    def __getattr__(self, name):
-        return getattr(self._conn, name)
-
-
 def get_conn():
-    """Open a new database connection. Use as context manager — auto commits/closes."""
+    """Open a new database connection."""
     from config import DATABASE_URL
-    raw = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-    return _ConnCtx(raw)
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 
 def init_db():
     """Create all tables and run safe column migrations on startup."""
-    print("[init_db] Starting database initialization...")
-    try:
-        with get_conn() as conn:
-            with conn.cursor() as cur:
-                _create_tables(cur)
-                _run_migrations(cur)
-        print("[init_db] ✅ Database initialized successfully.")
-    except Exception as e:
-        print(f"[init_db] ❌ FAILED: {type(e).__name__}: {e}")
-        raise
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            _create_tables(cur)
+            _run_migrations(cur)
+        conn.commit()
 
 
 def _create_tables(cur):
@@ -70,7 +44,6 @@ def _create_tables(cur):
             password_hash TEXT NOT NULL,
             full_name     TEXT,
             role          TEXT DEFAULT 'staff',
-            office        TEXT DEFAULT '',
             active        BOOLEAN DEFAULT TRUE,
             last_login    TIMESTAMP,
             created_at    TIMESTAMP DEFAULT NOW()
@@ -148,7 +121,7 @@ def _create_tables(cur):
     """)
     # Performance + audit query indexes
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(username)""")
-    cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(ts DESC)""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(created_at DESC)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_documents_created ON documents(created_at DESC)""")
 
 
@@ -184,9 +157,6 @@ def _run_migrations(cur):
     ]
     for sql in migrations:
         try:
-            cur.execute("SAVEPOINT mig")
             cur.execute(sql)
-            cur.execute("RELEASE SAVEPOINT mig")
-        except Exception as e:
-            cur.execute("ROLLBACK TO SAVEPOINT mig")  # keep transaction alive
-            print(f"Migration skipped (ok): {str(e)[:120]}")
+        except Exception:
+            pass  # column already exists or similar — safe to skip

@@ -78,7 +78,6 @@ def register():
     token = request.args.get("token") or request.form.get("token", "")
     token_email, token_name = validate_invite_token(token) if token else (None, None)
     token_valid = bool(token_email)
-    print(f"[register] method={request.method} token={token[:8] if token else 'NONE'}... valid={token_valid} email={token_email}")
     error = None
 
     if request.method == "POST":
@@ -107,7 +106,6 @@ def register():
             else:
                 ok, err = create_user(username, password, full_name or token_name,
                                       office=office)
-                print(f"[register] create_user({username!r}) → ok={ok}, err={err}")
                 if ok:
                     consume_invite_token(token)
                     save_office(office, username)
