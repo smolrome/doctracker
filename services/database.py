@@ -14,25 +14,45 @@ except ImportError:
     USE_DB = False
 
 
+class _ConnCtx:
+    """Wraps a psycopg2 connection so `with get_conn() as conn:` auto-closes it."""
+    def __init__(self, conn):
+        self._conn = conn
+    def __enter__(self):
+        return self._conn
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            if exc_type:
+                self._conn.rollback()
+            else:
+                self._conn.commit()
+        finally:
+            self._conn.close()  # ALWAYS close, even if commit/rollback raises
+        return False
+    # Forward attribute access so conn.cursor() etc. work directly too
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
 def get_conn():
-    """Open a new database connection."""
+    """Open a new database connection. Use as context manager — auto commits/closes."""
     from config import DATABASE_URL
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    raw = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    return _ConnCtx(raw)
 
 
 def init_db():
     """Create all tables and run safe column migrations on startup."""
-    conn = get_conn()
+    print("[init_db] Starting database initialization...")
     try:
-        with conn.cursor() as cur:
-            _create_tables(cur)
-            _run_migrations(cur)
-        conn.commit()
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                _create_tables(cur)
+                _run_migrations(cur)
+        print("[init_db] ✅ Database initialized successfully.")
     except Exception as e:
-        conn.rollback()
+        print(f"[init_db] ❌ FAILED: {type(e).__name__}: {e}")
         raise
-    finally:
-        conn.close()
 
 
 def _create_tables(cur):

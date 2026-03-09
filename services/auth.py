@@ -76,26 +76,20 @@ def create_user(username: str, password: str, full_name: str = "",
     """Create a new user. Returns (success, error_message)."""
     uname = username.lower().strip()
     if USE_DB:
-        conn = None
         try:
-            conn = get_conn()
-            with conn.cursor() as cur:
-                cur.execute(
-                    """INSERT INTO users (username, password_hash, full_name, role, office)
-                       VALUES (%s, %s, %s, %s, %s)""",
-                    (uname, hash_password(password), full_name.strip(), role, office.strip())
-                )
-            conn.commit()
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO users (username, password_hash, full_name, role, office)
+                           VALUES (%s, %s, %s, %s, %s)""",
+                        (uname, hash_password(password), full_name.strip(), role, office.strip())
+                    )
             return True, None
         except Exception as e:
-            if conn:
-                conn.rollback()
+            print(f"[create_user ERROR] {type(e).__name__}: {e}")
             if "unique" in str(e).lower():
                 return False, "Username already taken."
-            return False, str(e)
-        finally:
-            if conn:
-                conn.close()
+            return False, f"Database error: {e}"
     else:
         users = _load_users_json()
         if any(u["username"] == uname for u in users):
@@ -121,24 +115,20 @@ def verify_user(username: str, password: str) -> tuple[str | None, str | None, s
         return ADMIN_USERNAME, "admin", "DepEd Leyte Division"
 
     if USE_DB:
-        conn = None
         try:
-            conn = get_conn()
-            with conn.cursor() as cur:
-                cur.execute(
-                    """SELECT full_name, role, password_hash, COALESCE(office,'') AS office
-                       FROM users WHERE username=%s AND active=TRUE""",
-                    (uname,)
-                )
-                row = cur.fetchone()
-                if row and verify_password(password, row["password_hash"]):
-                    _upgrade_hash_if_needed(uname, password, row["password_hash"])
-                    return row["full_name"] or uname, row["role"], row["office"] or ""
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT full_name, role, password_hash, COALESCE(office,'') AS office
+                           FROM users WHERE username=%s AND active=TRUE""",
+                        (uname,)
+                    )
+                    row = cur.fetchone()
+                    if row and verify_password(password, row["password_hash"]):
+                        _upgrade_hash_if_needed(uname, password, row["password_hash"])
+                        return row["full_name"] or uname, row["role"], row["office"] or ""
         except Exception as e:
             print(f"verify_user error: {e}")
-        finally:
-            if conn:
-                conn.close()
     else:
         for u in _load_users_json():
             if u["username"] == uname and verify_password(password, u.get("password_hash", "")):
@@ -151,21 +141,15 @@ def _upgrade_hash_if_needed(username: str, password: str, stored_hash: str):
     """Re-hash old SHA-256 passwords with bcrypt on first successful login."""
     if not (BCRYPT_OK and not stored_hash.startswith("$2")):
         return
-    conn = None
     try:
-        conn = get_conn()
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE users SET password_hash=%s WHERE username=%s",
-                (hash_password(password), username)
-            )
-        conn.commit()
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE users SET password_hash=%s WHERE username=%s",
+                    (hash_password(password), username)
+                )
     except Exception:
-        if conn:
-            conn.rollback()
-    finally:
-        if conn:
-            conn.close()
+        pass
 
 
 def get_all_users() -> list[dict]:
@@ -187,19 +171,12 @@ def get_all_users() -> list[dict]:
 
 def set_user_active(username: str, active: bool):
     if USE_DB:
-        conn = None
         try:
-            conn = get_conn()
-            with conn.cursor() as cur:
-                cur.execute("UPDATE users SET active=%s WHERE username=%s", (active, username))
-            conn.commit()
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE users SET active=%s WHERE username=%s", (active, username))
         except Exception as e:
-            if conn:
-                conn.rollback()
             print(f"set_user_active error: {e}")
-        finally:
-            if conn:
-                conn.close()
     else:
         users = _load_users_json()
         for u in users:
@@ -223,19 +200,12 @@ def delete_user(username: str):
 
 def update_last_login(username: str):
     if USE_DB:
-        conn = None
         try:
-            conn = get_conn()
-            with conn.cursor() as cur:
-                cur.execute("UPDATE users SET last_login=NOW() WHERE username=%s", (username,))
-            conn.commit()
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE users SET last_login=NOW() WHERE username=%s", (username,))
         except Exception as e:
-            if conn:
-                conn.rollback()
             print(f"update_last_login error: {e}")
-        finally:
-            if conn:
-                conn.close()
 
 
 # ── JSON fallback helpers ─────────────────────────────────────────────────────
