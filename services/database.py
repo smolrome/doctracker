@@ -22,11 +22,17 @@ def get_conn():
 
 def init_db():
     """Create all tables and run safe column migrations on startup."""
-    with get_conn() as conn:
+    conn = get_conn()
+    try:
         with conn.cursor() as cur:
             _create_tables(cur)
             _run_migrations(cur)
         conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def _create_tables(cur):
