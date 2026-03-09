@@ -130,6 +130,7 @@ def create_app() -> Flask:
         if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
             return
         path = request.path
+        print(f"[HTTP] {request.method} {path} — before_request fired")
         if any(path.startswith("/static") for _ in [1]):
             return
         try:
@@ -149,7 +150,8 @@ def create_app() -> Flask:
 
     # ── CSRF Protection ────────────────────────────────────────────────────────
     CSRF_EXEMPT_PREFIXES = ("/office-action/", "/slip-scan/", "/doc-scan/",
-                            "/client/", "/static/", "/office-qr/")
+                            "/client/", "/static/", "/office-qr/",
+                            "/login", "/register", "/logout")
 
     @app.before_request
     def csrf_check():
@@ -221,10 +223,10 @@ def create_app() -> Flask:
                     with conn.cursor() as cur:
                         cur.execute("SELECT active FROM users WHERE username=%s", (username,))
                         row = cur.fetchone()
-                        if row and not row["active"]:
-                            session.clear()
-                            flash("Your account has been disabled. Contact the administrator.", "error")
-                            return redirect(url_for("auth.login"))
+                if row and not row["active"]:
+                    session.clear()
+                    flash("Your account has been disabled. Contact the administrator.", "error")
+                    return redirect(url_for("auth.login"))
             except Exception:
                 pass
 

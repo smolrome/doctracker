@@ -19,11 +19,13 @@ auth_bp = Blueprint("auth", __name__)
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
+    print(f"[LOGIN ROUTE] hit — method={request.method}")
     if is_logged_in():
         return redirect(url_for("dashboard.index"))
     error = None
     lockout_remaining = 0
     if request.method == "POST":
+        print(f"[LOGIN ROUTE] POST received — username={request.form.get('username','')!r}")
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
         ip = get_client_ip()
