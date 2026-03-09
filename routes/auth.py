@@ -75,38 +75,67 @@ def login():
 def register():
     if is_logged_in():
         return redirect(url_for("dashboard.index"))
+
     token = request.args.get("token") or request.form.get("token", "")
-    token_email, token_name = validate_invite_token(token) if token else (None, None)
+
+    print(f"[REGISTER] ===== method={request.method} =====")
+    print(f"[REGISTER] token present: {bool(token)} | token prefix: {token[:12] if token else 'NONE'}")
+
+    token_email, token_name = (None, None)
+    if token:
+        try:
+            token_email, token_name = validate_invite_token(token)
+            print(f"[REGISTER] validate_invite_token → email={token_email!r} name={token_name!r}")
+        except Exception as e:
+            print(f"[REGISTER] validate_invite_token EXCEPTION: {type(e).__name__}: {e}")
+
     token_valid = bool(token_email)
+    print(f"[REGISTER] token_valid={token_valid}")
     error = None
 
     if request.method == "POST":
+        print(f"[REGISTER] POST fields: username={request.form.get('username','')!r} office={request.form.get('office','')!r} full_name={request.form.get('full_name','')!r}")
+
         if not token_valid:
             error = "Invalid or expired invite link. Please ask the admin for a new one."
+            print(f"[REGISTER] BLOCKED — token_valid=False")
         else:
             username  = request.form.get("username", "").strip()
             full_name = request.form.get("full_name", "").strip()
             password  = request.form.get("password", "").strip()
             confirm   = request.form.get("confirm_password", "").strip()
             office    = request.form.get("office", "").strip()
+
+            print(f"[REGISTER] Validating: username={username!r} office={office!r} pw_len={len(password)}")
+
             if not username or not password:
                 error = "Username and password are required."
+                print(f"[REGISTER] FAIL — missing username/password")
             elif not office:
                 error = "Please enter your office or unit name."
+                print(f"[REGISTER] FAIL — missing office")
             elif len(password) < 8:
                 error = "Password must be at least 8 characters."
+                print(f"[REGISTER] FAIL — password too short")
             elif not re.search(r'[0-9]', password):
                 error = "Password must contain at least one number."
+                print(f"[REGISTER] FAIL — password missing number")
             elif not re.search(r'[A-Z]', password):
                 error = "Password must contain at least one uppercase letter."
+                print(f"[REGISTER] FAIL — password missing uppercase")
             elif not re.search(r'[^A-Za-z0-9]', password):
                 error = "Password must contain at least one special character (e.g. @, #, !, %)."
+                print(f"[REGISTER] FAIL — password missing special char")
             elif password != confirm:
                 error = "Passwords do not match."
+                print(f"[REGISTER] FAIL — passwords do not match")
             else:
+                print(f"[REGISTER] Calling create_user({username!r}, role=staff, office={office!r})")
                 ok, err = create_user(username, password, full_name or token_name,
                                       office=office)
+                print(f"[REGISTER] create_user result → ok={ok}, err={err!r}")
                 if ok:
+                    print(f"[REGISTER] SUCCESS — consuming token and saving office")
                     consume_invite_token(token)
                     save_office(office, username)
                     audit_log("staff_registered", f"username={username} office={office}",
@@ -115,10 +144,13 @@ def register():
                         f"Account created! Your office '{office}' QR code has been generated automatically.",
                         "success"
                     )
+                    print(f"[REGISTER] Done — redirecting to login")
                     return redirect(url_for("auth.login"))
                 else:
                     error = err
+                    print(f"[REGISTER] create_user FAILED: {err!r}")
 
+    print(f"[REGISTER] Rendering form — error={error!r} token_valid={token_valid}")
     return render_template("register.html", error=error, token=token,
                            token_valid=token_valid,
                            token_email=token_email,

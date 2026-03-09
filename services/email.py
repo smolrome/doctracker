@@ -24,7 +24,8 @@ def generate_invite_token(email: str, name: str = "") -> str:
                         "DELETE FROM invite_tokens WHERE email=%s AND used=FALSE", (email,)
                     )
                     cur.execute(
-                        "INSERT INTO invite_tokens (token, email, name) VALUES (%s, %s, %s)",
+                        """INSERT INTO invite_tokens (token, email, name, expires_at)
+                           VALUES (%s, %s, %s, NOW() + INTERVAL '48 hours')""",
                         (token, email, name)
                     )
                 conn.commit()
@@ -40,21 +41,32 @@ def generate_invite_token(email: str, name: str = "") -> str:
 
 def validate_invite_token(token: str) -> tuple[str | None, str | None]:
     """Check token is valid, unused, and not expired. Returns (email, name)."""
+    print(f"[validate_invite_token] USE_DB={USE_DB} token_prefix={token[:12] if token else 'NONE'}")
     if USE_DB:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
-                    cur.execute(
-                        """SELECT email, name FROM invite_tokens
-                           WHERE token=%s AND used=FALSE AND expires_at > NOW()""",
-                        (token,)
-                    )
-                    row = cur.fetchone()
-                    return (row["email"], row["name"]) if row else (None, None)
+                    # First check if token exists at all (for diagnostics)
+                    cur.execute("SELECT email, name, used, expires_at FROM invite_tokens WHERE token=%s", (token,))
+                    raw = cur.fetchone()
+                    print(f"[validate_invite_token] raw row = {dict(raw) if raw else None}")
+                    if raw is None:
+                        print(f"[validate_invite_token] token NOT FOUND in DB")
+                        return None, None
+                    if raw["used"]:
+                        print(f"[validate_invite_token] token already USED")
+                        return None, None
+                    if raw["expires_at"] and raw["expires_at"] < __import__('datetime').datetime.now():
+                        print(f"[validate_invite_token] token EXPIRED at {raw['expires_at']}")
+                        return None, None
+                    print(f"[validate_invite_token] token OK → email={raw['email']!r}")
+                    return raw["email"], raw["name"]
         except Exception as e:
-            print(f"validate_invite_token error: {e}")
+            print(f"[validate_invite_token ERROR] {type(e).__name__}: {e}")
+            import traceback; traceback.print_exc()
             return None, None
     else:
+        print(f"[validate_invite_token] USE_DB=False — using JSON fallback")
         for t in _load_tokens_json():
             if t["token"] == token and not t.get("used"):
                 return t["email"], t.get("name", "")

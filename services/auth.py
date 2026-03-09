@@ -75,6 +75,7 @@ def create_user(username: str, password: str, full_name: str = "",
                 role: str = "staff", office: str = "") -> tuple[bool, str | None]:
     """Create a new user. Returns (success, error_message)."""
     uname = username.lower().strip()
+    print(f"[create_user] attempting uname={uname!r} role={role!r} USE_DB={USE_DB}")
     if USE_DB:
         try:
             with get_conn() as conn:
@@ -84,12 +85,13 @@ def create_user(username: str, password: str, full_name: str = "",
                            VALUES (%s, %s, %s, %s, %s)""",
                         (uname, hash_password(password), full_name.strip(), role, office.strip())
                     )
-                conn.commit()
+            print(f"[create_user] ✅ DB insert OK for {uname!r}")
             return True, None
         except Exception as e:
+            print(f"[create_user ERROR] {type(e).__name__}: {e}")
             if "unique" in str(e).lower():
                 return False, "Username already taken."
-            return False, str(e)
+            return False, f"Database error: {e}"
     else:
         users = _load_users_json()
         if any(u["username"] == uname for u in users):
@@ -148,7 +150,6 @@ def _upgrade_hash_if_needed(username: str, password: str, stored_hash: str):
                     "UPDATE users SET password_hash=%s WHERE username=%s",
                     (hash_password(password), username)
                 )
-            conn.commit()
     except Exception:
         pass
 
@@ -176,7 +177,6 @@ def set_user_active(username: str, active: bool):
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute("UPDATE users SET active=%s WHERE username=%s", (active, username))
-                conn.commit()
         except Exception as e:
             print(f"set_user_active error: {e}")
     else:
@@ -206,7 +206,6 @@ def update_last_login(username: str):
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute("UPDATE users SET last_login=NOW() WHERE username=%s", (username,))
-                conn.commit()
         except Exception as e:
             print(f"update_last_login error: {e}")
 
