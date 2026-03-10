@@ -14,7 +14,10 @@ from config import DATA_FILE
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def now_str() -> str:
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Use Asia/Manila timezone (UTC+8) for local time
+    from datetime import datetime, timezone, timedelta
+    Manila_tz = timezone(timedelta(hours=8))
+    return datetime.now(Manila_tz).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def generate_ref() -> str:

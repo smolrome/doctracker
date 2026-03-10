@@ -80,7 +80,10 @@ def index():
 
     docs = load_docs()
     if user_role != "admin":
-        docs = [d for d in docs if d.get("logged_by") == current_username]
+        # Exclude documents that are pending acceptance for this user
+        # (they should only appear in "Documents to Receive" modal until accepted)
+        docs = [d for d in docs if d.get("logged_by") == current_username 
+                and not (d.get("transfer_status") == "pending" and d.get("pending_at_staff") == current_username)]
 
     search           = request.args.get("search", "").lower()
     filter_status    = request.args.get("status", "All")
