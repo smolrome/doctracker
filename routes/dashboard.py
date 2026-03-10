@@ -675,18 +675,24 @@ def db_status():
 def get_pending_documents():
     """Get all documents pending acceptance for the current user."""
     current_user = session.get("username", "")
+    current_role = session.get("role", "")
     if not current_user:
         return jsonify([])
     
     docs = load_docs()
-    # Filter documents where:
-    # - transfer_status is "pending" 
-    # - pending_at_staff is current user
-    pending = [
-        d for d in docs
-        if d.get("transfer_status") == "pending" 
-        and d.get("pending_at_staff") == current_user
-    ]
+    
+    # Admin can see all pending transfers
+    if current_role == "admin":
+        pending = [
+            d for d in docs
+            if d.get("transfer_status") == "pending"
+        ]
+    else:
+        pending = [
+            d for d in docs
+            if d.get("transfer_status") == "pending" 
+            and d.get("pending_at_staff") == current_user
+        ]
     return jsonify(pending)
 
 
@@ -695,15 +701,26 @@ def get_pending_documents():
 def get_pending_count():
     """Get count of documents pending acceptance for the current user."""
     current_user = session.get("username", "")
+    current_role = session.get("role", "")
     if not current_user:
         return jsonify({"count": 0})
     
     docs = load_docs()
-    count = sum(
-        1 for d in docs
-        if d.get("transfer_status") == "pending" 
-        and d.get("pending_at_staff") == current_user
-    )
+    
+    # Admin can see all pending transfers
+    if current_role == "admin":
+        count = sum(
+            1 for d in docs
+            if d.get("transfer_status") == "pending"
+        )
+    else:
+        count = sum(
+            1 for d in docs
+            if d.get("transfer_status") == "pending" 
+            and d.get("pending_at_staff") == current_user
+        )
+    
+    print(f"[pending-count] user={current_user} role={current_role} count={count}")
     return jsonify({"count": count})
 
 
