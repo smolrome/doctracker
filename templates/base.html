@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="csrf-token" content="{{ csrf_token }}"/>
   <title>DocTracker — DepEd Leyte Division</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}"/>
 </head>
 <body>
-
 
 <!-- ═══ NAV ═══ -->
 <nav>
@@ -116,6 +116,55 @@
   </button>
 </nav>
 
+<!-- ═══ Floating Notification for Pending Documents ═══ -->
+{% if logged_in and current_role in ('staff', 'admin') %}
+<div id="floating-notification" style="position:fixed;bottom:30px;right:30px;z-index:9999;display:none;cursor:pointer;transition:transform 0.3s ease;" onclick="showPendingDocumentsModal()">
+    <div style="width:70px;height:70px;background:linear-gradient(135deg,#0E7490 0%,#059669 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(14,116,144,0.4);position:relative;">
+        <span style="font-size:32px;">📥</span>
+        <span id="pending-badge" style="position:absolute;top:-5px;right:-5px;background:#DC2626;color:white;font-size:18px;font-weight:bold;min-width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;">0</span>
+    </div>
+    <div style="background:#0A2540;color:white;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;margin-top:8px;text-align:center;white-space:nowrap;">Documents to Receive</div>
+</div>
+
+<!-- Pending Documents Modal -->
+<div id="pending-documents-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(10,37,64,0.8);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px;">
+    <div style="background:white;border-radius:20px;max-width:700px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.4);">
+        <div style="background:linear-gradient(135deg,#0E7490 0%,#059669 100%);padding:24px 28px;border-radius:20px 20px 0 0;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <span style="font-size:32px;">📥</span>
+                <h2 style="color:white;font-size:1.4rem;margin:0;">Documents to Receive</h2>
+            </div>
+            <button onclick="closePendingDocumentsModal()" style="background:rgba(255,255,255,0.2);border:none;color:white;width:40px;height:40px;border-radius:50%;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
+        </div>
+        <div id="pending-documents-list" style="padding:20px 28px;">
+            <div style="text-align:center;padding:40px;color:#5A7A91;">
+                <span style="font-size:48px;">📭</span>
+                <p style="margin-top:12px;">Loading documents...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rejection Reason Modal -->
+<div id="rejection-reason-modal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(10,37,64,0.8);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px;">
+    <div style="background:white;border-radius:20px;max-width:500px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.4);">
+        <div style="background:linear-gradient(135deg,#DC2626 0%,#B91C1C 100%);padding:24px 28px;border-radius:20px 20px 0 0;display:flex;align-items:center;gap:12px;">
+            <span style="font-size:32px;">❌</span>
+            <h2 style="color:white;font-size:1.4rem;margin:0;">Reject Document</h2>
+        </div>
+        <div style="padding:24px 28px;">
+            <p style="color:#374151;margin-bottom:16px;">Please provide a reason for rejecting this document:</p>
+            <input type="hidden" id="reject-doc-id" value="">
+            <textarea id="rejection-reason-input" placeholder="Enter reason for rejection..." style="width:100%;padding:14px;border:2px solid #CBD5E1;border-radius:10px;font-size:15px;font-family:inherit;resize:vertical;min-height:120px;box-sizing:border-box;"></textarea>
+            <div style="display:flex;gap:12px;margin-top:20px;justify-content:flex-end;">
+                <button type="button" onclick="closeRejectionModal()" style="padding:12px 24px;border-radius:9px;border:1.5px solid #CBD5E1;background:#F8FAFC;color:#374151;font-weight:700;font-size:15px;cursor:pointer;">Cancel</button>
+                <button type="button" onclick="submitRejection()" style="padding:12px 24px;border-radius:9px;border:none;background:#DC2626;color:white;font-weight:700;font-size:15px;cursor:pointer;">Submit Rejection</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- ═══ MOBILE DRAWER ═══ -->
 <div class="nav-drawer" id="nav-drawer">
   {% if logged_in %}
@@ -128,16 +177,16 @@
     {% if current_role == 'admin' %}
       <div class="nav-divider"></div>
       <div class="nav-drawer-section">Admin</div>
-      <a href="/manage-users"  class="nav-btn" onclick="closeMenu()">👥 Manage Users</a>
-      <a href="/activity-log"  class="nav-btn" onclick="closeMenu()">📋 Audit Log</a>
+      <a href="/manage-users"     class="nav-btn" onclick="closeMenu()">👥 Manage Users</a>
+      <a href="/activity-log"     class="nav-btn" onclick="closeMenu()">📋 Audit Log</a>
       <a href="/dropdown-options" class="nav-btn" onclick="closeMenu()">⚙️ Dropdown Options</a>
-      <a href="/trash"         class="nav-btn" onclick="closeMenu()">🗑️ Trash</a>
-      <a href="/import-excel"  class="nav-btn" onclick="closeMenu()">📥 Import Excel</a>
-      <a href="/backup"        class="nav-btn" onclick="closeMenu()">🗄️ Backup &amp; Restore</a>
+      <a href="/trash"            class="nav-btn" onclick="closeMenu()">🗑️ Trash</a>
+      <a href="/import-excel"     class="nav-btn" onclick="closeMenu()">📥 Import Excel</a>
+      <a href="/backup"           class="nav-btn" onclick="closeMenu()">🗄️ Backup &amp; Restore</a>
       <button class="nav-btn danger" onclick="closeMenu();confirmClearDB();" style="border:none;width:100%;justify-content:center;">⚠️ Clear Database</button>
     {% endif %}
     <div class="nav-divider"></div>
-    <a href="/"      class="nav-btn" onclick="closeMenu()">🏠 Dashboard</a>
+    <a href="/"       class="nav-btn" onclick="closeMenu()">🏠 Dashboard</a>
     <a href="/logout" class="nav-btn danger" onclick="closeMenu()">⏻ Logout ({{ current_full_name or current_user }})</a>
   {% else %}
     <a href="/"      class="nav-btn" onclick="closeMenu()">🏠 Dashboard</a>
@@ -146,31 +195,23 @@
 </div>
 
 <!-- ═══ Clear DB modal ═══ -->
-<div id="clear-db-modal" style="display:none;position:fixed;inset:0;z-index:9000;
-     background:rgba(10,37,64,.7);backdrop-filter:blur(4px);
-     align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:20px;padding:36px;max-width:440px;width:90%;
-              box-shadow:0 24px 80px rgba(0,0,0,.35);text-align:center;">
+<div id="clear-db-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(10,37,64,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:36px;max-width:440px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,.35);text-align:center;">
     <div style="font-size:3rem;margin-bottom:12px;">⚠️</div>
     <h2 style="color:#991B1B;font-size:1.4rem;margin-bottom:10px;">Clear Entire Database?</h2>
     <p style="color:#374151;font-size:.95rem;line-height:1.6;margin-bottom:8px;">
-      This will <strong>permanently delete all documents</strong> from the system.
-      This cannot be undone.
+      This will <strong>permanently delete all documents</strong> from the system. This cannot be undone.
     </p>
     <p style="color:#DC2626;font-size:.88rem;font-weight:700;margin-bottom:24px;">
       Download a backup first before doing this!
     </p>
     <div style="display:flex;gap:12px;justify-content:center;">
-      <button onclick="document.getElementById('clear-db-modal').style.display='none'"
-              style="padding:12px 24px;border-radius:9px;border:1.5px solid #CBD5E1;
-                     background:#F8FAFC;color:#374151;font-weight:700;font-size:.95rem;cursor:pointer;">
+      <button onclick="document.getElementById('clear-db-modal').style.display='none'" style="padding:12px 24px;border-radius:9px;border:1.5px solid #CBD5E1;background:#F8FAFC;color:#374151;font-weight:700;font-size:.95rem;cursor:pointer;">
         Cancel
       </button>
       <form method="POST" action="/clear-database" style="margin:0;">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/>
-        <button type="submit"
-                style="padding:12px 24px;border-radius:9px;border:none;
-                       background:#DC2626;color:#fff;font-weight:700;font-size:.95rem;cursor:pointer;">
+        <button type="submit" style="padding:12px 24px;border-radius:9px;border:none;background:#DC2626;color:#fff;font-weight:700;font-size:.95rem;cursor:pointer;">
           Yes, Delete Everything
         </button>
       </form>
@@ -207,28 +248,6 @@
   </div>
 </div>
 
-<!-- ── CSRF: inject token into every POST form (must stay inline — uses Jinja2) ── -->
-<script>
-(function() {
-  var TOKEN = "{{ csrf_token | e }}";
-  document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('form').forEach(function(form) {
-      if ((form.method || '').toLowerCase() === 'post') {
-        if (!form.querySelector('[name="_csrf_token"]')) {
-          var inp = document.createElement('input');
-          inp.type  = 'hidden';
-          inp.name  = '_csrf_token';
-          inp.value = TOKEN;
-          form.appendChild(inp);
-        }
-      }
-    });
-  });
-})();
-</script>
-
-<!-- ── External JS (no Jinja2 needed) ── -->
 <script src="{{ url_for('static', filename='js/base.js') }}"></script>
-
 </body>
 </html>
