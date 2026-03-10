@@ -122,7 +122,7 @@
 </nav>
 
 <!-- ═══ Floating Notification + Modals (staff/admin only) ═══ -->
-{% if logged_in and current_role in ('staff', 'admin') %}
+{% if logged_in and current_role in ('staff', 'admin') and request.endpoint not in ('dashboard.add') %}
 
 <!--
   bottom: 104px = 28px (OQS FAB bottom) + 56px (OQS FAB height) + 20px gap
