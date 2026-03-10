@@ -665,6 +665,9 @@ def accept_document(doc_id):
     doc["accepted_by_name"] = current_full_name or current_user
     doc["accepted_at"] = now_str()
     doc["status"] = "Received"  # Update main status to Received
+    # Set date_received when accepting
+    if not doc.get("date_received"):
+        doc["date_received"] = now_str()[:10]
     # Clear pending_at_staff since it's now accepted
     doc["pending_at_staff"] = ""
     doc["pending_at_office"] = ""
