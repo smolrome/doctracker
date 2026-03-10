@@ -149,7 +149,8 @@ def index():
     paginated   = filtered[start : start + per_page]
 
     # Transfer modal data — current_office = logged-in user's office
-    current_office = _get_user_office(current_username)
+    # Use session office as primary (more reliable), fallback to DB lookup
+    current_office = session.get("office") or _get_user_office(current_username)
     offices_dict, sorted_offices = _build_offices_dict_and_sorted(current_username, current_office)
 
     return render_template("index.html",

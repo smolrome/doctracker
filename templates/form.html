@@ -136,65 +136,128 @@
    ═══════════════════════════════════════════════ #}
 {% if action == 'edit_cart' %}
 
-<div class="page-header">
-  <a href="/add" class="page-back">← Back to Log List</a>
-  <div class="page-title">✏️ Edit Document in Log List</div>
+<!-- Edit Modal -->
+<div id="edit-cart-modal" class="edit-cart-modal" onclick="closeEditCartModal(event)">
+  <div class="edit-cart-modal-content" onclick="event.stopPropagation()">
+    <div class="edit-cart-modal-header">
+      <h2>✏️ Edit Document</h2>
+      <button class="edit-cart-modal-close" onclick="closeEditCartModal(null)">&times;</button>
+    </div>
+    <form method="post" class="edit-cart-form">
+      <input type="hidden" name="_action" value="update"/>
+      <input type="hidden" name="tmp_id" value="{{ edit_item.tmp_id }}"/>
+      
+      <!-- Row 1: Office + Sender name -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Unit / Office / School <span class="req">*</span></label>
+          <input type="text" name="sender_org" value="{{ edit_item.sender_org or '' }}"
+                 placeholder="e.g. Palo Central School, Leyte District I"/>
+        </div>
+        <div class="form-group">
+          <label>Sender Name &amp; Designation</label>
+          <input type="text" name="sender_name" value="{{ edit_item.sender_name or '' }}"
+                 placeholder="e.g. Juan dela Cruz, Principal II"/>
+        </div>
+      </div>
+
+      <!-- Content / Particulars -->
+      <div class="form-group">
+        <label>Content / Particulars <span class="req">*</span></label>
+        <input type="text" name="doc_name" value="{{ edit_item.doc_name or '' }}"
+               placeholder="e.g. Plantilla of Personnel, Leave Application, Memo No. 001" required/>
+      </div>
+
+      <!-- Row 2: Type + Referred To -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Document Type</label>
+          <select name="category">
+            <option value="">— Select type —</option>
+            {% for cat in category_options %}
+            <option value="{{ cat }}" {% if edit_item.category == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Referred To</label>
+          <input type="text" name="referred_to" value="{{ edit_item.referred_to or '' }}"
+                 placeholder="e.g. SDS, Budget Officer"/>
+        </div>
+      </div>
+
+      <!-- Remarks -->
+      <div class="form-group">
+        <label>Description / Remarks</label>
+        <textarea name="description">{{ edit_item.description or '' }}</textarea>
+      </div>
+
+      <!-- Notes -->
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes">{{ edit_item.notes or '' }}</textarea>
+      </div>
+
+      <div class="edit-cart-modal-actions">
+        <button type="button" class="btn-cancel-edit" onclick="closeEditCartModal(null)">✕ Cancel</button>
+        <button type="submit" class="btn-save-edit">💾 Save Changes</button>
+      </div>
+    </form>
+  </div>
 </div>
 
-<div class="edit-cart-card">
-  <div class="edit-cart-title">✏️ Edit Document</div>
-  <form method="post">
-    <input type="hidden" name="_action" value="update"/>
-    <input type="hidden" name="tmp_id" value="{{ edit_item.tmp_id }}"/>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Unit / Office / School <span class="req">*</span></label>
-        <input type="text" name="sender_org" value="{{ edit_item.sender_org or '' }}"
-               placeholder="e.g. Palo Central School, Leyte District I" autofocus/>
-      </div>
-      <div class="form-group">
-        <label>Sender Name &amp; Designation</label>
-        <input type="text" name="sender_name" value="{{ edit_item.sender_name or '' }}"
-               placeholder="e.g. Juan dela Cruz, Principal II"/>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Content / Particulars <span class="req">*</span></label>
-      <input type="text" name="doc_name" value="{{ edit_item.doc_name or '' }}"
-             placeholder="e.g. Plantilla of Personnel, Leave Application, Memo No. 001" required/>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Document Type</label>
-        <select name="category">
-          <option value="">— Select type —</option>
-          {% for cat in category_options %}
-          <option value="{{ cat }}" {% if edit_item.category == cat %}selected{% endif %}>{{ cat }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Referred To</label>
-        <input type="text" name="referred_to" value="{{ edit_item.referred_to or '' }}"
-               placeholder="e.g. SDS, Budget Officer"/>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Description / Remarks</label>
-      <textarea name="description">{{ edit_item.description or '' }}</textarea>
-    </div>
-    <div class="form-group">
-      <label>Notes</label>
-      <textarea name="notes">{{ edit_item.notes or '' }}</textarea>
-    </div>
-    <div class="edit-cart-actions">
-      <a href="/add" class="btn-cancel-edit">✕ Cancel</a>
-      <button type="submit" class="btn-save-edit">💾 Save Changes</button>
-    </div>
-  </form>
-</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var modal = document.getElementById('edit-cart-modal');
+  if (modal) {
+    modal.classList.add('active');
+  }
+});
+function closeEditCartModal(event) {
+  if (event === null) {
+    window.location.href = '/add';
+    return;
+  }
+  if (event.target.classList.contains('edit-cart-modal')) {
+    window.location.href = '/add';
+  }
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    window.location.href = '/add';
+  }
+});
+</script>
 
-{% endif %}
+<style>
+.edit-cart-modal{display:none;position:fixed;inset:0;background:rgba(10,37,64,.6);
+  backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;
+  padding:20px;}
+.edit-cart-modal.active{display:flex;}
+.edit-cart-modal-content{background:#fff;border-radius:20px;max-width:550px;width:100%;
+  max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);
+  animation:modalIn .2s ease-out;}
+@keyframes modalIn{from{opacity:0;transform:scale(.95) translateY(10px);}}
+.edit-cart-modal-header{display:flex;align-items:center;justify-content:space-between;
+  padding:20px 24px;border-bottom:2px solid var(--border);}
+.edit-cart-modal-header h2{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;
+  color:var(--navy);margin:0;}
+.edit-cart-modal-close{background:none;border:none;font-size:32px;color:var(--muted);
+  cursor:pointer;line-height:1;padding:0;transition:color .15s;}
+.edit-cart-modal-close:hover{color:var(--danger);}
+.edit-cart-form{padding:24px;}
+.edit-cart-modal-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:8px;}
+.btn-cancel-edit{padding:12px 20px;border-radius:10px;background:#F1F5F9;
+  color:var(--navy);border:2px solid #CBD5E1;font-size:15px;font-weight:700;
+  cursor:pointer;font-family:inherit;white-space:nowrap;}
+.btn-cancel-edit:hover{background:#E2E8F0;}
+.btn-save-edit{padding:12px 20px;border-radius:10px;background:#1D4ED8;
+  color:#fff;border:2px solid #1D4ED8;font-size:15px;font-weight:700;
+  cursor:pointer;font-family:inherit;white-space:nowrap;}
+.btn-save-edit:hover{background:#1E40AF;}
+</style>
+
+{% else %}
 
 {# ═══════════════════════════════════════════════
    ADD MODE
