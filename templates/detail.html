@@ -173,7 +173,13 @@
   </div>
   <div class="doc-hero-status">
     {% set s = doc.status %}
-    {% if s=='Pending'    %}<span class="badge badge-pending" style="font-size:15px;padding:8px 18px;">⏳ {{ s }}</span>
+    {% if s=='Pending' %}
+      <span class="badge badge-pending" style="font-size:15px;padding:8px 18px;">⏳ {{ s }}</span>
+      {% if doc.pending_at_office or doc.pending_at_staff %}
+        <div style="margin-top:8px;font-size:13px;color:#666;">
+          📍 {{ doc.pending_at_office or 'Office' }} / 👤 {{ doc.pending_at_staff_name or doc.pending_at_staff or 'Staff' }}
+        </div>
+      {% endif %}
     {% elif s=='Received' %}<span class="badge badge-received" style="font-size:15px;padding:8px 18px;">📥 {{ s }}</span>
     {% elif s=='In Review'%}<span class="badge badge-review"   style="font-size:15px;padding:8px 18px;">🔍 {{ s }}</span>
     {% elif s=='In Transit'%}<span class="badge badge-transit" style="font-size:15px;padding:8px 18px;">🚌 {{ s }}</span>

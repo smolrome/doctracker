@@ -428,7 +428,14 @@ def transfer_doc(doc_id):
         old_status  = doc.get("status", "")
         status_note = "(Inside Office)" if transfer_type == "inside_office" else "(Outside Office)"
 
-        doc["status"]                = "In Transit"
+        # Get the full name of the new staff member for display
+        new_staff_full_name = ""
+        for u in all_users:
+            if u.get("username") == new_staff:
+                new_staff_full_name = u.get("full_name", "") or new_staff
+                break
+
+        doc["status"]                = "Pending"
         doc["logged_by"]             = new_staff
         doc["transferred_to"]        = new_staff
         doc["transferred_to_office"] = new_staff_office
@@ -437,10 +444,11 @@ def transfer_doc(doc_id):
         doc["transfer_type"]         = transfer_type
         doc["pending_at_staff"]      = new_staff
         doc["pending_at_office"]     = new_staff_office
+        doc["pending_at_staff_name"]  = new_staff_full_name
 
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
-            "action":    f"Document Transferred {status_note}",
+            "action":    f"Document Pending {status_note}",
             "officer":   session.get("full_name") or session.get("username"),
             "timestamp": now_str(),
             "remarks":   f"Transferred from {old_staff} ({old_status}) to {new_staff} at {new_staff_office or 'N/A'} {status_note}.",
@@ -449,7 +457,7 @@ def transfer_doc(doc_id):
         audit_log("doc_transferred",
                   f"doc_id={doc_id} from={old_staff} to={new_staff} type={transfer_type} doc_name={doc.get('doc_name','')[:60]}",
                   username=session.get("username","?"), ip=get_client_ip())
-        flash(f"Document transferred to {new_staff} at {new_staff_office or 'N/A'} {status_note}. Status changed to In Transit.", "success")
+        flash(f"Document transferred to {new_staff_full_name} at {new_staff_office or 'N/A'} {status_note}. Status changed to Pending.", "success")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
     
     # GET — resolve office of currently logged-in user (for internal transfers)
@@ -509,9 +517,11 @@ def transfer_batch():
         return redirect(url_for("dashboard.index"))
 
     new_staff_office = ""
+    new_staff_full_name = ""
     for u in all_users:
         if u.get("username") == new_staff:
             new_staff_office = u.get("office", "")
+            new_staff_full_name = u.get("full_name", "") or new_staff
             break
 
     status_note       = "(Inside Office)" if transfer_type == "inside_office" else "(Outside Office)"
@@ -527,7 +537,7 @@ def transfer_batch():
         old_staff  = doc.get("logged_by", "unknown")
         old_status = doc.get("status", "")
 
-        doc["status"]                = "In Transit"
+        doc["status"]                = "Pending"
         doc["logged_by"]             = new_staff
         doc["transferred_to"]        = new_staff
         doc["transferred_to_office"] = new_staff_office
@@ -536,6 +546,7 @@ def transfer_batch():
         doc["transfer_type"]         = transfer_type
         doc["pending_at_staff"]      = new_staff
         doc["pending_at_office"]     = new_staff_office
+        doc["pending_at_staff_name"] = new_staff_full_name
 
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
@@ -550,7 +561,7 @@ def transfer_batch():
     audit_log("doc_batch_transferred",
               f"count={transferred_count} to={new_staff} type={transfer_type}",
               username=session.get("username","?"), ip=get_client_ip())
-    flash(f"{transferred_count} document(s) transferred to {new_staff}.", "success")
+    flash(f"{transferred_count} document(s) transferred to {new_staff_full_name} at {new_staff_office or 'N/A'}. Status changed to Pending.", "success")
     return redirect(url_for("dashboard.index"))
 
 
