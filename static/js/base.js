@@ -491,9 +491,14 @@ function acceptDocument(docId) {
   console.log('Accepting document:', docId);
   if (!confirm('Are you sure you want to accept this document?')) return;
 
+  const csrfToken = window.CSRF_TOKEN || '';
   fetch('/accept-document/' + docId, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    headers: { 
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRF-Token': csrfToken
+    },
+    body: '_csrf_token=' + encodeURIComponent(csrfToken)
   })
   .then(response => {
     console.log('Accept response status:', response.status);
@@ -526,11 +531,14 @@ function submitRejection() {
     return;
   }
 
+  const csrfToken = window.CSRF_TOKEN || '';
   const formData = new URLSearchParams();
   formData.append('rejection_reason', reason);
+  formData.append('_csrf_token', csrfToken);
 
   fetch('/reject-document/' + docId, {
     method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
     body: formData
   })
   .then(response => {
