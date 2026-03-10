@@ -21,6 +21,24 @@ from config import STATUS_OPTIONS
 dashboard_bp = Blueprint("dashboard", __name__)
 
 
+def _get_staff_by_office(current_username: str = ""):
+    """Get staff members grouped by office for transfer modal."""
+    all_users = get_all_users()
+    
+    # Filter out clients and current user
+    staff = [u for u in all_users if u.get("role") != "client" and u.get("username") != current_username]
+    
+    # Group by office
+    offices = {}
+    for s in staff:
+        office = s.get("office", "") or "No Office"
+        if office not in offices:
+            offices[office] = []
+        offices[office].append(s)
+    
+    return offices
+
+
 @dashboard_bp.route("/")
 def index():
     role = session.get("role", "")
@@ -112,7 +130,8 @@ def index():
         status_options=["All"] + STATUS_OPTIONS,
         saved_offices=load_saved_offices(),
         page=page, total_pages=total_pages,
-        per_page=per_page, total=total)
+        per_page=per_page, total=total,
+        staff_by_office=_get_staff_by_office(current_username))
 
 
 @dashboard_bp.route("/dashboard")
@@ -446,6 +465,92 @@ def transfer_doc(doc_id):
     
     return render_template("transfer.html", doc=doc, offices_dict=offices_dict, 
                          sorted_offices=sorted_offices, current_office=current_office)
+
+
+# ── Batch Transfer ─────────────────────────────────────────────────────────────
+
+@dashboard_bp.route("/transfer-batch", methods=["POST"])
+@login_required
+def transfer_batch():
+    """Transfer multiple documents to another staff member at once."""
+    doc_ids = request.form.get("doc_ids", "").strip()
+    transfer_type = request.form.get("transfer_type", "").strip()
+    new_staff = request.form.get("new_staff", "").strip()
+    
+    if not doc_ids:
+        flash("No documents selected.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    if not new_staff or not transfer_type:
+        flash("Please select transfer type and staff member.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    id_list = [d.strip() for d in doc_ids.split(",") if d.strip()]
+    if not id_list:
+        flash("No valid document IDs.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    current_user = session.get("username", "")
+    user_role = session.get("role", "")
+    
+    # Validate staff
+    all_users = get_all_users()
+    valid_staff = [u["username"] for u in all_users if u.get("role") != "client"]
+    
+    if new_staff not in valid_staff:
+        flash("Invalid staff member.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    if new_staff == current_user:
+        flash("Cannot transfer to yourself.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    # Get new staff office
+    new_staff_office = ""
+    for u in all_users:
+        if u.get("username") == new_staff:
+            new_staff_office = u.get("office", "")
+            break
+    
+    transferred_count = 0
+    for doc_id in id_list:
+        doc = get_doc(doc_id)
+        if not doc:
+            continue
+        
+        # Check permission
+        if user_role != "admin" and doc.get("logged_by") != current_user:
+            continue
+        
+        old_staff = doc.get("logged_by", "unknown")
+        old_status = doc.get("status", "")
+        
+        # Update status to In Transit
+        doc["status"] = "In Transit"
+        doc["logged_by"] = new_staff
+        doc["transferred_to"] = new_staff
+        doc["transferred_to_office"] = new_staff_office
+        doc["transferred_by"] = current_user
+        doc["transferred_at"] = now_str()
+        doc["transfer_type"] = transfer_type
+        
+        doc.setdefault("travel_log", []).append({
+            "office":    new_staff_office or "DepEd Leyte Division Office",
+            "action":    f"Batch Transfer {('(Inside Office)' if transfer_type == 'inside_office' else '(Outside Office)')}",
+            "officer":   session.get("full_name") or session.get("username"),
+            "timestamp": now_str(),
+            "remarks":   f"Transferred from {old_staff} ({old_status}) to {new_staff}.",
+        })
+        
+        save_doc(doc)
+        transferred_count += 1
+    
+    audit_log("doc_batch_transferred",
+              f"count={transferred_count} to={new_staff} type={transfer_type}",
+              username=session.get("username","?"), ip=get_client_ip())
+    
+    flash(f"{transferred_count} document(s) transferred to {new_staff}.", "success")
+    return redirect(url_for("dashboard.index"))
 
 
 # ── QR download ───────────────────────────────────────────────────────────────

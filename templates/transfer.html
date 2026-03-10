@@ -82,7 +82,11 @@
   </form>
 </div>
 
-<!-- Store office data in JavaScript -->
+<!-- Store data in hidden element - must come BEFORE the main script -->
+<script type="application/json" id="offices-data">{{ offices_dict | tojson | safe }}</script>
+<script type="application/json" id="sorted-offices">{{ sorted_offices | tojson | safe }}</script>
+
+<!-- Main script -->
 <script>
   // Parse data from data attributes
   const officesData = JSON.parse(document.getElementById('offices-data').textContent || '{}');
@@ -143,9 +147,5 @@
     submitBtn.disabled = false;
   }
 </script>
-
-<!-- Store data in hidden element -->
-<script type="application/json" id="offices-data">{{ offices_dict | tojson | safe }}</script>
-<script type="application/json" id="sorted-offices">{{ sorted_offices | tojson | safe }}</script>
 
 {% endblock %}

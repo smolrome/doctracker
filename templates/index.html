@@ -471,6 +471,9 @@ function clearField(name, val='') {
   {% endfor %}
 </datalist>
 
+<!-- Hidden data for transfer modal -->
+<script type="application/json" id="transfer-offices-data">{{ staff_by_office | tojson | safe }}</script>
+
 <!-- ── ROUTING MODAL ── -->
 <div id="routing-modal" style="display:none;position:fixed;inset:0;z-index:8000;
      background:rgba(10,37,64,.7);backdrop-filter:blur(6px);
@@ -560,7 +563,58 @@ function clearField(name, val='') {
 </div>
 </div>
 
-<!-- Hidden form for routing submission -->
+<!-- ── TRANSFER MODAL ── -->
+<div id="transfer-modal" style="display:none;position:fixed;inset:0;z-index:8000;
+     background:rgba(10,37,64,.7);backdrop-filter:blur(6px);
+     align-items:center;justify-content:center;padding:16px;">
+<div class="route-panel" id="transfer-panel" style="display:block;position:relative;
+     top:auto;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;
+     box-shadow:0 24px 80px rgba(0,0,0,.5);">
+
+  <div class="rp-header">
+    <div class="rp-title">
+      🔄 Transfer Documents
+      <span class="rp-count" id="transfer-sel-count">0 selected</span>
+    </div>
+    <button class="rp-close" onclick="closeTransferModal()">✕ Close</button>
+  </div>
+
+  <!-- Transfer Type -->
+  <div class="rp-fields">
+    <div class="rp-field">
+      <label>📍 Transfer Type *</label>
+      <select class="rp-input" id="transfer-type" onchange="updateTransferOffices()">
+        <option value="">-- Select Type --</option>
+        <option value="inside_office">🏢 Inside Office (same division)</option>
+        <option value="outside_office">🌐 Outside Office (external)</option>
+      </select>
+    </div>
+    <div class="rp-field">
+      <label>🏢 Office *</label>
+      <select class="rp-input" id="transfer-office" onchange="updateTransferStaff()" disabled>
+        <option value="">-- Select Office --</option>
+      </select>
+    </div>
+    <div class="rp-field">
+      <label>👤 Transfer to Staff *</label>
+      <select class="rp-input" id="transfer-staff" disabled>
+        <option value="">-- Select Staff --</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="rp-bottom">
+    <div class="rp-hint" style="flex:1">
+      💡 Select documents using checkboxes first, then click Transfer.
+    </div>
+    <button class="btn-route" onclick="submitTransfer()" id="btn-do-transfer" disabled>
+      🔄 Transfer Documents
+    </button>
+  </div>
+</div>
+</div>
+
+<!-- Hidden form for transfer submission -->
 <form method="post" action="/routing-slip/create" id="routing-form" style="display:none;">
   <input type="hidden" name="doc_ids" id="routing-doc-ids"/>
   <input type="hidden" name="destination" id="routing-dest-field"/>
@@ -568,6 +622,13 @@ function clearField(name, val='') {
   <input type="hidden" name="slip_date" id="routing-slip-date"/>
   <input type="hidden" name="time_from" id="routing-time-from"/>
   <input type="hidden" name="time_to" id="routing-time-to"/>
+</form>
+
+<!-- Hidden form for batch transfer -->
+<form method="post" action="/transfer-batch" id="transfer-form" style="display:none;">
+  <input type="hidden" name="doc_ids" id="transfer-doc-ids"/>
+  <input type="hidden" name="transfer_type" id="transfer-type-field"/>
+  <input type="hidden" name="new_staff" id="transfer-staff-field"/>
 </form>
 
 <!-- Documents Table -->
@@ -631,6 +692,20 @@ function clearField(name, val='') {
               title="Create routing slip from selected documents">
         📤 Create Routing Slip
         <span id="slip-sel-badge" style="background:rgba(255,255,255,.25);border-radius:20px;
+              padding:1px 8px;font-size:11px;font-weight:900;"></span>
+      </button>
+      <button id="btn-transfer" onclick="openTransferModal()"
+              style="display:none;align-items:center;gap:7px;
+                     padding:8px 18px;border-radius:9px;border:none;
+                     background:linear-gradient(135deg,#DC2626,#EF4444);
+                     color:#fff;font-weight:700;font-size:13px;cursor:pointer;
+                     box-shadow:0 2px 10px rgba(220,38,38,.3);
+                     transition:filter .15s,transform .1s;"
+              onmouseover="this.style.filter='brightness(1.15)'"
+              onmouseout="this.style.filter=''"
+              title="Transfer selected documents to another staff">
+        🔄 Transfer
+        <span id="transfer-sel-badge" style="background:rgba(255,255,255,.25);border-radius:20px;
               padding:1px 8px;font-size:11px;font-weight:900;"></span>
       </button>
       {% endif %}
@@ -825,6 +900,109 @@ document.getElementById('routing-modal').addEventListener('click', function(e) {
   if (e.target === this) closeRoutingModal();
 });
 
+// Transfer Modal Functions
+let transferOfficesData = {};
+
+function openTransferModal() {
+  // Get selected doc IDs
+  const checked = document.querySelectorAll('.doc-checkbox:checked');
+  if (checked.length === 0) {
+    alert('Please select at least one document to transfer.');
+    return;
+  }
+  
+  // Update count
+  document.getElementById('transfer-sel-count').textContent = checked.length + ' selected';
+  
+  // Load offices data from the page
+  transferOfficesData = JSON.parse(document.getElementById('transfer-offices-data').textContent || '{}');
+  
+  // Reset form
+  document.getElementById('transfer-type').value = '';
+  document.getElementById('transfer-office').innerHTML = '<option value="">-- Select Office --</option>';
+  document.getElementById('transfer-office').disabled = true;
+  document.getElementById('transfer-staff').innerHTML = '<option value="">-- Select Staff --</option>';
+  document.getElementById('transfer-staff').disabled = true;
+  document.getElementById('btn-do-transfer').disabled = true;
+  
+  // Show modal
+  document.getElementById('transfer-modal').style.display = 'flex';
+}
+
+function closeTransferModal() {
+  document.getElementById('transfer-modal').style.display = 'none';
+}
+
+document.getElementById('transfer-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeTransferModal();
+});
+
+function updateTransferOffices() {
+  const type = document.getElementById('transfer-type').value;
+  const officeSelect = document.getElementById('transfer-office');
+  const staffSelect = document.getElementById('transfer-staff');
+  
+  staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
+  staffSelect.disabled = true;
+  document.getElementById('btn-do-transfer').disabled = true;
+  
+  if (!type) {
+    officeSelect.innerHTML = '<option value="">-- Select Office --</option>';
+    officeSelect.disabled = true;
+    return;
+  }
+  
+  // Populate offices
+  let options = '<option value="">-- Select Office --</option>';
+  for (const office in transferOfficesData) {
+    options += '<option value="' + office + '">' + office + '</option>';
+  }
+  officeSelect.innerHTML = options;
+  officeSelect.disabled = false;
+}
+
+function updateTransferStaff() {
+  const office = document.getElementById('transfer-office').value;
+  const staffSelect = document.getElementById('transfer-staff');
+  
+  if (!office || !transferOfficesData[office]) {
+    staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
+    staffSelect.disabled = true;
+    document.getElementById('btn-do-transfer').disabled = true;
+    return;
+  }
+  
+  const staff = transferOfficesData[office];
+  let options = '<option value="">-- Select Staff --</option>';
+  for (const s of staff) {
+    const name = s.full_name || s.username;
+    options += '<option value="' + s.username + '">' + name + ' (@' + s.username + ')</option>';
+  }
+  staffSelect.innerHTML = options;
+  staffSelect.disabled = false;
+}
+
+function submitTransfer() {
+  const type = document.getElementById('transfer-type').value;
+  const staff = document.getElementById('transfer-staff').value;
+  
+  if (!type || !staff) {
+    alert('Please select transfer type and staff member.');
+    return;
+  }
+  
+  const checked = document.querySelectorAll('.doc-checkbox:checked');
+  const ids = Array.from(checked).map(cb => cb.value);
+  
+  document.getElementById('transfer-doc-ids').value = ids.join(',');
+  document.getElementById('transfer-type-field').value = type;
+  document.getElementById('transfer-staff-field').value = staff;
+  
+  if (confirm('Transfer ' + ids.length + ' document(s) to ' + staff + '?')) {
+    document.getElementById('transfer-form').submit();
+  }
+}
+
 function updateSelectedPreview() {
   const checked = document.querySelectorAll('.doc-checkbox:checked');
   const n = checked.length;
@@ -863,6 +1041,13 @@ function updateSelection() {
     slipBtn.style.display = n > 0 ? 'inline-flex' : 'none';
     const badge = document.getElementById('slip-sel-badge');
     if (badge) badge.textContent = n > 0 ? n + ' doc' + (n > 1 ? 's' : '') : '';
+  }
+  // Show / hide "Transfer" button
+  const transferBtn = document.getElementById('btn-transfer');
+  if (transferBtn) {
+    transferBtn.style.display = n > 0 ? 'inline-flex' : 'none';
+    const tbadge = document.getElementById('transfer-sel-badge');
+    if (tbadge) tbadge.textContent = n > 0 ? n + ' doc' + (n > 1 ? 's' : '') : '';
   }
   updateSelectedPreview();
 }
