@@ -54,7 +54,7 @@ function statFilter(status) {
   window.location.href = '/?' + params.toString();
 }
 </script>
-<div style="position:sticky;top:0;z-index:100;background:var(--surface,#F8FAFC);padding:8px 0;margin-bottom:4px;">
+<div style="position:sticky;top:0;z-index:100;background:var(--surface,#F8FAFC);padding:12px 0 16px;margin-bottom:4px;overflow:visible;">
   <div class="stats-grid">
     <a class="stat-card {% if filter_status=='All' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('All')">
       <div class="stat-card-inner"><div class="stat-num">{{ stats.total }}</div><div class="stat-label">📋 Total</div><div class="stat-clear">● All</div></div>
@@ -484,7 +484,12 @@ function clearField(name, val='') { const el = document.querySelector('[name="'+
             {% elif s=='In Review' %}<span class="badge badge-review">{{ s }}</span>
             {% elif s=='In Transit' %}
               <span class="badge badge-transit">🚌 In Transit</span>
-              {% if doc.forwarded_to %}
+              {% if doc.pending_at_staff %}
+              <div style="margin-top:5px;display:flex;align-items:center;gap:4px;">
+                <span style="font-size:11px;color:var(--muted);font-weight:600;">→</span>
+                <span style="background:#DBEAFE;border:1px solid #93C5FD;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#1D4ED8;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;">{{ doc.pending_at_staff }}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</span>
+              </div>
+              {% elif doc.forwarded_to %}
               <div style="margin-top:5px;display:flex;align-items:center;gap:4px;">
                 <span style="font-size:11px;color:var(--muted);font-weight:600;">→</span>
                 <span style="background:#DBEAFE;border:1px solid #93C5FD;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#1D4ED8;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;">{{ doc.forwarded_to }}</span>

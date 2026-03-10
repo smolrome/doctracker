@@ -435,6 +435,8 @@ def transfer_doc(doc_id):
         doc["transferred_by"]        = current_user
         doc["transferred_at"]        = now_str()
         doc["transfer_type"]         = transfer_type
+        doc["pending_at_staff"]      = new_staff
+        doc["pending_at_office"]     = new_staff_office
 
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
@@ -449,7 +451,7 @@ def transfer_doc(doc_id):
                   username=session.get("username","?"), ip=get_client_ip())
         flash(f"Document transferred to {new_staff} at {new_staff_office or 'N/A'} {status_note}. Status changed to In Transit.", "success")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
-
+    
     # GET — resolve office of currently logged-in user (for internal transfers)
     all_users      = get_all_users()
     logged_in_user = session.get("username", "")
@@ -476,7 +478,6 @@ def transfer_doc(doc_id):
 @dashboard_bp.route("/transfer-batch", methods=["POST"])
 @login_required
 def transfer_batch():
-    """Transfer multiple documents to another staff member at once."""
     doc_ids       = request.form.get("doc_ids", "").strip()
     transfer_type = request.form.get("transfer_type", "").strip()
     new_staff     = request.form.get("new_staff", "").strip()
@@ -533,13 +534,15 @@ def transfer_batch():
         doc["transferred_by"]        = current_user
         doc["transferred_at"]        = now_str()
         doc["transfer_type"]         = transfer_type
+        doc["pending_at_staff"]      = new_staff
+        doc["pending_at_office"]     = new_staff_office
 
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
             "action":    f"Batch Transfer {status_note}",
             "officer":   session.get("full_name") or session.get("username"),
             "timestamp": now_str(),
-            "remarks":   f"Transferred from {old_staff} ({old_status}) to {new_staff}.",
+            "remarks":   f"Transferred from {old_staff} ({old_status}) to {new_staff} at {new_staff_office or 'N/A'} {status_note}.",
         })
         save_doc(doc)
         transferred_count += 1

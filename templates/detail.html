@@ -398,7 +398,9 @@
       <div class="field-label">🔄 Transfer History</div>
       <div class="field-val mono" style="font-size:14px;">
         <div>Transferred to: <strong>{{ doc.transferred_to }}</strong></div>
-        {% if doc.transferred_to_office %}
+        {% if doc.pending_at_office %}
+        <div style="color:#1D4ED8;">📍 Pending at: <strong>{{ doc.pending_at_office }}</strong></div>
+        {% elif doc.transferred_to_office %}
         <div>Office: {{ doc.transferred_to_office }}</div>
         {% endif %}
         {% if doc.transferred_by %}
