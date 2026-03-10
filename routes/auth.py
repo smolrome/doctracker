@@ -11,7 +11,7 @@ from services.auth import (
     update_last_login, verify_user,
 )
 from services.email import validate_invite_token, consume_invite_token
-from services.misc import audit_log, save_office
+from services.misc import audit_log, load_saved_offices, save_office
 from utils import get_client_ip, is_logged_in
 
 auth_bp = Blueprint("auth", __name__)
@@ -97,6 +97,16 @@ def register():
     token_valid = bool(token_email)
     print(f"[REGISTER] token_valid={token_valid}")
     error = None
+    
+    # Load existing offices for dropdown
+    existing_offices = []
+    if token_valid:
+        try:
+            existing_offices = load_saved_offices()
+        except Exception as e:
+            print(f"[REGISTER] load_saved_offices error: {e}")
+    
+    print(f"[REGISTER] existing_offices count: {len(existing_offices)}")
 
     if request.method == "POST":
         print(f"[REGISTER] POST fields: username={request.form.get('username','')!r} office={request.form.get('office','')!r} full_name={request.form.get('full_name','')!r}")
@@ -136,13 +146,30 @@ def register():
                 if ok:
                     print(f"[REGISTER] SUCCESS — consuming token and saving office")
                     consume_invite_token(token)
-                    save_office(office, username)
-                    audit_log("staff_registered", f"username={username} office={office}",
-                              username=username, ip=get_client_ip())
-                    flash(
-                        f"Account created! Your office '{office}' QR code has been generated automatically.",
-                        "success"
-                    )
+                    
+                    # Check if office already exists - only create QR if new
+                    office_exists = False
+                    try:
+                        saved_offices = load_saved_offices()
+                        office_slug = re.sub(r'\s+', '-', office.strip().lower())
+                        for saved in saved_offices:
+                            if saved.get('office_slug') == office_slug:
+                                office_exists = True
+                                break
+                    except:
+                        pass
+                    
+                    if not office_exists:
+                        save_office(office, username)
+                        flash(
+                            f"Account created! Your office '{office}' QR code has been generated automatically.",
+                            "success"
+                        )
+                    else:
+                        flash(
+                            f"Account created! You've been assigned to the existing office '{office}'.",
+                            "success"
+                        )
                     print(f"[REGISTER] Done — redirecting to login")
                     return redirect(url_for("auth.login"))
                 else:
@@ -153,7 +180,8 @@ def register():
     return render_template("register.html", error=error, token=token,
                            token_valid=token_valid,
                            token_email=token_email,
-                           token_name=token_name)
+                           token_name=token_name,
+                           existing_offices=existing_offices)
 
 
 @auth_bp.route("/logout")
