@@ -78,10 +78,10 @@
       </div>
     </div>
 
-    <!-- Step 2: Office Selection (External only) -->
+    <!-- Step 2: Office (shown for both, read-only for internal) -->
     <div class="step-block" id="step-office-block">
       <div class="step">
-        <div class="step-label">Step 2: Select Office</div>
+        <div class="step-label" id="office-step-label">Step 2: Office</div>
         <div class="form-group" style="margin-bottom:0;">
           <label for="new_office">Office</label>
           <select name="new_office" id="new_office" onchange="updateStaff()">
@@ -134,30 +134,42 @@
     for (let i = from; i < order.length; i++) hide(order[i]);
   }
 
+  console.log('Current user office:', currentOffice);
   function onTransferTypeChange() {
-    const type = document.getElementById('transfer_type').value;
+  const type = document.getElementById('transfer_type').value;
 
-    // Reset everything below step 1
-    resetFrom('office');
-    document.getElementById('new_office').value = '';
-    document.getElementById('new_staff').innerHTML = '<option value="">-- Select Staff --</option>';
+  resetFrom('office');
+  document.getElementById('new_office').value = '';
+  document.getElementById('new_staff').innerHTML = '<option value="">-- Select Staff --</option>';
 
-    if (!type) return;
+  if (!type) return;
 
-    if (type === 'inside_office') {
-      // Internal: skip office step, go straight to staff from current office
-      document.getElementById('staff-step-label').textContent = 'Step 2: Select Staff';
-      populateStaff(currentOffice);
-      show('step-staff-block');
+  if (type === 'inside_office') {
+    document.getElementById('staff-step-label').textContent = 'Step 3: Select Staff';
+    document.getElementById('office-step-label').textContent = 'Step 2: Your Office';
 
-    } else {
-      // External: show office step first
-      document.getElementById('staff-step-label').textContent = 'Step 3: Select Staff';
-      populateOffices();
-      show('step-office-block');
-    }
+    // Populate and lock to current office
+    const officeSelect = document.getElementById('new_office');
+    officeSelect.innerHTML = `<option value="${currentOffice}">${currentOffice}</option>`;
+    officeSelect.value = currentOffice;
+    officeSelect.disabled = true;
+    document.getElementById('office-info').textContent = '📍 Auto-selected: your office';
+
+    show('step-office-block');
+    populateStaff(currentOffice);
+    show('step-staff-block');
+
+  } else {
+    document.getElementById('staff-step-label').textContent = 'Step 3: Select Staff';
+    document.getElementById('office-step-label').textContent = 'Step 2: Select Office';
+
+    const officeSelect = document.getElementById('new_office');
+    officeSelect.disabled = false;
+    document.getElementById('office-info').textContent = '';
+    populateOffices();
+    show('step-office-block');
   }
-
+}
   function populateOffices() {
     const officeSelect = document.getElementById('new_office');
     let options = '<option value="">-- Select Office --</option>';
