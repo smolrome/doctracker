@@ -64,6 +64,7 @@
         <select name="new_office" id="new_office" required disabled onchange="updateStaff()">
           <option value="">-- Select Office First --</option>
         </select>
+        <small id="office-info" style="color: var(--teal); margin-top: 4px; display: block;"></small>
       </div>
     </div>
     
@@ -91,7 +92,15 @@
   // Parse data from data attributes
   const officesData = JSON.parse(document.getElementById('offices-data').textContent || '{}');
   const sortedOffices = JSON.parse(document.getElementById('sorted-offices').textContent || '[]');
-  const currentOffice = '';
+  const currentOffice = '{{ current_office | safe }}'; // Current logged-in staff's office
+  
+  // Auto-select current office on page load if user is in an office
+  document.addEventListener('DOMContentLoaded', function() {
+    if (currentOffice && currentOffice !== 'None' && currentOffice !== '') {
+      // Store the current office for inside_office transfers
+      console.log('Current user office:', currentOffice);
+    }
+  });
   
   function updateOffices() {
     const transferType = document.getElementById('transfer_type').value;
@@ -120,6 +129,19 @@
     
     officeSelect.innerHTML = options;
     officeSelect.disabled = false;
+    
+    // Auto-select current office for inside_office transfers and make it read-only
+    if (transferType === 'inside_office' && currentOffice && currentOffice !== 'None' && currentOffice !== '') {
+      officeSelect.value = currentOffice;
+      officeSelect.disabled = true; // Lock to current office for inside office transfers
+      // Show info message
+      document.getElementById('office-info').textContent = '📍 Your office: ' + currentOffice + ' (locked for inside office transfer)';
+      // Manually trigger updateStaff since we're setting value programmatically
+      updateStaff();
+    } else {
+      officeSelect.disabled = false; // Allow changing office for outside transfers
+      document.getElementById('office-info').textContent = '';
+    }
   }
   
   function updateStaff() {
