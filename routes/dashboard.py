@@ -15,6 +15,7 @@ from services.documents import (
 from services.auth import get_all_users
 from services.misc import audit_log, load_saved_offices
 from services.qr import generate_qr_b64, make_qr_png
+from services.dropdown_options import get_dropdown_options
 from utils import get_client_ip, is_logged_in, login_required
 from config import STATUS_OPTIONS
 
@@ -246,7 +247,8 @@ def add():
     return render_template("form.html", doc={}, action="add",
                            cart=cart, error=error,
                            auto_ref=generate_ref(),
-                           status_options=STATUS_OPTIONS)
+                           status_options=STATUS_OPTIONS,
+                           category_options=get_dropdown_options("category"))
 
 
 # ── View / Edit / Delete ──────────────────────────────────────────────────────
@@ -293,7 +295,9 @@ def edit(doc_id):
         })
         if not doc["doc_name"]:
             flash("Document name is required.", "error")
-            return render_template("form.html", doc=doc, action="edit", status_options=STATUS_OPTIONS)
+            return render_template("form.html", doc=doc, action="edit", 
+                                   status_options=STATUS_OPTIONS,
+                                   category_options=get_dropdown_options("category"))
         save_doc(doc)
         audit_log("doc_edited",
                   f"doc_id={doc_id} doc_name={doc.get('doc_name','')[:80]} status={doc.get('status','')}",
@@ -302,7 +306,9 @@ def edit(doc_id):
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
 
     doc["routing_str"] = ", ".join(doc.get("routing", []))
-    return render_template("form.html", doc=doc, action="edit", status_options=STATUS_OPTIONS)
+    return render_template("form.html", doc=doc, action="edit", 
+                           status_options=STATUS_OPTIONS,
+                           category_options=get_dropdown_options("category"))
 
 
 @dashboard_bp.route("/delete/<doc_id>", methods=["POST"])

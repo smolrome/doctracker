@@ -268,7 +268,7 @@
           <label>Document Type</label>
           <select name="category">
             <option value="">— Select type —</option>
-            {% for cat in ['Letter','Memorandum','Report','Application','Voucher','Plantilla','Payroll','Other'] %}
+            {% for cat in category_options %}
             <option value="{{ cat }}">{{ cat }}</option>
             {% endfor %}
           </select>

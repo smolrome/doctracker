@@ -146,6 +146,16 @@ def _create_tables(cur):
             created_at TIMESTAMP DEFAULT NOW()
         )
     """)
+    # Customizable dropdown options for document types
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS dropdown_options (
+            id          SERIAL PRIMARY KEY,
+            field_name  TEXT NOT NULL UNIQUE,
+            options     JSONB NOT NULL DEFAULT '[]',
+            created_at  TIMESTAMP DEFAULT NOW(),
+            updated_at  TIMESTAMP DEFAULT NOW()
+        )
+    """)
     # Performance + audit query indexes
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(username)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(ts DESC)""")

@@ -13,6 +13,10 @@ from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
 )
 from services.misc import audit_log, get_activity_logs
+from services.dropdown_options import (
+    get_all_dropdown_configs, update_dropdown_options, reset_to_default,
+    MANAGEABLE_FIELDS
+)
 from utils import admin_required, get_client_ip
 from config import ADMIN_USERNAME, MAIL_ENABLED, APP_URL
 
@@ -264,3 +268,88 @@ def clear_database():
         flash(f"Clear failed: {e}", "error")
 
     return redirect(url_for("dashboard.index"))
+
+
+# ── Dropdown Options Management ───────────────────────────────────────────────
+
+@admin_bp.route("/dropdown-options")
+@admin_required
+def manage_dropdown_options():
+    """Admin page to view and manage customizable dropdown options."""
+    try:
+        audit_log("dropdown_options_viewed", "Admin accessed dropdown options management",
+                  username=session.get("username", "admin"), ip=get_client_ip())
+    except Exception:
+        pass
+    
+    configs = get_all_dropdown_configs()
+    return render_template("manage_dropdowns.html", 
+                          configs=configs,
+                          manageable_fields=MANAGEABLE_FIELDS)
+
+
+@admin_bp.route("/dropdown-options/edit/<field_name>", methods=["GET", "POST"])
+@admin_required
+def edit_dropdown_options(field_name):
+    """Edit dropdown options for a specific field."""
+    if field_name not in MANAGEABLE_FIELDS:
+        flash(f"Invalid field: {field_name}", "error")
+        return redirect(url_for("admin.manage_dropdown_options"))
+    
+    if request.method == "POST":
+        options_raw = request.form.get("options", "").strip()
+        # Split by newlines or commas
+        options = []
+        for line in options_raw.replace(",", "\n").split("\n"):
+            opt = line.strip()
+            if opt:
+                options.append(opt)
+        
+        success, message = update_dropdown_options(field_name, options)
+        
+        if success:
+            audit_log("dropdown_options_updated", 
+                      f"field={field_name}, count={len(options)}",
+                      username=session.get("username", "admin"), 
+                      ip=get_client_ip())
+            flash(message, "success")
+        else:
+            flash(message, "error")
+        
+        return redirect(url_for("admin.manage_dropdown_options"))
+    
+    # GET request - show edit form
+    configs = get_all_dropdown_configs()
+    config = configs.get(field_name, {
+        "field_name": field_name,
+        "display_name": MANAGEABLE_FIELDS.get(field_name, field_name.title()),
+        "options": [],
+        "is_default": True
+    })
+    
+    return render_template("edit_dropdown.html", 
+                          config=config,
+                          field_name=field_name,
+                          display_name=MANAGEABLE_FIELDS.get(field_name, field_name.title()))
+
+
+@admin_bp.route("/dropdown-options/reset/<field_name>", methods=["POST"])
+@admin_required
+def reset_dropdown_options(field_name):
+    """Reset dropdown options for a field to default."""
+    if field_name not in MANAGEABLE_FIELDS:
+        flash(f"Invalid field: {field_name}", "error")
+        return redirect(url_for("admin.manage_dropdown_options"))
+    
+    success, message = reset_to_default(field_name)
+    
+    if success:
+        audit_log("dropdown_options_reset", 
+                  f"field={field_name}",
+                  username=session.get("username", "admin"), 
+                  ip=get_client_ip())
+        flash(message, "success")
+    else:
+        flash(message, "error")
+    
+    return redirect(url_for("admin.manage_dropdown_options"))

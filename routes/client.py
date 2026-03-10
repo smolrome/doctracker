@@ -17,6 +17,7 @@ from services.documents import (
 )
 from services.misc import audit_log
 from services.qr import create_doc_token, generate_qr_b64, make_doc_status_qr_png
+from services.dropdown_options import get_dropdown_options
 from utils import get_client_ip, is_logged_in
 import base64
 
@@ -280,7 +281,8 @@ def submit():
                            cart=cart, error=error, doc={},
                            office_slug=session.get("submit_office_slug", ""),
                            office_name=session.get("submit_office_name", ""),
-                           unit_office_default=_get_client_org(session.get("username", "")))
+                           unit_office_default=_get_client_org(session.get("username", "")),
+                           category_options=get_dropdown_options("category"))
 
 
 # ── Submission confirmation ────────────────────────────────────────────────────

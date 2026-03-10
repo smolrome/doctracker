@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+  <a href="/manage-users" class="page-back">← Users</a>
+  <div class="page-title">⚙️ Manage Dropdown Options</div>
+</div>
+
+<style>
+  .dd-card {
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 22px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 10px rgba(10, 45, 100, 0.05);
+  }
+  .dd-card h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--navy);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .dd-card .desc {
+    font-size: 15px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .dd-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .dd-tag {
+    background: #EFF6FF;
+    color: #1D4ED8;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .dd-more {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .dd-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 2px solid var(--border);
+  }
+  .btn-edit {
+    flex: 1;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 2px solid var(--teal);
+    background: var(--teal);
+    color: #fff;
+    text-decoration: none;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .btn-edit:hover {
+    background: #0E7490;
+    border-color: #0E7490;
+    transform: translateY(-1px);
+  }
+  .btn-reset {
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 2px solid #F59E0B;
+    background: #fff;
+    color: #D97706;
+    transition: all 0.2s;
+  }
+  .btn-reset:hover {
+    background: #FEF3C7;
+  }
+  .default-badge {
+    background: #D1FAE5;
+    color: #065F46;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-left: auto;
+  }
+  .custom-badge {
+    background: #FEF3C7;
+    color: #92400E;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-left: auto;
+  }
+  .intro-box {
+    background: linear-gradient(135deg, #0F766E 0%, #0E7490 100%);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    color: #fff;
+  }
+  .intro-box h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    margin-bottom: 8px;
+  }
+  .intro-box p {
+    font-size: 15px;
+    opacity: 0.9;
+    line-height: 1.5;
+  }
+  .flash-ok {
+    background: #D1FAE5;
+    border: 2px solid #059669;
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 16px;
+    color: #065F46;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .flash-err {
+    background: #FEE2E2;
+    border: 2px solid #DC2626;
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 16px;
+    color: #7F1D1D;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+</style>
+
+<!-- Flash messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    {% if cat == 'success' %}
+    <div class="flash-ok">✅ {{ msg }}</div>
+    {% else %}
+    <div class="flash-err">❌ {{ msg }}</div>
+    {% endif %}
+  {% endfor %}
+{% endwith %}
+
+<div class="intro-box">
+  <h2>📋 Dropdown Customization</h2>
+  <p>Customize the dropdown options available when logging new documents. Changes will be reflected in the document entry form immediately.</p>
+</div>
+
+{% for field_name, config in configs.items() %}
+<div class="dd-card">
+  <h3>
+    {{ config.display_name }}
+    {% if config.is_default %}
+    <span class="default-badge">Default</span>
+    {% else %}
+    <span class="custom-badge">Custom</span>
+    {% endif %}
+  </h3>
+  <p class="desc">Field: <code>{{ field_name }}</code></p>
+  
+  <div class="dd-tags">
+    {% for opt in config.options[:10] %}
+    <span class="dd-tag">{{ opt }}</span>
+    {% endfor %}
+    {% if config.options|length > 10 %}
+    <span class="dd-more">+{{ config.options|length - 10 }} more...</span>
+    {% endif %}
+    {% if config.options|length == 0 %}
+    <span class="dd-more">No options defined</span>
+    {% endif %}
+  </div>
+  
+  <div class="dd-actions">
+    <a href="/dropdown-options/edit/{{ field_name }}" class="btn-edit">✏️ Edit Options</a>
+    {% if not config.is_default %}
+    <form method="post" action="/dropdown-options/reset/{{ field_name }}" style="display:inline;">
+      <button type="submit" class="btn-reset" onclick="return confirm('Reset to default options?')">🔄 Reset</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}

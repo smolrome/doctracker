@@ -54,7 +54,7 @@
         <label>Document Type</label>
         <select name="category">
           <option value="">— Select type —</option>
-          {% for c in ['Letter','Memorandum','Report','Application','Voucher','Plantilla','Payroll','Memo','Request','Endorsement','Order','Notice','Circular','Certificate','Other'] %}
+          {% for c in category_options %}
             <option value="{{ c }}" {% if doc.get('category')==c %}selected{% endif %}>{{ c }}</option>
           {% endfor %}
         </select>
@@ -390,7 +390,7 @@
         <label>Document Type</label>
         <select name="category">
           <option value="">— Select type —</option>
-          {% for cat in ['Letter','Memorandum','Report','Application','Voucher','Plantilla','Payroll','Memo','Request','Endorsement','Order','Notice','Circular','Certificate','Other'] %}
+          {% for cat in category_options %}
           <option value="{{ cat }}">{{ cat }}</option>
           {% endfor %}
         </select>
