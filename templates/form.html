@@ -132,9 +132,9 @@
 
 {% else %}
 {# ═══════════════════════════════════════════════
-   EDIT CART ITEM MODE
+   EDIT CART ITEM MODE (nested in else of action == 'edit')
    ═══════════════════════════════════════════════ #}
-{% elif action == 'edit_cart' %}
+{% if action == 'edit_cart' %}
 
 <!-- Edit Modal -->
 <div id="edit-cart-modal" class="edit-cart-modal" onclick="closeEditCartModal(event)">
