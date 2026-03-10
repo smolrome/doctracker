@@ -665,6 +665,9 @@ def accept_document(doc_id):
     doc["accepted_by_name"] = current_full_name or current_user
     doc["accepted_at"] = now_str()
     doc["status"] = "Received"  # Update main status to Received
+    # Clear pending_at_staff since it's now accepted
+    doc["pending_at_staff"] = ""
+    doc["pending_at_office"] = ""
     
     # Add to travel log
     doc.setdefault("travel_log", []).append({
