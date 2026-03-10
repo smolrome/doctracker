@@ -24,18 +24,13 @@ dashboard_bp = Blueprint("dashboard", __name__)
 def _get_staff_by_office(current_username: str = ""):
     """Get staff members grouped by office for transfer modal."""
     all_users = get_all_users()
-    
-    # Filter out clients and current user
     staff = [u for u in all_users if u.get("role") != "client" and u.get("username") != current_username]
-    
-    # Group by office
     offices = {}
     for s in staff:
         office = s.get("office", "") or "No Office"
         if office not in offices:
             offices[office] = []
         offices[office].append(s)
-    
     return offices
 
 
@@ -50,27 +45,36 @@ def _get_user_office(username: str) -> str:
     return ""
 
 
+def _build_offices_dict_and_sorted(current_username: str, current_office: str):
+    """
+    Build offices_dict (staff grouped by office) and sorted_offices
+    (office names sorted: current_office first, No Office last).
+    """
+    offices_dict = _get_staff_by_office(current_username)
+    sorted_offices = sorted(
+        offices_dict.keys(),
+        key=lambda x: (x == "No Office", x != current_office, x.lower())
+    )
+    return offices_dict, sorted_offices
+
+
 @dashboard_bp.route("/")
 def index():
     role = session.get("role", "")
-    # Public landing page for unauthenticated visitors and clients
     if role not in ("staff", "admin"):
-        return render_template("landing.html",
-                               saved_offices=load_saved_offices())
+        return render_template("landing.html", saved_offices=load_saved_offices())
 
-    # Staff / admin dashboard
     current_username = session.get("username", "")
     user_role = session.get("role", "")
-    
+
     docs = load_docs()
-    
-    # Staff (non-admin) should only see their own documents
     if user_role != "admin":
         docs = [d for d in docs if d.get("logged_by") == current_username]
-    search        = request.args.get("search", "").lower()
-    filter_status = request.args.get("status", "All")
-    filter_type   = request.args.get("type", "All")
-    filter_date   = request.args.get("date", "").strip()
+
+    search           = request.args.get("search", "").lower()
+    filter_status    = request.args.get("status", "All")
+    filter_type      = request.args.get("type", "All")
+    filter_date      = request.args.get("date", "").strip()
     filter_time_from = request.args.get("time_from", "").strip()
     filter_time_to   = request.args.get("time_to", "").strip()
 
@@ -95,27 +99,23 @@ def index():
         filtered = [d for d in filtered if d.get("status") == filter_status]
 
     if filter_type == "Received":
-        filtered = [d for d in filtered
-                    if d.get("date_received") and not d.get("date_released")]
+        filtered = [d for d in filtered if d.get("date_received") and not d.get("date_released")]
     elif filter_type == "Released":
         filtered = [d for d in filtered if d.get("date_released")]
 
     if filter_date:
         def _doc_date(d):
-            # Prefer the explicitly recorded date_received, fall back to created_at
             return (d.get("date_received") or d.get("created_at", "") or "")[:10]
         filtered = [d for d in filtered if _doc_date(d) == filter_date]
 
     if filter_time_from or filter_time_to:
         def _doc_time(d):
-            # Time comes from created_at (the log timestamp)
             return (d.get("created_at", "") or "")[11:16]
         if filter_time_from:
             filtered = [d for d in filtered if _doc_time(d) >= filter_time_from]
         if filter_time_to:
             filtered = [d for d in filtered if _doc_time(d) <= filter_time_to]
 
-    # Pagination
     try:
         per_page = int(request.args.get("per_page", 25))
     except ValueError:
@@ -133,6 +133,10 @@ def index():
     start       = (page - 1) * per_page
     paginated   = filtered[start : start + per_page]
 
+    # Transfer modal data — current_office = logged-in user's office
+    current_office = _get_user_office(current_username)
+    offices_dict, sorted_offices = _build_offices_dict_and_sorted(current_username, current_office)
+
     return render_template("index.html",
         docs=paginated, stats=get_stats(docs),
         search=search, filter_status=filter_status,
@@ -142,8 +146,10 @@ def index():
         saved_offices=load_saved_offices(),
         page=page, total_pages=total_pages,
         per_page=per_page, total=total,
-        staff_by_office=_get_staff_by_office(current_username),
-        current_office=_get_user_office(current_username))
+        staff_by_office=offices_dict,
+        current_office=current_office,
+        offices_dict=offices_dict,
+        sorted_offices=sorted_offices)
 
 
 @dashboard_bp.route("/dashboard")
@@ -197,8 +203,7 @@ def add():
                 actor = session.get("full_name") or session.get("username") or "Staff"
                 for item in cart:
                     audit_log("doc_created",
-                              f"doc_name={item.get('doc_name','')[:80]} "
-                              f"sender_org={item.get('sender_org','')}",
+                              f"doc_name={item.get('doc_name','')[:80]} sender_org={item.get('sender_org','')}",
                               username=session.get("username","?"), ip=get_client_ip())
                     doc = {
                         "id":             str(uuid.uuid4())[:8].upper(),
@@ -233,8 +238,7 @@ def add():
                     insert_doc(doc)
                 session.pop("staff_cart", None)
                 session.modified = True
-                flash(f"✅ {len(cart)} document{'s' if len(cart) != 1 else ''} logged successfully.",
-                      "success")
+                flash(f"✅ {len(cart)} document{'s' if len(cart) != 1 else ''} logged successfully.", "success")
                 return redirect(url_for("dashboard.index"))
 
         cart = session.get("staff_cart", [])
@@ -253,8 +257,7 @@ def view_doc(doc_id):
     if not doc:
         flash("Document not found.", "error")
         return redirect(url_for("dashboard.index"))
-    return render_template("detail.html", doc=doc,
-                           qr_b64=generate_qr_b64(doc, request.host_url))
+    return render_template("detail.html", doc=doc, qr_b64=generate_qr_b64(doc, request.host_url))
 
 
 @dashboard_bp.route("/edit/<doc_id>", methods=["GET", "POST"])
@@ -266,8 +269,7 @@ def edit(doc_id):
         return redirect(url_for("dashboard.index"))
 
     if request.method == "POST":
-        routing = [r.strip() for r in
-                   request.form.get("routing_offices", "").split(",") if r.strip()]
+        routing = [r.strip() for r in request.form.get("routing_offices", "").split(",") if r.strip()]
         doc.update({
             "doc_id":            request.form.get("doc_id", "").strip(),
             "doc_name":          request.form.get("doc_name", "").strip(),
@@ -291,19 +293,16 @@ def edit(doc_id):
         })
         if not doc["doc_name"]:
             flash("Document name is required.", "error")
-            return render_template("form.html", doc=doc, action="edit",
-                                   status_options=STATUS_OPTIONS)
+            return render_template("form.html", doc=doc, action="edit", status_options=STATUS_OPTIONS)
         save_doc(doc)
         audit_log("doc_edited",
-                  f"doc_id={doc_id} doc_name={doc.get('doc_name','')[:80]} "
-                  f"status={doc.get('status','')}",
+                  f"doc_id={doc_id} doc_name={doc.get('doc_name','')[:80]} status={doc.get('status','')}",
                   username=session.get("username","?"), ip=get_client_ip())
         flash("Document updated.", "success")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
 
     doc["routing_str"] = ", ".join(doc.get("routing", []))
-    return render_template("form.html", doc=doc, action="edit",
-                           status_options=STATUS_OPTIONS)
+    return render_template("form.html", doc=doc, action="edit", status_options=STATUS_OPTIONS)
 
 
 @dashboard_bp.route("/delete/<doc_id>", methods=["POST"])
@@ -366,8 +365,7 @@ def update_status(doc_id):
     })
     save_doc(doc)
     audit_log("status_updated",
-              f"doc_id={doc_id} new_status={new_status} "
-              f"doc_name={doc.get('doc_name','')[:60]}",
+              f"doc_id={doc_id} new_status={new_status} doc_name={doc.get('doc_name','')[:60]}",
               username=session.get("username","?"), ip=get_client_ip())
     flash(f"Status updated to {new_status}.", "success")
     return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
@@ -383,65 +381,51 @@ def transfer_doc(doc_id):
     if not doc:
         flash("Document not found.", "error")
         return redirect(url_for("dashboard.index"))
-    
+
     current_user = session.get("username", "")
-    current_office = session.get("office", "")
-    user_role = session.get("role", "")
-    
-    # Only allow transfer if user is admin or the one who logged the document
+    user_role    = session.get("role", "")
+
     if user_role != "admin" and doc.get("logged_by") != current_user:
         flash("You can only transfer documents you logged.", "error")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
-    
+
     if request.method == "POST":
         transfer_type = request.form.get("transfer_type", "").strip()
-        new_staff = request.form.get("new_staff", "").strip()
-        new_office = request.form.get("new_office", "").strip()
-        
+        new_staff     = request.form.get("new_staff", "").strip()
+
         if not new_staff:
             flash("Please select a staff member.", "error")
             return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
-        
+
         if new_staff == current_user:
             flash("You cannot transfer to yourself.", "error")
             return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
-        
-        # Get all users to validate and get office info
-        all_users = get_all_users()
+
+        all_users   = get_all_users()
         valid_staff = [u["username"] for u in all_users if u.get("role") != "client"]
-        
-        # Get the new staff member's office
+
         new_staff_office = ""
         for u in all_users:
             if u.get("username") == new_staff:
                 new_staff_office = u.get("office", "")
                 break
-        
+
         if new_staff not in valid_staff:
             flash("Invalid staff member selected.", "error")
             return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
-        
-        old_staff = doc.get("logged_by", "unknown")
-        old_status = doc.get("status", "")
-        
-        # Determine status based on transfer type and office
-        if transfer_type == "inside_office":
-            doc["status"] = "In Transit"
-            status_note = "(Inside Office)"
-        else:  # outside_office
-            doc["status"] = "In Transit"
-            status_note = "(Outside Office)"
-        
-        # Update logged_by to new staff
-        doc["logged_by"] = new_staff
-        
-        # Record transfer info
-        doc["transferred_to"] = new_staff
+
+        old_staff   = doc.get("logged_by", "unknown")
+        old_status  = doc.get("status", "")
+        status_note = "(Inside Office)" if transfer_type == "inside_office" else "(Outside Office)"
+
+        doc["status"]                = "In Transit"
+        doc["logged_by"]             = new_staff
+        doc["transferred_to"]        = new_staff
         doc["transferred_to_office"] = new_staff_office
-        doc["transferred_by"] = current_user
-        doc["transferred_at"] = now_str()
-        doc["transfer_type"] = transfer_type  # inside_office or outside_office
-        
+        doc["transferred_by"]        = current_user
+        doc["transferred_at"]        = now_str()
+        doc["transfer_type"]         = transfer_type
+
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
             "action":    f"Document Transferred {status_note}",
@@ -450,42 +434,27 @@ def transfer_doc(doc_id):
             "remarks":   f"Transferred from {old_staff} ({old_status}) to {new_staff} at {new_staff_office or 'N/A'} {status_note}.",
         })
         save_doc(doc)
-        
         audit_log("doc_transferred",
-                  f"doc_id={doc_id} from={old_staff} to={new_staff} type={transfer_type} "
-                  f"doc_name={doc.get('doc_name','')[:60]}",
+                  f"doc_id={doc_id} from={old_staff} to={new_staff} type={transfer_type} doc_name={doc.get('doc_name','')[:60]}",
                   username=session.get("username","?"), ip=get_client_ip())
-        
         flash(f"Document transferred to {new_staff} at {new_staff_office or 'N/A'} {status_note}. Status changed to In Transit.", "success")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
-    
-    # Get list of staff members grouped by office
-    all_users = get_all_users()
-    staff_list = [u for u in all_users 
-                 if u.get("role") != "client" and u.get("username") != current_user]
-    
-    # Get the office of the person who currently has the document (logged_by)
-    # This is the office that should be auto-selected for inside_office transfers
+
+    # GET — resolve office of whoever currently holds the document
+    all_users      = get_all_users()
     logged_by_user = doc.get("logged_by", "")
-    current_office = ""  # Default to empty
+    current_office = ""
     for u in all_users:
         if u.get("username") == logged_by_user:
             current_office = u.get("office", "") or ""
             break
-    
-    # Group staff by office
-    offices_dict = {}
-    for staff in staff_list:
-        office = staff.get("office", "") or "No Office"
-        if office not in offices_dict:
-            offices_dict[office] = []
-        offices_dict[office].append(staff)
-    
-    # Sort offices - document's current office first
-    sorted_offices = sorted(offices_dict.keys(), key=lambda x: (x != current_office, x.lower()))
-    
-    return render_template("transfer.html", doc=doc, offices_dict=offices_dict, 
-                         sorted_offices=sorted_offices, current_office=current_office)
+
+    offices_dict, sorted_offices = _build_offices_dict_and_sorted(current_user, current_office)
+
+    return render_template("transfer.html", doc=doc,
+                           offices_dict=offices_dict,
+                           sorted_offices=sorted_offices,
+                           current_office=current_office)
 
 
 # ── Batch Transfer ─────────────────────────────────────────────────────────────
@@ -494,82 +463,76 @@ def transfer_doc(doc_id):
 @login_required
 def transfer_batch():
     """Transfer multiple documents to another staff member at once."""
-    doc_ids = request.form.get("doc_ids", "").strip()
+    doc_ids       = request.form.get("doc_ids", "").strip()
     transfer_type = request.form.get("transfer_type", "").strip()
-    new_staff = request.form.get("new_staff", "").strip()
-    
+    new_staff     = request.form.get("new_staff", "").strip()
+
     if not doc_ids:
         flash("No documents selected.", "error")
         return redirect(url_for("dashboard.index"))
-    
+
     if not new_staff or not transfer_type:
         flash("Please select transfer type and staff member.", "error")
         return redirect(url_for("dashboard.index"))
-    
+
     id_list = [d.strip() for d in doc_ids.split(",") if d.strip()]
     if not id_list:
         flash("No valid document IDs.", "error")
         return redirect(url_for("dashboard.index"))
-    
+
     current_user = session.get("username", "")
-    user_role = session.get("role", "")
-    
-    # Validate staff
-    all_users = get_all_users()
-    valid_staff = [u["username"] for u in all_users if u.get("role") != "client"]
-    
+    user_role    = session.get("role", "")
+    all_users    = get_all_users()
+    valid_staff  = [u["username"] for u in all_users if u.get("role") != "client"]
+
     if new_staff not in valid_staff:
         flash("Invalid staff member.", "error")
         return redirect(url_for("dashboard.index"))
-    
+
     if new_staff == current_user:
         flash("Cannot transfer to yourself.", "error")
         return redirect(url_for("dashboard.index"))
-    
-    # Get new staff office
+
     new_staff_office = ""
     for u in all_users:
         if u.get("username") == new_staff:
             new_staff_office = u.get("office", "")
             break
-    
+
+    status_note       = "(Inside Office)" if transfer_type == "inside_office" else "(Outside Office)"
     transferred_count = 0
+
     for doc_id in id_list:
         doc = get_doc(doc_id)
         if not doc:
             continue
-        
-        # Check permission
         if user_role != "admin" and doc.get("logged_by") != current_user:
             continue
-        
-        old_staff = doc.get("logged_by", "unknown")
+
+        old_staff  = doc.get("logged_by", "unknown")
         old_status = doc.get("status", "")
-        
-        # Update status to In Transit
-        doc["status"] = "In Transit"
-        doc["logged_by"] = new_staff
-        doc["transferred_to"] = new_staff
+
+        doc["status"]                = "In Transit"
+        doc["logged_by"]             = new_staff
+        doc["transferred_to"]        = new_staff
         doc["transferred_to_office"] = new_staff_office
-        doc["transferred_by"] = current_user
-        doc["transferred_at"] = now_str()
-        doc["transfer_type"] = transfer_type
-        
+        doc["transferred_by"]        = current_user
+        doc["transferred_at"]        = now_str()
+        doc["transfer_type"]         = transfer_type
+
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
-            "action":    f"Batch Transfer {('(Inside Office)' if transfer_type == 'inside_office' else '(Outside Office)')}",
+            "action":    f"Batch Transfer {status_note}",
             "officer":   session.get("full_name") or session.get("username"),
             "timestamp": now_str(),
             "remarks":   f"Transferred from {old_staff} ({old_status}) to {new_staff}.",
         })
-        
         save_doc(doc)
         transferred_count += 1
-    
+
     audit_log("doc_batch_transferred",
               f"count={transferred_count} to={new_staff} type={transfer_type}",
               username=session.get("username","?"), ip=get_client_ip())
-    
     flash(f"{transferred_count} document(s) transferred to {new_staff}.", "success")
     return redirect(url_for("dashboard.index"))
 
@@ -601,8 +564,7 @@ def db_status():
             with conn.cursor() as cur:
                 cur.execute("SELECT COUNT(*) AS total FROM documents")
                 row = cur.fetchone()
-        return jsonify({"storage": "PostgreSQL ✅", "database": True,
-                        "documents": row["total"]})
+        return jsonify({"storage": "PostgreSQL ✅", "database": True, "documents": row["total"]})
     except Exception as e:
         return jsonify({"storage": "PostgreSQL (ERROR)", "database": False, "error": str(e)})
 

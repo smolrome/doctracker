@@ -3,171 +3,87 @@
 
 <!-- Stats Row — clickable filters -->
 <style>
-  .stat-card {
-    cursor: pointer; text-decoration: none; display: block;
-    transition: transform .18s, box-shadow .18s, border-color .18s;
-  }
-  .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(10,45,100,.14); }
-  .stat-card.active {
-    border-color: transparent;
-    box-shadow: 0 0 0 3px var(--stat-accent, #0E7490), 0 6px 24px rgba(10,45,100,.12);
-  }
-  .stat-card.active .stat-label { color: var(--stat-accent, #0E7490); }
-  .stat-card.active .stat-num   { color: var(--stat-accent, #0E7490); }
-  .stat-card.yellow  { --stat-accent: #D97706; }
-  .stat-card.emerald { --stat-accent: #059669; }
-  .stat-card.teal    { --stat-accent: #0E7490; }
-  .stat-card.blue    { --stat-accent: #1D4ED8; }
-  .stat-card.green   { --stat-accent: #16A34A; }
-  .stat-card.red     { --stat-accent: #DC2626; }
-  .stat-card.yellow::before  { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
-  .stat-card.emerald::before { background: linear-gradient(90deg, #059669, #10B981); }
-  .stat-card.blue::before    { background: linear-gradient(90deg, #1D4ED8, #3B82F6); }
-  .stat-card.green::before   { background: linear-gradient(90deg, #16A34A, #22C55E); }
-  .stat-card-inner { pointer-events: none; }
-  .stat-clear {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 11px; font-weight: 700; color: var(--stat-accent, #0E7490);
-    margin-top: 5px; opacity: 0; transition: opacity .15s;
-  }
-  .stat-card.active .stat-clear { opacity: 1; }
-  .stat-card:not(.active):hover::after {
-    content: 'filter'; position: absolute; bottom: 7px; right: 10px;
-    font-size: 9px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .06em; color: var(--muted); opacity: .5;
-  }
-  .stat-card { position: relative; }
+  .stat-card { cursor:pointer;text-decoration:none;display:block;transition:transform .18s,box-shadow .18s,border-color .18s; }
+  .stat-card:hover { transform:translateY(-3px);box-shadow:0 8px 28px rgba(10,45,100,.14); }
+  .stat-card.active { border-color:transparent;box-shadow:0 0 0 3px var(--stat-accent,#0E7490),0 6px 24px rgba(10,45,100,.12); }
+  .stat-card.active .stat-label { color:var(--stat-accent,#0E7490); }
+  .stat-card.active .stat-num   { color:var(--stat-accent,#0E7490); }
+  .stat-card.yellow  { --stat-accent:#D97706; }
+  .stat-card.emerald { --stat-accent:#059669; }
+  .stat-card.teal    { --stat-accent:#0E7490; }
+  .stat-card.blue    { --stat-accent:#1D4ED8; }
+  .stat-card.green   { --stat-accent:#16A34A; }
+  .stat-card.red     { --stat-accent:#DC2626; }
+  .stat-card.yellow::before  { background:linear-gradient(90deg,#F59E0B,#FBBF24); }
+  .stat-card.emerald::before { background:linear-gradient(90deg,#059669,#10B981); }
+  .stat-card.blue::before    { background:linear-gradient(90deg,#1D4ED8,#3B82F6); }
+  .stat-card.green::before   { background:linear-gradient(90deg,#16A34A,#22C55E); }
+  .stat-card-inner { pointer-events:none; }
+  .stat-clear { display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--stat-accent,#0E7490);margin-top:5px;opacity:0;transition:opacity .15s; }
+  .stat-card.active .stat-clear { opacity:1; }
+  .stat-card:not(.active):hover::after { content:'filter';position:absolute;bottom:7px;right:10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);opacity:.5; }
+  .stat-card { position:relative; }
 </style>
 <script>
 function statFilter(status) {
   const params = new URLSearchParams(window.location.search);
-  params.set('status', status);
-  params.delete('page');
+  params.set('status', status); params.delete('page');
   window.location.href = '/?' + params.toString();
 }
 </script>
 
 <div class="stats-grid">
-  <a class="stat-card {% if filter_status=='All' %}active{% endif %}"
-     href="#" onclick="event.preventDefault();statFilter('All')" title="All documents">
-    <div class="stat-card-inner">
-      <div class="stat-num">{{ stats.total }}</div>
-      <div class="stat-label">📋 Total</div>
-      <div class="stat-clear">● All</div>
-    </div>
+  <a class="stat-card {% if filter_status=='All' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('All')">
+    <div class="stat-card-inner"><div class="stat-num">{{ stats.total }}</div><div class="stat-label">📋 Total</div><div class="stat-clear">● All</div></div>
   </a>
-  <a class="stat-card yellow {% if filter_status=='Pending' %}active{% endif %}"
-     href="#" onclick="event.preventDefault();statFilter('Pending')" title="Pending">
-    <div class="stat-card-inner">
-      <div class="stat-num">{{ stats.pending }}</div>
-      <div class="stat-label">⏳ Pending</div>
-      <div class="stat-clear">● Filtered</div>
-    </div>
+  <a class="stat-card yellow {% if filter_status=='Pending' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Pending')">
+    <div class="stat-card-inner"><div class="stat-num">{{ stats.pending }}</div><div class="stat-label">⏳ Pending</div><div class="stat-clear">● Filtered</div></div>
   </a>
-  <a class="stat-card emerald {% if filter_status=='Received' %}active{% endif %}"
-     href="#" onclick="event.preventDefault();statFilter('Received')" title="Received">
-    <div class="stat-card-inner">
-      <div class="stat-num">{{ stats.received }}</div>
-      <div class="stat-label">📥 Received</div>
-      <div class="stat-clear">● Filtered</div>
-    </div>
+  <a class="stat-card emerald {% if filter_status=='Received' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Received')">
+    <div class="stat-card-inner"><div class="stat-num">{{ stats.received }}</div><div class="stat-label">📥 Received</div><div class="stat-clear">● Filtered</div></div>
   </a>
-  <a class="stat-card teal {% if filter_status=='In Review' %}active{% endif %}"
-     href="#" onclick="event.preventDefault();statFilter('In Review')" title="In Review">
-    <div class="stat-card-inner">
-      <div class="stat-num">{{ stats.in_review }}</div>
-      <div class="stat-label">🔍 In Review</div>
-      <div class="stat-clear">● Filtered</div>
-    </div>
+  <a class="stat-card teal {% if filter_status=='In Review' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('In Review')">
+    <div class="stat-card-inner"><div class="stat-num">{{ stats.in_review }}</div><div class="stat-label">🔍 In Review</div><div class="stat-clear">● Filtered</div></div>
   </a>
-  <a class="stat-card blue {% if filter_status=='In Transit' %}active{% endif %}"
-     href="#" onclick="event.preventDefault();statFilter('In Transit')" title="In Transit">
-    <div class="stat-card-inner">
-      <div class="stat-num">{{ stats.in_transit }}</div>
-      <div class="stat-label">🚌 In Transit</div>
-      <div class="stat-clear">● Filtered</div>
-    </div>
+  <a class="stat-card blue {% if filter_status=='In Transit' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('In Transit')">
+    <div class="stat-card-inner"><div class="stat-num">{{ stats.in_transit }}</div><div class="stat-label">🚌 In Transit</div><div class="stat-clear">● Filtered</div></div>
   </a>
-  <a class="stat-card green {% if filter_status=='Released' %}active{% endif %}"
-     href="#" onclick="event.preventDefault();statFilter('Released')" title="Released">
-    <div class="stat-card-inner">
-      <div class="stat-num">{{ stats.released }}</div>
-      <div class="stat-label">✅ Released</div>
-      <div class="stat-clear">● Filtered</div>
-    </div>
+  <a class="stat-card green {% if filter_status=='Released' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Released')">
+    <div class="stat-card-inner"><div class="stat-num">{{ stats.released }}</div><div class="stat-label">✅ Released</div><div class="stat-clear">● Filtered</div></div>
   </a>
-  <a class="stat-card red {% if filter_status=='On Hold' %}active{% endif %}"
-     href="#" onclick="event.preventDefault();statFilter('On Hold')" title="On Hold">
-    <div class="stat-card-inner">
-      <div class="stat-num">{{ stats.on_hold }}</div>
-      <div class="stat-label">⏸️ On Hold</div>
-      <div class="stat-clear">● Filtered</div>
-    </div>
+  <a class="stat-card red {% if filter_status=='On Hold' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('On Hold')">
+    <div class="stat-card-inner"><div class="stat-num">{{ stats.on_hold }}</div><div class="stat-label">⏸️ On Hold</div><div class="stat-clear">● Filtered</div></div>
   </a>
-  <a class="stat-card {% if filter_status=='Archived' %}active{% endif %}"
-     style="--stat-accent:#64748B;"
-     href="#" onclick="event.preventDefault();statFilter('Archived')" title="Archived">
-    <div class="stat-card-inner">
-      <div class="stat-num">{{ stats.archived }}</div>
-      <div class="stat-label">🗄️ Archived</div>
-      <div class="stat-clear">● Filtered</div>
-    </div>
+  <a class="stat-card {% if filter_status=='Archived' %}active{% endif %}" style="--stat-accent:#64748B;" href="#" onclick="event.preventDefault();statFilter('Archived')">
+    <div class="stat-card-inner"><div class="stat-num">{{ stats.archived }}</div><div class="stat-label">🗄️ Archived</div><div class="stat-clear">● Filtered</div></div>
   </a>
 </div>
 
-
-<!-- ══════════════════════════════════════════
-     OFFICE SUBMISSION QR FINDER
-══════════════════════════════════════════ -->
 {% if saved_offices %}
 <style>
-  .office-qr-section{background:#fff;border:2px solid var(--border);border-radius:18px;
-    margin-bottom:20px;overflow:hidden;box-shadow:0 2px 12px rgba(10,45,100,.06);}
-  .oqs-header{padding:16px 20px;border-bottom:2px solid var(--border);
-    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
-    background:linear-gradient(135deg,#F0F7FA,#fff);}
-  .oqs-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:900;
-    color:var(--navy);display:flex;align-items:center;gap:10px;}
+  .office-qr-section{background:#fff;border:2px solid var(--border);border-radius:18px;margin-bottom:20px;overflow:hidden;box-shadow:0 2px 12px rgba(10,45,100,.06);}
+  .oqs-header{padding:16px 20px;border-bottom:2px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:linear-gradient(135deg,#F0F7FA,#fff);}
+  .oqs-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:900;color:var(--navy);display:flex;align-items:center;gap:10px;}
   .oqs-subtitle{font-size:14px;color:var(--muted);margin-top:2px;}
   .oqs-search-wrap{display:flex;gap:10px;align-items:center;flex:1;max-width:400px;}
-  .oqs-search{flex:1;padding:10px 14px;border:2px solid var(--border);border-radius:10px;
-    font-size:15px;font-family:inherit;outline:none;min-height:44px;
-    background:var(--surface);transition:border .15s;}
+  .oqs-search{flex:1;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit;outline:none;min-height:44px;background:var(--surface);transition:border .15s;}
   .oqs-search:focus{border-color:var(--teal);background:#fff;}
   .oqs-body{padding:16px 20px;}
   .oqs-count{font-size:14px;color:var(--muted);margin-bottom:12px;font-weight:600;}
   .oqs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;}
-  .oqs-card{border:2px solid #7C3AED;border-radius:14px;padding:16px;text-align:center;
-    background:#fff;transition:box-shadow .15s,transform .15s;}
+  .oqs-card{border:2px solid #7C3AED;border-radius:14px;padding:16px;text-align:center;background:#fff;transition:box-shadow .15s,transform .15s;}
   .oqs-card:hover{box-shadow:0 6px 22px rgba(124,58,237,.18);transform:translateY(-2px);}
   .oqs-card.hidden{display:none;}
-  .oqs-card-badge{display:inline-flex;align-items:center;gap:5px;background:#EDE9FE;
-    color:#5B21B6;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:700;
-    margin-bottom:8px;}
-  .oqs-card-name{font-family:'Outfit',sans-serif;font-size:16px;font-weight:900;
-    color:var(--navy);margin-bottom:10px;line-height:1.3;}
-  .oqs-qr-img{width:min(140px,100%);aspect-ratio:1;border-radius:9px;
-    border:2px solid var(--border);display:block;margin:0 auto 10px;object-fit:contain;}
+  .oqs-card-badge{display:inline-flex;align-items:center;gap:5px;background:#EDE9FE;color:#5B21B6;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:700;margin-bottom:8px;}
+  .oqs-card-name{font-family:'Outfit',sans-serif;font-size:16px;font-weight:900;color:var(--navy);margin-bottom:10px;line-height:1.3;}
+  .oqs-qr-img{width:min(140px,100%);aspect-ratio:1;border-radius:9px;border:2px solid var(--border);display:block;margin:0 auto 10px;object-fit:contain;}
   .oqs-actions{display:flex;flex-direction:column;gap:7px;}
-  .btn-scan-sub{display:flex;align-items:center;justify-content:center;gap:6px;
-    padding:10px;border-radius:9px;font-size:15px;font-weight:800;font-family:inherit;
-    text-decoration:none;border:none;cursor:pointer;min-height:44px;
-    background:linear-gradient(135deg,#5B21B6,#7C3AED);color:#fff;
-    box-shadow:0 4px 12px rgba(124,58,237,.3);transition:all .15s;}
-  .btn-dl-sub{display:flex;align-items:center;justify-content:center;gap:6px;
-    padding:9px;border-radius:9px;font-size:14px;font-weight:700;
-    border:2px solid var(--border);color:var(--muted);background:var(--surface);
-    text-decoration:none;transition:all .15s;}
+  .btn-scan-sub{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:9px;font-size:15px;font-weight:800;font-family:inherit;text-decoration:none;border:none;cursor:pointer;min-height:44px;background:linear-gradient(135deg,#5B21B6,#7C3AED);color:#fff;box-shadow:0 4px 12px rgba(124,58,237,.3);transition:all .15s;}
+  .btn-dl-sub{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:9px;font-size:14px;font-weight:700;border:2px solid var(--border);color:var(--muted);background:var(--surface);text-decoration:none;transition:all .15s;}
   .btn-dl-sub:hover{border-color:#7C3AED;color:#5B21B6;}
   .oqs-none{text-align:center;padding:28px;color:var(--muted);font-size:16px;display:none;}
   .oqs-none.visible{display:block;}
-  @media(max-width:600px){
-    .oqs-header{flex-direction:column;align-items:flex-start;}
-    .oqs-search-wrap{max-width:100%;width:100%;}
-    .oqs-grid{grid-template-columns:1fr 1fr;}
-  }
 </style>
-
 <div class="office-qr-section">
   <div class="oqs-header">
     <div>
@@ -175,9 +91,7 @@ function statFilter(status) {
       <div class="oqs-subtitle">Can't find the QR at the office? Search and submit from here.</div>
     </div>
     <div class="oqs-search-wrap">
-      <input type="text" class="oqs-search" id="oqs-search"
-             placeholder="🔍 Search office name..."
-             oninput="filterOffices(this.value)" autocomplete="off"/>
+      <input type="text" class="oqs-search" id="oqs-search" placeholder="🔍 Search office name..." oninput="filterOffices(this.value)" autocomplete="off"/>
     </div>
   </div>
   <div class="oqs-body">
@@ -217,124 +131,107 @@ function filterOffices(query) {
   document.getElementById('oqs-none').classList.toggle('visible', visible === 0);
 }
 document.addEventListener('keydown', e => {
-  if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
-    e.preventDefault(); document.getElementById('oqs-search').focus();
-  }
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); document.getElementById('oqs-search').focus(); }
 });
 </script>
 {% endif %}
 
 <style>
-  /* ── FILTER BAR ── */
-  .filter-bar{background:#fff;border:2px solid var(--border);border-radius:16px;
-    padding:16px 18px;margin-bottom:14px;
-    box-shadow:0 2px 10px rgba(10,45,100,.05);}
+  .filter-bar{background:#fff;border:2px solid var(--border);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(10,45,100,.05);}
   .filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
   .filter-group{display:flex;flex-direction:column;gap:5px;min-width:0;}
   .filter-group.grow{flex:1;min-width:200px;}
   .filter-group.w-date{width:150px;}
   .filter-group.w-time{width:120px;}
-  .filter-group.w-status{width:160px;}
-  .filter-label{font-size:11px;font-weight:700;text-transform:uppercase;
-    letter-spacing:.06em;color:var(--muted);}
-  .filter-input{padding:9px 12px;border:2px solid var(--border);border-radius:10px;
-    font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);
-    outline:none;min-height:42px;width:100%;transition:border .15s;}
+  .filter-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+  .filter-input{padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);outline:none;min-height:42px;width:100%;transition:border .15s;}
   .filter-input:focus{border-color:var(--teal);background:#fff;}
   .filter-input.has-value{border-color:var(--teal);background:#EFF6FF;}
-  .filter-divider{width:1px;background:var(--border);align-self:stretch;
-    margin:0 2px;flex-shrink:0;}
-  /* time-range-row visibility controlled via JS style.display */
-  .time-toggle-label{display:flex;align-items:center;gap:8px;cursor:pointer;
-    font-size:13px;font-weight:700;color:var(--muted);margin-top:10px;
-    padding-top:10px;border-top:1.5px dashed var(--border);}
-  .time-toggle-label input[type=checkbox]{
-    width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0;}
-  /* Bottom row */
+  .filter-divider{width:1px;background:var(--border);align-self:stretch;margin:0 2px;flex-shrink:0;}
+  .time-toggle-label{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--muted);}
+  .time-toggle-label input[type=checkbox]{width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0;}
   .filter-type-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;}
-  .type-btn{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;
-    border:2px solid var(--border);background:var(--surface);color:var(--muted);
-    text-decoration:none;transition:all .15s;white-space:nowrap;cursor:pointer;}
+  .type-btn{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;border:2px solid var(--border);background:var(--surface);color:var(--muted);text-decoration:none;transition:all .15s;white-space:nowrap;cursor:pointer;}
   .type-btn:hover{border-color:var(--teal);color:var(--teal);}
   .type-btn.active{background:var(--teal);border-color:var(--teal);color:#fff;}
-  .btn-clear-filters{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;
-    border:2px solid var(--border);background:#fff;color:var(--muted);
-    text-decoration:none;cursor:pointer;transition:all .15s;}
+  .btn-clear-filters{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;border:2px solid var(--border);background:#fff;color:var(--muted);text-decoration:none;cursor:pointer;transition:all .15s;}
   .btn-clear-filters:hover{border-color:#DC2626;color:#DC2626;}
   .filter-active-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:0;margin-left:8px;}
-  .filter-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;
-    border-radius:20px;font-size:12px;font-weight:700;
-    background:#EFF6FF;border:1.5px solid #BFDBFE;color:#1D4ED8;}
+  .filter-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;background:#EFF6FF;border:1.5px solid #BFDBFE;color:#1D4ED8;}
   .pill-x{color:#93C5FD;cursor:pointer;font-size:14px;line-height:1;}
   .pill-x:hover{color:#1D4ED8;}
+  /* Modals & Table */
+  .route-panel{background:linear-gradient(135deg,#0A2540 0%,#1D4ED8 100%);border-radius:16px;padding:18px 20px;box-shadow:0 8px 32px rgba(10,37,80,.45);}
+  .rp-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .rp-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:900;color:#fff;display:flex;align-items:center;gap:10px;}
+  .rp-count{background:rgba(255,255,255,.22);color:#fff;border-radius:20px;padding:3px 14px;font-size:14px;font-weight:800;}
+  .rp-close{margin-left:auto;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.8);border-radius:8px;padding:6px 12px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;}
+  .rp-close:hover{background:rgba(255,255,255,.22);}
+  .rp-fields{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px;}
+  .rp-field label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.65);margin-bottom:5px;}
+  .rp-input{width:100%;padding:10px 13px;border:2px solid rgba(255,255,255,.25);border-radius:10px;background:rgba(255,255,255,.12);color:#fff;font-family:inherit;font-size:15px;outline:none;min-height:44px;transition:border .15s,background .15s;}
+  .rp-input::placeholder{color:rgba(255,255,255,.45);}
+  .rp-input:focus{border-color:rgba(255,255,255,.7);background:rgba(255,255,255,.2);}
+  .rp-input[type="date"],.rp-input[type="time"]{color-scheme:dark;}
+  .rp-field.notes-field{grid-column:1/-1;}
+  .rp-notes{width:100%;padding:10px 13px;border:2px solid rgba(255,255,255,.25);border-radius:10px;background:rgba(255,255,255,.1);color:#fff;font-family:inherit;font-size:15px;outline:none;min-height:44px;resize:none;}
+  .rp-notes::placeholder{color:rgba(255,255,255,.4);}
+  .rp-notes:focus{border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.18);}
+  .rp-bottom{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .rp-hint{flex:1;font-size:13px;color:rgba(255,255,255,.6);line-height:1.5;}
+  .btn-route{padding:12px 24px;border-radius:10px;background:#fff;color:#1D4ED8;border:none;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;white-space:nowrap;min-height:46px;transition:all .15s;display:flex;align-items:center;gap:8px;}
+  .btn-route:hover{background:#DBEAFE;transform:translateY(-1px);}
+  .btn-route:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+  .btn-time-filter{padding:10px 16px;border-radius:10px;background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.3);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;min-height:46px;display:flex;align-items:center;gap:6px;}
+  .btn-time-filter:hover{background:rgba(255,255,255,.25);}
+  .cb-cell{width:44px;padding:0 8px!important;text-align:center;vertical-align:middle;}
+  .doc-checkbox{width:20px;height:20px;cursor:pointer;accent-color:#1D4ED8;border-radius:4px;}
+  th.cb-cell{background:var(--surface);}
+  tr.row-selected{background:#EFF6FF!important;}
+  tr.row-selected:hover td{background:#DBEAFE!important;}
+  #select-all{width:20px;height:20px;cursor:pointer;accent-color:#1D4ED8;}
   @media(max-width:700px){
-    .filter-row{gap:8px;}
-    .filter-group.w-date,.filter-group.w-time,.filter-group.w-status{width:100%;}
+    .filter-group.w-date,.filter-group.w-time{width:100%;}
     .filter-group.grow{min-width:100%;}
     .filter-divider{display:none;}
+    .rp-fields{grid-template-columns:1fr;}
   }
 </style>
 
-<!-- ── FILTER BAR ── -->
 <form method="get" action="/" id="filter-form">
   <div class="filter-bar">
-
-    <!-- Row 1: Search + Status + Date + Actions -->
     <div class="filter-row">
-
       <div class="filter-group grow">
         <span class="filter-label">🔍 Search</span>
-        <input type="text" name="search"
-               class="filter-input {% if search %}has-value{% endif %}"
-               value="{{ search }}"
-               placeholder="Document name, ID, sender, office, referred to…"
-               autocomplete="off"/>
+        <input type="text" name="search" class="filter-input {% if search %}has-value{% endif %}" value="{{ search }}" placeholder="Document name, ID, sender, office, referred to…" autocomplete="off"/>
       </div>
-
       <div class="filter-divider"></div>
-
       <div class="filter-group w-date">
         <span class="filter-label">📅 Date</span>
-        <input type="date" name="date"
-               class="filter-input {% if filter_date %}has-value{% endif %}"
-               value="{{ filter_date }}"
-               title="Filter by date received / logged"
-               onchange="this.form.submit()"/>
+        <input type="date" name="date" class="filter-input {% if filter_date %}has-value{% endif %}" value="{{ filter_date }}" onchange="this.form.submit()"/>
       </div>
-
       <div class="filter-divider"></div>
-
       <div class="filter-group" style="flex-shrink:0;">
         <span class="filter-label">&nbsp;</span>
         <div style="display:flex;gap:8px;">
           <button type="submit" class="btn btn-primary btn-sm" style="min-height:42px;white-space:nowrap;">🔍 Search</button>
-          <a href="/" class="btn-clear-filters" style="min-height:42px;display:flex;align-items:center;" title="Clear all filters">✕ Clear</a>
+          <a href="/" class="btn-clear-filters" style="min-height:42px;display:flex;align-items:center;">✕ Clear</a>
         </div>
       </div>
     </div>
-
-    <!-- Time range — checkbox + inputs on same row -->
     <div class="filter-row" style="margin-top:10px;padding-top:10px;border-top:1.5px dashed var(--border);">
-      <label class="time-toggle-label" for="toggle-time-range" style="border-top:none;margin:0;padding:0;flex-shrink:0;">
-        <input type="checkbox" id="toggle-time-range"
-               onchange="toggleTimeRange(this.checked)"
-               {% if filter_time_from or filter_time_to %}checked{% endif %}/>
+      <label class="time-toggle-label" for="toggle-time-range" style="flex-shrink:0;">
+        <input type="checkbox" id="toggle-time-range" onchange="toggleTimeRange(this.checked)" {% if filter_time_from or filter_time_to %}checked{% endif %}/>
         🕐 Filter by time range
       </label>
-      <div id="time-range-row" class="{% if filter_time_from or filter_time_to %}visible{% endif %}"
-           style="display:{% if filter_time_from or filter_time_to %}flex{% else %}none{% endif %};
-                  align-items:flex-end;gap:10px;flex-wrap:wrap;flex:1;">
+      <div id="time-range-row" style="display:{% if filter_time_from or filter_time_to %}flex{% else %}none{% endif %};align-items:flex-end;gap:10px;flex-wrap:wrap;flex:1;">
         <div class="filter-group w-time">
           <span class="filter-label">🕐 From</span>
-          <input type="time" name="time_from"
-                 class="filter-input {% if filter_time_from %}has-value{% endif %}"
-                 value="{{ filter_time_from }}"/>
+          <input type="time" name="time_from" class="filter-input {% if filter_time_from %}has-value{% endif %}" value="{{ filter_time_from }}"/>
         </div>
         <div class="filter-group w-time">
           <span class="filter-label">🕑 To</span>
-          <input type="time" name="time_to"
-                 class="filter-input {% if filter_time_to %}has-value{% endif %}"
-                 value="{{ filter_time_to }}"/>
+          <input type="time" name="time_to" class="filter-input {% if filter_time_to %}has-value{% endif %}" value="{{ filter_time_to }}"/>
         </div>
         <div class="filter-group" style="flex-shrink:0;">
           <span class="filter-label">&nbsp;</span>
@@ -342,17 +239,11 @@ document.addEventListener('keydown', e => {
         </div>
       </div>
     </div>
-
-    <!-- Quick filters + active pills -->
     <div class="filter-type-row">
-      <button type="button" class="type-btn {% if filter_type=='All' %}active{% endif %}"
-              onclick="setType('All')">All</button>
-      <button type="button" class="type-btn {% if filter_type=='Received' %}active{% endif %}"
-              onclick="setType('Received')">📥 Received</button>
-      <button type="button" class="type-btn {% if filter_type=='Released' %}active{% endif %}"
-              onclick="setType('Released')">✅ Released</button>
+      <button type="button" class="type-btn {% if filter_type=='All' %}active{% endif %}" onclick="setType('All')">All</button>
+      <button type="button" class="type-btn {% if filter_type=='Received' %}active{% endif %}" onclick="setType('Received')">📥 Received</button>
+      <button type="button" class="type-btn {% if filter_type=='Released' %}active{% endif %}" onclick="setType('Released')">✅ Released</button>
       <button type="button" class="type-btn" onclick="setToday()">📆 Today</button>
-
       {% set any_filter = search or filter_status != 'All' or filter_type != 'All' or filter_date or filter_time_from or filter_time_to %}
       {% if any_filter %}
       <div class="filter-active-pills">
@@ -364,7 +255,6 @@ document.addEventListener('keydown', e => {
       </div>
       {% endif %}
     </div>
-
   </div>
   <input type="hidden" name="type" id="type-hidden" value="{{ filter_type }}"/>
   <input type="hidden" name="per_page" value="{{ per_page }}"/>
@@ -372,222 +262,83 @@ document.addEventListener('keydown', e => {
 
 <script>
 function toggleTimeRange(on) {
-  const row = document.getElementById('time-range-row');
-  row.style.display = on ? 'flex' : 'none';
-  if (!on) {
-    document.querySelector('[name="time_from"]').value = '';
-    document.querySelector('[name="time_to"]').value   = '';
-    document.getElementById('filter-form').submit();
-  }
+  document.getElementById('time-range-row').style.display = on ? 'flex' : 'none';
+  if (!on) { document.querySelector('[name="time_from"]').value=''; document.querySelector('[name="time_to"]').value=''; document.getElementById('filter-form').submit(); }
 }
-function setToday() {
-  const today = new Date().toISOString().slice(0,10);
-  document.querySelector('[name="date"]').value = today;
-  document.getElementById('filter-form').submit();
-}
-function setType(val) {
-  document.getElementById('type-hidden').value = val;
-  document.getElementById('filter-form').submit();
-}
-function clearField(name, val='') {
-  const el = document.querySelector('[name="'+name+'"]');
-  if (el) el.value = val;
-  document.getElementById('filter-form').submit();
-}
+function setToday() { document.querySelector('[name="date"]').value = new Date().toISOString().slice(0,10); document.getElementById('filter-form').submit(); }
+function setType(val) { document.getElementById('type-hidden').value = val; document.getElementById('filter-form').submit(); }
+function clearField(name, val='') { const el = document.querySelector('[name="'+name+'"]'); if(el) el.value=val; document.getElementById('filter-form').submit(); }
 </script>
 
-<!-- ══════════════════════════════════════════
-     ROUTING ACTION BAR — appears when docs selected
-══════════════════════════════════════════ -->
-<style>
-
-  /* ── ROUTING PANEL (modal content) ── */
-  .route-panel{
-    background:linear-gradient(135deg,#0A2540 0%,#1D4ED8 100%);
-    border-radius:16px;padding:18px 20px;
-    box-shadow:0 8px 32px rgba(10,37,80,.45);}
-  .rp-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
-  .rp-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:900;
-    color:#fff;display:flex;align-items:center;gap:10px;}
-  .rp-count{background:rgba(255,255,255,.22);color:#fff;border-radius:20px;
-    padding:3px 14px;font-size:14px;font-weight:800;}
-  .rp-close{margin-left:auto;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);
-    color:rgba(255,255,255,.8);border-radius:8px;padding:6px 12px;cursor:pointer;
-    font-family:inherit;font-size:14px;font-weight:700;}
-  .rp-close:hover{background:rgba(255,255,255,.22);}
-  .rp-fields{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px;}
-  .rp-field label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;
-    letter-spacing:.06em;color:rgba(255,255,255,.65);margin-bottom:5px;}
-  .rp-input{width:100%;padding:10px 13px;border:2px solid rgba(255,255,255,.25);
-    border-radius:10px;background:rgba(255,255,255,.12);color:#fff;
-    font-family:inherit;font-size:15px;outline:none;min-height:44px;
-    transition:border .15s,background .15s;}
-  .rp-input::placeholder{color:rgba(255,255,255,.45);}
-  .rp-input:focus{border-color:rgba(255,255,255,.7);background:rgba(255,255,255,.2);}
-  .rp-input[type="date"],.rp-input[type="time"]{color-scheme:dark;}
-  .rp-field.notes-field{grid-column:1/-1;}
-  .rp-notes{width:100%;padding:10px 13px;border:2px solid rgba(255,255,255,.25);
-    border-radius:10px;background:rgba(255,255,255,.1);color:#fff;
-    font-family:inherit;font-size:15px;outline:none;min-height:44px;resize:none;}
-  .rp-notes::placeholder{color:rgba(255,255,255,.4);}
-  .rp-notes:focus{border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.18);}
-  .rp-bottom{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-  .rp-hint{flex:1;font-size:13px;color:rgba(255,255,255,.6);line-height:1.5;}
-  .btn-route{padding:12px 24px;border-radius:10px;background:#fff;color:#1D4ED8;
-    border:none;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;
-    white-space:nowrap;min-height:46px;transition:all .15s;
-    display:flex;align-items:center;gap:8px;}
-  .btn-route:hover{background:#DBEAFE;transform:translateY(-1px);}
-  .btn-time-filter{padding:10px 16px;border-radius:10px;
-    background:rgba(255,255,255,.15);color:#fff;
-    border:1.5px solid rgba(255,255,255,.3);font-family:inherit;font-size:14px;
-    font-weight:700;cursor:pointer;white-space:nowrap;min-height:46px;
-    display:flex;align-items:center;gap:6px;}
-  .btn-time-filter:hover{background:rgba(255,255,255,.25);}
-
-  /* Checkbox column */
-  .cb-cell{width:44px;padding:0 8px!important;text-align:center;vertical-align:middle;}
-  .doc-checkbox{width:20px;height:20px;cursor:pointer;accent-color:#1D4ED8;
-    border-radius:4px;}
-  th.cb-cell{background:var(--surface);}
-  tr.row-selected{background:#EFF6FF!important;}
-  tr.row-selected:hover td{background:#DBEAFE!important;}
-
-  /* Select all checkbox */
-  #select-all{width:20px;height:20px;cursor:pointer;accent-color:#1D4ED8;}
-
-  @media(max-width:600px){
-    .route-bar{top:60px;border-radius:10px;padding:12px 14px;gap:10px;}
-    .route-bar-label{font-size:15px;}
-    .route-dest-wrap{min-width:unset;width:100%;order:3;}
-    .btn-route{flex:1;}
-  }
-</style>
-
-<!-- datalist for office autocomplete -->
 <datalist id="office-suggestions">
-  {% for office in saved_offices %}
-  <option value="{{ office.office_name }}">
-  {% endfor %}
+  {% for office in saved_offices %}<option value="{{ office.office_name }}">{% endfor %}
 </datalist>
 
-<!-- Hidden data for transfer modal -->
-<script type="application/json" id="transfer-offices-data">{{ staff_by_office | tojson | safe }}</script>
-<span id="transfer-current-office" style="display:none;">{{ current_office }}</span>
+<!-- ══ SINGLE SOURCE OF TRUTH for transfer modal ══ -->
+<script type="application/json" id="modal-offices-data">{{ offices_dict | tojson | safe }}</script>
+<script type="application/json" id="modal-sorted-offices">{{ sorted_offices | tojson | safe }}</script>
+<script>
+  const modalOfficesData   = JSON.parse(document.getElementById('modal-offices-data').textContent || '{}');
+  const modalSortedOffices = JSON.parse(document.getElementById('modal-sorted-offices').textContent || '[]');
+  const modalCurrentOffice = '{{ current_office | safe }}';
+</script>
 
 <!-- ── ROUTING MODAL ── -->
-<div id="routing-modal" style="display:none;position:fixed;inset:0;z-index:8000;
-     background:rgba(10,37,64,.7);backdrop-filter:blur(6px);
-     align-items:center;justify-content:center;padding:16px;">
-<div class="route-panel" id="route-panel" style="display:block;position:relative;
-     top:auto;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;
-     box-shadow:0 24px 80px rgba(0,0,0,.5);">
-
+<div id="routing-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(10,37,64,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;">
+<div class="route-panel" style="display:block;position:relative;top:auto;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.5);">
   <div class="rp-header">
-    <div class="rp-title">
-      📤 Create Routing Slip
-      <span class="rp-count" id="sel-count">0 selected</span>
-    </div>
+    <div class="rp-title">📤 Create Routing Slip <span class="rp-count" id="sel-count">0 selected</span></div>
     <button class="rp-close" onclick="closeRoutingModal()">✕ Close</button>
   </div>
-
-  <!-- Selected docs preview -->
   <div id="selected-preview" style="margin-bottom:14px;display:none;">
-    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
-                color:rgba(255,255,255,.6);margin-bottom:8px;">Selected Documents</div>
-    <div id="selected-list"
-         style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px 14px;
-                max-height:120px;overflow-y:auto;font-size:13px;color:rgba(255,255,255,.9);">
-    </div>
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:8px;">Selected Documents</div>
+    <div id="selected-list" style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px 14px;max-height:120px;overflow-y:auto;font-size:13px;color:rgba(255,255,255,.9);"></div>
   </div>
-
-  <!-- From office (read-only, pulled from session) -->
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;
-              padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.1);
-              border:1.5px solid rgba(255,255,255,.15);">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.15);">
     <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.55);white-space:nowrap;">FROM:</span>
-    <span style="font-size:14px;font-weight:800;color:#fff;">
-      {{ current_office or current_full_name or current_user or 'Your Office' }}
-    </span>
+    <span style="font-size:14px;font-weight:800;color:#fff;">{{ current_office or current_full_name or current_user or 'Your Office' }}</span>
     <span style="margin:0 4px;color:rgba(255,255,255,.4);">→</span>
     <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.55);white-space:nowrap;">TO:</span>
-    <span style="font-size:14px;font-weight:700;color:#93C5FD;" id="modal-dest-preview">
-      (enter destination below)
-    </span>
+    <span style="font-size:14px;font-weight:700;color:#93C5FD;" id="modal-dest-preview">(enter destination below)</span>
   </div>
-
   <div class="rp-fields">
     <div class="rp-field">
       <label>📍 Destination Office *</label>
-      <input type="text" class="rp-input" id="route-dest"
-             placeholder="e.g. Budget Section, HR Unit..."
-             list="office-suggestions" autocomplete="off"
-             oninput="document.getElementById('modal-dest-preview').textContent = this.value || '(enter destination below)'"/>
+      <input type="text" class="rp-input" id="route-dest" placeholder="e.g. Budget Section, HR Unit..." list="office-suggestions" autocomplete="off" oninput="document.getElementById('modal-dest-preview').textContent=this.value||'(enter destination below)'"/>
     </div>
-    <div class="rp-field">
-      <label>📅 Slip Date</label>
-      <input type="date" class="rp-input" id="slip-date"/>
-    </div>
+    <div class="rp-field"><label>📅 Slip Date</label><input type="date" class="rp-input" id="slip-date"/></div>
     <div class="rp-field" style="grid-column:span 2">
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
-        <input type="checkbox" id="use-time-range" onchange="toggleModalTimeRange(this.checked)"
-               style="width:16px;height:16px;accent-color:#fff;cursor:pointer"/>
+        <input type="checkbox" id="use-time-range" onchange="toggleModalTimeRange(this.checked)" style="width:16px;height:16px;accent-color:#fff;cursor:pointer"/>
         🕐 Include Time Range <span style="font-size:12px;font-weight:400;color:rgba(255,255,255,.5)">(optional)</span>
       </label>
     </div>
-    <div class="rp-field" id="time-from-field" style="display:none">
-      <label>From</label>
-      <input type="time" class="rp-input" id="time-from" placeholder="08:00"/>
-    </div>
-    <div class="rp-field" id="time-to-field" style="display:none">
-      <label>To</label>
-      <input type="time" class="rp-input" id="time-to" placeholder="12:00"/>
-    </div>
-    <div class="rp-field notes-field">
-      <label>📝 Notes / Instructions (optional)</label>
-      <textarea class="rp-notes" id="route-notes" rows="2"
-                placeholder="e.g. For immediate action..."></textarea>
-    </div>
+    <div class="rp-field" id="time-from-field" style="display:none"><label>From</label><input type="time" class="rp-input" id="time-from"/></div>
+    <div class="rp-field" id="time-to-field" style="display:none"><label>To</label><input type="time" class="rp-input" id="time-to"/></div>
+    <div class="rp-field notes-field"><label>📝 Notes / Instructions (optional)</label><textarea class="rp-notes" id="route-notes" rows="2" placeholder="e.g. For immediate action..."></textarea></div>
   </div>
-
   <div class="rp-bottom">
-    <button class="btn-time-filter" id="btn-auto-select" onclick="autoSelectByTime()" style="display:none">
-      ⏱️ Auto-select by Time
-    </button>
-    <div class="rp-hint" style="flex:1">
-      💡 Check rows in the table first, or use <strong>Auto-select by Time</strong>.
-    </div>
-    <button class="btn-route" onclick="submitRouting()">
-      🚀 Create Routing Slip
-    </button>
+    <button class="btn-time-filter" id="btn-auto-select" onclick="autoSelectByTime()" style="display:none">⏱️ Auto-select by Time</button>
+    <div class="rp-hint" style="flex:1">💡 Check rows in the table first, or use <strong>Auto-select by Time</strong>.</div>
+    <button class="btn-route" onclick="submitRouting()">🚀 Create Routing Slip</button>
   </div>
 </div>
 </div>
 
 <!-- ── TRANSFER MODAL ── -->
-<div id="transfer-modal" style="display:none;position:fixed;inset:0;z-index:8000;
-     background:rgba(10,37,64,.7);backdrop-filter:blur(6px);
-     align-items:center;justify-content:center;padding:16px;">
-<div class="route-panel" id="transfer-panel" style="display:block;position:relative;
-     top:auto;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;
-     box-shadow:0 24px 80px rgba(0,0,0,.5);">
-
+<div id="transfer-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(10,37,64,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;">
+<div class="route-panel" style="display:block;position:relative;top:auto;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.5);">
   <div class="rp-header">
-    <div class="rp-title">
-      🔄 Transfer Documents
-      <span class="rp-count" id="transfer-sel-count">0 selected</span>
-    </div>
+    <div class="rp-title">🔄 Transfer Documents <span class="rp-count" id="transfer-sel-count">0 selected</span></div>
     <button class="rp-close" onclick="closeTransferModal()">✕ Close</button>
   </div>
-
-  <!-- Transfer Type -->
-  <div class="rp-fields">
+  <div class="rp-fields" style="grid-template-columns:1fr;">
     <div class="rp-field">
       <label>📍 Transfer Type *</label>
       <select class="rp-input" id="transfer-type" onchange="updateTransferOffices()">
         <option value="">-- Select Type --</option>
-        <option value="inside_office">🏢 Internal</option>
-        <option value="outside_office">🌐 External</option>
+        <option value="inside_office">🏢 Internal (same office)</option>
+        <option value="outside_office">🌐 External (different office)</option>
       </select>
     </div>
     <div class="rp-field">
@@ -595,7 +346,7 @@ function clearField(name, val='') {
       <select class="rp-input" id="transfer-office" onchange="updateTransferStaff()" disabled>
         <option value="">-- Select Office --</option>
       </select>
-      <small id="transfer-office-info" style="color: var(--teal); margin-top: 4px; display: block;"></small>
+      <small id="transfer-office-info" style="color:#93C5FD;margin-top:4px;display:block;font-size:13px;"></small>
     </div>
     <div class="rp-field">
       <label>👤 Transfer to Staff *</label>
@@ -604,28 +355,14 @@ function clearField(name, val='') {
       </select>
     </div>
   </div>
-
   <div class="rp-bottom">
-    <div class="rp-hint" style="flex:1">
-      💡 Select documents using checkboxes first, then click Transfer.
-    </div>
-    <button class="btn-route" onclick="submitTransfer()" id="btn-do-transfer" disabled>
-      🔄 Transfer Documents
-    </button>
+    <div class="rp-hint" style="flex:1">💡 Select documents using checkboxes first, then click Transfer.</div>
+    <button class="btn-route" onclick="submitTransfer()" id="btn-do-transfer" disabled>🔄 Transfer Documents</button>
   </div>
 </div>
 </div>
 
-<!-- Store data for transfer modal -->
-<script type="application/json" id="modal-offices-data">{{ offices_dict | tojson | safe }}</script>
-<script type="application/json" id="modal-sorted-offices">{{ sorted_offices | tojson | safe }}</script>
-<script>
-  const modalOfficesData = JSON.parse(document.getElementById('modal-offices-data').textContent || '{}');
-  const modalSortedOffices = JSON.parse(document.getElementById('modal-sorted-offices').textContent || '[]');
-  const modalCurrentOffice = '{{ current_office | safe }}';
-</script>
-
-<!-- Hidden form for transfer submission -->
+<!-- Hidden routing form -->
 <form method="post" action="/routing-slip/create" id="routing-form" style="display:none;">
   <input type="hidden" name="doc_ids" id="routing-doc-ids"/>
   <input type="hidden" name="destination" id="routing-dest-field"/>
@@ -635,89 +372,30 @@ function clearField(name, val='') {
   <input type="hidden" name="time_to" id="routing-time-to"/>
 </form>
 
-<!-- Hidden form for batch transfer -->
-<form method="post" action="/transfer-batch" id="transfer-form" style="display:none;">
-  <input type="hidden" name="doc_ids" id="transfer-doc-ids"/>
-  <input type="hidden" name="transfer_type" id="transfer-type-field"/>
-  <input type="hidden" name="new_staff" id="transfer-staff-field"/>
-</form>
-
 <!-- Documents Table -->
 <div class="table-wrap">
   <div class="table-head">
     <div class="table-title">📋 Document Records</div>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
       <div class="table-count">
-        {% if total is defined %}
-          {{ total }} record{% if total != 1 %}s{% endif %}
-          {% if total_pages > 1 %} &nbsp;·&nbsp; page {{ page }} of {{ total_pages }}{% endif %}
-        {% else %}
-          {{ docs|length }} record{% if docs|length != 1 %}s{% endif %}
-        {% endif %}
+        {% if total is defined %}{{ total }} record{% if total != 1 %}s{% endif %}{% if total_pages > 1 %} &nbsp;·&nbsp; page {{ page }} of {{ total_pages }}{% endif %}
+        {% else %}{{ docs|length }} record{% if docs|length != 1 %}s{% endif %}{% endif %}
       </div>
       {% if logged_in %}
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:13px;color:var(--muted);white-space:nowrap;">Show</label>
-        <select onchange="changePerPage(this.value)"
-                style="padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;
-                       font-size:13px;color:var(--navy);background:#fff;cursor:pointer;">
-          {% for n in [10,25,50,100] %}
-            <option value="{{ n }}" {% if per_page is defined and per_page == n %}selected{% endif %}>{{ n }}</option>
-          {% endfor %}
+        <select onchange="changePerPage(this.value)" style="padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;color:var(--navy);background:#fff;cursor:pointer;">
+          {% for n in [10,25,50,100] %}<option value="{{ n }}" {% if per_page is defined and per_page == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
         </select>
         <label style="font-size:13px;color:var(--muted);">per page</label>
       </div>
-      <a href="/add"
-         style="display:inline-flex;align-items:center;gap:7px;
-                padding:8px 18px;border-radius:9px;border:none;
-                background:linear-gradient(135deg,#059669,#10B981);
-                color:#fff;font-weight:700;font-size:13px;cursor:pointer;
-                box-shadow:0 2px 10px rgba(5,150,105,.3);
-                text-decoration:none;transition:filter .15s,transform .1s;"
-         onmouseover="this.style.filter='brightness(1.1)'"
-         onmouseout="this.style.filter=''"
-         title="Add a new document">
-        ➕ Add Document
-      </a>
-      <a href="/routed-documents"
-         style="display:inline-flex;align-items:center;gap:7px;
-                padding:8px 18px;border-radius:9px;border:none;
-                background:linear-gradient(135deg,#0A2540,#1D4ED8);
-                color:#fff;font-weight:700;font-size:13px;cursor:pointer;
-                box-shadow:0 2px 10px rgba(29,78,216,.3);
-                text-decoration:none;transition:filter .15s,transform .1s;"
-         onmouseover="this.style.filter='brightness(1.15)'"
-         onmouseout="this.style.filter=''"
-         title="View all routing slips">
-        🚌 Routed Documents
-      </a>
-      <button id="btn-create-slip" onclick="openRoutingModal()"
-              style="display:none;align-items:center;gap:7px;
-                     padding:8px 18px;border-radius:9px;border:none;
-                     background:linear-gradient(135deg,#7C3AED,#A855F7);
-                     color:#fff;font-weight:700;font-size:13px;cursor:pointer;
-                     box-shadow:0 2px 10px rgba(124,58,237,.3);
-                     transition:filter .15s,transform .1s;"
-              onmouseover="this.style.filter='brightness(1.15)'"
-              onmouseout="this.style.filter=''"
-              title="Create routing slip from selected documents">
-        📤 Create Routing Slip
-        <span id="slip-sel-badge" style="background:rgba(255,255,255,.25);border-radius:20px;
-              padding:1px 8px;font-size:11px;font-weight:900;"></span>
+      <a href="/add" style="display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,#059669,#10B981);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 10px rgba(5,150,105,.3);text-decoration:none;" title="Add a new document">➕ Add Document</a>
+      <a href="/routed-documents" style="display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,#0A2540,#1D4ED8);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 10px rgba(29,78,216,.3);text-decoration:none;" title="View all routing slips">🚌 Routed Documents</a>
+      <button id="btn-create-slip" onclick="openRoutingModal()" style="display:none;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,#7C3AED,#A855F7);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 10px rgba(124,58,237,.3);">
+        📤 Create Routing Slip <span id="slip-sel-badge" style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:900;"></span>
       </button>
-      <button id="btn-transfer" onclick="openTransferModal()"
-              style="display:none;align-items:center;gap:7px;
-                     padding:8px 18px;border-radius:9px;border:none;
-                     background:linear-gradient(135deg,#DC2626,#EF4444);
-                     color:#fff;font-weight:700;font-size:13px;cursor:pointer;
-                     box-shadow:0 2px 10px rgba(220,38,38,.3);
-                     transition:filter .15s,transform .1s;"
-              onmouseover="this.style.filter='brightness(1.15)'"
-              onmouseout="this.style.filter=''"
-              title="Transfer selected documents to another staff">
-        🔄 Transfer
-        <span id="transfer-sel-badge" style="background:rgba(255,255,255,.25);border-radius:20px;
-              padding:1px 8px;font-size:11px;font-weight:900;"></span>
+      <button id="btn-transfer" onclick="openTransferModal()" style="display:none;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,#DC2626,#EF4444);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 10px rgba(220,38,38,.3);">
+        🔄 Transfer <span id="transfer-sel-badge" style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:900;"></span>
       </button>
       {% endif %}
     </div>
@@ -728,27 +406,15 @@ function clearField(name, val='') {
     <table id="docs-table">
       <thead>
         <tr>
-          {% if logged_in %}
-          <th class="cb-cell"><input type="checkbox" id="select-all" title="Select all"/></th>
-          {% endif %}
-          <th>Document / Content</th>
-          <th>Unit / Office / School</th>
-          <th>Source / Sender</th>
-          <th>Referred To</th>
-          <th>Date &amp; Time Received</th>
-          <th>Status</th>
+          {% if logged_in %}<th class="cb-cell"><input type="checkbox" id="select-all" title="Select all"/></th>{% endif %}
+          <th>Document / Content</th><th>Unit / Office / School</th><th>Source / Sender</th><th>Referred To</th><th>Date &amp; Time Received</th><th>Status</th>
         </tr>
       </thead>
       <tbody>
         {% for doc in docs %}
-        <tr onclick="rowClick(event, '{{ doc.id }}')" style="cursor:pointer;"
-            data-created-at="{{ doc.created_at or '' }}"
-            data-doc-id="{{ doc.id }}">
+        <tr onclick="rowClick(event,'{{ doc.id }}')" style="cursor:pointer;" data-created-at="{{ doc.created_at or '' }}" data-doc-id="{{ doc.id }}">
           {% if logged_in %}
-          <td class="cb-cell" onclick="event.stopPropagation()">
-            <input type="checkbox" class="doc-checkbox" value="{{ doc.id }}"
-                   onchange="updateSelection()"/>
-          </td>
+          <td class="cb-cell" onclick="event.stopPropagation()"><input type="checkbox" class="doc-checkbox" value="{{ doc.id }}" onchange="updateSelection()"/></td>
           {% endif %}
           <td>
             <div class="doc-name">{{ doc.doc_name }}</div>
@@ -762,31 +428,23 @@ function clearField(name, val='') {
           <td style="white-space:nowrap;font-size:var(--fs-sm);">
             {% if doc.date_received %}
               <div style="font-weight:700;color:var(--navy);">{{ doc.date_received }}</div>
-              <div style="font-size:12px;color:var(--teal);margin-top:2px;font-weight:600;">
-                {{ doc.created_at | time12 }}
-              </div>
-            {% else %}
-              <span style="color:var(--muted);">—</span>
-            {% endif %}
+              <div style="font-size:12px;color:var(--teal);margin-top:2px;font-weight:600;">{{ doc.created_at | time12 }}</div>
+            {% else %}<span style="color:var(--muted);">—</span>{% endif %}
           </td>
           <td>
             {% set s = doc.status %}
-            {% if s=='Pending'    %}<span class="badge badge-pending">{{ s }}</span>
+            {% if s=='Pending' %}<span class="badge badge-pending">{{ s }}</span>
             {% elif s=='Received' %}<span class="badge badge-received">{{ s }}</span>
-            {% elif s=='In Review'%}<span class="badge badge-review">{{ s }}</span>
+            {% elif s=='In Review' %}<span class="badge badge-review">{{ s }}</span>
             {% elif s=='In Transit' %}
               <span class="badge badge-transit">🚌 In Transit</span>
               {% if doc.forwarded_to %}
               <div style="margin-top:5px;display:flex;align-items:center;gap:4px;">
                 <span style="font-size:11px;color:var(--muted);font-weight:600;">→</span>
-                <span style="background:#DBEAFE;border:1px solid #93C5FD;border-radius:6px;
-                             padding:2px 8px;font-size:11px;font-weight:700;color:#1D4ED8;
-                             max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-                             display:inline-block;">{{ doc.forwarded_to }}</span>
-              </div>
-              {% endif %}
+                <span style="background:#DBEAFE;border:1px solid #93C5FD;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#1D4ED8;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;">{{ doc.forwarded_to }}</span>
+              </div>{% endif %}
             {% elif s=='Released' %}<span class="badge badge-released">{{ s }}</span>
-            {% elif s=='On Hold'  %}<span class="badge badge-hold">{{ s }}</span>
+            {% elif s=='On Hold' %}<span class="badge badge-hold">{{ s }}</span>
             {% else %}<span class="badge badge-archived">{{ s }}</span>{% endif %}
           </td>
         </tr>
@@ -796,75 +454,22 @@ function clearField(name, val='') {
   </div>
 
   {% if total_pages is defined and total_pages > 1 %}
-  <div style="display:flex;align-items:center;justify-content:center;gap:6px;
-              padding:16px 20px;border-top:1.5px solid var(--border);flex-wrap:wrap;">
-
-    {# Build base query string without page #}
+  <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:16px 20px;border-top:1.5px solid var(--border);flex-wrap:wrap;">
     {% set qs %}search={{ search }}&status={{ filter_status }}&type={{ filter_type }}&date={{ filter_date }}&time_from={{ filter_time_from }}&time_to={{ filter_time_to }}&per_page={{ per_page }}{% endset %}
-
-    {# Prev #}
-    {% if page > 1 %}
-      <a href="/?{{ qs }}&page={{ page - 1 }}"
-         style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);
-                background:#fff;color:var(--navy);font-weight:700;font-size:13px;
-                text-decoration:none;transition:all .15s;"
-         onmouseover="this.style.background='var(--surface)'"
-         onmouseout="this.style.background='#fff'">‹ Prev</a>
-    {% else %}
-      <span style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);
-                   background:var(--surface);color:var(--muted);font-size:13px;">‹ Prev</span>
-    {% endif %}
-
-    {# Page numbers — show window of 5 around current page #}
-    {% set start_p = [1, page - 2] | max %}
-    {% set end_p   = [total_pages, page + 2] | min %}
-
-    {% if start_p > 1 %}
-      <a href="/?{{ qs }}&page=1"
-         style="padding:7px 11px;border-radius:8px;border:1.5px solid var(--border);
-                background:#fff;color:var(--navy);font-weight:600;font-size:13px;
-                text-decoration:none;">1</a>
-      {% if start_p > 2 %}<span style="color:var(--muted);font-size:13px;padding:0 2px;">…</span>{% endif %}
-    {% endif %}
-
+    {% if page > 1 %}<a href="/?{{ qs }}&page={{ page - 1 }}" style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:#fff;color:var(--navy);font-weight:700;font-size:13px;text-decoration:none;">‹ Prev</a>
+    {% else %}<span style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:13px;">‹ Prev</span>{% endif %}
+    {% set start_p = [1, page - 2] | max %}{% set end_p = [total_pages, page + 2] | min %}
+    {% if start_p > 1 %}<a href="/?{{ qs }}&page=1" style="padding:7px 11px;border-radius:8px;border:1.5px solid var(--border);background:#fff;color:var(--navy);font-weight:600;font-size:13px;text-decoration:none;">1</a>{% if start_p > 2 %}<span style="color:var(--muted);font-size:13px;padding:0 2px;">…</span>{% endif %}{% endif %}
     {% for p in range(start_p, end_p + 1) %}
-      {% if p == page %}
-        <span style="padding:7px 11px;border-radius:8px;
-                     background:linear-gradient(135deg,var(--g-start),var(--g-mid));
-                     color:#fff;font-weight:700;font-size:13px;border:none;">{{ p }}</span>
-      {% else %}
-        <a href="/?{{ qs }}&page={{ p }}"
-           style="padding:7px 11px;border-radius:8px;border:1.5px solid var(--border);
-                  background:#fff;color:var(--navy);font-weight:600;font-size:13px;
-                  text-decoration:none;"
-           onmouseover="this.style.background='var(--surface)'"
-           onmouseout="this.style.background='#fff'">{{ p }}</a>
-      {% endif %}
+      {% if p == page %}<span style="padding:7px 11px;border-radius:8px;background:linear-gradient(135deg,var(--g-start),var(--g-mid));color:#fff;font-weight:700;font-size:13px;border:none;">{{ p }}</span>
+      {% else %}<a href="/?{{ qs }}&page={{ p }}" style="padding:7px 11px;border-radius:8px;border:1.5px solid var(--border);background:#fff;color:var(--navy);font-weight:600;font-size:13px;text-decoration:none;">{{ p }}</a>{% endif %}
     {% endfor %}
-
-    {% if end_p < total_pages %}
-      {% if end_p < total_pages - 1 %}<span style="color:var(--muted);font-size:13px;padding:0 2px;">…</span>{% endif %}
-      <a href="/?{{ qs }}&page={{ total_pages }}"
-         style="padding:7px 11px;border-radius:8px;border:1.5px solid var(--border);
-                background:#fff;color:var(--navy);font-weight:600;font-size:13px;
-                text-decoration:none;">{{ total_pages }}</a>
-    {% endif %}
-
-    {# Next #}
-    {% if page < total_pages %}
-      <a href="/?{{ qs }}&page={{ page + 1 }}"
-         style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);
-                background:#fff;color:var(--navy);font-weight:700;font-size:13px;
-                text-decoration:none;transition:all .15s;"
-         onmouseover="this.style.background='var(--surface)'"
-         onmouseout="this.style.background='#fff'">Next ›</a>
-    {% else %}
-      <span style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);
-                   background:var(--surface);color:var(--muted);font-size:13px;">Next ›</span>
-    {% endif %}
-
+    {% if end_p < total_pages %}{% if end_p < total_pages - 1 %}<span style="color:var(--muted);font-size:13px;padding:0 2px;">…</span>{% endif %}<a href="/?{{ qs }}&page={{ total_pages }}" style="padding:7px 11px;border-radius:8px;border:1.5px solid var(--border);background:#fff;color:var(--navy);font-weight:600;font-size:13px;text-decoration:none;">{{ total_pages }}</a>{% endif %}
+    {% if page < total_pages %}<a href="/?{{ qs }}&page={{ page + 1 }}" style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:#fff;color:var(--navy);font-weight:700;font-size:13px;text-decoration:none;">Next ›</a>
+    {% else %}<span style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:13px;">Next ›</span>{% endif %}
   </div>
   {% endif %}
+
   {% else %}
   <div class="empty">
     <div class="empty-icon">📭</div>
@@ -875,317 +480,143 @@ function clearField(name, val='') {
 </div>
 
 <script>
-// ── Today's date as default for slip-date ──
-(function(){
-  const sd = document.getElementById('slip-date');
-  if (sd) sd.value = new Date().toISOString().slice(0,10);
-})();
+(function(){ const sd=document.getElementById('slip-date'); if(sd) sd.value=new Date().toISOString().slice(0,10); })();
 
-function changePerPage(val) {
-  const url = new URL(window.location.href);
-  url.searchParams.set('per_page', val);
-  url.searchParams.set('page', 1);
-  window.location = url.toString();
-}
+function changePerPage(val) { const url=new URL(window.location.href); url.searchParams.set('per_page',val); url.searchParams.set('page',1); window.location=url.toString(); }
+function rowClick(e,docId) { if(e.target.type==='checkbox') return; window.location='/view/'+docId; }
 
-function rowClick(e, docId) {
-  if (e.target.type === 'checkbox') return;
-  window.location = '/view/' + docId;
-}
+// ══ ROUTING MODAL ══
+function openRoutingModal() { document.getElementById('routing-modal').style.display='flex'; updateSelectedPreview(); const sd=document.getElementById('slip-date'); if(sd&&!sd.value) sd.value=new Date().toISOString().slice(0,10); }
+function closeRoutingModal() { document.getElementById('routing-modal').style.display='none'; }
+document.getElementById('routing-modal').addEventListener('click',function(e){ if(e.target===this) closeRoutingModal(); });
 
-function openRoutingModal() {
-  const modal = document.getElementById('routing-modal');
-  modal.style.display = 'flex';
-  updateSelectedPreview();
-  // Set today's date if not set
-  const sd = document.getElementById('slip-date');
-  if (sd && !sd.value) sd.value = new Date().toISOString().slice(0,10);
-}
-
-function closeRoutingModal() {
-  document.getElementById('routing-modal').style.display = 'none';
-}
-
-// Close modal on backdrop click
-document.getElementById('routing-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeRoutingModal();
-});
-
-// Transfer Modal Functions
-let transferOfficesData = {};
-let transferCurrentOffice = '';
-
+// ══ TRANSFER MODAL ══
 function openTransferModal() {
-  // Get selected doc IDs
-  const checked = document.querySelectorAll('.doc-checkbox:checked');
-  if (checked.length === 0) {
-    alert('Please select at least one document to transfer.');
-    return;
-  }
-  
-  // Update count
-  document.getElementById('transfer-sel-count').textContent = checked.length + ' selected';
-  
-  // Load offices data from the page
-  transferOfficesData = JSON.parse(document.getElementById('transfer-offices-data').textContent || '{}');
-  transferCurrentOffice = document.getElementById('transfer-current-office').textContent;
-  
-  // Reset form
-  document.getElementById('transfer-type').value = '';
-  document.getElementById('transfer-office').innerHTML = '<option value="">-- Select Office --</option>';
-  document.getElementById('transfer-office').disabled = true;
-  document.getElementById('transfer-office-info').textContent = '';
-  document.getElementById('transfer-staff').innerHTML = '<option value="">-- Select Staff --</option>';
-  document.getElementById('transfer-staff').disabled = true;
-  document.getElementById('btn-do-transfer').disabled = true;
-  
-  // Show modal
-  document.getElementById('transfer-modal').style.display = 'flex';
+  const checked=document.querySelectorAll('.doc-checkbox:checked');
+  if(checked.length===0){ alert('Please select at least one document to transfer.'); return; }
+  document.getElementById('transfer-sel-count').textContent=checked.length+' selected';
+  // Reset
+  document.getElementById('transfer-type').value='';
+  document.getElementById('transfer-office').innerHTML='<option value="">-- Select Office --</option>';
+  document.getElementById('transfer-office').disabled=true;
+  document.getElementById('transfer-office-info').textContent='';
+  document.getElementById('transfer-staff').innerHTML='<option value="">-- Select Staff --</option>';
+  document.getElementById('transfer-staff').disabled=true;
+  document.getElementById('btn-do-transfer').disabled=true;
+  document.getElementById('transfer-modal').style.display='flex';
 }
-
-function closeTransferModal() {
-  document.getElementById('transfer-modal').style.display = 'none';
-}
-
-document.getElementById('transfer-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeTransferModal();
-});
+function closeTransferModal() { document.getElementById('transfer-modal').style.display='none'; }
+document.getElementById('transfer-modal').addEventListener('click',function(e){ if(e.target===this) closeTransferModal(); });
 
 function updateTransferOffices() {
-  const transferType = document.getElementById('transfer-type').value;
-  const officeSelect = document.getElementById('transfer-office');
-  const staffSelect = document.getElementById('transfer-staff');
-
-  staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
-  staffSelect.disabled = true;
-  document.getElementById('btn-do-transfer').disabled = true;
-
-  if (!transferType) {
-    officeSelect.innerHTML = '<option value="">-- Select Office --</option>';
-    officeSelect.disabled = true;
-    return;
-  }
-
-  let options = '<option value="">-- Select Office --</option>';
-  for (const office of modalSortedOffices) {
-    if (office === "No Office") continue;
-    options += `<option value="${office}">${office}</option>`;
-  }
-  officeSelect.innerHTML = options;
-
-  if (transferType === 'inside_office' && modalCurrentOffice && modalCurrentOffice !== 'None') {
-    officeSelect.value = modalCurrentOffice;
-    officeSelect.disabled = true;
-    document.getElementById('transfer-office-info').textContent =
-      '📍 Locked to current office: ' + modalCurrentOffice;
+  const transferType=document.getElementById('transfer-type').value;
+  const officeSelect=document.getElementById('transfer-office');
+  const staffSelect=document.getElementById('transfer-staff');
+  staffSelect.innerHTML='<option value="">-- Select Staff --</option>';
+  staffSelect.disabled=true;
+  document.getElementById('btn-do-transfer').disabled=true;
+  if(!transferType){ officeSelect.innerHTML='<option value="">-- Select Office --</option>'; officeSelect.disabled=true; document.getElementById('transfer-office-info').textContent=''; return; }
+  let options='<option value="">-- Select Office --</option>';
+  for(const office of modalSortedOffices){ if(office==='No Office') continue; options+=`<option value="${office}">${office}</option>`; }
+  officeSelect.innerHTML=options;
+  if(transferType==='inside_office' && modalCurrentOffice && modalCurrentOffice!=='None' && modalCurrentOffice!==''){
+    officeSelect.value=modalCurrentOffice;
+    officeSelect.disabled=true;
+    document.getElementById('transfer-office-info').textContent='📍 Locked to your office: '+modalCurrentOffice;
     updateTransferStaff();
   } else {
-    officeSelect.disabled = false;
-    document.getElementById('transfer-office-info').textContent = '';
+    officeSelect.disabled=false;
+    document.getElementById('transfer-office-info').textContent='';
   }
 }
 
 function updateTransferStaff() {
-  const office = document.getElementById('transfer-office').value;
-  const staffSelect = document.getElementById('transfer-staff');
-
-  if (!office || !modalOfficesData[office]) {
-    staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
-    staffSelect.disabled = true;
-    document.getElementById('btn-do-transfer').disabled = true;
-    return;
-  }
-
-  const staff = modalOfficesData[office];
-  let options = '<option value="">-- Select Staff --</option>';
-  for (const s of staff) {
-    const name = s.full_name || s.username;
-    options += `<option value="${s.username}">${name} (@${s.username})</option>`;
-  }
-  staffSelect.innerHTML = options;
-  staffSelect.disabled = false;
-  // Don't enable submit yet — wait for staff selection
-  document.getElementById('btn-do-transfer').disabled = true;
+  const office=document.getElementById('transfer-office').value;
+  const staffSelect=document.getElementById('transfer-staff');
+  if(!office||!modalOfficesData[office]){ staffSelect.innerHTML='<option value="">-- Select Staff --</option>'; staffSelect.disabled=true; document.getElementById('btn-do-transfer').disabled=true; return; }
+  const staff=modalOfficesData[office];
+  let options='<option value="">-- Select Staff --</option>';
+  for(const s of staff){ const name=s.full_name||s.username; options+=`<option value="${s.username}">${name} (@${s.username})</option>`; }
+  staffSelect.innerHTML=options;
+  staffSelect.disabled=false;
+  document.getElementById('btn-do-transfer').disabled=true; // wait for selection
 }
 
 function onTransferStaffChange() {
-  const staff = document.getElementById('transfer-staff').value;
-  document.getElementById('btn-do-transfer').disabled = !staff;
+  document.getElementById('btn-do-transfer').disabled=!document.getElementById('transfer-staff').value;
 }
 
 function submitTransfer() {
-  const transferType = document.getElementById('transfer-type').value;
-  const office = document.getElementById('transfer-office').value || modalCurrentOffice;
-  const staff = document.getElementById('transfer-staff').value;
-  const selectedIds = [...document.querySelectorAll('.doc-checkbox:checked')].map(c => c.value);
-
-  if (!selectedIds.length || !transferType || !staff) {
-    alert('Please select documents, transfer type, and a staff member.');
-    return;
-  }
-
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = '/transfer-batch';
-
-  [['doc_ids', selectedIds.join(',')], ['transfer_type', transferType],
-   ['new_office', office], ['new_staff', staff]].forEach(([name, value]) => {
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = name;
-    input.value = value;
-    form.appendChild(input);
+  const transferType=document.getElementById('transfer-type').value;
+  const office=document.getElementById('transfer-office').value||modalCurrentOffice;
+  const staff=document.getElementById('transfer-staff').value;
+  const selectedIds=[...document.querySelectorAll('.doc-checkbox:checked')].map(c=>c.value);
+  if(!selectedIds.length||!transferType||!staff){ alert('Please select documents, transfer type, and a staff member.'); return; }
+  const form=document.createElement('form'); form.method='POST'; form.action='/transfer-batch';
+  [['doc_ids',selectedIds.join(',')],['transfer_type',transferType],['new_office',office],['new_staff',staff]].forEach(([name,value])=>{
+    const input=document.createElement('input'); input.type='hidden'; input.name=name; input.value=value; form.appendChild(input);
   });
-
-  document.body.appendChild(form);
-  form.submit();
+  document.body.appendChild(form); form.submit();
 }
 
+// ══ SELECTION ══
 function updateSelectedPreview() {
-  const checked = document.querySelectorAll('.doc-checkbox:checked');
-  const n = checked.length;
-  const countEl = document.getElementById('sel-count');
-  if (countEl) countEl.textContent = n + ' selected';
-
-  const preview = document.getElementById('selected-preview');
-  const list    = document.getElementById('selected-list');
-  if (!preview || !list) return;
-
-  if (n === 0) {
-    preview.style.display = 'none';
-    list.innerHTML = '';
-  } else {
-    preview.style.display = 'block';
-    list.innerHTML = Array.from(checked).map(function(cb, i) {
-      const row = cb.closest('tr');
-      const name = row ? row.querySelector('.doc-name') : null;
-      return '<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.1)">' +
-             (i+1) + '. ' + (name ? name.textContent.trim() : cb.value) + '</div>';
-    }).join('');
-  }
+  const checked=document.querySelectorAll('.doc-checkbox:checked'); const n=checked.length;
+  const countEl=document.getElementById('sel-count'); if(countEl) countEl.textContent=n+' selected';
+  const preview=document.getElementById('selected-preview'); const list=document.getElementById('selected-list');
+  if(!preview||!list) return;
+  if(n===0){ preview.style.display='none'; list.innerHTML=''; }
+  else { preview.style.display='block'; list.innerHTML=Array.from(checked).map(function(cb,i){ const row=cb.closest('tr'); const name=row?row.querySelector('.doc-name'):null; return '<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.1)">'+(i+1)+'. '+(name?name.textContent.trim():cb.value)+'</div>'; }).join(''); }
 }
 
 function updateSelection() {
-  const checked = document.querySelectorAll('.doc-checkbox:checked');
-  const n = checked.length;
-  const countEl = document.getElementById('sel-count');
-  if (countEl) countEl.textContent = n + ' selected';
-  document.querySelectorAll('.doc-checkbox').forEach(cb => {
-    cb.closest('tr').classList.toggle('row-selected', cb.checked);
-  });
-  // Show / hide "Create Routing Slip" button
-  const slipBtn = document.getElementById('btn-create-slip');
-  if (slipBtn) {
-    slipBtn.style.display = n > 0 ? 'inline-flex' : 'none';
-    const badge = document.getElementById('slip-sel-badge');
-    if (badge) badge.textContent = n > 0 ? n + ' doc' + (n > 1 ? 's' : '') : '';
-  }
-  // Show / hide "Transfer" button
-  const transferBtn = document.getElementById('btn-transfer');
-  if (transferBtn) {
-    transferBtn.style.display = n > 0 ? 'inline-flex' : 'none';
-    const tbadge = document.getElementById('transfer-sel-badge');
-    if (tbadge) tbadge.textContent = n > 0 ? n + ' doc' + (n > 1 ? 's' : '') : '';
-  }
+  const checked=document.querySelectorAll('.doc-checkbox:checked'); const n=checked.length;
+  document.querySelectorAll('.doc-checkbox').forEach(cb=>{ cb.closest('tr').classList.toggle('row-selected',cb.checked); });
+  const slipBtn=document.getElementById('btn-create-slip');
+  if(slipBtn){ slipBtn.style.display=n>0?'inline-flex':'none'; const b=document.getElementById('slip-sel-badge'); if(b) b.textContent=n>0?n+' doc'+(n>1?'s':''):''; }
+  const transferBtn=document.getElementById('btn-transfer');
+  if(transferBtn){ transferBtn.style.display=n>0?'inline-flex':'none'; const tb=document.getElementById('transfer-sel-badge'); if(tb) tb.textContent=n>0?n+' doc'+(n>1?'s':''):''; }
   updateSelectedPreview();
 }
 
-function clearSelection() {
-  document.querySelectorAll('.doc-checkbox').forEach(cb => {
-    cb.checked = false;
-    cb.closest('tr').classList.remove('row-selected');
-  });
-  const sa = document.getElementById('select-all');
-  if (sa) sa.checked = false;
-  updateSelectedPreview();
-}
+const selAll=document.getElementById('select-all');
+if(selAll){ selAll.addEventListener('change',function(){ document.querySelectorAll('.doc-checkbox').forEach(cb=>{ cb.checked=this.checked; cb.closest('tr').classList.toggle('row-selected',this.checked); }); updateSelection(); }); }
 
-const selAll = document.getElementById('select-all');
-if (selAll) {
-  selAll.addEventListener('change', function() {
-    document.querySelectorAll('.doc-checkbox').forEach(cb => {
-      cb.checked = this.checked;
-      cb.closest('tr').classList.toggle('row-selected', this.checked);
-    });
-    updateSelection();
-  });
-}
-
-// ── AUTO-SELECT docs by time range ──
-// Each row has data-received-time set from the date_received field
-// (We use created_at as fallback for time matching)
+// ══ TIME RANGE ══
 function toggleModalTimeRange(on) {
-  document.getElementById('time-from-field').style.display  = on ? '' : 'none';
-  document.getElementById('time-to-field').style.display    = on ? '' : 'none';
-  document.getElementById('btn-auto-select').style.display  = on ? '' : 'none';
-  if (!on) {
-    document.getElementById('time-from').value = '';
-    document.getElementById('time-to').value   = '';
-  }
+  document.getElementById('time-from-field').style.display=on?'':'none';
+  document.getElementById('time-to-field').style.display=on?'':'none';
+  document.getElementById('btn-auto-select').style.display=on?'':'none';
+  if(!on){ document.getElementById('time-from').value=''; document.getElementById('time-to').value=''; }
 }
 
 function autoSelectByTime() {
-  const useTime = document.getElementById('use-time-range').checked;
-  const tf = document.getElementById('time-from').value;
-  const tt = document.getElementById('time-to').value;
-  const sd = document.getElementById('slip-date').value;
-
-  if (useTime && (!tf || !tt)) {
-    alert('Please set both a Time From and Time To, or uncheck Include Time Range.');
-    return;
-  }
-
-  let count = 0;
-  document.querySelectorAll('.doc-checkbox').forEach(cb => {
-    const row = cb.closest('tr');
-    const ts  = row.dataset.createdAt || '';          // "2026-03-06 14:32:00"
-    const rowDate = ts.slice(0,10);
-    const rowTime = ts.slice(11,16);                  // "14:32"
-
-    let inRange = false;
-    if (ts) {
-      const dateOk = !sd || rowDate === sd;
-      const timeOk = rowTime >= tf && rowTime <= tt;
-      inRange = dateOk && timeOk;
-    }
-    cb.checked = inRange;
-    row.classList.toggle('row-selected', inRange);
-    if (inRange) count++;
+  const useTime=document.getElementById('use-time-range').checked;
+  const tf=document.getElementById('time-from').value; const tt=document.getElementById('time-to').value; const sd=document.getElementById('slip-date').value;
+  if(useTime&&(!tf||!tt)){ alert('Please set both a Time From and Time To, or uncheck Include Time Range.'); return; }
+  let count=0;
+  document.querySelectorAll('.doc-checkbox').forEach(cb=>{
+    const row=cb.closest('tr'); const ts=row.dataset.createdAt||'';
+    let inRange=false;
+    if(ts){ const dateOk=!sd||ts.slice(0,10)===sd; const timeOk=ts.slice(11,16)>=tf&&ts.slice(11,16)<=tt; inRange=dateOk&&timeOk; }
+    cb.checked=inRange; row.classList.toggle('row-selected',inRange); if(inRange) count++;
   });
-
   updateSelection();
-  if (count === 0) {
-    alert('No documents found in that date/time range. Check the filters or try a wider range.');
-  } else {
-    // Flash feedback
-    const btn = document.querySelector('.btn-time-filter');
-    const orig = btn.textContent;
-    btn.textContent = '✅ ' + count + ' selected';
-    setTimeout(() => btn.textContent = orig, 2000);
-  }
+  if(count===0){ alert('No documents found in that date/time range.'); }
+  else{ const btn=document.querySelector('.btn-time-filter'); const orig=btn.textContent; btn.textContent='✅ '+count+' selected'; setTimeout(()=>btn.textContent=orig,2000); }
 }
 
 function submitRouting() {
-  const dest = document.getElementById('route-dest').value.trim();
-  if (!dest) {
-    const el = document.getElementById('route-dest');
-    el.focus();
-    el.style.borderColor = '#FCA5A5';
-    el.style.background  = 'rgba(220,38,38,.15)';
-    setTimeout(() => { el.style.borderColor=''; el.style.background=''; }, 2500);
-    return;
-  }
-  const ids = Array.from(document.querySelectorAll('.doc-checkbox:checked')).map(cb => cb.value);
-  if (!ids.length) {
-    alert('No documents selected. Check boxes in the table or use Auto-select by Time.');
-    return;
-  }
-  document.getElementById('routing-doc-ids').value     = ids.join(',');
-  document.getElementById('routing-dest-field').value  = dest;
-  document.getElementById('routing-notes').value       = document.getElementById('route-notes').value;
-  document.getElementById('routing-slip-date').value   = document.getElementById('slip-date').value;
-  document.getElementById('routing-time-from').value   = document.getElementById('time-from').value;
-  document.getElementById('routing-time-to').value     = document.getElementById('time-to').value;
+  const dest=document.getElementById('route-dest').value.trim();
+  if(!dest){ const el=document.getElementById('route-dest'); el.focus(); el.style.borderColor='#FCA5A5'; el.style.background='rgba(220,38,38,.15)'; setTimeout(()=>{ el.style.borderColor=''; el.style.background=''; },2500); return; }
+  const ids=Array.from(document.querySelectorAll('.doc-checkbox:checked')).map(cb=>cb.value);
+  if(!ids.length){ alert('No documents selected.'); return; }
+  document.getElementById('routing-doc-ids').value=ids.join(',');
+  document.getElementById('routing-dest-field').value=dest;
+  document.getElementById('routing-notes').value=document.getElementById('route-notes').value;
+  document.getElementById('routing-slip-date').value=document.getElementById('slip-date').value;
+  document.getElementById('routing-time-from').value=document.getElementById('time-from').value;
+  document.getElementById('routing-time-to').value=document.getElementById('time-to').value;
   document.getElementById('routing-form').submit();
 }
 </script>
