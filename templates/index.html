@@ -150,6 +150,7 @@
 <!-- ══ SINGLE SOURCE OF TRUTH for transfer modal ══ -->
 <script type="application/json" id="modal-offices-data">{{ offices_dict | tojson | safe }}</script>
 <script type="application/json" id="modal-sorted-offices">{{ sorted_offices | tojson | safe }}</script>
+<script type="application/json" id="modal-current-office">{{ current_office | tojson | safe }}</script>
 
 <!-- ── ROUTING MODAL ── -->
 <div id="routing-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(10,37,64,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;">

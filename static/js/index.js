@@ -36,16 +36,14 @@ function clearField(name, val='') { const el = document.querySelector('[name="'+
 
 // Modal data
 try {
-  const modalOfficesDataEl = document.getElementById('modal-offices-data');
-  const modalSortedOfficesEl = document.getElementById('modal-sorted-offices');
-  var modalOfficesData = modalOfficesDataEl ? JSON.parse(modalOfficesDataEl.textContent || '{}') : {};
-  var modalSortedOffices = modalSortedOfficesEl ? JSON.parse(modalSortedOfficesEl.textContent || '[]') : [];
-  var modalCurrentOffice = '{{ current_office | safe }}';
+  var modalOfficesData   = JSON.parse(document.getElementById('modal-offices-data').textContent   || '{}');
+  var modalSortedOffices = JSON.parse(document.getElementById('modal-sorted-offices').textContent || '[]');
+  var modalCurrentOffice = JSON.parse(document.getElementById('modal-current-office').textContent || 'null');
 } catch(e) {
   console.error('Error initializing modal data:', e);
-  var modalOfficesData = {};
+  var modalOfficesData   = {};
   var modalSortedOffices = [];
-  var modalCurrentOffice = '';
+  var modalCurrentOffice = null;
 }
 
 // Page load initialization
