@@ -453,6 +453,15 @@ def transfer_doc(doc_id):
     staff_list = [u for u in all_users 
                  if u.get("role") != "client" and u.get("username") != current_user]
     
+    # Get the office of the person who currently has the document (logged_by)
+    # This is the office that should be auto-selected for inside_office transfers
+    logged_by_user = doc.get("logged_by", "")
+    current_office = ""  # Default to empty
+    for u in all_users:
+        if u.get("username") == logged_by_user:
+            current_office = u.get("office", "") or ""
+            break
+    
     # Group staff by office
     offices_dict = {}
     for staff in staff_list:
@@ -461,7 +470,7 @@ def transfer_doc(doc_id):
             offices_dict[office] = []
         offices_dict[office].append(staff)
     
-    # Sort offices - current office first
+    # Sort offices - document's current office first
     sorted_offices = sorted(offices_dict.keys(), key=lambda x: (x != current_office, x.lower()))
     
     return render_template("transfer.html", doc=doc, offices_dict=offices_dict, 
