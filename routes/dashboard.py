@@ -281,7 +281,10 @@ def add():
                 
                 # Save the logging slip using the existing function
                 from services.misc import save_routing_slip
-                save_routing_slip(logging_slip)
+                try:
+                    save_routing_slip(logging_slip)
+                except Exception as e:
+                    print(f"Error saving logging slip: {e}")
                 
                 # Update each logged document with the slip ID
                 for doc_id in logged_doc_ids:
@@ -294,7 +297,7 @@ def add():
                 session.pop("staff_cart", None)
                 session.modified = True
                 flash(f"✅ {len(cart)} document{'s' if len(cart) != 1 else ''} logged successfully.", "success")
-                return redirect(url_for("dashboard.view_logging_slip", slip_id=slip_id))
+                return redirect(url_for("dashboard.index"))
 
         cart = session.get("staff_cart", [])
 

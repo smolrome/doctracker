@@ -272,17 +272,26 @@ def save_routing_slip(slip: dict):
                         )
                     )
                 conn.commit()
+                return True
         except Exception as e:
             print(f"save_routing_slip error: {e}")
+            # Fallback to JSON
+            return save_routing_slip_json(slip)
     else:
-        path  = "routing_slips.json"
-        slips = {}
-        if os.path.exists(path):
-            with open(path) as f:
-                slips = json.load(f)
-        slips[slip["id"]] = slip
-        with open(path, "w") as f:
-            json.dump(slips, f)
+        return save_routing_slip_json(slip)
+
+def save_routing_slip_json(slip: dict):
+    """Save routing slip to JSON file (fallback)."""
+    import os
+    path  = "routing_slips.json"
+    slips = {}
+    if os.path.exists(path):
+        with open(path) as f:
+            slips = json.load(f)
+    slips[slip["id"]] = slip
+    with open(path, "w") as f:
+        json.dump(slips, f)
+    return True
 
 
 def get_routing_slip(slip_id: str) -> dict | None:
@@ -327,7 +336,14 @@ def get_all_routing_slips() -> list[dict]:
                     return slips
         except Exception as e:
             print(f"get_all_routing_slips error: {e}")
-            return []
+            # Fallback to JSON
+            return get_all_routing_slips_json()
+    else:
+        return get_all_routing_slips_json()
+
+def get_all_routing_slips_json() -> list[dict]:
+    """Get all routing slips from JSON file (fallback)."""
+    import os
     path = "routing_slips.json"
     if not os.path.exists(path):
         return []

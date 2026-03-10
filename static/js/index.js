@@ -35,9 +35,18 @@ function setType(val) { document.getElementById('type-hidden').value = val; docu
 function clearField(name, val='') { const el = document.querySelector('[name="'+name+'"]'); if(el) el.value=val; document.getElementById('filter-form').submit(); }
 
 // Modal data
-const modalOfficesData   = JSON.parse(document.getElementById('modal-offices-data').textContent || '{}');
-const modalSortedOffices = JSON.parse(document.getElementById('modal-sorted-offices').textContent || '[]');
-const modalCurrentOffice = '{{ current_office | safe }}';
+try {
+  const modalOfficesDataEl = document.getElementById('modal-offices-data');
+  const modalSortedOfficesEl = document.getElementById('modal-sorted-offices');
+  var modalOfficesData = modalOfficesDataEl ? JSON.parse(modalOfficesDataEl.textContent || '{}') : {};
+  var modalSortedOffices = modalSortedOfficesEl ? JSON.parse(modalSortedOfficesEl.textContent || '[]') : [];
+  var modalCurrentOffice = '{{ current_office | safe }}';
+} catch(e) {
+  console.error('Error initializing modal data:', e);
+  var modalOfficesData = {};
+  var modalSortedOffices = [];
+  var modalCurrentOffice = '';
+}
 
 // Page load initialization
 (function(){ const sd=document.getElementById('slip-date'); if(sd) sd.value=new Date().toISOString().slice(0,10); })();
@@ -95,8 +104,14 @@ function updateTransferOffices() {
 }
 
 // Step-by-step transfer functions (matching transfer.html logic)
-function showTransferBlock(id) { document.getElementById(id).style.display=''; }
-function hideTransferBlock(id) { document.getElementById(id).style.display='none'; }
+function showTransferBlock(id) { 
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'block';
+}
+function hideTransferBlock(id) { 
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+}
 
 function resetTransferFrom(step) {
   const order = ['transfer-office-block','transfer-staff-block','transfer-submit-block'];
@@ -105,48 +120,63 @@ function resetTransferFrom(step) {
 }
 
 function onTransferTypeChangeIndex() {
-  const type = document.getElementById('transfer-type').value;
-  const officeSelect = document.getElementById('transfer-office');
-  const staffSelect = document.getElementById('transfer-staff');
-  
-  // Reset staff and submit
-  staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
-  staffSelect.disabled = true;
-  document.getElementById('btn-do-transfer').disabled = true;
-  
-  if (!type) {
-    hideTransferBlock('transfer-office-block');
-    hideTransferBlock('transfer-staff-block');
-    hideTransferBlock('transfer-submit-block');
-    return;
-  }
-  
-  if (type === 'inside_office') {
-    document.getElementById('transfer-office-label').textContent = 'Step 2: Your Office';
+  console.log('onTransferTypeChangeIndex called');
+  try {
+    const type = document.getElementById('transfer-type').value;
+    const officeSelect = document.getElementById('transfer-office');
+    const staffSelect = document.getElementById('transfer-staff');
     
-    // Populate and lock to current office
-    officeSelect.innerHTML = `<option value="${modalCurrentOffice}">${modalCurrentOffice}</option>`;
-    officeSelect.value = modalCurrentOffice;
-    officeSelect.disabled = true;
-    document.getElementById('transfer-office-info').textContent = '📍 Auto-selected: your office';
-    
-    showTransferBlock('transfer-office-block');
-    populateTransferStaff(modalCurrentOffice);
-    showTransferBlock('transfer-staff-block');
-  } else {
-    document.getElementById('transfer-office-label').textContent = 'Step 2: Select Office';
-    
-    // Populate all offices (excluding own office for external)
-    let options = '<option value="">-- Select Office --</option>';
-    for (const office of modalSortedOffices) {
-      if (office === 'No Office' || office === modalCurrentOffice) continue;
-      options += `<option value="${office}">${office}</option>`;
+    if (!officeSelect || !staffSelect) {
+      console.error('Transfer modal elements not found');
+      return;
     }
-    officeSelect.innerHTML = options;
-    officeSelect.disabled = false;
-    document.getElementById('transfer-office-info').textContent = '';
     
-    showTransferBlock('transfer-office-block');
+    // Reset staff and submit
+    staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
+    staffSelect.disabled = true;
+    const btn = document.getElementById('btn-do-transfer');
+    if (btn) btn.disabled = true;
+    
+    if (!type) {
+      hideTransferBlock('transfer-office-block');
+      hideTransferBlock('transfer-staff-block');
+      hideTransferBlock('transfer-submit-block');
+      return;
+    }
+    
+    if (type === 'inside_office') {
+      const label = document.getElementById('transfer-office-label');
+      if (label) label.textContent = 'Step 2: Your Office';
+      
+      // Populate and lock to current office
+      officeSelect.innerHTML = `<option value="${modalCurrentOffice}">${modalCurrentOffice}</option>`;
+      officeSelect.value = modalCurrentOffice;
+      officeSelect.disabled = true;
+      const info = document.getElementById('transfer-office-info');
+      if (info) info.textContent = '📍 Auto-selected: your office';
+      
+      showTransferBlock('transfer-office-block');
+      populateTransferStaff(modalCurrentOffice);
+      showTransferBlock('transfer-staff-block');
+    } else {
+      const label = document.getElementById('transfer-office-label');
+      if (label) label.textContent = 'Step 2: Select Office';
+      
+      // Populate all offices (excluding own office for external)
+      let options = '<option value="">-- Select Office --</option>';
+      for (const office of modalSortedOffices) {
+        if (office === 'No Office' || office === modalCurrentOffice) continue;
+        options += `<option value="${office}">${office}</option>`;
+      }
+      officeSelect.innerHTML = options;
+      officeSelect.disabled = false;
+      const info = document.getElementById('transfer-office-info');
+      if (info) info.textContent = '';
+      
+      showTransferBlock('transfer-office-block');
+    }
+  } catch(e) {
+    console.error('Error in onTransferTypeChangeIndex:', e);
   }
 }
 
