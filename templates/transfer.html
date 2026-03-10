@@ -12,23 +12,44 @@
   .doc-info .doc-name{font-weight:700;font-size:18px;color:var(--navy);margin-bottom:6px;}
   .doc-info .doc-id{font-family:monospace;color:var(--muted);font-size:14px;}
   .doc-info .current-staff{margin-top:10px;font-size:14px;color:var(--teal);font-weight:600;}
-  
+
   .form-group{margin-bottom:16px;}
   .form-group label{display:block;font-weight:700;color:var(--navy);margin-bottom:8px;}
   .form-group select{width:100%;padding:12px;border:2px solid var(--border);border-radius:8px;font-size:16px;font-family:inherit;background:#fff;}
   .form-group select:focus{outline:none;border-color:var(--teal);}
-  
+
   .btn-transfer{background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;border:none;
     padding:14px 28px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;
     width:100%;font-family:inherit;}
   .btn-transfer:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(124,58,237,0.4);}
-  
+  .btn-transfer:disabled{opacity:0.45;cursor:not-allowed;transform:none;box-shadow:none;}
+
   .warning-box{background:#FEF3C7;border:2px solid #F59E0B;border-radius:10px;padding:14px;margin-bottom:20px;}
   .warning-box p{margin:0;color:#92400E;font-size:14px;}
-  
+
   .step-label{font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:6px;letter-spacing:0.05em;}
-  .step{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #E5E7EB;}
-  .step:last-of-type{border-bottom:none;}
+
+  /* Step blocks */
+  .step{
+    margin-bottom:0;
+    padding:20px 0;
+    border-bottom:1px solid #E5E7EB;
+  }
+  .step:last-of-type{border-bottom:none;padding-bottom:0;}
+
+  /* Collapsible steps */
+  .step-block{
+    overflow:hidden;
+    max-height:0;
+    opacity:0;
+    transition: max-height 0.35s ease, opacity 0.3s ease, margin-top 0.3s ease;
+    margin-top:0;
+  }
+  .step-block.visible{
+    max-height:300px;
+    opacity:1;
+    margin-top:0;
+  }
 </style>
 
 <div class="transfer-card">
@@ -37,135 +58,143 @@
     <div class="doc-id">ID: {{ doc.id }}</div>
     <div class="current-staff">📤 Currently with: <strong>{{ doc.logged_by or 'Unknown' }}</strong></div>
   </div>
-  
+
   <div class="warning-box">
     <p>⚠️ The document status will change to <strong>In Transit</strong> after transfer. The recipient will see this document in their dashboard.</p>
   </div>
-  
+
   <form method="post" id="transfer-form">
-    <!-- Step 1: Transfer Type -->
+
+    <!-- Step 1: Transfer Type (always visible) -->
     <div class="step">
       <div class="step-label">Step 1: Transfer Type</div>
-      <div class="form-group">
+      <div class="form-group" style="margin-bottom:0;">
         <label for="transfer_type">Where is the document going?</label>
-        <select name="transfer_type" id="transfer_type" required onchange="updateOffices()">
+        <select name="transfer_type" id="transfer_type" required onchange="onTransferTypeChange()">
           <option value="">-- Select Type --</option>
-          <option value="inside_office">🏢 Internal</option>
-          <option value="outside_office">🌐 External</option>
+          <option value="inside_office">🏢 Internal (Same Office)</option>
+          <option value="outside_office">🌐 External (Different Office)</option>
         </select>
       </div>
     </div>
-    
-    <!-- Step 2: Office Selection -->
-    <div class="step">
-      <div class="step-label">Step 2: Select Office</div>
-      <div class="form-group">
-        <label for="new_office">Office</label>
-        <select name="new_office" id="new_office" required disabled onchange="updateStaff()">
-          <option value="">-- Select Office First --</option>
-        </select>
-        <small id="office-info" style="color: var(--teal); margin-top: 4px; display: block;"></small>
+
+    <!-- Step 2: Office Selection (External only) -->
+    <div class="step-block" id="step-office-block">
+      <div class="step">
+        <div class="step-label">Step 2: Select Office</div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label for="new_office">Office</label>
+          <select name="new_office" id="new_office" onchange="updateStaff()">
+            <option value="">-- Select Office --</option>
+          </select>
+          <small id="office-info" style="color:var(--teal);margin-top:4px;display:block;"></small>
+        </div>
       </div>
     </div>
-    
-    <!-- Step 3: Staff Selection -->
-    <div class="step">
-      <div class="step-label">Step 3: Select Staff</div>
-      <div class="form-group">
-        <label for="new_staff">Transfer to Staff</label>
-        <select name="new_staff" id="new_staff" required disabled>
-          <option value="">-- Select Staff --</option>
-        </select>
+
+    <!-- Step 2/3: Staff Selection -->
+    <div class="step-block" id="step-staff-block">
+      <div class="step">
+        <div class="step-label" id="staff-step-label">Step 2: Select Staff</div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label for="new_staff">Transfer to Staff</label>
+          <select name="new_staff" id="new_staff" onchange="onStaffChange()">
+            <option value="">-- Select Staff --</option>
+          </select>
+        </div>
       </div>
     </div>
-    
-    <button type="submit" class="btn-transfer" id="submit-btn" disabled>🔄 Transfer Document</button>
+
+    <!-- Submit -->
+    <div class="step-block" id="step-submit-block">
+      <div class="step">
+        <button type="submit" class="btn-transfer" id="submit-btn">🔄 Transfer Document</button>
+      </div>
+    </div>
+
   </form>
 </div>
 
-<!-- Store data in hidden element - must come BEFORE the main script -->
 <script type="application/json" id="offices-data">{{ offices_dict | tojson | safe }}</script>
 <script type="application/json" id="sorted-offices">{{ sorted_offices | tojson | safe }}</script>
+<script type="application/json" id="current-office-data">{{ current_office | tojson | safe }}</script>
 
-<!-- Main script -->
 <script>
-  // Parse data from data attributes
-  const officesData = JSON.parse(document.getElementById('offices-data').textContent || '{}');
+  const officesData   = JSON.parse(document.getElementById('offices-data').textContent || '{}');
   const sortedOffices = JSON.parse(document.getElementById('sorted-offices').textContent || '[]');
-  const currentOffice = '{{ current_office | safe }}'; // Current logged-in user's office
-  
-  // Auto-select current office on page load if user is in an office
-  document.addEventListener('DOMContentLoaded', function() {
-    if (currentOffice && currentOffice !== 'None' && currentOffice !== '') {
-      console.log('Logged in user is in office:', currentOffice);
-    }
-  });
-  
-  function updateOffices() {
-    const transferType = document.getElementById('transfer_type').value;
-    const officeSelect = document.getElementById('new_office');
-    const staffSelect = document.getElementById('new_staff');
-    const submitBtn = document.getElementById('submit-btn');
-    
-    // Reset staff dropdown
-    staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
-    staffSelect.disabled = true;
-    submitBtn.disabled = true;
-    
-    if (!transferType) {
-      officeSelect.innerHTML = '<option value="">-- Select Office First --</option>';
-      officeSelect.disabled = true;
-      return;
-    }
-    
-    // Populate office dropdown
-    let options = '<option value="">-- Select Office --</option>';
-    
-    for (const office of sortedOffices) {
-      if (office === "No Office") continue;
-      options += `<option value="${office}">${office}</option>`;
-    }
-    
-    officeSelect.innerHTML = options;
-    officeSelect.disabled = false;
-    
-    // Auto-select current office for inside_office (Internal) transfers
-    if (transferType === 'inside_office' && currentOffice && currentOffice !== 'None' && currentOffice !== '') {
-      officeSelect.value = currentOffice;
-      officeSelect.disabled = true; // Lock to current user's office for internal transfers
-      // Show info message - logged-in user's office
-      document.getElementById('office-info').textContent = '📍 Your office: ' + currentOffice + ' (auto-selected for internal transfer)';
-      // Manually trigger updateStaff since we're setting value programmatically
-      updateStaff();
+  const currentOffice = JSON.parse(document.getElementById('current-office-data').textContent);
+
+  function show(id)  { document.getElementById(id).classList.add('visible'); }
+  function hide(id)  { document.getElementById(id).classList.remove('visible'); }
+
+  function resetFrom(step) {
+    // step: 'office' | 'staff' | 'submit'
+    const order = ['step-office-block','step-staff-block','step-submit-block'];
+    const from  = order.indexOf('step-' + step + '-block');
+    for (let i = from; i < order.length; i++) hide(order[i]);
+  }
+
+  function onTransferTypeChange() {
+    const type = document.getElementById('transfer_type').value;
+
+    // Reset everything below step 1
+    resetFrom('office');
+    document.getElementById('new_office').value = '';
+    document.getElementById('new_staff').innerHTML = '<option value="">-- Select Staff --</option>';
+
+    if (!type) return;
+
+    if (type === 'inside_office') {
+      // Internal: skip office step, go straight to staff from current office
+      document.getElementById('staff-step-label').textContent = 'Step 2: Select Staff';
+      populateStaff(currentOffice);
+      show('step-staff-block');
+
     } else {
-      officeSelect.disabled = false; // Allow changing office for external transfers
-      document.getElementById('office-info').textContent = '';
+      // External: show office step first
+      document.getElementById('staff-step-label').textContent = 'Step 3: Select Staff';
+      populateOffices();
+      show('step-office-block');
     }
   }
-  
+
+  function populateOffices() {
+    const officeSelect = document.getElementById('new_office');
+    let options = '<option value="">-- Select Office --</option>';
+    for (const office of sortedOffices) {
+      if (office === 'No Office' || office === currentOffice) continue; // exclude own office for external
+      options += `<option value="${office}">${office}</option>`;
+    }
+    officeSelect.innerHTML = options;
+  }
+
   function updateStaff() {
     const office = document.getElementById('new_office').value;
+    hide('step-staff-block');
+    hide('step-submit-block');
+
+    if (!office) return;
+
+    populateStaff(office);
+    show('step-staff-block');
+  }
+
+  function populateStaff(office) {
     const staffSelect = document.getElementById('new_staff');
-    const submitBtn = document.getElementById('submit-btn');
-    
-    if (!office || !officesData[office]) {
-      staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
-      staffSelect.disabled = true;
-      submitBtn.disabled = true;
-      return;
-    }
-    
-    const staff = officesData[office];
-    let options = '<option value="">-- Select Staff --</option>';
-    
-    for (const s of staff) {
+    staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
+
+    if (!office || !officesData[office]) return;
+
+    for (const s of officesData[office]) {
       const name = s.full_name || s.username;
-      options += `<option value="${s.username}">${name} (@${s.username})</option>`;
+      staffSelect.innerHTML += `<option value="${s.username}">${name} (@${s.username})</option>`;
     }
-    
-    staffSelect.innerHTML = options;
-    staffSelect.disabled = false;
-    submitBtn.disabled = false;
+  }
+
+  function onStaffChange() {
+    const val = document.getElementById('new_staff').value;
+    if (val) show('step-submit-block');
+    else hide('step-submit-block');
   }
 </script>
 
