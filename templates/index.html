@@ -961,8 +961,8 @@ function updateTransferOffices() {
   if (type === 'inside_office') {
     officeSelect.innerHTML = '<option value="">' + (transferCurrentOffice || 'Current Office') + '</option>';
     officeSelect.disabled = true;
-    // Show info message - user's office
-    document.getElementById('transfer-office-info').textContent = '📍 Your office: ' + (transferCurrentOffice || 'Current Office') + ' (locked for inside office transfer)';
+    // Show info message - document's current location
+    document.getElementById('transfer-office-info').textContent = '📍 Document is in: ' + (transferCurrentOffice || 'Current Office') + ' (locked for inside office transfer)';
     // Show staff from current office
     const currentOfficeStaff = transferOfficesData[transferCurrentOffice] || [];
     let options = '<option value="">-- Select Staff --</option>';

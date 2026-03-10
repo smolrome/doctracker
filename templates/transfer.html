@@ -133,8 +133,8 @@
     if (transferType === 'inside_office' && currentOffice && currentOffice !== 'None' && currentOffice !== '') {
       officeSelect.value = currentOffice;
       officeSelect.disabled = true; // Lock to current office for inside office transfers
-      // Show info message - user's office
-      document.getElementById('office-info').textContent = '📍 Your office: ' + currentOffice + ' (locked for inside office transfer)';
+      // Show info message - document's current location
+      document.getElementById('office-info').textContent = '📍 Document is currently in: ' + currentOffice + ' (locked for inside office transfer)';
       // Manually trigger updateStaff since we're setting value programmatically
       updateStaff();
     } else {
