@@ -18,6 +18,7 @@ from services.qr import generate_qr_b64, make_qr_png
 from services.dropdown_options import get_dropdown_options
 from utils import admin_required, get_client_ip, is_logged_in, login_required
 from config import STATUS_OPTIONS
+from services.dropdown_options import get_dropdown_options
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -156,7 +157,7 @@ def index():
         search=search, filter_status=filter_status,
         filter_type=filter_type, filter_date=filter_date,
         filter_time_from=filter_time_from, filter_time_to=filter_time_to,
-        status_options=["All"] + STATUS_OPTIONS,
+        status_options=["All"] + get_dropdown_options("status"),
         saved_offices=load_saved_offices(),
         page=page, total_pages=total_pages,
         per_page=per_page, total=total,
@@ -260,7 +261,7 @@ def add():
     return render_template("form.html", doc={}, action="add",
                            cart=cart, error=error,
                            auto_ref=generate_ref(),
-                           status_options=STATUS_OPTIONS,
+                           status_options=get_dropdown_options("status"),
                            category_options=get_dropdown_options("category"))
 
 
@@ -309,7 +310,7 @@ def edit(doc_id):
         if not doc["doc_name"]:
             flash("Document name is required.", "error")
             return render_template("form.html", doc=doc, action="edit", 
-                                   status_options=STATUS_OPTIONS,
+                                   status_options=get_dropdown_options("status"),
                                    category_options=get_dropdown_options("category"))
         save_doc(doc)
         audit_log("doc_edited",
@@ -320,7 +321,7 @@ def edit(doc_id):
 
     doc["routing_str"] = ", ".join(doc.get("routing", []))
     return render_template("form.html", doc=doc, action="edit", 
-                           status_options=STATUS_OPTIONS,
+                           status_options=get_dropdown_options("status"),
                            category_options=get_dropdown_options("category"))
 
 
@@ -362,7 +363,8 @@ def update_status(doc_id):
     if not doc:
         return jsonify({"ok": False, "msg": "Not found"}), 404
     new_status = request.form.get("status", "").strip()
-    if new_status not in STATUS_OPTIONS:
+    allowed_statuses = get_dropdown_options("status")
+    if new_status not in allowed_statuses:
         return jsonify({"ok": False, "msg": "Invalid status"}), 400
     doc["status"] = new_status
     if new_status == "Received" and not doc.get("date_received"):
