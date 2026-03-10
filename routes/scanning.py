@@ -82,12 +82,12 @@ def _handle_receive_release(office_name: str, office_slug: str, action_type: str
             actor = session.get("full_name") or session.get("username") or "Staff"
             if action_type == "receive":
                 doc["status"]        = "Received"
-                doc["date_received"] = now_str()[:10]
+                doc["date_received"] = now_str()[:16].replace('T', ' ')
                 log_action = "Document Received at Office"
                 log_remark = "Marked Received via office entrance QR scan."
             else:
                 doc["status"]        = "Released"
-                doc["date_released"] = now_str()[:10]
+                doc["date_released"] = now_str()[:16].replace('T', ' ')
                 log_action = "Document Released from Office"
                 log_remark = "Marked Released via office exit QR scan."
             doc.setdefault("travel_log", []).append({
@@ -138,7 +138,7 @@ def doc_scan(token):
     if token_type == "RECEIVE":
         doc.update({
             "status":        "Received",
-            "date_received": now_str()[:10],
+            "date_received": now_str()[:16].replace('T', ' '),
             "received_by":   actor,
         })
         doc.setdefault("travel_log", []).append({
@@ -162,7 +162,7 @@ def doc_scan(token):
     elif token_type == "RELEASE":
         doc.update({
             "status":        "Released",
-            "date_released": now_str()[:10],
+            "date_released": now_str()[:16].replace('T', ' '),
         })
         doc.setdefault("travel_log", []).append({
             "office": office_name, "action": "Document Released / Picked Up",
@@ -207,12 +207,12 @@ def receive(doc_id):
                 actor = session.get("full_name") or session.get("username")
                 if action == "receive":
                     doc["status"]        = "Received"
-                    doc["date_received"] = now_str()[:10]
+                    doc["date_received"] = now_str()[:16].replace('T', ' ')
                     log_action = "Document Received at Office"
                     log_remark = "Marked Received by scanning document QR code."
                 else:
                     doc["status"]        = "Released"
-                    doc["date_released"] = now_str()[:10]
+                    doc["date_released"] = now_str()[:16].replace('T', ' ')
                     log_action = "Document Released from Office"
                     log_remark = "Marked Released by scanning document QR code."
                 doc.setdefault("travel_log", []).append({
@@ -415,7 +415,7 @@ def slip_scan(token):
         if token_type == "SLIP_RECEIVE":
             doc["status"]       = "Received"
             doc["received_by"]  = actor
-            doc["date_received"] = now_str()[:10]
+            doc["date_received"] = now_str()[:16].replace('T', ' ')
             doc["from_office"]  = from_office
             doc["forwarded_to"] = destination
             doc.setdefault("travel_log", []).append({
@@ -428,7 +428,7 @@ def slip_scan(token):
 
         elif token_type == "SLIP_RELEASE":
             doc["status"]       = "Released"
-            doc["date_released"] = now_str()[:10]
+            doc["date_released"] = now_str()[:16].replace('T', ' ')
             doc.setdefault("travel_log", []).append({
                 "office":    from_office,
                 "action":    f"Released from {from_office}",

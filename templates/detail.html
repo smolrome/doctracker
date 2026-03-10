@@ -243,21 +243,22 @@
   <div class="info-card-title">📅 Status Timeline</div>
   <div class="timeline">
     {% set cur = doc.status %}
+    {% set pending_ts = doc.transferred_at or doc.created_at %}
     {% set steps = [
-      ('Logged',     '🖊️', doc.created_at[:10] if doc.created_at else ''),
-      ('Pending',   '⏳', ''),
-      ('Received',  '📥', doc.date_received or ''),
-      ('In Review', '🔍', ''),
-      ('Released',  '✅', doc.date_released or ''),
+      ('Logged',     '🖊️', doc.created_at[:10] if doc.created_at else '', doc.created_at | time12 if doc.created_at else ''),
+      ('Pending',   '⏳', pending_ts[:10] if pending_ts else '', pending_ts | time12 if pending_ts else ''),
+      ('Received',  '📥', doc.date_received[:10] if doc.date_received else '', doc.date_received | time12 if doc.date_received else ''),
+      ('In Review', '🔍', '', ''),
+      ('Released',  '✅', doc.date_released[:10] if doc.date_released else '', doc.date_released | time12 if doc.date_released else ''),
     ] %}
     {% set order = ['Logged','Pending','Received','In Review','In Transit','Released'] %}
     {% set cur_idx = order.index(cur) if cur in order else 0 %}
-    {% for label, icon, date in steps %}
+    {% for label, icon, date, time in steps %}
       {% set step_idx = order.index(label) if label in order else 0 %}
       <div class="tl-step {% if step_idx < cur_idx %}done{% elif step_idx == cur_idx %}current{% endif %}">
         <div class="tl-dot">{{ icon }}</div>
         <div class="tl-label">{{ label }}</div>
-        {% if date %}<div class="tl-date">{{ date }}</div>{% endif %}
+        {% if date %}<div class="tl-date">{{ date }}<br/><span style="color:var(--teal);font-weight:600;">{{ time }}</span></div>{% endif %}
       </div>
     {% endfor %}
   </div>

@@ -26,6 +26,17 @@
     border-radius:9px;background:#D1FAE5;color:#065F46;border:2px solid #059669;
     font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
   .btn-restore:hover{background:#059669;color:#fff;}
+  .btn-perm-delete{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;
+    border-radius:9px;background:#FEE2E2;color:#991B1B;border:2px solid #DC2626;
+    font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .btn-perm-delete:hover{background:#DC2626;color:#fff;}
+  .btn-delete-all{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;
+    border-radius:9px;background:#991B1B;color:#fff;border:2px solid #7F1D1D;
+    font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .btn-delete-all:hover{background:#7F1D1D;}
+  .action-buttons{display:flex;gap:8px;flex-wrap:wrap;}
+  .trash-actions{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;}
+  .trash-count{font-size:15px;color:var(--muted);font-weight:600;}
   .empty-trash{text-align:center;padding:48px 20px;background:#fff;
     border:2px solid var(--border);border-radius:16px;}
   .empty-trash .ei{font-size:56px;margin-bottom:12px;}
@@ -33,6 +44,8 @@
   @media(max-width:600px){
     .trash-table{display:block;overflow-x:auto;}
     .trash-table th,.trash-table td{font-size:14px;padding:12px;}
+    .trash-actions{flex-direction:column;align-items:stretch;}
+    .trash-actions>*{width:100%;text-align:center;}
   }
 </style>
 
@@ -46,6 +59,12 @@
 </div>
 
 {% if docs %}
+<div class="trash-actions">
+  <div class="trash-count">{{ docs|length }} document(s) in trash</div>
+  <form method="post" action="/trash/permanent-delete-all" onsubmit="return confirm('⚠️ PERMANENTLY DELETE ALL? This cannot be undone!')">
+    <button type="submit" class="btn-delete-all">🗑️ Delete All Permanently</button>
+  </form>
+</div>
 <table class="trash-table">
   <thead>
     <tr>
@@ -65,9 +84,14 @@
       <td><span class="del-by">{{ doc.deleted_by or '—' }}</span></td>
       <td><span style="font-size:14px;">{{ doc.deleted_at or '—' }}</span></td>
       <td>
-        <form method="post" action="/restore/{{ doc.id }}">
-          <button type="submit" class="btn-restore">↩️ Restore</button>
-        </form>
+        <div class="action-buttons">
+          <form method="post" action="/restore/{{ doc.id }}">
+            <button type="submit" class="btn-restore">↩️ Restore</button>
+          </form>
+          <form method="post" action="/trash/permanent-delete/{{ doc.id }}" onsubmit="return confirm('⚠️ Permanently delete this document? This cannot be undone!')">
+            <button type="submit" class="btn-perm-delete">🗑️ Delete</button>
+          </form>
+        </div>
       </td>
     </tr>
     {% endfor %}

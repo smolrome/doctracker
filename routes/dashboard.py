@@ -235,7 +235,7 @@ def add():
                         "forwarded_to":   "",
                         "recipient_name": "", "recipient_org": "", "recipient_contact": "",
                         "received_by":    actor,
-                        "date_received":  now_str()[:10],
+                        "date_received":  now_str()[:16].replace('T', ' '),
                         "date_released":  "",
                         "doc_date":       now_str()[:10],
                         "status":         "Logged",
@@ -418,6 +418,39 @@ def trash():
     return render_template("trash.html", docs=deleted_docs)
 
 
+@dashboard_bp.route("/trash/permanent-delete/<doc_id>", methods=["POST"])
+@admin_required
+def permanent_delete_doc(doc_id):
+    """Permanently delete a single document from trash."""
+    from services.documents import get_doc, delete_doc_forever
+    doc = get_doc(doc_id)
+    if not doc:
+        flash("Document not found.", "error")
+        return redirect(url_for("dashboard.trash"))
+    doc_name = doc.get("doc_name", doc_id)
+    delete_doc_forever(doc_id)
+    audit_log("permanent_delete", f"doc_id={doc_id} doc_name={doc_name}",
+              username=session.get("username", ""), ip=get_client_ip())
+    flash(f"Document '{doc_name}' permanently deleted.", "success")
+    return redirect(url_for("dashboard.trash"))
+
+
+@dashboard_bp.route("/trash/permanent-delete-all", methods=["POST"])
+@admin_required
+def permanent_delete_all():
+    """Permanently delete all documents in trash."""
+    from services.documents import get_doc, delete_doc_forever
+    deleted_docs = [d for d in load_docs(include_deleted=True) if d.get("deleted")]
+    count = 0
+    for doc in deleted_docs:
+        delete_doc_forever(doc.get("id", ""))
+        count += 1
+    audit_log("permanent_delete_all", f"count={count}",
+              username=session.get("username", ""), ip=get_client_ip())
+    flash(f"Permanently deleted {count} document(s) from trash.", "success")
+    return redirect(url_for("dashboard.trash"))
+
+
 # ── Status update ─────────────────────────────────────────────────────────────
 
 @dashboard_bp.route("/update-status/<doc_id>", methods=["POST"])
@@ -432,9 +465,9 @@ def update_status(doc_id):
         return jsonify({"ok": False, "msg": "Invalid status"}), 400
     doc["status"] = new_status
     if new_status == "Received" and not doc.get("date_received"):
-        doc["date_received"] = now_str()[:10]
+        doc["date_received"] = now_str()[:16].replace('T', ' ')
     if new_status == "Released" and not doc.get("date_released"):
-        doc["date_released"] = now_str()[:10]
+        doc["date_released"] = now_str()[:16].replace('T', ' ')
     doc.setdefault("travel_log", []).append({
         "office":    "DepEd Leyte Division Office",
         "action":    f"Status Updated to {new_status}",
@@ -777,7 +810,7 @@ def accept_document(doc_id):
         doc["status"] = "Received"  # Update main status to Received
         # Set date_received when accepting
         if not doc.get("date_received"):
-            doc["date_received"] = now_str()[:10]
+            doc["date_received"] = now_str()[:16].replace('T', ' ')
         # Clear pending_at_staff since it's now accepted
         doc["pending_at_staff"] = ""
         doc["pending_at_office"] = ""

@@ -561,8 +561,8 @@ td { padding: 14px 16px; font-size: var(--fs-base); vertical-align: middle; }
   transition: transform .18s, box-shadow .18s;
 }
 .fab-notify-circle {
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   background: linear-gradient(135deg, #5B21B6, #7C3AED);
   border-radius: 50%;
   display: flex;
@@ -570,7 +570,7 @@ td { padding: 14px 16px; font-size: var(--fs-base); vertical-align: middle; }
   justify-content: center;
   box-shadow: 0 6px 24px rgba(124,58,237,.45);
   position: relative;
-  font-size: 22px;
+  font-size: 26px;
   transition: transform .18s, box-shadow .18s;
 }
 .fab-notify:hover .fab-notify-circle {

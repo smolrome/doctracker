@@ -185,6 +185,20 @@ def restore_doc(doc_id: str):
     save_doc(doc)
 
 
+def delete_doc_forever(doc_id: str):
+    """Permanently delete a document from the database."""
+    if USE_DB:
+        conn = get_conn()
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
+            conn.commit()
+    else:
+        # JSON file storage
+        all_docs = load_docs(include_deleted=True)
+        all_docs = [d for d in all_docs if d.get("id") != doc_id]
+        _save_docs_json(all_docs)
+
+
 # ── Statistics ────────────────────────────────────────────────────────────────
 
 def get_stats(docs: list[dict]) -> dict:
