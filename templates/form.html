@@ -525,8 +525,8 @@ document.addEventListener('keydown', function(e) {
 <div class="error-box">❌ {{ error }}</div>
 {% endif %}
 
-<!-- ── CART ── -->
-<div class="cart-section" id="cart-section">
+<!-- ── CART (Hidden - shown in modal instead) ── -->
+<div class="cart-section" id="cart-section" style="display:none;">
   <div class="cart-header">
     <div class="cart-title">
       📋 Documents to Log
@@ -535,7 +535,7 @@ document.addEventListener('keydown', function(e) {
   </div>
 
   {% if cart %}
-  <div class="submit-all-wrap">
+  <div class="submit-all-wrap" style="display:none;">
     <p>✅ <strong>{{ cart|length }} document{{ 's' if cart|length != 1 else '' }}</strong> ready to log. Review the list, then save all at once.</p>
     <form method="post" id="submit-all-form">
       <input type="hidden" name="_action" value="submit_all"/>
