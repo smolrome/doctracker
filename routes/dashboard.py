@@ -211,6 +211,37 @@ def add():
             session["staff_cart"] = cart
             session.modified = True
 
+        elif action == "edit":
+            tmp_id = request.form.get("tmp_id", "")
+            edit_item = None
+            for item in cart:
+                if item.get("tmp_id") == tmp_id:
+                    edit_item = item
+                    break
+            if edit_item:
+                return render_template("form.html", doc={}, action="edit_cart",
+                                       edit_item=edit_item, cart=cart, error=None,
+                                       auto_ref=generate_ref(),
+                                       status_options=get_dropdown_options("status"),
+                                       category_options=get_dropdown_options("category"))
+
+        elif action == "update":
+            tmp_id = request.form.get("tmp_id", "")
+            for i, item in enumerate(cart):
+                if item.get("tmp_id") == tmp_id:
+                    cart[i]["doc_name"] = request.form.get("doc_name", "").strip()
+                    cart[i]["sender_org"] = request.form.get("sender_org", "").strip()
+                    cart[i]["sender_name"] = request.form.get("sender_name", "").strip()
+                    cart[i]["referred_to"] = request.form.get("referred_to", "").strip()
+                    cart[i]["category"] = request.form.get("category", "").strip()
+                    cart[i]["description"] = request.form.get("description", "").strip()
+                    cart[i]["notes"] = request.form.get("notes", "").strip()
+                    session["staff_cart"] = cart
+                    session.modified = True
+                    flash(f"✅ Document updated successfully.", "success")
+                    break
+            return redirect(url_for("dashboard.add"))
+
         elif action == "submit_all":
             if not cart:
                 error = "No documents to log. Add at least one document first."
