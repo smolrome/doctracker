@@ -415,6 +415,60 @@
         {% if doc.transferred_at %}
         <div>Transfer date: {{ doc.transferred_at }}</div>
         {% endif %}
+        
+        {# Transfer Status: Accepted/Rejected #}
+        {% if doc.transfer_status %}
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #E2E8F0;">
+          {% if doc.transfer_status == 'accepted' %}
+          <div style="
+            background: #D1FAE5;
+            color: #065F46;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+          ">
+            ✅ ACCEPTED
+            {% if doc.accepted_by_name %}
+            <span style="font-weight: normal;">by {{ doc.accepted_by_name }}</span>
+            {% endif %}
+            {% if doc.accepted_at %}
+on {{ doc.accepted_at }}
+            {% endif %}
+          </div>
+          {% elif doc.transfer_status == 'rejected' %}
+          <div style="
+            background: #FEE2E2;
+            color: #991B1B;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+          ">
+            ❌ REJECTED
+            {% if doc.rejected_by_name %}
+            <span style="font-weight: normal;">by {{ doc.rejected_by_name }}</span>
+            {% endif %}
+            {% if doc.rejected_at %}
+on {{ doc.rejected_at }}
+            {% endif %}
+            {% if doc.rejection_reason %}
+            <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #FECACA; font-weight: normal;">
+              <strong>Reason:</strong> {{ doc.rejection_reason }}
+            </div>
+            {% endif %}
+          </div>
+          {% elif doc.transfer_status == 'pending' %}
+          <div style="
+            background: #FEF3C7;
+            color: #92400E;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+          ">
+            ⏳ AWAITING ACCEPTANCE
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
       </div>
     </div>
     {% endif %}

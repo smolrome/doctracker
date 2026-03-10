@@ -445,6 +445,7 @@ def transfer_doc(doc_id):
         doc["pending_at_staff"]      = new_staff
         doc["pending_at_office"]     = new_staff_office
         doc["pending_at_staff_name"]  = new_staff_full_name
+        doc["transfer_status"]       = "pending"  # Track accept/reject status
 
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
@@ -547,6 +548,7 @@ def transfer_batch():
         doc["pending_at_staff"]      = new_staff
         doc["pending_at_office"]     = new_staff_office
         doc["pending_at_staff_name"] = new_staff_full_name
+        doc["transfer_status"]       = "pending"  # Track accept/reject status
 
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
@@ -595,6 +597,169 @@ def db_status():
         return jsonify({"storage": "PostgreSQL ✅", "database": True, "documents": row["total"]})
     except Exception as e:
         return jsonify({"storage": "PostgreSQL (ERROR)", "database": False, "error": str(e)})
+
+
+# ── Document Accept/Reject Routes ─────────────────────────────────────────────
+
+@dashboard_bp.route("/api/pending-documents")
+@login_required
+def get_pending_documents():
+    """Get all documents pending acceptance for the current user."""
+    current_user = session.get("username", "")
+    if not current_user:
+        return jsonify([])
+    
+    docs = load_docs()
+    # Filter documents where:
+    # - transfer_status is "pending" 
+    # - pending_at_staff is current user
+    pending = [
+        d for d in docs
+        if d.get("transfer_status") == "pending" 
+        and d.get("pending_at_staff") == current_user
+    ]
+    return jsonify(pending)
+
+
+@dashboard_bp.route("/api/pending-count")
+@login_required
+def get_pending_count():
+    """Get count of documents pending acceptance for the current user."""
+    current_user = session.get("username", "")
+    if not current_user:
+        return jsonify({"count": 0})
+    
+    docs = load_docs()
+    count = sum(
+        1 for d in docs
+        if d.get("transfer_status") == "pending" 
+        and d.get("pending_at_staff") == current_user
+    )
+    return jsonify({"count": count})
+
+
+@dashboard_bp.route("/accept-document/<doc_id>", methods=["POST"])
+@login_required
+def accept_document(doc_id):
+    """Accept a transferred document."""
+    current_user = session.get("username", "")
+    current_full_name = session.get("full_name", "")
+    
+    doc = get_doc(doc_id)
+    if not doc:
+        flash("Document not found.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    # Verify this document is pending for the current user
+    if doc.get("pending_at_staff") != current_user:
+        flash("You are not authorized to accept this document.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    if doc.get("transfer_status") != "pending":
+        flash("This document has already been processed.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    # Update document status
+    doc["transfer_status"] = "accepted"
+    doc["accepted_by"] = current_user
+    doc["accepted_by_name"] = current_full_name or current_user
+    doc["accepted_at"] = now_str()
+    doc["status"] = "Received"  # Update main status to Received
+    
+    # Add to travel log
+    doc.setdefault("travel_log", []).append({
+        "office":    doc.get("pending_at_office", ""),
+        "action":    "Document Accepted",
+        "officer":   current_full_name or current_user,
+        "timestamp": now_str(),
+        "remarks":   f"Document accepted by {current_full_name or current_user}.",
+    })
+    
+    save_doc(doc)
+    
+    audit_log("doc_accepted",
+              f"doc_id={doc_id} accepted_by={current_user} doc_name={doc.get('doc_name','')[:60]}",
+              username=current_user, ip=get_client_ip())
+    
+    flash("Document accepted successfully!", "success")
+    return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
+
+
+@dashboard_bp.route("/reject-document/<doc_id>", methods=["POST"])
+@login_required
+def reject_document(doc_id):
+    """Reject a transferred document with a reason."""
+    current_user = session.get("username", "")
+    current_full_name = session.get("full_name", "")
+    rejection_reason = request.form.get("rejection_reason", "").strip()
+    
+    if not rejection_reason:
+        flash("Please provide a reason for rejection.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    doc = get_doc(doc_id)
+    if not doc:
+        flash("Document not found.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    # Verify this document is pending for the current user
+    if doc.get("pending_at_staff") != current_user:
+        flash("You are not authorized to reject this document.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    if doc.get("transfer_status") != "pending":
+        flash("This document has already been processed.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    # Store sender info before updating
+    original_sender = doc.get("transferred_by", "")
+    
+    # Update document status
+    doc["transfer_status"] = "rejected"
+    doc["rejected_by"] = current_user
+    doc["rejected_by_name"] = current_full_name or current_user
+    doc["rejected_at"] = now_str()
+    doc["rejection_reason"] = rejection_reason
+    doc["status"] = "Rejected"  # Update main status to Rejected
+    
+    # Return document to the sender
+    doc["logged_by"] = original_sender
+    doc["pending_at_staff"] = original_sender
+    
+    # Add to travel log
+    doc.setdefault("travel_log", []).append({
+        "office":    doc.get("pending_at_office", ""),
+        "action":    "Document Rejected",
+        "officer":   current_full_name or current_user,
+        "timestamp": now_str(),
+        "remarks":   f"Document rejected by {current_full_name or current_user}. Reason: {rejection_reason}",
+    })
+    
+    save_doc(doc)
+    
+    audit_log("doc_rejected",
+              f"doc_id={doc_id} rejected_by={current_user} reason={rejection_reason[:50]} doc_name={doc.get('doc_name','')[:60]}",
+              username=current_user, ip=get_client_ip())
+    
+    flash("Document rejected and returned to sender.", "success")
+    return redirect(url_for("dashboard.index"))
+
+
+@dashboard_bp.route("/api/transferred-documents")
+@login_required
+def get_transferred_documents():
+    """Get documents transferred by current user (to see accept/reject status)."""
+    current_user = session.get("username", "")
+    if not current_user:
+        return jsonify([])
+    
+    docs = load_docs()
+    # Filter documents transferred by current user
+    transferred = [
+        d for d in docs
+        if d.get("transferred_by") == current_user
+    ]
+    return jsonify(transferred)
 
 
 @dashboard_bp.route("/debug-error")

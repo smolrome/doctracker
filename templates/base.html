@@ -707,6 +707,354 @@
   </button>
 </nav>
 
+<!-- ═══ Floating Notification for Pending Documents ═══ -->
+{% if logged_in and current_role in ('staff', 'admin') %}
+<!-- Floating Notification Button -->
+<div id="floating-notification" style="
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 9999;
+    display: none;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+" onclick="showPendingDocumentsModal()">
+    <div style="
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, #0E7490 0%, #059669 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 32px rgba(14, 116, 144, 0.4);
+        position: relative;
+    ">
+        <span style="font-size: 32px;">📥</span>
+        <span id="pending-badge" style="
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #DC2626;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            min-width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid white;
+        ">0</span>
+    </div>
+    <div style="
+        background: #0A2540;
+        color: white;
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        margin-top: 8px;
+        text-align: center;
+        white-space: nowrap;
+    ">
+        Documents to Receive
+    </div>
+</div>
+
+<!-- Pending Documents Modal -->
+<div id="pending-documents-modal" style="
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(10, 37, 64, 0.8);
+    backdrop-filter: blur(4px);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+">
+    <div style="
+        background: white;
+        border-radius: 20px;
+        max-width: 700px;
+        width: 100%;
+        max-height: 85vh;
+        overflow-y: auto;
+        box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+    ">
+        <!-- Modal Header -->
+        <div style="
+            background: linear-gradient(135deg, #0E7490 0%, #059669 100%);
+            padding: 24px 28px;
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        ">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 32px;">📥</span>
+                <h2 style="color: white; font-size: 1.4rem; margin: 0;">Documents to Receive</h2>
+            </div>
+            <button onclick="closePendingDocumentsModal()" style="
+                background: rgba(255,255,255,0.2);
+                border: none;
+                color: white;
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                font-size: 24px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            ">×</button>
+        </div>
+        
+        <!-- Modal Body -->
+        <div id="pending-documents-list" style="padding: 20px 28px;">
+            <div style="text-align: center; padding: 40px; color: #5A7A91;">
+                <span style="font-size: 48px;">📭</span>
+                <p style="margin-top: 12px;">Loading documents...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rejection Reason Modal -->
+<div id="rejection-reason-modal" style="
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10001;
+    background: rgba(10, 37, 64, 0.8);
+    backdrop-filter: blur(4px);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+">
+    <div style="
+        background: white;
+        border-radius: 20px;
+        max-width: 500px;
+        width: 100%;
+        box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+    ">
+        <!-- Modal Header -->
+        <div style="
+            background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+            padding: 24px 28px;
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        ">
+            <span style="font-size: 32px;">❌</span>
+            <h2 style="color: white; font-size: 1.4rem; margin: 0;">Reject Document</h2>
+        </div>
+        
+        <!-- Modal Body -->
+        <div style="padding: 24px 28px;">
+            <p style="color: #374151; margin-bottom: 16px;">Please provide a reason for rejecting this document:</p>
+            <form id="rejection-form" method="POST" action="">
+                <input type="hidden" id="reject-doc-id" name="doc_id" value="">
+                <textarea 
+                    name="rejection_reason" 
+                    id="rejection-reason-input"
+                    placeholder="Enter reason for rejection..."
+                    required
+                    style="
+                        width: 100%;
+                        padding: 14px;
+                        border: 2px solid #CBD5E1;
+                        border-radius: 10px;
+                        font-size: 15px;
+                        font-family: inherit;
+                        resize: vertical;
+                        min-height: 120px;
+                        box-sizing: border-box;
+                    "
+                ></textarea>
+                <div style="display: flex; gap: 12px; margin-top: 20px; justify-content: flex-end;">
+                    <button type="button" onclick="closeRejectionModal()" style="
+                        padding: 12px 24px;
+                        border-radius: 9px;
+                        border: 1.5px solid #CBD5E1;
+                        background: #F8FAFC;
+                        color: #374151;
+                        font-weight: 700;
+                        font-size: 15px;
+                        cursor: pointer;
+                    ">Cancel</button>
+                    <button type="submit" style="
+                        padding: 12px 24px;
+                        border-radius: 9px;
+                        border: none;
+                        background: #DC2626;
+                        color: white;
+                        font-weight: 700;
+                        font-size: 15px;
+                        cursor: pointer;
+                    ">Submit Rejection</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Check for pending documents on page load
+document.addEventListener('DOMContentLoaded', function() {
+    checkPendingDocuments();
+    // Also check periodically (every 30 seconds)
+    setInterval(checkPendingDocuments, 30000);
+});
+
+function checkPendingDocuments() {
+    fetch('/api/pending-count')
+        .then(response => response.json())
+        .then(data => {
+            const notification = document.getElementById('floating-notification');
+            const badge = document.getElementById('pending-badge');
+            if (data.count > 0) {
+                badge.textContent = data.count;
+                notification.style.display = 'block';
+            } else {
+                notification.style.display = 'none';
+            }
+        })
+        .catch(error => console.error('Error checking pending documents:', error));
+}
+
+function showPendingDocumentsModal() {
+    const modal = document.getElementById('pending-documents-modal');
+    const listContainer = document.getElementById('pending-documents-list');
+    
+    modal.style.display = 'flex';
+    listContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #5A7A91;"><span style="font-size: 48px;">📭</span><p style="margin-top: 12px;">Loading documents...</p></div>';
+    
+    fetch('/api/pending-documents')
+        .then(response => response.json())
+        .then(docs => {
+            if (docs.length === 0) {
+                listContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #5A7A91;"><span style="font-size: 48px;">✅</span><p style="margin-top: 12px;">No pending documents</p></div>';
+                return;
+            }
+            
+            let html = '';
+            docs.forEach(doc => {
+                const docName = doc.doc_name || 'Unnamed Document';
+                const docId = doc.doc_id || doc.id;
+                const transferredBy = doc.transferred_by || 'Unknown';
+                const transferredAt = doc.transferred_at || 'Unknown';
+                const office = doc.transferred_to_office || doc.pending_at_office || 'N/A';
+                
+                html += `
+                    <div style="
+                        background: #F8FAFC;
+                        border: 1px solid #E2E8F0;
+                        border-radius: 12px;
+                        padding: 16px;
+                        margin-bottom: 12px;
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                            <div>
+                                <h4 style="color: #0A2540; font-size: 16px; font-weight: 700; margin: 0 0 4px 0;">${docName}</h4>
+                                <p style="color: #64748B; font-size: 13px; margin: 0;">ID: ${docId}</p>
+                            </div>
+                            <span style="
+                                background: #FEF3C7;
+                                color: #B45309;
+                                padding: 4px 10px;
+                                border-radius: 6px;
+                                font-size: 12px;
+                                font-weight: 600;
+                            ">Pending</span>
+                        </div>
+                        <div style="font-size: 13px; color: #64748B; margin-bottom: 12px;">
+                            <strong>From:</strong> ${transferredBy} <br>
+                            <strong>Office:</strong> ${office} <br>
+                            <strong>Transferred:</strong> ${transferredAt}
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <form method="POST" action="/accept-document/${doc.id || doc.doc_id}" style="margin: 0; flex: 1;">
+                                <button type="submit" style="
+                                    width: 100%;
+                                    padding: 10px;
+                                    border-radius: 8px;
+                                    border: none;
+                                    background: #059669;
+                                    color: white;
+                                    font-weight: 600;
+                                    font-size: 14px;
+                                    cursor: pointer;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    gap: 6px;
+                                ">
+                                    ✓ Accept
+                                </button>
+                            </form>
+                            <button onclick="showRejectionModal('${doc.id || doc.doc_id}')" style="
+                                padding: 10px 16px;
+                                border-radius: 8px;
+                                border: 1.5px solid #DC2626;
+                                background: white;
+                                color: #DC2626;
+                                font-weight: 600;
+                                font-size: 14px;
+                                cursor: pointer;
+                            ">
+                                ✕ Reject
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            listContainer.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading pending documents:', error);
+            listContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #DC2626;"><p>Error loading documents</p></div>';
+        });
+}
+
+function closePendingDocumentsModal() {
+    document.getElementById('pending-documents-modal').style.display = 'none';
+}
+
+function showRejectionModal(docId) {
+    const modal = document.getElementById('rejection-reason-modal');
+    const form = document.getElementById('rejection-form');
+    const input = document.getElementById('reject-doc-id');
+    
+    input.value = docId;
+    form.action = '/reject-document/' + docId;
+    document.getElementById('rejection-reason-input').value = '';
+    modal.style.display = 'flex';
+}
+
+function closeRejectionModal() {
+    document.getElementById('rejection-reason-modal').style.display = 'none';
+}
+
+// Close modals when clicking outside
+document.getElementById('pending-documents-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closePendingDocumentsModal();
+    }
+});
+
+document.getElementById('rejection-reason-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeRejectionModal();
+    }
+});
+</script>
+{% endif %}
+
 <!-- ═══ MOBILE DRAWER ═══ -->
 <div class="nav-drawer" id="nav-drawer">
   {% if logged_in %}

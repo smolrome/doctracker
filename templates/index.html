@@ -1,59 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- Stats Row — clickable filters -->
-<style>
-  .stat-card { cursor:pointer;text-decoration:none;display:block;transition:transform .18s,box-shadow .18s,border-color .18s; }
-  .stat-card:hover { transform:translateY(-3px);box-shadow:0 8px 28px rgba(10,45,100,.14); }
-  .stat-card.active { border-color:transparent;box-shadow:0 0 0 3px var(--stat-accent,#0E7490),0 6px 24px rgba(10,45,100,.12); }
-  .stat-card.active .stat-label { color:var(--stat-accent,#0E7490); }
-  .stat-card.active .stat-num   { color:var(--stat-accent,#0E7490); }
-  .stat-card.yellow  { --stat-accent:#D97706; }
-  .stat-card.emerald { --stat-accent:#059669; }
-  .stat-card.teal    { --stat-accent:#0E7490; }
-  .stat-card.blue    { --stat-accent:#1D4ED8; }
-  .stat-card.green   { --stat-accent:#16A34A; }
-  .stat-card.red     { --stat-accent:#DC2626; }
-  .stat-card.yellow::before  { background:linear-gradient(90deg,#F59E0B,#FBBF24); }
-  .stat-card.emerald::before { background:linear-gradient(90deg,#059669,#10B981); }
-  .stat-card.blue::before    { background:linear-gradient(90deg,#1D4ED8,#3B82F6); }
-  .stat-card.green::before   { background:linear-gradient(90deg,#16A34A,#22C55E); }
-  .stat-card-inner { pointer-events:none; }
-  .stat-clear { display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--stat-accent,#0E7490);margin-top:5px;opacity:0;transition:opacity .15s; }
-  .stat-card.active .stat-clear { opacity:1; }
-  .stat-card:not(.active):hover::after { content:'filter';position:absolute;bottom:7px;right:10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);opacity:.5; }
-  .stat-card { position:relative; }
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
 
-.table-wrap {
-  border: 2px solid var(--border);
-  border-radius: var(--radius, 12px);
-  background: #fff;
-}
-
-.table-head {
-  flex-shrink: 0;
-}
-
-.table-scroll {
-  max-height: 60vh;
-  overflow-y: auto;
-  overflow-x: auto;
-}
-
-.table-scroll table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--surface, #F8FAFC);
-}
-</style>
-<script>
-function statFilter(status) {
-  const params = new URLSearchParams(window.location.search);
-  params.set('status', status); params.delete('page');
-  window.location.href = '/?' + params.toString();
-}
-</script>
+<script src="{{ url_for('static', filename='js/index.js') }}"></script>
 <div style="position:sticky;top:0;z-index:100;background:var(--surface,#F8FAFC);padding:12px 0 16px;margin-bottom:4px;overflow:visible;">
   <div class="stats-grid">
     <a class="stat-card {% if filter_status=='All' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('All')">
@@ -84,36 +34,6 @@ function statFilter(status) {
 </div>
 
 {% if saved_offices %}
-<style>
-  .oqs-fab{position:fixed;bottom:28px;right:28px;z-index:7000;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#5B21B6,#7C3AED);color:#fff;border:none;font-size:24px;cursor:pointer;box-shadow:0 6px 24px rgba(124,58,237,.45);display:flex;align-items:center;justify-content:center;transition:transform .18s,box-shadow .18s;}
-  .oqs-fab:hover{transform:scale(1.1);box-shadow:0 10px 32px rgba(124,58,237,.55);}
-  .oqs-fab-badge{position:absolute;top:-4px;right:-4px;background:#EF4444;color:#fff;border-radius:20px;padding:2px 7px;font-size:11px;font-weight:900;border:2px solid #fff;}
-  .oqs-modal-overlay{display:none;position:fixed;inset:0;z-index:7500;background:rgba(10,37,64,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;}
-  .oqs-modal-overlay.open{display:flex;}
-  .oqs-modal{background:#fff;border-radius:18px;width:100%;max-width:680px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.4);}
-  .oqs-modal-header{padding:16px 20px;border-bottom:2px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:linear-gradient(135deg,#F0F7FA,#fff);flex-shrink:0;}
-  .oqs-modal-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:900;color:var(--navy);display:flex;align-items:center;gap:10px;}
-  .oqs-modal-close{background:none;border:2px solid var(--border);border-radius:8px;padding:6px 12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;}
-  .oqs-modal-close:hover{border-color:#DC2626;color:#DC2626;}
-  .oqs-modal-search-wrap{padding:12px 20px;border-bottom:1.5px solid var(--border);flex-shrink:0;}
-  .oqs-modal-search{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit;outline:none;background:var(--surface);transition:border .15s;}
-  .oqs-modal-search:focus{border-color:var(--teal);background:#fff;}
-  .oqs-modal-body{padding:16px 20px;overflow-y:auto;}
-  .oqs-count{font-size:14px;color:var(--muted);margin-bottom:12px;font-weight:600;}
-  .oqs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;}
-  .oqs-card{border:2px solid #7C3AED;border-radius:14px;padding:16px;text-align:center;background:#fff;transition:box-shadow .15s,transform .15s;}
-  .oqs-card:hover{box-shadow:0 6px 22px rgba(124,58,237,.18);transform:translateY(-2px);}
-  .oqs-card.hidden{display:none;}
-  .oqs-card-badge{display:inline-flex;align-items:center;gap:5px;background:#EDE9FE;color:#5B21B6;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:700;margin-bottom:8px;}
-  .oqs-card-name{font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;color:var(--navy);margin-bottom:10px;line-height:1.3;}
-  .oqs-qr-img{width:min(130px,100%);aspect-ratio:1;border-radius:9px;border:2px solid var(--border);display:block;margin:0 auto 10px;object-fit:contain;}
-  .oqs-actions{display:flex;flex-direction:column;gap:7px;}
-  .btn-scan-sub{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:9px;font-size:14px;font-weight:800;font-family:inherit;text-decoration:none;border:none;cursor:pointer;min-height:44px;background:linear-gradient(135deg,#5B21B6,#7C3AED);color:#fff;box-shadow:0 4px 12px rgba(124,58,237,.3);transition:all .15s;}
-  .btn-dl-sub{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:2px solid var(--border);color:var(--muted);background:var(--surface);text-decoration:none;transition:all .15s;}
-  .btn-dl-sub:hover{border-color:#7C3AED;color:#5B21B6;}
-  .oqs-none{text-align:center;padding:28px;color:var(--muted);font-size:16px;display:none;}
-  .oqs-none.visible{display:block;}
-</style>
 
 <!-- FAB Button -->
 <button class="oqs-fab" onclick="openOqsModal()" title="Office Submission QR Codes">
@@ -156,93 +76,7 @@ function statFilter(status) {
   </div>
 </div>
 
-<script>
-function openOqsModal()  { document.getElementById('oqs-modal-overlay').classList.add('open'); document.getElementById('oqs-search').focus(); }
-function closeOqsModal() { document.getElementById('oqs-modal-overlay').classList.remove('open'); }
-function filterOffices(query) {
-  const q = query.toLowerCase().trim();
-  const cards = document.querySelectorAll('.oqs-card');
-  let visible = 0;
-  cards.forEach(card => {
-    const show = !q || (card.dataset.name||'').includes(q);
-    card.classList.toggle('hidden', !show);
-    if (show) visible++;
-  });
-  document.getElementById('oqs-count').textContent = visible + ' office' + (visible !== 1 ? 's' : '') + (q ? ' found' : ' registered');
-  document.getElementById('oqs-none').classList.toggle('visible', visible === 0);
-}
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeOqsModal();
-  if (e.key === '/' && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); openOqsModal(); document.getElementById('oqs-search').focus(); }
-});
-</script>
 {% endif %}
-
-<style>
-  .filter-bar{background:#fff;border:2px solid var(--border);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(10,45,100,.05);}
-  .filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
-  .filter-group{display:flex;flex-direction:column;gap:5px;min-width:0;}
-  .filter-group.grow{flex:1;min-width:200px;}
-  .filter-group.w-date{width:150px;}
-  .filter-group.w-time{width:120px;}
-  .filter-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
-  .filter-input{padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);outline:none;min-height:42px;width:100%;transition:border .15s;}
-  .filter-input:focus{border-color:var(--teal);background:#fff;}
-  .filter-input.has-value{border-color:var(--teal);background:#EFF6FF;}
-  .filter-divider{width:1px;background:var(--border);align-self:stretch;margin:0 2px;flex-shrink:0;}
-  .time-toggle-label{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--muted);}
-  .time-toggle-label input[type=checkbox]{width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0;}
-  .filter-type-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;}
-  .type-btn{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;border:2px solid var(--border);background:var(--surface);color:var(--muted);text-decoration:none;transition:all .15s;white-space:nowrap;cursor:pointer;}
-  .type-btn:hover{border-color:var(--teal);color:var(--teal);}
-  .type-btn.active{background:var(--teal);border-color:var(--teal);color:#fff;}
-  .btn-clear-filters{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;border:2px solid var(--border);background:#fff;color:var(--muted);text-decoration:none;cursor:pointer;transition:all .15s;}
-  .btn-clear-filters:hover{border-color:#DC2626;color:#DC2626;}
-  .filter-active-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:0;margin-left:8px;}
-  .filter-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;background:#EFF6FF;border:1.5px solid #BFDBFE;color:#1D4ED8;}
-  .pill-x{color:#93C5FD;cursor:pointer;font-size:14px;line-height:1;}
-  .pill-x:hover{color:#1D4ED8;}
-  /* Modals & Table */
-  .route-panel{background:linear-gradient(135deg,#0A2540 0%,#1D4ED8 100%);border-radius:16px;padding:18px 20px;box-shadow:0 8px 32px rgba(10,37,80,.45);}
-  .rp-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
-  .rp-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:900;color:#fff;display:flex;align-items:center;gap:10px;}
-  .rp-count{background:rgba(255,255,255,.22);color:#fff;border-radius:20px;padding:3px 14px;font-size:14px;font-weight:800;}
-  .rp-close{margin-left:auto;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.8);border-radius:8px;padding:6px 12px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;}
-  .rp-close:hover{background:rgba(255,255,255,.22);}
-  .rp-fields{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px;}
-  .rp-field label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.65);margin-bottom:5px;}
-  .rp-input{width:100%;padding:10px 13px;border:2px solid rgba(255,255,255,.25);border-radius:10px;background:rgba(255,255,255,.12);color:#fff;font-family:inherit;font-size:15px;outline:none;min-height:44px;transition:border .15s,background .15s;}
-  .rp-input::placeholder{color:rgba(255,255,255,.45);}
-  .rp-input:focus{border-color:rgba(255,255,255,.7);background:rgba(255,255,255,.2);}
-  .rp-input[type="date"],.rp-input[type="time"]{color-scheme:dark;}
-  .rp-input option {
-  background: #1D4ED8;
-  color: #fff;
-}
-  .rp-field.notes-field{grid-column:1/-1;}
-  .rp-notes{width:100%;padding:10px 13px;border:2px solid rgba(255,255,255,.25);border-radius:10px;background:rgba(255,255,255,.1);color:#fff;font-family:inherit;font-size:15px;outline:none;min-height:44px;resize:none;}
-  .rp-notes::placeholder{color:rgba(255,255,255,.4);}
-  .rp-notes:focus{border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.18);}
-  .rp-bottom{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-  .rp-hint{flex:1;font-size:13px;color:rgba(255,255,255,.6);line-height:1.5;}
-  .btn-route{padding:12px 24px;border-radius:10px;background:#fff;color:#1D4ED8;border:none;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;white-space:nowrap;min-height:46px;transition:all .15s;display:flex;align-items:center;gap:8px;}
-  .btn-route:hover{background:#DBEAFE;transform:translateY(-1px);}
-  .btn-route:disabled{opacity:.5;cursor:not-allowed;transform:none;}
-  .btn-time-filter{padding:10px 16px;border-radius:10px;background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.3);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;min-height:46px;display:flex;align-items:center;gap:6px;}
-  .btn-time-filter:hover{background:rgba(255,255,255,.25);}
-  .cb-cell{width:44px;padding:0 8px!important;text-align:center;vertical-align:middle;}
-  .doc-checkbox{width:20px;height:20px;cursor:pointer;accent-color:#1D4ED8;border-radius:4px;}
-  th.cb-cell{background:var(--surface);}
-  tr.row-selected{background:#EFF6FF!important;}
-  tr.row-selected:hover td{background:#DBEAFE!important;}
-  #select-all{width:20px;height:20px;cursor:pointer;accent-color:#1D4ED8;}
-  @media(max-width:700px){
-    .filter-group.w-date,.filter-group.w-time{width:100%;}
-    .filter-group.grow{min-width:100%;}
-    .filter-divider{display:none;}
-    .rp-fields{grid-template-columns:1fr;}
-  }
-</style>
 
 <form method="get" action="/" id="filter-form">
   <div class="filter-bar">
@@ -306,16 +140,6 @@ document.addEventListener('keydown', e => {
   <input type="hidden" name="per_page" value="{{ per_page }}"/>
 </form>
 
-<script>
-function toggleTimeRange(on) {
-  document.getElementById('time-range-row').style.display = on ? 'flex' : 'none';
-  if (!on) { document.querySelector('[name="time_from"]').value=''; document.querySelector('[name="time_to"]').value=''; document.getElementById('filter-form').submit(); }
-}
-function setToday() { document.querySelector('[name="date"]').value = new Date().toISOString().slice(0,10); document.getElementById('filter-form').submit(); }
-function setType(val) { document.getElementById('type-hidden').value = val; document.getElementById('filter-form').submit(); }
-function clearField(name, val='') { const el = document.querySelector('[name="'+name+'"]'); if(el) el.value=val; document.getElementById('filter-form').submit(); }
-</script>
-
 <datalist id="office-suggestions">
   {% for office in saved_offices %}<option value="{{ office.office_name }}">{% endfor %}
 </datalist>
@@ -323,11 +147,6 @@ function clearField(name, val='') { const el = document.querySelector('[name="'+
 <!-- ══ SINGLE SOURCE OF TRUTH for transfer modal ══ -->
 <script type="application/json" id="modal-offices-data">{{ offices_dict | tojson | safe }}</script>
 <script type="application/json" id="modal-sorted-offices">{{ sorted_offices | tojson | safe }}</script>
-<script>
-  const modalOfficesData   = JSON.parse(document.getElementById('modal-offices-data').textContent || '{}');
-  const modalSortedOffices = JSON.parse(document.getElementById('modal-sorted-offices').textContent || '[]');
-  const modalCurrentOffice = '{{ current_office | safe }}';
-</script>
 
 <!-- ── ROUTING MODAL ── -->
 <div id="routing-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(10,37,64,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;">
@@ -487,7 +306,16 @@ function clearField(name, val='') { const el = document.querySelector('[name="'+
                 <span style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#92400E;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;">{% if doc.pending_at_staff_name %}{{ doc.pending_at_staff_name }}{% else %}{{ doc.pending_at_staff }}{% endif %}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</span>
               </div>
               {% endif %}
-            {% elif s=='Received' %}<span class="badge badge-received">{{ s }}</span>
+              {# Show transfer status indicator #}
+              {% if doc.transfer_status == 'pending' %}
+              <div style="margin-top:4px;"><span style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;color:#92400E;">⏳ Awaiting Accept</span></div>
+              {% endif %}
+            {% elif s=='Received' %}
+              <span class="badge badge-received">{{ s }}</span>
+              {# Show accepted indicator if transferred #}
+              {% if doc.transfer_status == 'accepted' %}
+              <div style="margin-top:4px;"><span style="background:#D1FAE5;border:1px solid #6EE7B7;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;color:#065F46;">✅ Accepted</span></div>
+              {% endif %}
             {% elif s=='In Review' %}<span class="badge badge-review">{{ s }}</span>
             {% elif s=='In Transit' %}
               <span class="badge badge-transit">🚌 In Transit</span>
@@ -503,6 +331,11 @@ function clearField(name, val='') { const el = document.querySelector('[name="'+
               </div>{% endif %}
             {% elif s=='Released' %}<span class="badge badge-released">{{ s }}</span>
             {% elif s=='On Hold' %}<span class="badge badge-hold">{{ s }}</span>
+            {% elif s=='Rejected' %}
+              <span class="badge badge-hold" style="background:#FEE2E2;color:#991B1B;border-color:#FECACA;">{{ s }}</span>
+              {% if doc.rejection_reason %}
+              <div style="margin-top:4px;max-width:150px;"><span style="background:#FEE2E2;border:1px solid #FECACA;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;color:#991B1B;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ doc.rejection_reason }}">❌ {{ doc.rejection_reason }}</span></div>
+              {% endif %}
             {% else %}<span class="badge badge-archived">{{ s }}</span>{% endif %}
           </td>
         </tr>
@@ -536,147 +369,5 @@ function clearField(name, val='') { const el = document.querySelector('[name="'+
   </div>
   {% endif %}
 </div>
-
-<script>
-(function(){ const sd=document.getElementById('slip-date'); if(sd) sd.value=new Date().toISOString().slice(0,10); })();
-
-function changePerPage(val) { const url=new URL(window.location.href); url.searchParams.set('per_page',val); url.searchParams.set('page',1); window.location=url.toString(); }
-function rowClick(e,docId) { if(e.target.type==='checkbox') return; window.location='/view/'+docId; }
-
-// ══ ROUTING MODAL ══
-function openRoutingModal() { document.getElementById('routing-modal').style.display='flex'; updateSelectedPreview(); const sd=document.getElementById('slip-date'); if(sd&&!sd.value) sd.value=new Date().toISOString().slice(0,10); }
-function closeRoutingModal() { document.getElementById('routing-modal').style.display='none'; }
-document.getElementById('routing-modal').addEventListener('click',function(e){ if(e.target===this) closeRoutingModal(); });
-
-// ══ TRANSFER MODAL ══
-function openTransferModal() {
-  const checked=document.querySelectorAll('.doc-checkbox:checked');
-  if(checked.length===0){ alert('Please select at least one document to transfer.'); return; }
-  document.getElementById('transfer-sel-count').textContent=checked.length+' selected';
-  // Reset
-  document.getElementById('transfer-type').value='';
-  document.getElementById('transfer-office').innerHTML='<option value="">-- Select Office --</option>';
-  document.getElementById('transfer-office').disabled=true;
-  document.getElementById('transfer-office-info').textContent='';
-  document.getElementById('transfer-staff').innerHTML='<option value="">-- Select Staff --</option>';
-  document.getElementById('transfer-staff').disabled=true;
-  document.getElementById('btn-do-transfer').disabled=true;
-  document.getElementById('transfer-modal').style.display='flex';
-}
-function closeTransferModal() { document.getElementById('transfer-modal').style.display='none'; }
-document.getElementById('transfer-modal').addEventListener('click',function(e){ if(e.target===this) closeTransferModal(); });
-
-function updateTransferOffices() {
-  const transferType=document.getElementById('transfer-type').value;
-  const officeSelect=document.getElementById('transfer-office');
-  const staffSelect=document.getElementById('transfer-staff');
-  staffSelect.innerHTML='<option value="">-- Select Staff --</option>';
-  staffSelect.disabled=true;
-  document.getElementById('btn-do-transfer').disabled=true;
-  if(!transferType){ officeSelect.innerHTML='<option value="">-- Select Office --</option>'; officeSelect.disabled=true; document.getElementById('transfer-office-info').textContent=''; return; }
-  let options='<option value="">-- Select Office --</option>';
-  for(const office of modalSortedOffices){ if(office==='No Office') continue; options+=`<option value="${office}">${office}</option>`; }
-  officeSelect.innerHTML=options;
-  if(transferType==='inside_office' && modalCurrentOffice && modalCurrentOffice!=='None' && modalCurrentOffice!==''){
-    officeSelect.value=modalCurrentOffice;
-    officeSelect.disabled=true;
-    document.getElementById('transfer-office-info').textContent='📍 Locked to your office: '+modalCurrentOffice;
-    updateTransferStaff();
-  } else {
-    officeSelect.disabled=false;
-    document.getElementById('transfer-office-info').textContent='';
-  }
-}
-
-function updateTransferStaff() {
-  const office=document.getElementById('transfer-office').value;
-  const staffSelect=document.getElementById('transfer-staff');
-  if(!office||!modalOfficesData[office]){ staffSelect.innerHTML='<option value="">-- Select Staff --</option>'; staffSelect.disabled=true; document.getElementById('btn-do-transfer').disabled=true; return; }
-  const staff=modalOfficesData[office];
-  let options='<option value="">-- Select Staff --</option>';
-  for(const s of staff){ const name=s.full_name||s.username; options+=`<option value="${s.username}">${name} (@${s.username})</option>`; }
-  staffSelect.innerHTML=options;
-  staffSelect.disabled=false;
-  document.getElementById('btn-do-transfer').disabled=true; // wait for selection
-}
-
-function onTransferStaffChange() {
-  document.getElementById('btn-do-transfer').disabled=!document.getElementById('transfer-staff').value;
-}
-
-function submitTransfer() {
-  const transferType=document.getElementById('transfer-type').value;
-  const office=document.getElementById('transfer-office').value||modalCurrentOffice;
-  const staff=document.getElementById('transfer-staff').value;
-  const selectedIds=[...document.querySelectorAll('.doc-checkbox:checked')].map(c=>c.value);
-  if(!selectedIds.length||!transferType||!staff){ alert('Please select documents, transfer type, and a staff member.'); return; }
-  const form=document.createElement('form'); form.method='POST'; form.action='/transfer-batch';
-  [['doc_ids',selectedIds.join(',')],['transfer_type',transferType],['new_office',office],['new_staff',staff]].forEach(([name,value])=>{
-    const input=document.createElement('input'); input.type='hidden'; input.name=name; input.value=value; form.appendChild(input);
-  });
-  document.body.appendChild(form); form.submit();
-}
-
-// ══ SELECTION ══
-function updateSelectedPreview() {
-  const checked=document.querySelectorAll('.doc-checkbox:checked'); const n=checked.length;
-  const countEl=document.getElementById('sel-count'); if(countEl) countEl.textContent=n+' selected';
-  const preview=document.getElementById('selected-preview'); const list=document.getElementById('selected-list');
-  if(!preview||!list) return;
-  if(n===0){ preview.style.display='none'; list.innerHTML=''; }
-  else { preview.style.display='block'; list.innerHTML=Array.from(checked).map(function(cb,i){ const row=cb.closest('tr'); const name=row?row.querySelector('.doc-name'):null; return '<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.1)">'+(i+1)+'. '+(name?name.textContent.trim():cb.value)+'</div>'; }).join(''); }
-}
-
-function updateSelection() {
-  const checked=document.querySelectorAll('.doc-checkbox:checked'); const n=checked.length;
-  document.querySelectorAll('.doc-checkbox').forEach(cb=>{ cb.closest('tr').classList.toggle('row-selected',cb.checked); });
-  const slipBtn=document.getElementById('btn-create-slip');
-  if(slipBtn){ slipBtn.style.display=n>0?'inline-flex':'none'; const b=document.getElementById('slip-sel-badge'); if(b) b.textContent=n>0?n+' doc'+(n>1?'s':''):''; }
-  const transferBtn=document.getElementById('btn-transfer');
-  if(transferBtn){ transferBtn.style.display=n>0?'inline-flex':'none'; const tb=document.getElementById('transfer-sel-badge'); if(tb) tb.textContent=n>0?n+' doc'+(n>1?'s':''):''; }
-  updateSelectedPreview();
-}
-
-const selAll=document.getElementById('select-all');
-if(selAll){ selAll.addEventListener('change',function(){ document.querySelectorAll('.doc-checkbox').forEach(cb=>{ cb.checked=this.checked; cb.closest('tr').classList.toggle('row-selected',this.checked); }); updateSelection(); }); }
-
-// ══ TIME RANGE ══
-function toggleModalTimeRange(on) {
-  document.getElementById('time-from-field').style.display=on?'':'none';
-  document.getElementById('time-to-field').style.display=on?'':'none';
-  document.getElementById('btn-auto-select').style.display=on?'':'none';
-  if(!on){ document.getElementById('time-from').value=''; document.getElementById('time-to').value=''; }
-}
-
-function autoSelectByTime() {
-  const useTime=document.getElementById('use-time-range').checked;
-  const tf=document.getElementById('time-from').value; const tt=document.getElementById('time-to').value; const sd=document.getElementById('slip-date').value;
-  if(useTime&&(!tf||!tt)){ alert('Please set both a Time From and Time To, or uncheck Include Time Range.'); return; }
-  let count=0;
-  document.querySelectorAll('.doc-checkbox').forEach(cb=>{
-    const row=cb.closest('tr'); const ts=row.dataset.createdAt||'';
-    let inRange=false;
-    if(ts){ const dateOk=!sd||ts.slice(0,10)===sd; const timeOk=ts.slice(11,16)>=tf&&ts.slice(11,16)<=tt; inRange=dateOk&&timeOk; }
-    cb.checked=inRange; row.classList.toggle('row-selected',inRange); if(inRange) count++;
-  });
-  updateSelection();
-  if(count===0){ alert('No documents found in that date/time range.'); }
-  else{ const btn=document.querySelector('.btn-time-filter'); const orig=btn.textContent; btn.textContent='✅ '+count+' selected'; setTimeout(()=>btn.textContent=orig,2000); }
-}
-
-function submitRouting() {
-  const dest=document.getElementById('route-dest').value.trim();
-  if(!dest){ const el=document.getElementById('route-dest'); el.focus(); el.style.borderColor='#FCA5A5'; el.style.background='rgba(220,38,38,.15)'; setTimeout(()=>{ el.style.borderColor=''; el.style.background=''; },2500); return; }
-  const ids=Array.from(document.querySelectorAll('.doc-checkbox:checked')).map(cb=>cb.value);
-  if(!ids.length){ alert('No documents selected.'); return; }
-  document.getElementById('routing-doc-ids').value=ids.join(',');
-  document.getElementById('routing-dest-field').value=dest;
-  document.getElementById('routing-notes').value=document.getElementById('route-notes').value;
-  document.getElementById('routing-slip-date').value=document.getElementById('slip-date').value;
-  document.getElementById('routing-time-from').value=document.getElementById('time-from').value;
-  document.getElementById('routing-time-to').value=document.getElementById('time-to').value;
-  document.getElementById('routing-form').submit();
-}
-</script>
 
 {% endblock %}
