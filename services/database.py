@@ -123,6 +123,12 @@ def _create_tables(cur):
             slip_date   TEXT,
             time_from   TEXT,
             time_to     TEXT,
+            from_office TEXT,
+            recv_token  TEXT,
+            rel_token   TEXT,
+            type        TEXT DEFAULT 'routing',
+            logged_at   TEXT,
+            status      TEXT DEFAULT 'In Transit',
             created_at  TIMESTAMP DEFAULT NOW()
         )
     """)
@@ -195,6 +201,9 @@ def _run_migrations(cur):
         "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS recv_token  TEXT",
         "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS rel_token   TEXT",
         "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS from_office TEXT",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS type        TEXT DEFAULT 'routing'",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS logged_at   TEXT",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS status      TEXT DEFAULT 'In Transit'",
     ]
     for sql in migrations:
         try:

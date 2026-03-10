@@ -63,6 +63,10 @@ function openTransferModal() {
   document.getElementById('transfer-staff').innerHTML='<option value="">-- Select Staff --</option>';
   document.getElementById('transfer-staff').disabled=true;
   document.getElementById('btn-do-transfer').disabled=true;
+  // Hide step blocks
+  hideTransferBlock('transfer-office-block');
+  hideTransferBlock('transfer-staff-block');
+  hideTransferBlock('transfer-submit-block');
   document.getElementById('transfer-modal').style.display='flex';
 }
 function closeTransferModal() { document.getElementById('transfer-modal').style.display='none'; }
@@ -87,6 +91,97 @@ function updateTransferOffices() {
   } else {
     officeSelect.disabled=false;
     document.getElementById('transfer-office-info').textContent='';
+  }
+}
+
+// Step-by-step transfer functions (matching transfer.html logic)
+function showTransferBlock(id) { document.getElementById(id).style.display=''; }
+function hideTransferBlock(id) { document.getElementById(id).style.display='none'; }
+
+function resetTransferFrom(step) {
+  const order = ['transfer-office-block','transfer-staff-block','transfer-submit-block'];
+  const from = order.indexOf(step);
+  for (let i = from; i < order.length; i++) hideTransferBlock(order[i]);
+}
+
+function onTransferTypeChangeIndex() {
+  const type = document.getElementById('transfer-type').value;
+  const officeSelect = document.getElementById('transfer-office');
+  const staffSelect = document.getElementById('transfer-staff');
+  
+  // Reset staff and submit
+  staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
+  staffSelect.disabled = true;
+  document.getElementById('btn-do-transfer').disabled = true;
+  
+  if (!type) {
+    hideTransferBlock('transfer-office-block');
+    hideTransferBlock('transfer-staff-block');
+    hideTransferBlock('transfer-submit-block');
+    return;
+  }
+  
+  if (type === 'inside_office') {
+    document.getElementById('transfer-office-label').textContent = 'Step 2: Your Office';
+    
+    // Populate and lock to current office
+    officeSelect.innerHTML = `<option value="${modalCurrentOffice}">${modalCurrentOffice}</option>`;
+    officeSelect.value = modalCurrentOffice;
+    officeSelect.disabled = true;
+    document.getElementById('transfer-office-info').textContent = '📍 Auto-selected: your office';
+    
+    showTransferBlock('transfer-office-block');
+    populateTransferStaff(modalCurrentOffice);
+    showTransferBlock('transfer-staff-block');
+  } else {
+    document.getElementById('transfer-office-label').textContent = 'Step 2: Select Office';
+    
+    // Populate all offices (excluding own office for external)
+    let options = '<option value="">-- Select Office --</option>';
+    for (const office of modalSortedOffices) {
+      if (office === 'No Office' || office === modalCurrentOffice) continue;
+      options += `<option value="${office}">${office}</option>`;
+    }
+    officeSelect.innerHTML = options;
+    officeSelect.disabled = false;
+    document.getElementById('transfer-office-info').textContent = '';
+    
+    showTransferBlock('transfer-office-block');
+  }
+}
+
+function updateTransferStaffIndex() {
+  const office = document.getElementById('transfer-office').value;
+  hideTransferBlock('transfer-staff-block');
+  hideTransferBlock('transfer-submit-block');
+  
+  if (!office) return;
+  
+  populateTransferStaff(office);
+  showTransferBlock('transfer-staff-block');
+}
+
+function populateTransferStaff(office) {
+  const staffSelect = document.getElementById('transfer-staff');
+  staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
+  
+  if (!office || !modalOfficesData[office]) return;
+  
+  const staff = modalOfficesData[office];
+  for (const s of staff) {
+    const name = s.full_name || s.username;
+    staffSelect.innerHTML += `<option value="${s.username}">${name} (@${s.username})</option>`;
+  }
+  staffSelect.disabled = false;
+}
+
+function onTransferStaffChangeIndex() {
+  const val = document.getElementById('transfer-staff').value;
+  if (val) {
+    showTransferBlock('transfer-submit-block');
+    document.getElementById('btn-do-transfer').disabled = false;
+  } else {
+    hideTransferBlock('transfer-submit-block');
   }
 }
 

@@ -244,8 +244,8 @@ def save_routing_slip(slip: dict):
                         """INSERT INTO routing_slips
                                (id, slip_no, destination, prepared_by,
                                 doc_ids, notes, slip_date, time_from, time_to,
-                                recv_token, rel_token, from_office)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                recv_token, rel_token, from_office, type, logged_at, status)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                            ON CONFLICT (id) DO UPDATE SET
                                destination = EXCLUDED.destination,
                                doc_ids     = EXCLUDED.doc_ids,
@@ -255,7 +255,10 @@ def save_routing_slip(slip: dict):
                                time_to     = EXCLUDED.time_to,
                                recv_token  = EXCLUDED.recv_token,
                                rel_token   = EXCLUDED.rel_token,
-                               from_office = EXCLUDED.from_office""",
+                               from_office = EXCLUDED.from_office,
+                               type        = EXCLUDED.type,
+                               logged_at   = EXCLUDED.logged_at,
+                               status      = EXCLUDED.status""",
                         (
                             slip["id"], slip["slip_no"], slip["destination"],
                             slip["prepared_by"], json.dumps(slip["doc_ids"]),
@@ -263,6 +266,9 @@ def save_routing_slip(slip: dict):
                             slip.get("time_from", ""), slip.get("time_to", ""),
                             slip.get("recv_token", ""), slip.get("rel_token", ""),
                             slip.get("from_office", ""),
+                            slip.get("type", "routing"),
+                            slip.get("logged_at", ""),
+                            slip.get("status", "In Transit"),
                         )
                     )
                 conn.commit()

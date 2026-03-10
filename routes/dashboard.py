@@ -216,6 +216,8 @@ def add():
                 error = "No documents to log. Add at least one document first."
             else:
                 actor = session.get("full_name") or session.get("username") or "Staff"
+                current_office = session.get("office") or "DepEd Leyte Division"
+                logged_doc_ids = []
                 for item in cart:
                     audit_log("doc_created",
                               f"doc_name={item.get('doc_name','')[:80]} sender_org={item.get('sender_org','')}",
@@ -251,10 +253,40 @@ def add():
                         "remarks":   f"Logged into system by {actor}. Batch of {len(cart)}.",
                     })
                     insert_doc(doc)
+                    logged_doc_ids.append(doc["id"])
+                
+                # Create a logging slip for the logged documents
+                from services.misc import generate_slip_no
+                from services.qr import create_slip_token
+                slip_id = str(uuid.uuid4())[:8].upper()
+                slip_no = generate_slip_no()
+                
+                # Determine destination (where it's going)
+                destination = ""
+                if cart and cart[0].get("referred_to"):
+                    destination = cart[0]["referred_to"]
+                
+                logging_slip = {
+                    "id":            slip_id,
+                    "slip_no":       slip_no,
+                    "type":          "logging",
+                    "doc_ids":       logged_doc_ids,
+                    "from_office":   current_office,
+                    "destination":   destination,
+                    "prepared_by":   actor,
+                    "logged_at":     now_str(),
+                    "slip_date":     now_str()[:10],
+                    "status":        "Logged",
+                }
+                
+                # Save the logging slip using the existing function
+                from services.misc import save_routing_slip
+                save_routing_slip(logging_slip)
+                
                 session.pop("staff_cart", None)
                 session.modified = True
                 flash(f"✅ {len(cart)} document{'s' if len(cart) != 1 else ''} logged successfully.", "success")
-                return redirect(url_for("dashboard.index"))
+                return redirect(url_for("dashboard.view_logging_slip", slip_id=slip_id))
 
         cart = session.get("staff_cart", [])
 
@@ -263,6 +295,27 @@ def add():
                            auto_ref=generate_ref(),
                            status_options=get_dropdown_options("status"),
                            category_options=get_dropdown_options("category"))
+
+
+# ── View Logging Slip ─────────────────────────────────────────────────────────────
+
+@dashboard_bp.route("/logging-slip/<slip_id>")
+@login_required
+def view_logging_slip(slip_id):
+    from services.misc import get_all_routing_slips
+    all_slips = get_all_routing_slips()
+    slip = None
+    for s in all_slips:
+        if s.get("id") == slip_id:
+            slip = s
+            break
+    if not slip:
+        flash("Logging slip not found.", "error")
+        return redirect(url_for("dashboard.index"))
+    from services.documents import get_docs_by_ids
+    docs_map = get_docs_by_ids(slip.get("doc_ids", []))
+    docs = [docs_map[did] for did in slip.get("doc_ids", []) if did in docs_map]
+    return render_template("logging_slip.html", slip=slip, docs=docs)
 
 
 # ── View / Edit / Delete ──────────────────────────────────────────────────────

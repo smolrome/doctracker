@@ -197,32 +197,43 @@
     <div class="rp-title">🔄 Transfer Documents <span class="rp-count" id="transfer-sel-count">0 selected</span></div>
     <button class="rp-close" onclick="closeTransferModal()">✕ Close</button>
   </div>
-  <div class="rp-fields" style="grid-template-columns:1fr;">
+  
+  <div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:12px 16px;margin:16px 20px 0;">
+    <p style="margin:0;font-size:13px;color:#92400E;">⚠️ The document status will change to <strong>Pending</strong> after transfer. The recipient will see this document in their dashboard.</p>
+  </div>
+  
+  <div class="rp-fields" style="grid-template-columns:1fr;padding:20px;">
+    <!-- Step 1: Transfer Type -->
     <div class="rp-field">
-      <label>📍 Transfer Type *</label>
-      <select class="rp-input" id="transfer-type" onchange="updateTransferOffices()">
+      <label>Step 1: Transfer Type *</label>
+      <select class="rp-input" id="transfer-type" onchange="onTransferTypeChangeIndex()">
         <option value="">-- Select Type --</option>
         <option value="inside_office">🏢 Internal (same office)</option>
         <option value="outside_office">🌐 External (different office)</option>
       </select>
     </div>
-    <div class="rp-field">
-      <label>🏢 Office *</label>
-      <select class="rp-input" id="transfer-office" onchange="updateTransferStaff()" disabled>
+    
+    <!-- Step 2: Office (shown for both, read-only for internal) -->
+    <div class="rp-field" id="transfer-office-block" style="display:none;">
+      <label id="transfer-office-label">Step 2: Office *</label>
+      <select class="rp-input" id="transfer-office" onchange="updateTransferStaffIndex()" disabled>
         <option value="">-- Select Office --</option>
       </select>
       <small id="transfer-office-info" style="color:#93C5FD;margin-top:4px;display:block;font-size:13px;"></small>
     </div>
-    <div class="rp-field">
-      <label>👤 Transfer to Staff *</label>
-      <select class="rp-input" id="transfer-staff" disabled onchange="onTransferStaffChange()">
+    
+    <!-- Step 3: Staff Selection -->
+    <div class="rp-field" id="transfer-staff-block" style="display:none;">
+      <label>Step 3: Transfer to Staff *</label>
+      <select class="rp-input" id="transfer-staff" disabled onchange="onTransferStaffChangeIndex()">
         <option value="">-- Select Staff --</option>
       </select>
     </div>
   </div>
-  <div class="rp-bottom">
+  
+  <div class="rp-bottom" id="transfer-submit-block" style="display:none;">
     <div class="rp-hint" style="flex:1">💡 Select documents using checkboxes first, then click Transfer.</div>
-    <button class="btn-route" onclick="submitTransfer()" id="btn-do-transfer" disabled>🔄 Transfer Documents</button>
+    <button class="btn-route" onclick="submitTransfer()" id="btn-do-transfer">🔄 Transfer Documents</button>
   </div>
 </div>
 </div>
