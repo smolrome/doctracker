@@ -586,8 +586,8 @@ function clearField(name, val='') {
       <label>📍 Transfer Type *</label>
       <select class="rp-input" id="transfer-type" onchange="updateTransferOffices()">
         <option value="">-- Select Type --</option>
-        <option value="inside_office">🏢 Inside Office (same division)</option>
-        <option value="outside_office">🌐 Outside Office (external)</option>
+        <option value="inside_office">🏢 Internal</option>
+        <option value="outside_office">🌐 External</option>
       </select>
     </div>
     <div class="rp-field">
@@ -599,7 +599,7 @@ function clearField(name, val='') {
     </div>
     <div class="rp-field">
       <label>👤 Transfer to Staff *</label>
-      <select class="rp-input" id="transfer-staff" disabled>
+      <select class="rp-input" id="transfer-staff" disabled onchange="onTransferStaffChange()">
         <option value="">-- Select Staff --</option>
       </select>
     </div>
@@ -615,6 +615,15 @@ function clearField(name, val='') {
   </div>
 </div>
 </div>
+
+<!-- Store data for transfer modal -->
+<script type="application/json" id="modal-offices-data">{{ offices_dict | tojson | safe }}</script>
+<script type="application/json" id="modal-sorted-offices">{{ sorted_offices | tojson | safe }}</script>
+<script>
+  const modalOfficesData = JSON.parse(document.getElementById('modal-offices-data').textContent || '{}');
+  const modalSortedOffices = JSON.parse(document.getElementById('modal-sorted-offices').textContent || '[]');
+  const modalCurrentOffice = '{{ current_office | safe }}';
+</script>
 
 <!-- Hidden form for transfer submission -->
 <form method="post" action="/routing-slip/create" id="routing-form" style="display:none;">
@@ -943,109 +952,93 @@ document.getElementById('transfer-modal').addEventListener('click', function(e) 
 });
 
 function updateTransferOffices() {
-  const type = document.getElementById('transfer-type').value;
+  const transferType = document.getElementById('transfer-type').value;
   const officeSelect = document.getElementById('transfer-office');
   const staffSelect = document.getElementById('transfer-staff');
-  
+
   staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
   staffSelect.disabled = true;
   document.getElementById('btn-do-transfer').disabled = true;
-  
-  if (!type) {
+
+  if (!transferType) {
     officeSelect.innerHTML = '<option value="">-- Select Office --</option>';
     officeSelect.disabled = true;
     return;
   }
-  
-  // If inside office, directly show staff from current office
-  if (type === 'inside_office') {
-    officeSelect.innerHTML = '<option value="">' + (transferCurrentOffice || 'Current Office') + '</option>';
-    officeSelect.disabled = true;
-    // Show info message - document's current location
-    document.getElementById('transfer-office-info').textContent = '📍 Document is in: ' + (transferCurrentOffice || 'Current Office') + ' (locked for inside office transfer)';
-    // Show staff from current office
-    const currentOfficeStaff = transferOfficesData[transferCurrentOffice] || [];
-    let options = '<option value="">-- Select Staff --</option>';
-    for (const s of currentOfficeStaff) {
-      const name = s.full_name || s.username;
-      options += '<option value="' + s.username + '">' + name + ' (@' + s.username + ')</option>';
-    }
-    staffSelect.innerHTML = options;
-    staffSelect.disabled = false;
-    return;
-  }
-  
-  // For outside office, show all offices
+
   let options = '<option value="">-- Select Office --</option>';
-  for (const office in transferOfficesData) {
-    options += '<option value="' + office + '">' + office + '</option>';
+  for (const office of modalSortedOffices) {
+    if (office === "No Office") continue;
+    options += `<option value="${office}">${office}</option>`;
   }
   officeSelect.innerHTML = options;
-  officeSelect.disabled = false;
-  document.getElementById('transfer-office-info').textContent = '';
+
+  if (transferType === 'inside_office' && modalCurrentOffice && modalCurrentOffice !== 'None') {
+    officeSelect.value = modalCurrentOffice;
+    officeSelect.disabled = true;
+    document.getElementById('transfer-office-info').textContent =
+      '📍 Locked to current office: ' + modalCurrentOffice;
+    updateTransferStaff();
+  } else {
+    officeSelect.disabled = false;
+    document.getElementById('transfer-office-info').textContent = '';
+  }
 }
 
 function updateTransferStaff() {
   const office = document.getElementById('transfer-office').value;
   const staffSelect = document.getElementById('transfer-staff');
-  
-  if (!office || !transferOfficesData[office]) {
+
+  if (!office || !modalOfficesData[office]) {
     staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
     staffSelect.disabled = true;
     document.getElementById('btn-do-transfer').disabled = true;
     return;
   }
-  
-  const staff = transferOfficesData[office];
+
+  const staff = modalOfficesData[office];
   let options = '<option value="">-- Select Staff --</option>';
   for (const s of staff) {
     const name = s.full_name || s.username;
-    options += '<option value="' + s.username + '">' + name + ' (@' + s.username + ')</option>';
+    options += `<option value="${s.username}">${name} (@${s.username})</option>`;
   }
   staffSelect.innerHTML = options;
   staffSelect.disabled = false;
+  // Don't enable submit yet — wait for staff selection
+  document.getElementById('btn-do-transfer').disabled = true;
 }
 
-function updateTransferStaff() {
-  const office = document.getElementById('transfer-office').value;
-  const staffSelect = document.getElementById('transfer-staff');
-  
-  if (!office || !transferOfficesData[office]) {
-    staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
-    staffSelect.disabled = true;
-    document.getElementById('btn-do-transfer').disabled = true;
-    return;
-  }
-  
-  const staff = transferOfficesData[office];
-  let options = '<option value="">-- Select Staff --</option>';
-  for (const s of staff) {
-    const name = s.full_name || s.username;
-    options += '<option value="' + s.username + '">' + name + ' (@' + s.username + ')</option>';
-  }
-  staffSelect.innerHTML = options;
-  staffSelect.disabled = false;
+function onTransferStaffChange() {
+  const staff = document.getElementById('transfer-staff').value;
+  document.getElementById('btn-do-transfer').disabled = !staff;
 }
 
 function submitTransfer() {
-  const type = document.getElementById('transfer-type').value;
+  const transferType = document.getElementById('transfer-type').value;
+  const office = document.getElementById('transfer-office').value || modalCurrentOffice;
   const staff = document.getElementById('transfer-staff').value;
-  
-  if (!type || !staff) {
-    alert('Please select transfer type and staff member.');
+  const selectedIds = [...document.querySelectorAll('.doc-checkbox:checked')].map(c => c.value);
+
+  if (!selectedIds.length || !transferType || !staff) {
+    alert('Please select documents, transfer type, and a staff member.');
     return;
   }
-  
-  const checked = document.querySelectorAll('.doc-checkbox:checked');
-  const ids = Array.from(checked).map(cb => cb.value);
-  
-  document.getElementById('transfer-doc-ids').value = ids.join(',');
-  document.getElementById('transfer-type-field').value = type;
-  document.getElementById('transfer-staff-field').value = staff;
-  
-  if (confirm('Transfer ' + ids.length + ' document(s) to ' + staff + '?')) {
-    document.getElementById('transfer-form').submit();
-  }
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/transfer-batch';
+
+  [['doc_ids', selectedIds.join(',')], ['transfer_type', transferType],
+   ['new_office', office], ['new_staff', staff]].forEach(([name, value]) => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
+  });
+
+  document.body.appendChild(form);
+  form.submit();
 }
 
 function updateSelectedPreview() {
