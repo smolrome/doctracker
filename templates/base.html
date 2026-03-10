@@ -121,16 +121,25 @@
   </button>
 </nav>
 
-<!-- ═══ Floating Notification for Pending Documents ═══ -->
+<!-- ═══ Floating Notification + Modals (staff/admin only) ═══ -->
 {% if logged_in and current_role in ('staff', 'admin') %}
-<div id="floating-notification" style="position:fixed;bottom:28px;right:28px;z-index:7000;display:none;cursor:pointer;transition:transform .18s,box-shadow .18s;" onclick="showPendingDocumentsModal()">
-    <div style="width:56px;height:56px;background:linear-gradient(135deg,#5B21B6,#7C3AED);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(124,58,237,.45);position:relative;">
-        <span style="font-size:24px;">📥</span>
-        <span id="pending-badge" style="position:absolute;top:-4px;right:-4px;background:#EF4444;color:white;font-size:11px;font-weight:900;padding:2px 7px;border-radius:20px;border:2px solid white;">0</span>
-    </div>
-    <div style="background:#0A2540;color:white;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;margin-top:8px;text-align:center;white-space:nowrap;">Documents to Receive</div>
+
+<!--
+  bottom: 104px = 28px (OQS FAB bottom) + 56px (OQS FAB height) + 20px gap
+  Sits cleanly above the OQS clipboard FAB from index.html.
+  No text label — tooltip shown via CSS on hover instead.
+  z-index: 7000 — above content (300) but below all modals (8000+).
+-->
+<div id="floating-notification"
+     class="fab-notify"
+     style="display:none;"
+     onclick="showPendingDocumentsModal()"
+     title="Documents to Receive">
+  <div class="fab-notify-circle">
+    <span>📥</span>
+    <span id="pending-badge" class="fab-notify-badge">0</span>
+  </div>
 </div>
-{% endif %}
 
 <!-- Pending Documents Modal -->
 <div id="pending-documents-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(10,37,64,0.8);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px;">
@@ -169,6 +178,8 @@
         </div>
     </div>
 </div>
+
+{% endif %}
 
 <!-- ═══ MOBILE DRAWER ═══ -->
 <div class="nav-drawer" id="nav-drawer">

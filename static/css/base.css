@@ -548,8 +548,75 @@ td { padding: 14px 16px; font-size: var(--fs-base); vertical-align: middle; }
 .loader-step.done { background: var(--loader-accent, #0E7490); opacity: .4; }
 
 /* ════════════════════════════════════
-   RESPONSIVE
+   FLOATING NOTIFICATION FAB
+   Stacks above the OQS FAB (index.html)
+   OQS FAB: bottom 28px + 56px height = 84px total → we add 20px gap → 104px
 ════════════════════════════════════ */
+.fab-notify {
+  position: fixed;
+  bottom: 104px;
+  right: 28px;
+  z-index: 7000;
+  cursor: pointer;
+  transition: transform .18s, box-shadow .18s;
+}
+.fab-notify-circle {
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(135deg, #5B21B6, #7C3AED);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 24px rgba(124,58,237,.45);
+  position: relative;
+  font-size: 22px;
+  transition: transform .18s, box-shadow .18s;
+}
+.fab-notify:hover .fab-notify-circle {
+  transform: scale(1.1);
+  box-shadow: 0 10px 32px rgba(124,58,237,.65);
+}
+.fab-notify-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #EF4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 20px;
+  border: 2px solid white;
+  min-width: 20px;
+  text-align: center;
+  line-height: 1.4;
+}
+/* Tooltip — slides in from the right side on hover */
+.fab-notify::after {
+  content: 'Documents to Receive';
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #0A2540;
+  color: white;
+  padding: 7px 13px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s;
+  font-family: 'Source Sans 3', sans-serif;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25);
+}
+.fab-notify:hover::after {
+  opacity: 1;
+}
+
+
 /* ── TABLET ── */
 @media (max-width: 768px) {
   :root { --nav-h: 60px; --fs-base: 16px; --fs-lg: 18px; }
