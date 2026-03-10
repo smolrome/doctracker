@@ -7,6 +7,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 
 from services.auth import (
     create_user, delete_user, get_all_users, set_user_active,
+    update_user_password,
 )
 from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
@@ -134,6 +135,41 @@ def enable_user_route(username):
               username=session.get("username", "admin"),
               ip=get_client_ip())
     flash(f"Account '{username}' has been re-enabled.", "success")
+    return redirect(url_for("admin.manage_users"))
+
+
+@admin_bp.route("/change-password/<username>", methods=["POST"])
+@admin_required
+def change_user_password(username):
+    """Admin can change any user's password."""
+    new_password = request.form.get("new_password", "").strip()
+    confirm_password = request.form.get("confirm_password", "").strip()
+    
+    if username == ADMIN_USERNAME:
+        flash("Cannot change the main admin password through this interface.", "error")
+        return redirect(url_for("admin.manage_users"))
+    
+    if not new_password:
+        flash("Password cannot be empty.", "error")
+        return redirect(url_for("admin.manage_users"))
+    
+    if new_password != confirm_password:
+        flash("Passwords do not match.", "error")
+        return redirect(url_for("admin.manage_users"))
+    
+    if len(new_password) < 6:
+        flash("Password must be at least 6 characters.", "error")
+        return redirect(url_for("admin.manage_users"))
+    
+    success, error = update_user_password(username, new_password)
+    if success:
+        audit_log("user_password_changed", f"password_changed_for={username}",
+                  username=session.get("username", "admin"),
+                  ip=get_client_ip())
+        flash(f"Password for '{username}' has been changed.", "success")
+    else:
+        flash(f"Error: {error}", "error")
+    
     return redirect(url_for("admin.manage_users"))
 
 

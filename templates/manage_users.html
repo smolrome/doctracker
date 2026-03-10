@@ -42,6 +42,21 @@
     background:#FEE2E2;color:#DC2626;border:2px solid #FECACA;cursor:pointer;
     font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;}
   .btn-del-sm:hover{background:#DC2626;color:#fff;}
+  .btn-pwd{padding:8px 14px;border-radius:8px;font-size:14px;font-weight:700;
+    background:#EDE9FE;color:#5B21B6;border:2px solid #A78BFA;cursor:pointer;
+    font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;}
+  .btn-pwd:hover{background:#5B21B6;color:#fff;}
+
+  .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:1000;}
+  .modal-overlay.active{display:flex;}
+  .modal{background:#fff;border-radius:12px;padding:24px;max-width:400px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,0.2);}
+  .modal h3{margin:0 0 16px 0;color:var(--navy);font-size:18px;}
+  .modal-actions{display:flex;gap:10px;margin-top:20px;}
+  .modal-actions button{flex:1;}
+  .form-group{margin-bottom:16px;}
+  .form-group label{display:block;margin-bottom:6px;font-weight:700;color:var(--navy);font-size:14px;}
+  .form-group input{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box;}
+  .form-group input:focus{outline:none;border-color:var(--teal);}
 
   .info-box{border-radius:12px;padding:16px 18px;margin-bottom:18px;display:flex;gap:12px;align-items:flex-start;}
   .info-box .ii{font-size:22px;flex-shrink:0;}
@@ -55,7 +70,7 @@
   @media(max-width:600px){
     .user-row{flex-direction:column;align-items:flex-start;}
     .user-actions{width:100%;}
-    .btn-dis,.btn-ena,.btn-del-sm{flex:1;justify-content:center;}
+    .btn-dis,.btn-ena,.btn-del-sm,.btn-pwd{flex:1;justify-content:center;}
   }
   @media(max-width:480px){
     .user-info{flex-wrap:wrap;}
@@ -152,6 +167,10 @@
         {% endif %}
 
         {% if user.username != admin_username %}
+        <button type="button" class="btn-pwd" onclick="openPwdModal('{{ user.username }}')">🔑 Password</button>
+        {% endif %}
+
+        {% if user.username != admin_username %}
         <form method="post" action="/delete-user/{{ user.username }}" style="margin:0;"
               onsubmit="return confirm('Permanently delete {{ user.username }}? This cannot be undone.')">
           <button type="submit" class="btn-del-sm">🗑 Delete</button>
@@ -167,5 +186,51 @@
     </div>
   {% endif %}
 </div>
+
+<!-- Password Change Modal -->
+<div id="pwdModal" class="modal-overlay" onclick="closePwdModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>🔑 Change Password</h3>
+    <p style="margin:0 0 16px 0;color:var(--muted);font-size:14px;">
+      Enter a new password for user: <strong id="pwdUser"></strong>
+    </p>
+    <form method="post" id="pwdForm" action="">
+      <div class="form-group">
+        <label for="new_password">New Password</label>
+        <input type="password" id="new_password" name="new_password" required minlength="6" placeholder="At least 6 characters">
+      </div>
+      <div class="form-group">
+        <label for="confirm_password">Confirm Password</label>
+        <input type="password" id="confirm_password" name="confirm_password" required minlength="6" placeholder="Re-enter password">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closePwdModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Change Password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openPwdModal(username) {
+  document.getElementById('pwdUser').textContent = username;
+  document.getElementById('pwdForm').action = '/change-password/' + username;
+  document.getElementById('pwdModal').classList.add('active');
+  document.getElementById('new_password').focus();
+}
+
+function closePwdModal(event) {
+  document.getElementById('pwdModal').classList.remove('active');
+  document.getElementById('new_password').value = '';
+  document.getElementById('confirm_password').value = '';
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closePwdModal();
+  }
+});
+</script>
 
 {% endblock %}

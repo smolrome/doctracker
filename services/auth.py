@@ -216,6 +216,39 @@ def delete_user(username: str):
         _save_users_json([u for u in _load_users_json() if u["username"] != username])
 
 
+def update_user_password(username: str, new_password: str) -> tuple[bool, str | None]:
+    """Update a user's password. Returns (success, error_message)."""
+    if not new_password or len(new_password.strip()) < 1:
+        return False, "Password cannot be empty."
+    
+    hashed = hash_password(new_password)
+    
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE users SET password_hash=%s WHERE username=%s",
+                        (hashed, username.lower().strip())
+                    )
+            return True, None
+        except Exception as e:
+            print(f"update_user_password error: {e}")
+            return False, f"Database error: {e}"
+    else:
+        users = _load_users_json()
+        found = False
+        for u in users:
+            if u["username"] == username.lower().strip():
+                u["password_hash"] = hashed
+                found = True
+                break
+        if not found:
+            return False, "User not found."
+        _save_users_json(users)
+        return True, None
+
+
 def update_last_login(username: str):
     if USE_DB:
         try:
