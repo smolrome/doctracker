@@ -595,6 +595,7 @@ function clearField(name, val='') {
       <select class="rp-input" id="transfer-office" onchange="updateTransferStaff()" disabled>
         <option value="">-- Select Office --</option>
       </select>
+      <small id="transfer-office-info" style="color: var(--teal); margin-top: 4px; display: block;"></small>
     </div>
     <div class="rp-field">
       <label>👤 Transfer to Staff *</label>
@@ -924,6 +925,7 @@ function openTransferModal() {
   document.getElementById('transfer-type').value = '';
   document.getElementById('transfer-office').innerHTML = '<option value="">-- Select Office --</option>';
   document.getElementById('transfer-office').disabled = true;
+  document.getElementById('transfer-office-info').textContent = '';
   document.getElementById('transfer-staff').innerHTML = '<option value="">-- Select Staff --</option>';
   document.getElementById('transfer-staff').disabled = true;
   document.getElementById('btn-do-transfer').disabled = true;
@@ -959,6 +961,8 @@ function updateTransferOffices() {
   if (type === 'inside_office') {
     officeSelect.innerHTML = '<option value="">' + (transferCurrentOffice || 'Current Office') + '</option>';
     officeSelect.disabled = true;
+    // Show info message - document's current location
+    document.getElementById('transfer-office-info').textContent = '📍 Document is in: ' + (transferCurrentOffice || 'Current Office') + ' (locked for inside office transfer)';
     // Show staff from current office
     const currentOfficeStaff = transferOfficesData[transferCurrentOffice] || [];
     let options = '<option value="">-- Select Staff --</option>';
@@ -978,6 +982,7 @@ function updateTransferOffices() {
   }
   officeSelect.innerHTML = options;
   officeSelect.disabled = false;
+  document.getElementById('transfer-office-info').textContent = '';
 }
 
 function updateTransferStaff() {

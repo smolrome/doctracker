@@ -39,6 +39,17 @@ def _get_staff_by_office(current_username: str = ""):
     return offices
 
 
+def _get_user_office(username: str) -> str:
+    """Get the office of a specific user from the database."""
+    if not username:
+        return ""
+    all_users = get_all_users()
+    for u in all_users:
+        if u.get("username") == username:
+            return u.get("office", "") or ""
+    return ""
+
+
 @dashboard_bp.route("/")
 def index():
     role = session.get("role", "")
@@ -132,7 +143,7 @@ def index():
         page=page, total_pages=total_pages,
         per_page=per_page, total=total,
         staff_by_office=_get_staff_by_office(current_username),
-        current_office=session.get("office", ""))
+        current_office=_get_user_office(current_username))
 
 
 @dashboard_bp.route("/dashboard")
