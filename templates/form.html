@@ -404,12 +404,103 @@
 
 <!-- Floating Cart Button -->
 {% if cart %}
-<a href="#cart-section" class="floating-cart" onclick="document.getElementById('cart-section').scrollIntoView({behavior:'smooth'})">
-  <span class="floating-cart-icon">📋</span>
+<div class="floating-cart" onclick="toggleCartModal()">
+  <span class="floating-cart-icon">🛒</span>
   <span class="floating-cart-badge">{{ cart|length }}</span>
   <span class="floating-cart-tooltip">View Documents ({{ cart|length }})</span>
-</a>
+</div>
+
+<!-- Cart Modal -->
+<div id="cart-modal" class="cart-modal" onclick="closeCartModal(event)">
+  <div class="cart-modal-content" onclick="event.stopPropagation()">
+    <div class="cart-modal-header">
+      <h2>📋 Documents to Log ({{ cart|length }})</h2>
+      <button class="cart-modal-close" onclick="closeCartModal(null)">&times;</button>
+    </div>
+    <div class="cart-modal-body">
+      {% for item in cart %}
+      <div class="cart-item">
+        <div class="cart-item-num">#{{ loop.index }}</div>
+        <div class="cart-item-body">
+          <div class="cart-item-name">{{ item.doc_name }}
+            {% if item.category %}<span class="cat-tag">{{ item.category }}</span>{% endif %}
+          </div>
+          <div class="cart-item-meta">
+            {% if item.sender_org %}<strong>From:</strong> {{ item.sender_org }}<br/>{% endif %}
+            {% if item.sender_name %}<strong>Sender:</strong> {{ item.sender_name }}<br/>{% endif %}
+            {% if item.referred_to %}<strong>Referred To:</strong> {{ item.referred_to }}<br/>{% endif %}
+            {% if item.description %}<strong>Remarks:</strong> {{ item.description[:80] }}{% if item.description|length > 80 %}…{% endif %}{% endif %}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <form method="post" style="margin:0;">
+            <input type="hidden" name="_action" value="edit"/>
+            <input type="hidden" name="tmp_id" value="{{ item.tmp_id }}"/>
+            <button type="submit" class="btn-edit">✏️ Edit</button>
+          </form>
+          <form method="post" style="margin:0;" onsubmit="return confirm('Are you sure you want to remove this document from the log list?');">
+            <input type="hidden" name="_action" value="remove"/>
+            <input type="hidden" name="tmp_id" value="{{ item.tmp_id }}"/>
+            <button type="submit" class="btn-remove">✕ Remove</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="cart-modal-footer">
+      <form method="post" id="submit-all-form">
+        <input type="hidden" name="_action" value="submit_all"/>
+        <button type="submit" class="btn-submit-all" onclick="showLoading('Logging all documents...')">
+          💾 Log All {{ cart|length }} Document{{ 's' if cart|length != 1 else '' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
 {% endif %}
+
+<script>
+function toggleCartModal() {
+  const modal = document.getElementById('cart-modal');
+  if (modal) {
+    modal.classList.toggle('active');
+  }
+}
+function closeCartModal(event) {
+  const modal = document.getElementById('cart-modal');
+  if (modal) {
+    if (event === null || event.target === modal) {
+      modal.classList.remove('active');
+    }
+  }
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeCartModal(null);
+  }
+});
+</script>
+
+<style>
+.cart-modal{display:none;position:fixed;inset:0;background:rgba(10,37,64,.6);
+  backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;
+  padding:20px;}
+.cart-modal.active{display:flex;}
+.cart-modal-content{background:#fff;border-radius:20px;max-width:600px;width:100%;
+  max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);
+  animation:modalIn .2s ease-out;}
+@keyframes modalIn{from{opacity:0;transform:scale(.95) translateY(10px);}}
+.cart-modal-header{display:flex;align-items:center;justify-content:space-between;
+  padding:20px 24px;border-bottom:2px solid var(--border);}
+.cart-modal-header h2{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;
+  color:var(--navy);margin:0;}
+.cart-modal-close{background:none;border:none;font-size:32px;color:var(--muted);
+  cursor:pointer;line-height:1;padding:0;transition:color .15s;}
+.cart-modal-close:hover{color:var(--danger);}
+.cart-modal-body{padding:20px;overflow-y:auto;flex:1;}
+.cart-modal-footer{padding:16px 24px;border-top:2px solid var(--border);
+  background:#F8FAFC;border-radius:0 0 20px 20px;}
+</style>
 
 <!-- Step indicator -->
 <div class="steps-indicator">
@@ -474,7 +565,7 @@
       <input type="hidden" name="tmp_id" value="{{ item.tmp_id }}"/>
       <button type="submit" class="btn-edit">✏️ Edit</button>
     </form>
-    <form method="post" style="margin:0;">
+    <form method="post" style="margin:0;" onsubmit="return confirm('Are you sure you want to remove this document from the log list?');">
       <input type="hidden" name="_action" value="remove"/>
       <input type="hidden" name="tmp_id" value="{{ item.tmp_id }}"/>
       <button type="submit" class="btn-remove">✕ Remove</button>
