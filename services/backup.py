@@ -342,6 +342,235 @@ def create_backup() -> dict:
     return backup
 
 
+def create_selective_backup(export_items: list) -> dict:
+    """Collect selected data from the database into a single dict."""
+    backup = {
+        "meta": {
+            "version":    BACKUP_VERSION,
+            "created_at": datetime.now().isoformat(),
+            "app":        "DocTracker - DepEd Leyte Division",
+            "export_type": "selective",
+            "items":      export_items,
+        },
+    }
+    
+    counts = {}
+    if "documents" in export_items:
+        backup["documents"] = _export_documents()
+        counts["documents"] = len(backup["documents"])
+    if "users" in export_items:
+        backup["users"] = _export_users()
+        counts["users"] = len(backup["users"])
+    if "routing_slips" in export_items:
+        backup["routing_slips"] = _export_routing_slips()
+        counts["routing_slips"] = len(backup["routing_slips"])
+    if "saved_offices" in export_items:
+        backup["saved_offices"] = _export_saved_offices()
+        counts["saved_offices"] = len(backup["saved_offices"])
+    if "office_traffic" in export_items:
+        backup["office_traffic"] = _export_office_traffic()
+        counts["office_traffic"] = len(backup["office_traffic"])
+    
+    backup["meta"]["counts"] = counts
+    return backup
+
+
+def create_selective_excel_backup(export_items: list) -> bytes:
+    """Export selected data to a formatted multi-sheet Excel workbook."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = Workbook()
+    
+    NAVY   = "0A2540"
+    WHITE  = "FFFFFF"
+    GRAY   = "F8FAFC"
+    LIGHT  = "EFF6FF"
+    
+    hdr_font    = Font(bold=True, color=WHITE, name="Arial", size=10)
+    hdr_fill    = PatternFill("solid", fgColor=NAVY)
+    title_font  = Font(bold=True, color=NAVY, name="Arial", size=13)
+    cell_font   = Font(name="Arial", size=9)
+    alt_fill    = PatternFill("solid", fgColor=GRAY)
+    left        = Alignment(horizontal="left",   vertical="center", wrap_text=True)
+    center      = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    thin_border = Border(bottom=Side(style="thin", color="CBD5E1"))
+    
+    def style_header_row(ws, row_num, col_count):
+        for c in range(1, col_count + 1):
+            cell = ws.cell(row=row_num, column=c)
+            cell.font  = hdr_font
+            cell.fill  = hdr_fill
+            cell.alignment = center
+            cell.border    = thin_border
+
+    def style_data_row(ws, row_num, col_count, alternate=False):
+        for c in range(1, col_count + 1):
+            cell = ws.cell(row=row_num, column=c)
+            cell.font      = cell_font
+            cell.alignment = left
+            cell.border    = thin_border
+            if alternate:
+                cell.fill = alt_fill
+
+    def set_col_widths(ws, widths):
+        for i, w in enumerate(widths, 1):
+            ws.column_dimensions[get_column_letter(i)].width = w
+
+    def add_title(ws, title, subtitle=""):
+        ws.row_dimensions[1].height = 32
+        ws["A1"] = title
+        ws["A1"].font      = title_font
+        ws["A1"].alignment = left
+        if subtitle:
+            ws["A2"] = subtitle
+            ws["A2"].font      = Font(name="Arial", size=9, color="64748B", italic=True)
+            ws["A2"].alignment = left
+        ws["A1"].fill = PatternFill("solid", fgColor=LIGHT)
+
+    now = datetime.now().strftime("%B %d, %Y %I:%M %p")
+    
+    # Documents sheet
+    if "documents" in export_items:
+        docs = _export_documents()
+        wd = wb.create_sheet("Documents")
+        wb.active = wd
+        wd.sheet_view.showGridLines = False
+        add_title(wd, "Documents", f"Exported {now}")
+        
+        doc_headers = ["#", "Date Received", "Received By", "Unit / Office",
+                       "Source / Sender", "Document / Content",
+                       "Referred To", "Status", "Category", "Reference No."]
+        doc_widths  = [5, 14, 22, 30, 26, 48, 22, 14, 16, 14]
+        
+        for c, h in enumerate(doc_headers, 1):
+            wd.cell(row=3, column=c, value=h)
+        style_header_row(wd, 3, len(doc_headers))
+        set_col_widths(wd, doc_widths)
+        wd.freeze_panes = "A4"
+        
+        active_docs = [d for d in docs if not d.get("deleted")]
+        for r, doc in enumerate(active_docs, start=4):
+            alt = (r % 2 == 0)
+            row = [r - 3, doc.get("date_received", ""), doc.get("received_by", ""),
+                   doc.get("sender_org", ""), doc.get("sender_name", ""),
+                   doc.get("doc_name", ""), doc.get("referred_to", ""),
+                   doc.get("status", ""), doc.get("category", ""), doc.get("doc_id", "")]
+            for c, val in enumerate(row, 1):
+                wd.cell(row=r, column=c, value=val)
+            style_data_row(wd, r, len(doc_headers), alt)
+    
+    # Trash sheet
+    if "documents" in export_items:
+        docs = _export_documents()
+        deleted = [d for d in docs if d.get("deleted")]
+        if deleted:
+            wt = wb.create_sheet("Trash")
+            wt.sheet_view.showGridLines = False
+            add_title(wt, "Deleted Documents (Trash)", f"Exported {now}")
+            trash_headers = ["#", "ID", "Reference No.", "Document", "Status", "Deleted By", "Deleted At"]
+            for c, h in enumerate(trash_headers, 1):
+                wt.cell(row=3, column=c, value=h)
+            style_header_row(wt, 3, len(trash_headers))
+            for r, doc in enumerate(deleted, start=4):
+                row = [r - 3, doc.get("id",""), doc.get("doc_id",""), doc.get("doc_name",""),
+                       doc.get("status",""), doc.get("deleted_by",""), (doc.get("deleted_at","") or "")[:16]]
+                for c, val in enumerate(row, 1):
+                    wt.cell(row=r, column=c, value=val).font = cell_font
+    
+    # Routing Slips sheet
+    if "routing_slips" in export_items:
+        slips = _export_routing_slips()
+        wr = wb.create_sheet("Routing Slips")
+        wr.sheet_view.showGridLines = False
+        add_title(wr, "Routing Slips", f"Exported {now}")
+        
+        slip_headers = ["#", "Slip No.", "Date", "Destination", "Prepared By", "No. of Docs", "Notes"]
+        for c, h in enumerate(slip_headers, 1):
+            wr.cell(row=3, column=c, value=h)
+        style_header_row(wr, 3, len(slip_headers))
+        wr.freeze_panes = "A4"
+        
+        for r, slip in enumerate(slips, start=4):
+            alt = (r % 2 == 0)
+            row = [r - 3, slip.get("slip_no", ""), slip.get("slip_date", "") or (slip.get("created_at","") or "")[:10],
+                   slip.get("destination", ""), slip.get("prepared_by", ""), len(slip.get("doc_ids", [])), slip.get("notes", "")]
+            for c, val in enumerate(row, 1):
+                wr.cell(row=r, column=c, value=val)
+            style_data_row(wr, r, len(slip_headers), alt)
+    
+    # Users sheet
+    if "users" in export_items:
+        users = _export_users()
+        wu = wb.create_sheet("Users")
+        wu.sheet_view.showGridLines = False
+        add_title(wu, "User Accounts", f"Exported {now}")
+        
+        user_headers = ["#", "Username", "Full Name", "Role", "Office", "Active", "Last Login"]
+        for c, h in enumerate(user_headers, 1):
+            wu.cell(row=3, column=c, value=h)
+        style_header_row(wu, 3, len(user_headers))
+        wu.freeze_panes = "A4"
+        
+        for r, u in enumerate(users, start=4):
+            alt = (r % 2 == 0)
+            row = [r - 3, u.get("username", ""), u.get("full_name", ""), u.get("role", ""),
+                   u.get("office", ""), "Yes" if u.get("active", True) else "No", str(u.get("last_login", ""))[:16]]
+            for c, val in enumerate(row, 1):
+                wu.cell(row=r, column=c, value=val)
+            style_data_row(wu, r, len(user_headers), alt)
+    
+    # Saved Offices sheet
+    if "saved_offices" in export_items:
+        offices = _export_saved_offices()
+        wo = wb.create_sheet("Saved Offices")
+        wo.sheet_view.showGridLines = False
+        add_title(wo, "Saved Offices", f"Exported {now}")
+        
+        office_headers = ["#", "Office Slug", "Office Name", "Created By", "Created At"]
+        for c, h in enumerate(office_headers, 1):
+            wo.cell(row=3, column=c, value=h)
+        style_header_row(wo, 3, len(office_headers))
+        
+        for r, o in enumerate(offices, start=4):
+            alt = (r % 2 == 0)
+            row = [r - 3, o.get("office_slug",""), o.get("office_name",""), o.get("created_by",""), str(o.get("created_at",""))[:16]]
+            for c, val in enumerate(row, 1):
+                wo.cell(row=r, column=c, value=val)
+            style_data_row(wo, r, len(office_headers), alt)
+    
+    # Office Traffic sheet
+    if "office_traffic" in export_items:
+        traffic = _export_office_traffic()
+        if traffic:
+            wt = wb.create_sheet("Office Traffic")
+            wt.sheet_view.showGridLines = False
+            add_title(wt, "Office Traffic Log", f"Exported {now}")
+            
+            traffic_headers = ["#", "Office", "Event Type", "Document ID", "Client Username", "Scanned At"]
+            for c, h in enumerate(traffic_headers, 1):
+                wt.cell(row=3, column=c, value=h)
+            style_header_row(wt, 3, len(traffic_headers))
+            
+            for r, t in enumerate(traffic, start=4):
+                alt = (r % 2 == 0)
+                row = [r - 3, t.get("office_name", ""), t.get("event_type", ""), t.get("doc_id", ""),
+                       t.get("client_username", ""), str(t.get("scanned_at", ""))[:16]]
+                for c, val in enumerate(row, 1):
+                    wt.cell(row=r, column=c, value=val)
+                style_data_row(wt, r, len(traffic_headers), alt)
+    
+    # Remove default empty sheet
+    if "Sheet" in wb.sheetnames:
+        wb.remove(wb["Sheet"])
+    
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.getvalue()
+
+
 def _export_documents() -> list[dict]:
     """Export ALL documents including soft-deleted ones."""
     if USE_DB:

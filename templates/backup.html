@@ -247,6 +247,70 @@
     </div>
   </div>
 
+  <!-- CUSTOM EXPORT -->
+  <div class="card">
+    <div class="card-title">
+      📥 Custom Export
+      <span class="badge badge-blue">Choose What to Export</span>
+    </div>
+    <p class="card-desc">
+      Select specific data to export and choose your preferred file format.
+    </p>
+
+    <form method="POST" action="{{ url_for('backup.backup_export') }}">
+      <!-- What to export -->
+      <div style="margin-bottom:20px;">
+        <div style="font-weight:700;color:var(--navy);margin-bottom:10px;">Select data to export:</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 14px;
+                        background:var(--paper);border:1.5px solid var(--border);border-radius:8px;">
+            <input type="checkbox" name="export_docs" checked style="accent-color:var(--teal);width:18px;height:18px;">
+            <span style="font-weight:600;">📄 Documents</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 14px;
+                        background:var(--paper);border:1.5px solid var(--border);border-radius:8px;">
+            <input type="checkbox" name="export_users" checked style="accent-color:var(--teal);width:18px;height:18px;">
+            <span style="font-weight:600;">👥 Users</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 14px;
+                        background:var(--paper);border:1.5px solid var(--border);border-radius:8px;">
+            <input type="checkbox" name="export_slips" checked style="accent-color:var(--teal);width:18px;height:18px;">
+            <span style="font-weight:600;">📋 Routing Slips</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 14px;
+                        background:var(--paper);border:1.5px solid var(--border);border-radius:8px;">
+            <input type="checkbox" name="export_offices" checked style="accent-color:var(--teal);width:18px;height:18px;">
+            <span style="font-weight:600;">🏢 Saved Offices</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 14px;
+                        background:var(--paper);border:1.5px solid var(--border);border-radius:8px;">
+            <input type="checkbox" name="export_traffic" style="accent-color:var(--teal);width:18px;height:18px;">
+            <span style="font-weight:600;">🚶 Office Traffic</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- File type -->
+      <div style="margin-bottom:20px;">
+        <div style="font-weight:700;color:var(--navy);margin-bottom:10px;">File format:</div>
+        <div style="display:flex;gap:16px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="radio" name="file_type" value="excel" checked style="accent-color:var(--teal);width:18px;height:18px;">
+            <span style="font-weight:600;">📊 Excel (.xlsx)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="radio" name="file_type" value="json" style="accent-color:var(--teal);width:18px;height:18px;">
+            <span style="font-weight:600;">📄 JSON (.json)</span>
+          </label>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-blue">
+        📥 Export Selected Data
+      </button>
+    </form>
+  </div>
+
   <!-- RESTORE -->
   <div class="card">
     <div class="card-title">
