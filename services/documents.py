@@ -190,6 +190,7 @@ def restore_doc(doc_id: str):
 def get_stats(docs: list[dict]) -> dict:
     return {
         "total":      len(docs),
+        "logged":     sum(1 for d in docs if d.get("status") == "Logged"),
         "pending":    sum(1 for d in docs if d.get("status") == "Pending"),
         "received":   sum(1 for d in docs if d.get("status") == "Received"),
         "in_review":  sum(1 for d in docs if d.get("status") == "In Review"),

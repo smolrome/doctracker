@@ -173,7 +173,8 @@
   </div>
   <div class="doc-hero-status">
     {% set s = doc.status %}
-    {% if s=='Pending' %}
+    {% if s=='Logged' %}<span class="badge" style="background:#FEF3C7;color:#92400E;border:2px solid #FCD34D;font-size:15px;padding:8px 18px;">🖊️ {{ s }}</span>
+    {% elif s=='Pending' %}
       <span class="badge badge-pending" style="font-size:15px;padding:8px 18px;">⏳ {{ s }}</span>
       {% if doc.pending_at_office or doc.pending_at_staff %}
         <div style="margin-top:8px;font-size:13px;color:#666;">
@@ -196,6 +197,15 @@
   <a href="/transfer/{{ doc.id }}" class="btn btn-secondary" style="background:#7C3AED;color:#fff;">🔄 Transfer</a>
   <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ QR Code</a>
   <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
+  {% if doc.routing_slip_id %}
+  <a href="/routing-slip/{{ doc.routing_slip_id }}" target="_blank" class="btn btn-secondary" style="background:#0E7490;color:#fff;">🖨️ Routing Slip</a>
+  {% endif %}
+  {% if doc.logged_by %}
+  {% set logging_slip_id = doc.routing_slip_id or '' %}
+  {% if logging_slip_id %}
+  <a href="/logging-slip/{{ logging_slip_id }}" target="_blank" class="btn btn-secondary" style="background:#059669;color:#fff;">🖨️ Logging Slip</a>
+  {% endif %}
+  {% endif %}
   {% if current_role == 'admin' %}
   <form method="post" action="/delete/{{ doc.id }}"
         onsubmit="return confirm('Move this document to Trash?')" style="margin:0;">
@@ -217,7 +227,7 @@
     <select name="status" style="flex:1;min-width:160px;padding:10px 12px;
         border:2px solid var(--border);border-radius:10px;font-family:inherit;
         font-size:15px;background:var(--surface);outline:none;min-height:44px;">
-      {% for s in ['Pending','Received','In Review','In Transit','Released','On Hold','Archived'] %}
+      {% for s in ['Logged','Pending','Received','In Review','In Transit','Released','On Hold','Archived'] %}
       <option value="{{ s }}" {% if doc.status==s %}selected{% endif %}>{{ s }}</option>
       {% endfor %}
     </select>
@@ -234,12 +244,13 @@
   <div class="timeline">
     {% set cur = doc.status %}
     {% set steps = [
-      ('Pending',   '⏳', doc.created_at[:10] if doc.created_at else ''),
+      ('Logged',     '🖊️', doc.created_at[:10] if doc.created_at else ''),
+      ('Pending',   '⏳', ''),
       ('Received',  '📥', doc.date_received or ''),
       ('In Review', '🔍', ''),
       ('Released',  '✅', doc.date_released or ''),
     ] %}
-    {% set order = ['Pending','Received','In Review','In Transit','Released'] %}
+    {% set order = ['Logged','Pending','Received','In Review','In Transit','Released'] %}
     {% set cur_idx = order.index(cur) if cur in order else 0 %}
     {% for label, icon, date in steps %}
       {% set step_idx = order.index(label) if label in order else 0 %}

@@ -238,7 +238,7 @@ def add():
                         "date_received":  now_str()[:10],
                         "date_released":  "",
                         "doc_date":       now_str()[:10],
-                        "status":         "Received",
+                        "status":         "Logged",
                         "notes":          item["notes"],
                         "created_at":     now_str(),
                         "routing":        [],
@@ -250,7 +250,7 @@ def add():
                         "action":    "Document Logged by Staff",
                         "officer":   actor,
                         "timestamp": doc["created_at"],
-                        "remarks":   f"Logged into system by {actor}. Batch of {len(cart)}.",
+                        "remarks":   f"Logged into system by {actor}. Status: Logged. Batch of {len(cart)}.",
                     })
                     insert_doc(doc)
                     logged_doc_ids.append(doc["id"])
@@ -282,6 +282,14 @@ def add():
                 # Save the logging slip using the existing function
                 from services.misc import save_routing_slip
                 save_routing_slip(logging_slip)
+                
+                # Update each logged document with the slip ID
+                for doc_id in logged_doc_ids:
+                    doc = get_doc(doc_id)
+                    if doc:
+                        doc["routing_slip_id"] = slip_id
+                        doc["routing_slip_no"] = slip_no
+                        save_doc(doc)
                 
                 session.pop("staff_cart", None)
                 session.modified = True

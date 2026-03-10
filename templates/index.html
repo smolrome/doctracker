@@ -12,6 +12,9 @@
     <a class="stat-card yellow {% if filter_status=='Pending' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Pending')">
       <div class="stat-card-inner"><div class="stat-num">{{ stats.pending }}</div><div class="stat-label">⏳ Pending</div><div class="stat-clear">● Filtered</div></div>
     </a>
+    <a class="stat-card olive {% if filter_status=='Logged' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Logged')">
+      <div class="stat-card-inner"><div class="stat-num">{{ stats.logged or 0 }}</div><div class="stat-label">🖊️ Logged</div><div class="stat-clear">● Filtered</div></div>
+    </a>
     <a class="stat-card emerald {% if filter_status=='Received' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Received')">
       <div class="stat-card-inner"><div class="stat-num">{{ stats.received }}</div><div class="stat-label">📥 Received</div><div class="stat-clear">● Filtered</div></div>
     </a>
@@ -309,7 +312,9 @@
           </td>
           <td>
             {% set s = doc.status %}
-            {% if s=='Pending' %}
+            {% if s=='Logged' %}
+              <span class="badge" style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;">{{ s }}</span>
+            {% elif s=='Pending' %}
               <span class="badge badge-pending">{{ s }}</span>
               {% if doc.pending_at_staff %}
               <div style="margin-top:5px;display:flex;align-items:center;gap:4px;">

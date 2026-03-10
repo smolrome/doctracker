@@ -54,4 +54,4 @@ RATE_LIMITS = {
 }
 
 # ── Document statuses ──────────────────────────────────────────────────────────
-STATUS_OPTIONS = ["Pending", "Received", "In Review", "In Transit", "Released", "On Hold", "Archived"]
+STATUS_OPTIONS = ["Logged", "Pending", "Received", "In Review", "In Transit", "Released", "On Hold", "Archived"]
