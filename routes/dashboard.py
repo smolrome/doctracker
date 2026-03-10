@@ -446,21 +446,21 @@ def transfer_doc(doc_id):
         flash(f"Document transferred to {new_staff} at {new_staff_office or 'N/A'} {status_note}. Status changed to In Transit.", "success")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
 
-    # GET — resolve office of whoever currently holds the document
+    # GET — resolve office of currently logged-in user (for internal transfers)
     all_users      = get_all_users()
-    logged_by_user = doc.get("logged_by", "")
-    current_office = ""
+    logged_in_user = session.get("username", "")
+    current_user_office = ""
     for u in all_users:
-        if u.get("username") == logged_by_user:
-            current_office = u.get("office", "") or ""
+        if u.get("username") == logged_in_user:
+            current_user_office = u.get("office", "") or ""
             break
 
-    offices_dict, sorted_offices = _build_offices_dict_and_sorted(current_user, current_office)
+    offices_dict, sorted_offices = _build_offices_dict_and_sorted(current_user, current_user_office)
 
     return render_template("transfer.html", doc=doc,
                            offices_dict=offices_dict,
                            sorted_offices=sorted_offices,
-                           current_office=current_office)
+                           current_office=current_user_office)
 
 
 # ── Batch Transfer ─────────────────────────────────────────────────────────────

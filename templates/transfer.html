@@ -92,12 +92,12 @@
   // Parse data from data attributes
   const officesData = JSON.parse(document.getElementById('offices-data').textContent || '{}');
   const sortedOffices = JSON.parse(document.getElementById('sorted-offices').textContent || '[]');
-  const currentOffice = '{{ current_office | safe }}'; // Current logged-in staff's office
+  const currentOffice = '{{ current_office | safe }}'; // Current logged-in user's office
   
   // Auto-select current office on page load if user is in an office
   document.addEventListener('DOMContentLoaded', function() {
     if (currentOffice && currentOffice !== 'None' && currentOffice !== '') {
-      console.log('Document is currently in office:', currentOffice);
+      console.log('Logged in user is in office:', currentOffice);
     }
   });
   
@@ -129,16 +129,16 @@
     officeSelect.innerHTML = options;
     officeSelect.disabled = false;
     
-    // Auto-select current office for inside_office transfers and make it read-only
+    // Auto-select current office for inside_office (Internal) transfers
     if (transferType === 'inside_office' && currentOffice && currentOffice !== 'None' && currentOffice !== '') {
       officeSelect.value = currentOffice;
-      officeSelect.disabled = true; // Lock to current office for inside office transfers
-      // Show info message - document's current location
-      document.getElementById('office-info').textContent = '📍 Document is currently in: ' + currentOffice + ' (locked for inside office transfer)';
+      officeSelect.disabled = true; // Lock to current user's office for internal transfers
+      // Show info message - logged-in user's office
+      document.getElementById('office-info').textContent = '📍 Your office: ' + currentOffice + ' (auto-selected for internal transfer)';
       // Manually trigger updateStaff since we're setting value programmatically
       updateStaff();
     } else {
-      officeSelect.disabled = false; // Allow changing office for outside transfers
+      officeSelect.disabled = false; // Allow changing office for external transfers
       document.getElementById('office-info').textContent = '';
     }
   }
