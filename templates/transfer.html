@@ -1,56 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
 
+<link rel="stylesheet" href="{{ url_for('static', filename='css/transfer.css') }}">
+
 <div class="page-header">
   <a href="{{ url_for('dashboard.view_doc', doc_id=doc.id) }}" class="page-back">← Back to Document</a>
   <div class="page-title">🔄 Transfer Document</div>
 </div>
-
-<style>
-  .transfer-card{background:#fff;border:2px solid var(--border);border-radius:var(--radius);padding:24px;max-width:600px;margin:0 auto;}
-  .doc-info{background:#F0F7FA;border-radius:10px;padding:16px;margin-bottom:20px;}
-  .doc-info .doc-name{font-weight:700;font-size:18px;color:var(--navy);margin-bottom:6px;}
-  .doc-info .doc-id{font-family:monospace;color:var(--muted);font-size:14px;}
-  .doc-info .current-staff{margin-top:10px;font-size:14px;color:var(--teal);font-weight:600;}
-
-  .form-group{margin-bottom:16px;}
-  .form-group label{display:block;font-weight:700;color:var(--navy);margin-bottom:8px;}
-  .form-group select{width:100%;padding:12px;border:2px solid var(--border);border-radius:8px;font-size:16px;font-family:inherit;background:#fff;}
-  .form-group select:focus{outline:none;border-color:var(--teal);}
-
-  .btn-transfer{background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;border:none;
-    padding:14px 28px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;
-    width:100%;font-family:inherit;}
-  .btn-transfer:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(124,58,237,0.4);}
-  .btn-transfer:disabled{opacity:0.45;cursor:not-allowed;transform:none;box-shadow:none;}
-
-  .warning-box{background:#FEF3C7;border:2px solid #F59E0B;border-radius:10px;padding:14px;margin-bottom:20px;}
-  .warning-box p{margin:0;color:#92400E;font-size:14px;}
-
-  .step-label{font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:6px;letter-spacing:0.05em;}
-
-  /* Step blocks */
-  .step{
-    margin-bottom:0;
-    padding:20px 0;
-    border-bottom:1px solid #E5E7EB;
-  }
-  .step:last-of-type{border-bottom:none;padding-bottom:0;}
-
-  /* Collapsible steps */
-  .step-block{
-    overflow:hidden;
-    max-height:0;
-    opacity:0;
-    transition: max-height 0.35s ease, opacity 0.3s ease, margin-top 0.3s ease;
-    margin-top:0;
-  }
-  .step-block.visible{
-    max-height:300px;
-    opacity:1;
-    margin-top:0;
-  }
-</style>
 
 <div class="transfer-card">
   <div class="doc-info">
@@ -119,95 +75,6 @@
 <script type="application/json" id="sorted-offices">{{ sorted_offices | tojson | safe }}</script>
 <script type="application/json" id="current-office-data">{{ current_office | tojson | safe }}</script>
 
-<script>
-  const officesData   = JSON.parse(document.getElementById('offices-data').textContent || '{}');
-  const sortedOffices = JSON.parse(document.getElementById('sorted-offices').textContent || '[]');
-  const currentOffice = JSON.parse(document.getElementById('current-office-data').textContent);
-
-  function show(id)  { document.getElementById(id).classList.add('visible'); }
-  function hide(id)  { document.getElementById(id).classList.remove('visible'); }
-
-  function resetFrom(step) {
-    // step: 'office' | 'staff' | 'submit'
-    const order = ['step-office-block','step-staff-block','step-submit-block'];
-    const from  = order.indexOf('step-' + step + '-block');
-    for (let i = from; i < order.length; i++) hide(order[i]);
-  }
-
-  console.log('Current user office:', currentOffice);
-  function onTransferTypeChange() {
-  const type = document.getElementById('transfer_type').value;
-
-  resetFrom('office');
-  document.getElementById('new_office').value = '';
-  document.getElementById('new_staff').innerHTML = '<option value="">-- Select Staff --</option>';
-
-  if (!type) return;
-
-  if (type === 'inside_office') {
-    document.getElementById('staff-step-label').textContent = 'Step 3: Select Staff';
-    document.getElementById('office-step-label').textContent = 'Step 2: Your Office';
-
-    // Populate and lock to current office
-    const officeSelect = document.getElementById('new_office');
-    officeSelect.innerHTML = `<option value="${currentOffice}">${currentOffice}</option>`;
-    officeSelect.value = currentOffice;
-    officeSelect.disabled = true;
-    document.getElementById('office-info').textContent = '📍 Auto-selected: your office';
-
-    show('step-office-block');
-    populateStaff(currentOffice);
-    show('step-staff-block');
-
-  } else {
-    document.getElementById('staff-step-label').textContent = 'Step 3: Select Staff';
-    document.getElementById('office-step-label').textContent = 'Step 2: Select Office';
-
-    const officeSelect = document.getElementById('new_office');
-    officeSelect.disabled = false;
-    document.getElementById('office-info').textContent = '';
-    populateOffices();
-    show('step-office-block');
-  }
-}
-  function populateOffices() {
-    const officeSelect = document.getElementById('new_office');
-    let options = '<option value="">-- Select Office --</option>';
-    for (const office of sortedOffices) {
-      if (office === 'No Office' || office === currentOffice) continue; // exclude own office for external
-      options += `<option value="${office}">${office}</option>`;
-    }
-    officeSelect.innerHTML = options;
-  }
-
-  function updateStaff() {
-    const office = document.getElementById('new_office').value;
-    hide('step-staff-block');
-    hide('step-submit-block');
-
-    if (!office) return;
-
-    populateStaff(office);
-    show('step-staff-block');
-  }
-
-  function populateStaff(office) {
-    const staffSelect = document.getElementById('new_staff');
-    staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
-
-    if (!office || !officesData[office]) return;
-
-    for (const s of officesData[office]) {
-      const name = s.full_name || s.username;
-      staffSelect.innerHTML += `<option value="${s.username}">${name} (@${s.username})</option>`;
-    }
-  }
-
-  function onStaffChange() {
-    const val = document.getElementById('new_staff').value;
-    if (val) show('step-submit-block');
-    else hide('step-submit-block');
-  }
-</script>
+<script src="{{ url_for('static', filename='js/transfer.js') }}"></script>
 
 {% endblock %}
