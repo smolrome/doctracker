@@ -310,12 +310,14 @@
         <a href="/office-qr-page?office={{ office.office_name | urlencode }}" class="btn-view">
           📋 View QR Codes
         </a>
+        {% if current_role == 'admin' %}
         <form method="post" action="/office-qr-page" style="margin:0;"
               onsubmit="return confirm('Remove {{ office.office_name }}?')">
           <input type="hidden" name="_action" value="delete_office"/>
           <input type="hidden" name="office_slug" value="{{ office.office_slug }}"/>
           <button type="submit" class="btn-del">🗑️ Remove</button>
         </form>
+        {% endif %}
       </div>
     </div>
     {% endfor %}

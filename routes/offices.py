@@ -15,7 +15,7 @@ from services.misc import (
     save_office, save_routing_slip,
 )
 from services.qr import make_office_qr_png, get_base_url
-from utils import get_client_ip, is_logged_in, login_required
+from utils import admin_required, get_client_ip, is_logged_in, login_required
 from config import APP_URL, CLIENT_REG_CODE
 
 offices_bp = Blueprint("offices", __name__)
@@ -24,7 +24,7 @@ offices_bp = Blueprint("offices", __name__)
 # ── Office QR management page ─────────────────────────────────────────────────
 
 @offices_bp.route("/office-qr-page", methods=["GET", "POST"])
-@login_required
+@admin_required
 def office_qr_page():
     base = get_base_url(request.host_url)
 

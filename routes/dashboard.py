@@ -16,7 +16,7 @@ from services.auth import get_all_users
 from services.misc import audit_log, load_saved_offices
 from services.qr import generate_qr_b64, make_qr_png
 from services.dropdown_options import get_dropdown_options
-from utils import get_client_ip, is_logged_in, login_required
+from utils import admin_required, get_client_ip, is_logged_in, login_required
 from config import STATUS_OPTIONS
 
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -322,7 +322,7 @@ def edit(doc_id):
 
 
 @dashboard_bp.route("/delete/<doc_id>", methods=["POST"])
-@login_required
+@admin_required
 def delete(doc_id):
     doc = get_doc(doc_id)
     doc_name = doc.get("doc_name", "Unknown") if doc else "Unknown"
@@ -334,11 +334,8 @@ def delete(doc_id):
 
 
 @dashboard_bp.route("/restore/<doc_id>", methods=["POST"])
-@login_required
+@admin_required
 def restore(doc_id):
-    if session.get("role") != "admin":
-        flash("Admin access required.", "error")
-        return redirect(url_for("dashboard.index"))
     restore_doc(doc_id)
     audit_log("doc_restored", f"doc_id={doc_id}",
               username=session.get("username", ""), ip=get_client_ip())
@@ -347,11 +344,8 @@ def restore(doc_id):
 
 
 @dashboard_bp.route("/trash")
-@login_required
+@admin_required
 def trash():
-    if session.get("role") != "admin":
-        flash("Admin access required.", "error")
-        return redirect(url_for("dashboard.index"))
     deleted_docs = [d for d in load_docs(include_deleted=True) if d.get("deleted")]
     return render_template("trash.html", docs=deleted_docs)
 

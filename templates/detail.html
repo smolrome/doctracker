@@ -190,10 +190,12 @@
   <a href="/transfer/{{ doc.id }}" class="btn btn-secondary" style="background:#7C3AED;color:#fff;">🔄 Transfer</a>
   <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ QR Code</a>
   <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
+  {% if current_role == 'admin' %}
   <form method="post" action="/delete/{{ doc.id }}"
         onsubmit="return confirm('Move this document to Trash?')" style="margin:0;">
     <button type="submit" class="btn btn-danger">🗑️ Delete</button>
   </form>
+  {% endif %}
   {% else %}
   <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
   <a href="/login" class="btn btn-primary">🔐 Login to Edit</a>
