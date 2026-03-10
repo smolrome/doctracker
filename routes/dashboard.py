@@ -645,50 +645,64 @@ def accept_document(doc_id):
     current_user = session.get("username", "")
     current_full_name = session.get("full_name", "")
     
+    print(f"[accept_document] doc_id={doc_id} current_user={current_user}")
+    
     doc = get_doc(doc_id)
     if not doc:
+        print(f"[accept_document] Document not found: {doc_id}")
         flash("Document not found.", "error")
         return redirect(url_for("dashboard.index"))
     
+    print(f"[accept_document] doc pending_at_staff={doc.get('pending_at_staff')} transfer_status={doc.get('transfer_status')}")
+    
     # Verify this document is pending for the current user
     if doc.get("pending_at_staff") != current_user:
+        print(f"[accept_document] Authorization failed: {doc.get('pending_at_staff')} != {current_user}")
         flash("You are not authorized to accept this document.", "error")
         return redirect(url_for("dashboard.index"))
     
     if doc.get("transfer_status") != "pending":
+        print(f"[accept_document] Already processed: transfer_status={doc.get('transfer_status')}")
         flash("This document has already been processed.", "error")
         return redirect(url_for("dashboard.index"))
     
-    # Update document status
-    doc["transfer_status"] = "accepted"
-    doc["accepted_by"] = current_user
-    doc["accepted_by_name"] = current_full_name or current_user
-    doc["accepted_at"] = now_str()
-    doc["status"] = "Received"  # Update main status to Received
-    # Set date_received when accepting
-    if not doc.get("date_received"):
-        doc["date_received"] = now_str()[:10]
-    # Clear pending_at_staff since it's now accepted
-    doc["pending_at_staff"] = ""
-    doc["pending_at_office"] = ""
-    
-    # Add to travel log
-    doc.setdefault("travel_log", []).append({
-        "office":    doc.get("pending_at_office", ""),
-        "action":    "Document Accepted",
-        "officer":   current_full_name or current_user,
-        "timestamp": now_str(),
-        "remarks":   f"Document accepted by {current_full_name or current_user}.",
-    })
-    
-    save_doc(doc)
-    
-    audit_log("doc_accepted",
-              f"doc_id={doc_id} accepted_by={current_user} doc_name={doc.get('doc_name','')[:60]}",
-              username=current_user, ip=get_client_ip())
-    
-    flash("Document accepted successfully!", "success")
-    return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
+    try:
+        # Update document status
+        doc["transfer_status"] = "accepted"
+        doc["accepted_by"] = current_user
+        doc["accepted_by_name"] = current_full_name or current_user
+        doc["accepted_at"] = now_str()
+        doc["status"] = "Received"  # Update main status to Received
+        # Set date_received when accepting
+        if not doc.get("date_received"):
+            doc["date_received"] = now_str()[:10]
+        # Clear pending_at_staff since it's now accepted
+        doc["pending_at_staff"] = ""
+        doc["pending_at_office"] = ""
+        
+        # Add to travel log
+        doc.setdefault("travel_log", []).append({
+            "office":    doc.get("pending_at_office", ""),
+            "action":    "Document Accepted",
+            "officer":   current_full_name or current_user,
+            "timestamp": now_str(),
+            "remarks":   f"Document accepted by {current_full_name or current_user}.",
+        })
+        
+        print(f"[accept_document] Saving doc with status={doc.get('status')}")
+        save_doc(doc)
+        print(f"[accept_document] Save complete")
+        
+        audit_log("doc_accepted",
+                  f"doc_id={doc_id} accepted_by={current_user} doc_name={doc.get('doc_name','')[:60]}",
+                  username=current_user, ip=get_client_ip())
+        
+        flash("Document accepted successfully!", "success")
+        return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
+    except Exception as e:
+        print(f"[accept_document] ERROR: {e}")
+        flash(f"Error accepting document: {e}", "error")
+        return redirect(url_for("dashboard.index"))
 
 
 @dashboard_bp.route("/reject-document/<doc_id>", methods=["POST"])

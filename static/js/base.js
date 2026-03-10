@@ -432,9 +432,11 @@ function showPendingDocumentsModal() {
   modal.style.display = 'flex';
   listContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #5A7A91;"><span style="font-size: 48px;">📭</span><p style="margin-top: 12px;">Loading documents...</p></div>';
 
+  console.log('Fetching pending documents...');
   fetch('/api/pending-documents')
     .then(response => response.json())
     .then(docs => {
+      console.log('Pending documents received:', docs);
       if (docs.length === 0) {
         listContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #5A7A91;"><span style="font-size: 48px;">✅</span><p style="margin-top: 12px;">No pending documents</p></div>';
         return;
@@ -486,6 +488,7 @@ function closePendingDocumentsModal() {
 }
 
 function acceptDocument(docId) {
+  console.log('Accepting document:', docId);
   if (!confirm('Are you sure you want to accept this document?')) return;
 
   fetch('/accept-document/' + docId, {
@@ -493,6 +496,7 @@ function acceptDocument(docId) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
   })
   .then(response => {
+    console.log('Accept response status:', response.status);
     if (response.ok) {
       closePendingDocumentsModal();
       window.location.reload();
