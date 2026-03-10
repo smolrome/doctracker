@@ -7,7 +7,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 
 from services.auth import (
     create_user, delete_user, get_all_users, set_user_active,
-    update_user_password,
+    update_user_password, update_user,
 )
 from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
@@ -33,9 +33,11 @@ def manage_users():
                   username=session.get("username","admin"), ip=get_client_ip())
     except Exception:
         pass
+    from services.misc import load_saved_offices
     users = get_all_users()
+    offices = load_saved_offices()
     return render_template("manage_users.html", users=users,
-                           admin_username=ADMIN_USERNAME)
+                           admin_username=ADMIN_USERNAME, offices=offices)
 
 
 @admin_bp.route("/activity-log")
@@ -171,6 +173,57 @@ def change_user_password(username):
         flash(f"Error: {error}", "error")
     
     return redirect(url_for("admin.manage_users"))
+
+
+@admin_bp.route("/edit-user/<username>", methods=["GET", "POST"])
+@admin_required
+def edit_user(username):
+    """Admin can edit user details: full_name, role, and office."""
+    from services.misc import load_saved_offices
+    
+    if request.method == "POST":
+        full_name = request.form.get("full_name", "").strip()
+        role = request.form.get("role", "").strip()
+        office = request.form.get("office", "").strip()
+        
+        # Prevent editing main admin
+        if username == ADMIN_USERNAME:
+            flash("Cannot edit the main admin account.", "error")
+            return redirect(url_for("admin.manage_users"))
+        
+        # Update user - only pass non-empty values
+        success, error = update_user(
+            username,
+            full_name=full_name if full_name else None,
+            role=role if role else None,
+            office=office if office else None
+        )
+        
+        if success:
+            audit_log("user_edited", f"edited_user={username}, role={role}, office={office}",
+                      username=session.get("username", "admin"),
+                      ip=get_client_ip())
+            flash(f"User '{username}' has been updated.", "success")
+        else:
+            flash(f"Error: {error}", "error")
+        
+        return redirect(url_for("admin.manage_users"))
+    
+    # GET request - show edit form
+    users = get_all_users()
+    user = next((u for u in users if u["username"] == username), None)
+    
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("admin.manage_users"))
+    
+    if username == ADMIN_USERNAME:
+        flash("Cannot edit the main admin account.", "error")
+        return redirect(url_for("admin.manage_users"))
+    
+    offices = load_saved_offices()
+    return render_template("edit_user.html", user=user, offices=offices,
+                           admin_username=ADMIN_USERNAME)
 
 
 @admin_bp.route("/clear-database", methods=["POST"])

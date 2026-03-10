@@ -249,6 +249,66 @@ def update_user_password(username: str, new_password: str) -> tuple[bool, str | 
         return True, None
 
 
+def update_user(username: str, full_name: str = None, role: str = None, office: str = None) -> tuple[bool, str | None]:
+    """
+    Update user details (full_name, role, office). 
+    Returns (success, error_message).
+    Only non-None values will be updated.
+    """
+    uname = username.lower().strip()
+    
+    if USE_DB:
+        try:
+            # Build dynamic update query
+            updates = []
+            params = []
+            
+            if full_name is not None:
+                updates.append("full_name = %s")
+                params.append(full_name.strip())
+            
+            if role is not None:
+                updates.append("role = %s")
+                params.append(role)
+            
+            if office is not None:
+                updates.append("office = %s")
+                params.append(office.strip())
+            
+            if not updates:
+                return False, "No fields to update."
+            
+            params.append(uname)
+            
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        f"UPDATE users SET {', '.join(updates)} WHERE username = %s",
+                        params
+                    )
+            return True, None
+        except Exception as e:
+            print(f"update_user error: {e}")
+            return False, f"Database error: {e}"
+    else:
+        users = _load_users_json()
+        found = False
+        for u in users:
+            if u["username"] == uname:
+                if full_name is not None:
+                    u["full_name"] = full_name.strip()
+                if role is not None:
+                    u["role"] = role
+                if office is not None:
+                    u["office"] = office.strip()
+                found = True
+                break
+        if not found:
+            return False, "User not found."
+        _save_users_json(users)
+        return True, None
+
+
 def update_last_login(username: str):
     if USE_DB:
         try:
