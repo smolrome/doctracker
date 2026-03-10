@@ -131,7 +131,8 @@ def index():
         saved_offices=load_saved_offices(),
         page=page, total_pages=total_pages,
         per_page=per_page, total=total,
-        staff_by_office=_get_staff_by_office(current_username))
+        staff_by_office=_get_staff_by_office(current_username),
+        current_office=session.get("office", ""))
 
 
 @dashboard_bp.route("/dashboard")

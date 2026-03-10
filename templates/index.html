@@ -473,6 +473,7 @@ function clearField(name, val='') {
 
 <!-- Hidden data for transfer modal -->
 <script type="application/json" id="transfer-offices-data">{{ staff_by_office | tojson | safe }}</script>
+<span id="transfer-current-office" style="display:none;">{{ current_office }}</span>
 
 <!-- ── ROUTING MODAL ── -->
 <div id="routing-modal" style="display:none;position:fixed;inset:0;z-index:8000;
@@ -902,6 +903,7 @@ document.getElementById('routing-modal').addEventListener('click', function(e) {
 
 // Transfer Modal Functions
 let transferOfficesData = {};
+let transferCurrentOffice = '';
 
 function openTransferModal() {
   // Get selected doc IDs
@@ -916,6 +918,7 @@ function openTransferModal() {
   
   // Load offices data from the page
   transferOfficesData = JSON.parse(document.getElementById('transfer-offices-data').textContent || '{}');
+  transferCurrentOffice = document.getElementById('transfer-current-office').textContent;
   
   // Reset form
   document.getElementById('transfer-type').value = '';
@@ -952,13 +955,50 @@ function updateTransferOffices() {
     return;
   }
   
-  // Populate offices
+  // If inside office, directly show staff from current office
+  if (type === 'inside_office') {
+    officeSelect.innerHTML = '<option value="">' + (transferCurrentOffice || 'Current Office') + '</option>';
+    officeSelect.disabled = true;
+    // Show staff from current office
+    const currentOfficeStaff = transferOfficesData[transferCurrentOffice] || [];
+    let options = '<option value="">-- Select Staff --</option>';
+    for (const s of currentOfficeStaff) {
+      const name = s.full_name || s.username;
+      options += '<option value="' + s.username + '">' + name + ' (@' + s.username + ')</option>';
+    }
+    staffSelect.innerHTML = options;
+    staffSelect.disabled = false;
+    return;
+  }
+  
+  // For outside office, show all offices
   let options = '<option value="">-- Select Office --</option>';
   for (const office in transferOfficesData) {
     options += '<option value="' + office + '">' + office + '</option>';
   }
   officeSelect.innerHTML = options;
   officeSelect.disabled = false;
+}
+
+function updateTransferStaff() {
+  const office = document.getElementById('transfer-office').value;
+  const staffSelect = document.getElementById('transfer-staff');
+  
+  if (!office || !transferOfficesData[office]) {
+    staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
+    staffSelect.disabled = true;
+    document.getElementById('btn-do-transfer').disabled = true;
+    return;
+  }
+  
+  const staff = transferOfficesData[office];
+  let options = '<option value="">-- Select Staff --</option>';
+  for (const s of staff) {
+    const name = s.full_name || s.username;
+    options += '<option value="' + s.username + '">' + name + ' (@' + s.username + ')</option>';
+  }
+  staffSelect.innerHTML = options;
+  staffSelect.disabled = false;
 }
 
 function updateTransferStaff() {
