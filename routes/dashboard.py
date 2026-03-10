@@ -702,25 +702,38 @@ def get_pending_count():
     """Get count of documents pending acceptance for the current user."""
     current_user = session.get("username", "")
     current_role = session.get("role", "")
+    
+    print(f"[pending-count] Checking for pending documents...")
+    print(f"[pending-count] current_user: {current_user}")
+    print(f"[pending-count] current_role: {current_role}")
+    
     if not current_user:
+        print("[pending-count] No user, returning 0")
         return jsonify({"count": 0})
     
     docs = load_docs()
     
+    # Debug: print all docs with transfer_status
+    pending_docs = []
+    for d in docs:
+        ts = d.get("transfer_status")
+        pas = d.get("pending_at_staff")
+        if ts:
+            print(f"[pending-count] Doc {d.get('id')} has transfer_status={ts}, pending_at_staff={pas}")
+        if ts == "pending":
+            pending_docs.append(d)
+    
     # Admin can see all pending transfers
     if current_role == "admin":
-        count = sum(
-            1 for d in docs
-            if d.get("transfer_status") == "pending"
-        )
+        count = len(pending_docs)
+        print(f"[pending-count] Admin view - total pending: {count}")
     else:
         count = sum(
-            1 for d in docs
-            if d.get("transfer_status") == "pending" 
-            and d.get("pending_at_staff") == current_user
+            1 for d in pending_docs
+            if d.get("pending_at_staff") == current_user
         )
+        print(f"[pending-count] Staff view - pending for {current_user}: {count}")
     
-    print(f"[pending-count] user={current_user} role={current_role} count={count}")
     return jsonify({"count": count})
 
 

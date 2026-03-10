@@ -402,23 +402,46 @@ document.addEventListener('DOMContentLoaded', function(){
 
 // ── Pending Documents ────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM loaded, checking pending documents...');
   checkPendingDocuments();
   setInterval(checkPendingDocuments, 30000);
 });
 
 function checkPendingDocuments() {
+  console.log('Checking pending documents...');
   fetch('/api/pending-count')
-    .then(response => response.json())
+    .then(response => {
+      console.log('Response status:', response.status);
+      return response.json();
+    })
     .then(data => {
+      console.log('Pending count data:', data);
       const notification = document.getElementById('floating-notification');
       const badge = document.getElementById('pending-badge');
+      const banner = document.getElementById('pending-banner');
+      const bannerCount = document.getElementById('pending-banner-count');
+      console.log('Notification element:', notification);
+      console.log('Badge element:', badge);
+      console.log('Banner element:', banner);
       if (notification && badge) {
         if (data.count > 0) {
+          console.log('Showing notification with count:', data.count);
           badge.textContent = data.count;
           notification.style.display = 'block';
+          // Also show banner in index page
+          if (banner && bannerCount) {
+            bannerCount.textContent = data.count;
+            banner.style.display = 'block';
+          }
         } else {
+          console.log('Hiding notification - count is 0');
           notification.style.display = 'none';
+          if (banner) {
+            banner.style.display = 'none';
+          }
         }
+      } else {
+        console.log('Notification or badge element not found');
       }
     })
     .catch(error => console.error('Error checking pending documents:', error));
