@@ -130,11 +130,10 @@
   </div>
 </form>
 
-{% else %}
+{% elif action == 'edit_cart' %}
 {# ═══════════════════════════════════════════════
    EDIT CART ITEM MODE (nested in else of action == 'edit')
    ═══════════════════════════════════════════════ #}
-{% if action == 'edit_cart' %}
 
 <!-- Edit Modal -->
 <div id="edit-cart-modal" class="edit-cart-modal" onclick="closeEditCartModal(event)">
@@ -205,7 +204,6 @@
     </form>
   </div>
 </div>
-{% endif %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
