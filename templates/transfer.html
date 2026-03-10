@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+  <a href="{{ url_for('dashboard.view_doc', doc_id=doc.id) }}" class="page-back">← Back to Document</a>
+  <div class="page-title">🔄 Transfer Document</div>
+</div>
+
+<style>
+  .transfer-card{background:#fff;border:2px solid var(--border);border-radius:var(--radius);padding:24px;max-width:600px;margin:0 auto;}
+  .doc-info{background:#F0F7FA;border-radius:10px;padding:16px;margin-bottom:20px;}
+  .doc-info .doc-name{font-weight:700;font-size:18px;color:var(--navy);margin-bottom:6px;}
+  .doc-info .doc-id{font-family:monospace;color:var(--muted);font-size:14px;}
+  .doc-info .current-staff{margin-top:10px;font-size:14px;color:var(--teal);font-weight:600;}
+  
+  .form-group{margin-bottom:16px;}
+  .form-group label{display:block;font-weight:700;color:var(--navy);margin-bottom:8px;}
+  .form-group select{width:100%;padding:12px;border:2px solid var(--border);border-radius:8px;font-size:16px;font-family:inherit;background:#fff;}
+  .form-group select:focus{outline:none;border-color:var(--teal);}
+  
+  .btn-transfer{background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;border:none;
+    padding:14px 28px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;
+    width:100%;font-family:inherit;}
+  .btn-transfer:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(124,58,237,0.4);}
+  
+  .warning-box{background:#FEF3C7;border:2px solid #F59E0B;border-radius:10px;padding:14px;margin-bottom:20px;}
+  .warning-box p{margin:0;color:#92400E;font-size:14px;}
+</style>
+
+<div class="transfer-card">
+  <div class="doc-info">
+    <div class="doc-name">{{ doc.doc_name or 'Unnamed Document' }}</div>
+    <div class="doc-id">ID: {{ doc.id }}</div>
+    <div class="current-staff">📤 Currently assigned to: <strong>{{ doc.logged_by or 'Unknown' }}</strong></div>
+  </div>
+  
+  <div class="warning-box">
+    <p>⚠️ Transferring will move this document to another staff member's dashboard. You will no longer be able to see this document after the transfer.</p>
+  </div>
+  
+  <form method="post">
+    <div class="form-group">
+      <label for="new_staff">Transfer to Staff Member</label>
+      <select name="new_staff" id="new_staff" required>
+        <option value="">-- Select Staff --</option>
+        {% for staff in staff_list %}
+        <option value="{{ staff.username }}">
+          {{ staff.full_name or staff.username }} ({{ staff.username }})
+          {% if staff.office %} - {{ staff.office }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    
+    <button type="submit" class="btn-transfer">🔄 Transfer Document</button>
+  </form>
+</div>
+
+{% endblock %}

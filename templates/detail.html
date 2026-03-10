@@ -187,6 +187,7 @@
 <div class="actions-bar">
   {% if logged_in %}
   <a href="/edit/{{ doc.id }}" class="btn btn-primary">✏️ Edit</a>
+  <a href="/transfer/{{ doc.id }}" class="btn btn-secondary" style="background:#7C3AED;color:#fff;">🔄 Transfer</a>
   <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ QR Code</a>
   <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
   <form method="post" action="/delete/{{ doc.id }}"

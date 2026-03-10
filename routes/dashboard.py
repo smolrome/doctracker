@@ -12,6 +12,7 @@ from services.documents import (
     delete_doc, get_doc, get_stats, insert_doc,
     load_docs, now_str, generate_ref, restore_doc, save_doc,
 )
+from services.auth import get_all_users
 from services.misc import audit_log, load_saved_offices
 from services.qr import generate_qr_b64, make_qr_png
 from utils import get_client_ip, is_logged_in, login_required
@@ -29,7 +30,14 @@ def index():
                                saved_offices=load_saved_offices())
 
     # Staff / admin dashboard
-    docs          = load_docs()
+    current_username = session.get("username", "")
+    user_role = session.get("role", "")
+    
+    docs = load_docs()
+    
+    # Staff (non-admin) should only see their own documents
+    if user_role != "admin":
+        docs = [d for d in docs if d.get("logged_by") == current_username]
     search        = request.args.get("search", "").lower()
     filter_status = request.args.get("status", "All")
     filter_type   = request.args.get("type", "All")
@@ -332,6 +340,70 @@ def update_status(doc_id):
               username=session.get("username","?"), ip=get_client_ip())
     flash(f"Status updated to {new_status}.", "success")
     return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
+
+
+# ── Transfer / Route to Staff ─────────────────────────────────────────────────
+
+@dashboard_bp.route("/transfer/<doc_id>", methods=["GET", "POST"])
+@login_required
+def transfer_doc(doc_id):
+    """Transfer/route a document to another staff member."""
+    doc = get_doc(doc_id)
+    if not doc:
+        flash("Document not found.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    current_user = session.get("username", "")
+    user_role = session.get("role", "")
+    
+    # Only allow transfer if user is admin or the one who logged the document
+    if user_role != "admin" and doc.get("logged_by") != current_user:
+        flash("You can only transfer documents you logged.", "error")
+        return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
+    
+    if request.method == "POST":
+        new_staff = request.form.get("new_staff", "").strip()
+        if not new_staff:
+            flash("Please select a staff member.", "error")
+            return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
+        
+        if new_staff == current_user:
+            flash("You cannot transfer to yourself.", "error")
+            return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
+        
+        # Get all users to validate
+        all_users = get_all_users()
+        valid_staff = [u["username"] for u in all_users if u.get("role") != "client"]
+        
+        if new_staff not in valid_staff:
+            flash("Invalid staff member selected.", "error")
+            return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
+        
+        old_staff = doc.get("logged_by", "unknown")
+        doc["logged_by"] = new_staff
+        doc.setdefault("travel_log", []).append({
+            "office":    "DepEd Leyte Division Office",
+            "action":    f"Document Transferred",
+            "officer":   session.get("full_name") or session.get("username"),
+            "timestamp": now_str(),
+            "remarks":   f"Transferred from {old_staff} to {new_staff}.",
+        })
+        save_doc(doc)
+        
+        audit_log("doc_transferred",
+                  f"doc_id={doc_id} from={old_staff} to={new_staff} "
+                  f"doc_name={doc.get('doc_name','')[:60]}",
+                  username=session.get("username","?"), ip=get_client_ip())
+        
+        flash(f"Document transferred to {new_staff}.", "success")
+        return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
+    
+    # Get list of staff members (exclude clients and current user)
+    all_users = get_all_users()
+    staff_list = [u for u in all_users 
+                 if u.get("role") != "client" and u.get("username") != current_user]
+    
+    return render_template("transfer.html", doc=doc, staff_list=staff_list)
 
 
 # ── QR download ───────────────────────────────────────────────────────────────
