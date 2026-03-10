@@ -27,11 +27,21 @@ def _get_staff_by_office(current_username: str = ""):
     all_users = get_all_users()
     staff = [u for u in all_users if u.get("role") != "client" and u.get("username") != current_username]
     offices = {}
+
+    # Ensure current user's office is always in the dict even if they're the only one there
+    for u in all_users:
+        if u.get("username") == current_username:
+            office = u.get("office", "") or "No Office"
+            if office not in offices:
+                offices[office] = []
+            break
+
     for s in staff:
         office = s.get("office", "") or "No Office"
         if office not in offices:
             offices[office] = []
         offices[office].append(s)
+
     return offices
 
 
@@ -454,6 +464,10 @@ def transfer_doc(doc_id):
         if u.get("username") == logged_in_user:
             current_user_office = u.get("office", "") or ""
             break
+
+    # DEBUG: Log to console
+    print(f"DEBUG transfer_doc: logged_in_user={logged_in_user}, current_user_office={current_user_office}")
+    print(f"DEBUG all_users sample: {all_users[:3] if all_users else 'empty'}")
 
     offices_dict, sorted_offices = _build_offices_dict_and_sorted(current_user, current_user_office)
 
