@@ -391,6 +391,23 @@
       <div class="field-val mono" style="font-size:14px;">{{ doc.logged_by }}</div>
     </div>
     {% endif %}
+    {% if doc.transferred_to %}
+    <div class="field">
+      <div class="field-label">🔄 Transfer History</div>
+      <div class="field-val mono" style="font-size:14px;">
+        <div>Transferred to: <strong>{{ doc.transferred_to }}</strong></div>
+        {% if doc.transferred_to_office %}
+        <div>Office: {{ doc.transferred_to_office }}</div>
+        {% endif %}
+        {% if doc.transferred_by %}
+        <div>Transferred by: {{ doc.transferred_by }}</div>
+        {% endif %}
+        {% if doc.transferred_at %}
+        <div>Transfer date: {{ doc.transferred_at }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
   </div>
 
   <!-- Routing / Destination -->

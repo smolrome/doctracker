@@ -354,6 +354,7 @@ def transfer_doc(doc_id):
         return redirect(url_for("dashboard.index"))
     
     current_user = session.get("username", "")
+    current_office = session.get("office", "")
     user_role = session.get("role", "")
     
     # Only allow transfer if user is admin or the one who logged the document
@@ -362,7 +363,10 @@ def transfer_doc(doc_id):
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
     
     if request.method == "POST":
+        transfer_type = request.form.get("transfer_type", "").strip()
         new_staff = request.form.get("new_staff", "").strip()
+        new_office = request.form.get("new_office", "").strip()
+        
         if not new_staff:
             flash("Please select a staff member.", "error")
             return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
@@ -371,39 +375,77 @@ def transfer_doc(doc_id):
             flash("You cannot transfer to yourself.", "error")
             return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
         
-        # Get all users to validate
+        # Get all users to validate and get office info
         all_users = get_all_users()
         valid_staff = [u["username"] for u in all_users if u.get("role") != "client"]
+        
+        # Get the new staff member's office
+        new_staff_office = ""
+        for u in all_users:
+            if u.get("username") == new_staff:
+                new_staff_office = u.get("office", "")
+                break
         
         if new_staff not in valid_staff:
             flash("Invalid staff member selected.", "error")
             return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
         
         old_staff = doc.get("logged_by", "unknown")
+        old_status = doc.get("status", "")
+        
+        # Determine status based on transfer type and office
+        if transfer_type == "inside_office":
+            doc["status"] = "In Transit"
+            status_note = "(Inside Office)"
+        else:  # outside_office
+            doc["status"] = "In Transit"
+            status_note = "(Outside Office)"
+        
+        # Update logged_by to new staff
         doc["logged_by"] = new_staff
+        
+        # Record transfer info
+        doc["transferred_to"] = new_staff
+        doc["transferred_to_office"] = new_staff_office
+        doc["transferred_by"] = current_user
+        doc["transferred_at"] = now_str()
+        doc["transfer_type"] = transfer_type  # inside_office or outside_office
+        
         doc.setdefault("travel_log", []).append({
-            "office":    "DepEd Leyte Division Office",
-            "action":    f"Document Transferred",
+            "office":    new_staff_office or "DepEd Leyte Division Office",
+            "action":    f"Document Transferred {status_note}",
             "officer":   session.get("full_name") or session.get("username"),
             "timestamp": now_str(),
-            "remarks":   f"Transferred from {old_staff} to {new_staff}.",
+            "remarks":   f"Transferred from {old_staff} ({old_status}) to {new_staff} at {new_staff_office or 'N/A'} {status_note}.",
         })
         save_doc(doc)
         
         audit_log("doc_transferred",
-                  f"doc_id={doc_id} from={old_staff} to={new_staff} "
+                  f"doc_id={doc_id} from={old_staff} to={new_staff} type={transfer_type} "
                   f"doc_name={doc.get('doc_name','')[:60]}",
                   username=session.get("username","?"), ip=get_client_ip())
         
-        flash(f"Document transferred to {new_staff}.", "success")
+        flash(f"Document transferred to {new_staff} at {new_staff_office or 'N/A'} {status_note}. Status changed to In Transit.", "success")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
     
-    # Get list of staff members (exclude clients and current user)
+    # Get list of staff members grouped by office
     all_users = get_all_users()
     staff_list = [u for u in all_users 
                  if u.get("role") != "client" and u.get("username") != current_user]
     
-    return render_template("transfer.html", doc=doc, staff_list=staff_list)
+    # Group staff by office
+    offices_dict = {}
+    for staff in staff_list:
+        office = staff.get("office", "") or "No Office"
+        if office not in offices_dict:
+            offices_dict[office] = []
+        offices_dict[office].append(staff)
+    
+    # Sort offices - current office first
+    sorted_offices = sorted(offices_dict.keys(), key=lambda x: (x != current_office, x.lower()))
+    
+    return render_template("transfer.html", doc=doc, offices_dict=offices_dict, 
+                         sorted_offices=sorted_offices, current_office=current_office)
 
 
 # ── QR download ───────────────────────────────────────────────────────────────
