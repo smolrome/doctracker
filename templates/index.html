@@ -24,35 +24,18 @@
   .stat-card:not(.active):hover::after { content:'filter';position:absolute;bottom:7px;right:10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);opacity:.5; }
   .stat-card { position:relative; }
 
-  /* Make the page non-scrollable */
-html, body { height: 100%; overflow: hidden; }
-
-/* Content area fills remaining height */
-.content, .main-content, [class*="content"] { 
-  height: 100%; 
-  overflow: hidden; 
-  display: flex; 
-  flex-direction: column; 
-}
-
 .table-wrap {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0; /* critical for flex children to shrink */
-  overflow: hidden;
   border: 2px solid var(--border);
   border-radius: var(--radius, 12px);
   background: #fff;
 }
 
 .table-head {
-  flex-shrink: 0; /* header never scrolls */
+  flex-shrink: 0;
 }
 
 .table-scroll {
-  flex: 1;
-  min-height: 0; /* critical */
+  max-height: 60vh;
   overflow-y: auto;
   overflow-x: auto;
 }
@@ -62,11 +45,6 @@ html, body { height: 100%; overflow: hidden; }
   top: 0;
   z-index: 10;
   background: var(--surface, #F8FAFC);
-}
-
-/* Pagination stays at bottom */
-.table-wrap > div:last-child {
-  flex-shrink: 0;
 }
 </style>
 <script>
