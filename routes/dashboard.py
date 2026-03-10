@@ -645,24 +645,27 @@ def accept_document(doc_id):
     current_user = session.get("username", "")
     current_full_name = session.get("full_name", "")
     
-    print(f"[accept_document] doc_id={doc_id} current_user={current_user}")
+    # Force print to flush
+    import sys
+    print(f"[accept_document] === START === doc_id={doc_id} current_user={current_user}", flush=True)
     
     doc = get_doc(doc_id)
     if not doc:
-        print(f"[accept_document] Document not found: {doc_id}")
+        print(f"[accept_document] Document not found: {doc_id}", flush=True)
         flash("Document not found.", "error")
         return redirect(url_for("dashboard.index"))
     
-    print(f"[accept_document] doc pending_at_staff={doc.get('pending_at_staff')} transfer_status={doc.get('transfer_status')}")
+    print(f"[accept_document] doc pending_at_staff='{doc.get('pending_at_staff')}' transfer_status='{doc.get('transfer_status')}'", flush=True)
+    print(f"[accept_document] current_user='{current_user}'", flush=True)
     
     # Verify this document is pending for the current user
     if doc.get("pending_at_staff") != current_user:
-        print(f"[accept_document] Authorization failed: {doc.get('pending_at_staff')} != {current_user}")
-        flash("You are not authorized to accept this document.", "error")
+        print(f"[accept_document] Authorization failed!", flush=True)
+        flash(f"You are not authorized to accept this document. Document is pending for: {doc.get('pending_at_staff')}", "error")
         return redirect(url_for("dashboard.index"))
     
     if doc.get("transfer_status") != "pending":
-        print(f"[accept_document] Already processed: transfer_status={doc.get('transfer_status')}")
+        print(f"[accept_document] Already processed: transfer_status={doc.get('transfer_status')}", flush=True)
         flash("This document has already been processed.", "error")
         return redirect(url_for("dashboard.index"))
     
@@ -689,9 +692,9 @@ def accept_document(doc_id):
             "remarks":   f"Document accepted by {current_full_name or current_user}.",
         })
         
-        print(f"[accept_document] Saving doc with status={doc.get('status')}")
+        print(f"[accept_document] Saving doc with status={doc.get('status')}", flush=True)
         save_doc(doc)
-        print(f"[accept_document] Save complete")
+        print(f"[accept_document] Save complete!", flush=True)
         
         audit_log("doc_accepted",
                   f"doc_id={doc_id} accepted_by={current_user} doc_name={doc.get('doc_name','')[:60]}",
@@ -700,7 +703,9 @@ def accept_document(doc_id):
         flash("Document accepted successfully!", "success")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
     except Exception as e:
-        print(f"[accept_document] ERROR: {e}")
+        print(f"[accept_document] ERROR: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
         flash(f"Error accepting document: {e}", "error")
         return redirect(url_for("dashboard.index"))
 
