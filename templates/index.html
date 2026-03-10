@@ -23,6 +23,51 @@
   .stat-card.active .stat-clear { opacity:1; }
   .stat-card:not(.active):hover::after { content:'filter';position:absolute;bottom:7px;right:10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);opacity:.5; }
   .stat-card { position:relative; }
+
+  /* Make the page non-scrollable */
+html, body { height: 100%; overflow: hidden; }
+
+/* Content area fills remaining height */
+.content, .main-content, [class*="content"] { 
+  height: 100%; 
+  overflow: hidden; 
+  display: flex; 
+  flex-direction: column; 
+}
+
+.table-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0; /* critical for flex children to shrink */
+  overflow: hidden;
+  border: 2px solid var(--border);
+  border-radius: var(--radius, 12px);
+  background: #fff;
+}
+
+.table-head {
+  flex-shrink: 0; /* header never scrolls */
+}
+
+.table-scroll {
+  flex: 1;
+  min-height: 0; /* critical */
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.table-scroll table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface, #F8FAFC);
+}
+
+/* Pagination stays at bottom */
+.table-wrap > div:last-child {
+  flex-shrink: 0;
+}
 </style>
 <script>
 function statFilter(status) {
@@ -31,7 +76,7 @@ function statFilter(status) {
   window.location.href = '/?' + params.toString();
 }
 </script>
-<div style="position:sticky;top:0;z-index:100;background:var(--surface, #F8FAFC);padding:8px 0;margin-bottom:4px;"></div>
+<div style="position:sticky;top:0;z-index:100;background:var(--surface,#F8FAFC);padding:8px 0;margin-bottom:4px;">
   <div class="stats-grid">
     <a class="stat-card {% if filter_status=='All' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('All')">
       <div class="stat-card-inner"><div class="stat-num">{{ stats.total }}</div><div class="stat-label">📋 Total</div><div class="stat-clear">● All</div></div>
