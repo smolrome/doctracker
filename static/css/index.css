@@ -6,7 +6,7 @@
 /* ── Stats sticky bar ── */
 .stats-sticky-bar {
   position: sticky;
-  top: var(--navbar-h, 0px);   /* sticks just below nav */
+  top: var(--navbar-h, 0px);
   z-index: 100;
   background: var(--surface, #F0F7FA);
   padding: 10px 0 8px;
@@ -74,7 +74,7 @@
 }
 
 .stat-label {
-  font-size: clamp(10px, 1.05vw, 12px);
+  font-size: clamp(11px, 1.1vw, 13px);
   font-weight: 700;
   color: var(--muted, #5A7A91);
   white-space: normal;
@@ -86,7 +86,7 @@
 .stat-card.active .stat-label { color: var(--stat-accent, #0E7490); }
 
 .stat-num {
-  font-size: clamp(22px, 2.4vw, 30px);
+  font-size: clamp(26px, 2.8vw, 34px);
   font-weight: 900;
   color: var(--navy, #0A2540);
   line-height: 1.1;
@@ -112,7 +112,6 @@
 
 /* Stat color variants */
 .stat-card.yellow   { --stat-accent: #D97706; }
-/* CHANGED: olive → indigo so Logged is visually distinct from Pending amber */
 .stat-card.olive    { --stat-accent: #4F46E5; }
 .stat-card.emerald  { --stat-accent: #059669; }
 .stat-card.teal     { --stat-accent: #0E7490; }
@@ -134,7 +133,7 @@
 /* ── Filter sticky bar ── */
 .filter-sticky-bar {
   position: sticky;
-  top: var(--filter-top, 0px);   /* sticks just below stats bar */
+  top: var(--filter-top, 0px);
   z-index: 90;
   background: var(--surface, #F0F7FA);
   padding-bottom: 8px;
@@ -158,7 +157,6 @@
   align-items: flex-end;
 }
 
-/* Time row specific */
 .filter-row-time {
   margin-top: 10px;
   padding-top: 10px;
@@ -179,12 +177,12 @@
   min-width: 0;
 }
 
-.filter-group.grow  { flex: 1; min-width: 200px; }
+.filter-group.grow   { flex: 1; min-width: 200px; }
 .filter-group.w-date { width: 148px; }
 .filter-group.w-time { width: 120px; }
 
 .filter-label {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .07em;
@@ -196,11 +194,11 @@
   border: 1.5px solid var(--border, #C8DDE8);
   border-radius: 9px;
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: 14px;
   color: var(--text, #0A2540);
   background: var(--surface, #F0F7FA);
   outline: none;
-  min-height: 40px;
+  min-height: 42px;
   width: 100%;
   transition: border .15s, background .15s, box-shadow .15s;
 }
@@ -229,7 +227,7 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--muted, #5A7A91);
   user-select: none;
@@ -237,7 +235,7 @@
 }
 
 .time-toggle-label input[type=checkbox] {
-  width: 15px; height: 15px;
+  width: 16px; height: 16px;
   accent-color: var(--teal, #0E7490);
   cursor: pointer; flex-shrink: 0;
 }
@@ -251,10 +249,10 @@
 }
 
 .type-btn {
-  padding: 5px 13px;
-  height: 32px;
+  padding: 6px 15px;
+  height: 34px;
   border-radius: 20px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
   border: 1.5px solid var(--border, #C8DDE8);
   background: var(--surface, #F0F7FA);
@@ -281,16 +279,16 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 10px;
+  padding: 4px 11px;
   border-radius: 20px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   background: #EFF6FF;
   border: 1.5px solid #BFDBFE;
   color: #1D4ED8;
 }
 
-.pill-x { color: #93C5FD; cursor: pointer; font-size: 13px; line-height: 1; margin-left: 1px; }
+.pill-x { color: #93C5FD; cursor: pointer; font-size: 14px; line-height: 1; margin-left: 1px; }
 .pill-x:hover { color: #1D4ED8; }
 
 
@@ -312,39 +310,36 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  padding: 12px 18px;
   background: #fff;
   border-bottom: 1.5px solid var(--border, #C8DDE8);
   border-radius: 14px 14px 0 0;
   flex-wrap: wrap;
   gap: 8px;
   position: sticky;
-  top: var(--thead-top, 0px);   /* sticks just below filter bar */
+  top: var(--thead-top, 0px);
   z-index: 9;
   box-shadow: 0 2px 8px rgba(10,45,100,.07);
 }
 
-.table-scroll {
-  min-width: 820px;
-}
-
 #docs-table {
   width: 100%;
+  min-width: 820px;
   border-collapse: collapse;
-  font-size: 13.5px;
+  font-size: 15px;
 }
 
 #docs-table thead th {
   position: sticky;
   top: 0;
   z-index: 8;
-  background: #fff;
-  padding: 11px 16px;
-  font-size: 11px;
-  font-weight: 600;
+  background: #F8FAFC;
+  padding: 13px 18px;
+  font-size: 13px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: .09em;
-  color: #94A3B8;
+  letter-spacing: .08em;
+  color: #475569;
   border-bottom: 2px solid #E2E8F0;
   text-align: left;
   white-space: nowrap;
@@ -358,14 +353,14 @@
 
 #docs-table tbody tr.doc-row:last-child { border-bottom: none; }
 #docs-table tbody tr.doc-row:hover td  { background: #FAFBFC; }
-#docs-table tbody td { padding: 18px 16px; vertical-align: middle; }
+#docs-table tbody td { padding: 20px 18px; vertical-align: middle; }
 
-.td-doc { min-width: 220px; max-width: 340px; }
+.td-doc { min-width: 240px; max-width: 360px; }
 
 .doc-name {
   font-weight: 700;
   color: #0F172A;
-  font-size: 13.5px;
+  font-size: 15px;
   line-height: 1.4;
 }
 
@@ -378,7 +373,7 @@
 }
 
 .doc-id {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: #94A3B8;
   font-weight: 500;
   font-family: monospace;
@@ -388,38 +383,38 @@
 .doc-cat {
   display: inline-flex;
   align-items: center;
-  font-size: 11px; font-weight: 600;
+  font-size: 12px; font-weight: 600;
   color: #0E7490; background: #F0FDFF;
   border: 1px solid #A5F3FC;
-  border-radius: 20px; padding: 2px 9px;
+  border-radius: 20px; padding: 3px 10px;
 }
 
 .doc-client-badge {
   display: inline-flex;
   align-items: center;
-  font-size: 11px; font-weight: 600;
+  font-size: 12px; font-weight: 600;
   color: #059669; background: #ECFDF5;
   border: 1px solid #A7F3D0;
-  border-radius: 20px; padding: 2px 9px;
+  border-radius: 20px; padding: 3px 10px;
 }
 
-.td-text  { font-size: 13px; color: #334155; min-width: 110px; }
+.td-text  { font-size: 15px; color: #334155; min-width: 120px; }
 .td-empty { color: #CBD5E1; }
-.td-date  { white-space: nowrap; min-width: 120px; }
+.td-date  { white-space: nowrap; min-width: 130px; }
 
-.date-main { display: block; font-size: 13px; font-weight: 600; color: #0F172A; }
-.date-time { display: block; font-size: 11.5px; color: #64748B; margin-top: 3px; }
+.date-main { display: block; font-size: 14px; font-weight: 600; color: #0F172A; }
+.date-time { display: block; font-size: 13px; color: #64748B; margin-top: 3px; }
 
-.td-status { min-width: 130px; }
+.td-status { min-width: 140px; }
 
-/* ── Status pills — dots injected via ::before ── */
+/* ── Status pills ── */
 .status-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 13px;
+  padding: 6px 14px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   border: 1.5px solid transparent;
   white-space: nowrap;
@@ -428,12 +423,11 @@
 .status-pill::before {
   content: '';
   display: inline-block;
-  width: 6px; height: 6px;
+  width: 7px; height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-/* CHANGED: Logged → indigo (was identical amber to Pending) */
 .status-logged   { background: #EEF2FF; color: #3730A3; border-color: #C7D2FE; }
 .status-logged::before   { background: #6366F1; }
 
@@ -463,8 +457,8 @@
 
 .status-sub {
   margin-top: 5px;
-  font-size: 11px; color: #94A3B8; font-weight: 500;
-  max-width: 150px;
+  font-size: 12px; color: #64748B; font-weight: 500;
+  max-width: 160px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
@@ -477,7 +471,7 @@ tr.row-selected:hover td { background: #E0F9FF !important; }
   text-align: center; vertical-align: middle;
 }
 
-th.cb-cell { background: #fff; }
+th.cb-cell { background: #F8FAFC; }
 
 .doc-checkbox, #select-all {
   width: 18px; height: 18px;
@@ -487,14 +481,14 @@ th.cb-cell { background: #fff; }
 
 /* ── Table head elements ── */
 .table-title {
-  font-size: 14px; font-weight: 800;
+  font-size: 16px; font-weight: 800;
   color: var(--navy, #0A2540);
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
 }
 
 .table-count {
-  font-size: 12px; color: var(--muted, #5A7A91); font-weight: 600;
-  padding: 3px 9px;
+  font-size: 13px; color: var(--muted, #5A7A91); font-weight: 600;
+  padding: 4px 10px;
   background: var(--surface, #F0F7FA);
   border: 1.5px solid var(--border, #C8DDE8);
   border-radius: 20px; white-space: nowrap;
@@ -505,11 +499,11 @@ th.cb-cell { background: #fff; }
 }
 
 .per-page-group { display: flex; align-items: center; gap: 5px; }
-.per-page-label { font-size: 12px; color: var(--muted, #5A7A91); white-space: nowrap; }
+.per-page-label { font-size: 13px; color: var(--muted, #5A7A91); white-space: nowrap; }
 .per-page-select {
-  padding: 3px 7px;
+  padding: 4px 8px;
   border: 1.5px solid var(--border, #C8DDE8);
-  border-radius: 7px; font-size: 12.5px;
+  border-radius: 7px; font-size: 13px;
   color: var(--navy, #0A2540);
   background: #fff; cursor: pointer; outline: none;
 }
@@ -518,8 +512,8 @@ th.cb-cell { background: #fff; }
 .tbl-btn {
   display: inline-flex;
   align-items: center; gap: 5px;
-  padding: 6px 14px; border-radius: 8px;
-  font-weight: 700; font-size: 12.5px;
+  padding: 8px 16px; border-radius: 8px;
+  font-weight: 700; font-size: 14px;
   font-family: inherit; border: none;
   cursor: pointer; text-decoration: none;
   white-space: nowrap;
@@ -531,22 +525,15 @@ th.cb-cell { background: #fff; }
 .tbl-btn-green  { background: linear-gradient(135deg,#059669,#10B981); color:#fff; box-shadow:0 2px 8px rgba(5,150,105,.25); }
 .tbl-btn-navy   { background: linear-gradient(135deg,#0A2540,#1D4ED8); color:#fff; box-shadow:0 2px 8px rgba(29,78,216,.2); }
 .tbl-btn-purple { background: linear-gradient(135deg,#7C3AED,#A855F7); color:#fff; box-shadow:0 2px 8px rgba(124,58,237,.25); }
-
-/* CHANGED: Transfer is amber/orange — workflow action, not danger */
 .tbl-btn-amber  { background: linear-gradient(135deg,#B45309,#D97706); color:#fff; box-shadow:0 2px 8px rgba(180,83,9,.25); }
 
 .tbl-btn-badge {
   background: rgba(255,255,255,.25);
   border-radius: 20px;
   padding: 1px 7px;
-  font-size: 11px; font-weight: 900;
+  font-size: 12px; font-weight: 900;
 }
 
-/*
-  CHANGED: Routing Slip + Transfer always visible.
-  Dimmed (38% opacity, no pointer-events) until rows are checked.
-  JS adds .selection-active to unlock them.
-*/
 #btn-create-slip,
 #btn-transfer {
   opacity: 0.38;
@@ -561,7 +548,6 @@ th.cb-cell { background: #fff; }
 
 
 /* ── Pending Banner ── */
-/* CHANGED: replaced all inline styles with a class */
 .pending-banner {
   display: none;
   margin-bottom: 8px;
@@ -572,53 +558,40 @@ th.cb-cell { background: #fff; }
   cursor: pointer;
   transition: transform .18s, box-shadow .18s;
   user-select: none;
-  /* flex layout */
-  display: none; /* JS shows it */
   align-items: center;
   gap: 12px;
 }
 
-/* show state set by JS */
-.pending-banner.visible {
-  display: flex;
-}
+.pending-banner.visible { display: flex; }
 
 .pending-banner:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(234,179,8,.22);
 }
 
-.pending-banner-icon { font-size: 24px; flex-shrink: 0; }
-
+.pending-banner-icon { font-size: 26px; flex-shrink: 0; }
 .pending-banner-text { flex: 1; }
 
 .pending-banner-title {
-  font-size: 14px; font-weight: 800; color: #92400E;
+  font-size: 15px; font-weight: 800; color: #92400E;
 }
 
 .pending-banner-sub {
-  font-size: 12px; color: #78350F; margin-top: 2px;
+  font-size: 13px; color: #78350F; margin-top: 2px;
 }
 
 .pending-banner-count {
   background: #DC2626; color: #fff;
-  font-size: 15px; font-weight: 900;
-  padding: 5px 13px; border-radius: 20px;
-  min-width: 34px; text-align: center;
+  font-size: 16px; font-weight: 900;
+  padding: 5px 14px; border-radius: 20px;
+  min-width: 36px; text-align: center;
   flex-shrink: 0;
 }
 
-/* Arrow to show it's clickable */
 .pending-banner-count::after { content: ' ›'; }
 
 
 /* ── Routing / Transfer modals ── */
-/*
-  CHANGED: removed all inline style="display:none;position:fixed;…"
-  from the HTML. The modals now use .modal-overlay from base.css, which
-  handles backdrop, z-index, open/close animation.
-  .route-panel is the inner white/dark card.
-*/
 .route-panel {
   background: linear-gradient(160deg, #0F2D50 0%, #1A3F7A 100%);
   border-radius: 16px;
@@ -635,7 +608,6 @@ th.cb-cell { background: #fff; }
 
 .route-panel-sm { max-width: 500px; }
 
-/* ── Routing modal inner elements ── */
 .rp-header {
   display: flex; align-items: center; gap: 12px;
   margin-bottom: 16px; flex-wrap: wrap;
@@ -666,7 +638,6 @@ th.cb-cell { background: #fff; }
 
 .rp-close:hover { background: rgba(255,255,255,.2); color: #fff; }
 
-/* Selected preview */
 .rp-selected-preview { margin-bottom: 14px; display: none; }
 
 .rp-selected-label {
@@ -683,7 +654,6 @@ th.cb-cell { background: #fff; }
   border: 1px solid rgba(255,255,255,.12);
 }
 
-/* From → To row */
 .rp-from-to {
   display: flex; align-items: center; gap: 10px;
   margin-bottom: 14px; padding: 10px 14px;
@@ -703,7 +673,6 @@ th.cb-cell { background: #fff; }
 .rp-arrow     { color: rgba(255,255,255,.35); margin: 0 4px; }
 .rp-to-name   { font-size: 14px; font-weight: 700; color: #93C5FD; }
 
-/* Fields grid */
 .rp-fields {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;
@@ -791,7 +760,6 @@ th.cb-cell { background: #fff; }
   color: rgba(255,255,255,.5); line-height: 1.5; margin: 0;
 }
 
-/* Submit button inside routing panel */
 .btn-route {
   padding: 10px 22px; border-radius: 9px;
   background: #fff; color: #1D4ED8; border: none;
@@ -809,11 +777,7 @@ th.cb-cell { background: #fff; }
 
 .btn-route:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
-/* CHANGED: Transfer confirm button is amber so it doesn't look like a blank white button */
-.btn-route-amber {
-  background: #FEF3C7;
-  color: #92400E;
-}
+.btn-route-amber { background: #FEF3C7; color: #92400E; }
 .btn-route-amber:hover { background: #FDE68A; }
 
 .btn-time-filter {
@@ -973,17 +937,17 @@ th.cb-cell { background: #fff; }
 }
 
 .page-btn {
-  padding: 6px 12px; border-radius: 8px;
+  padding: 7px 14px; border-radius: 8px;
   border: 1.5px solid var(--border, #C8DDE8);
   background: #fff; color: var(--navy, #0A2540);
-  font-weight: 700; font-size: 13px; text-decoration: none; transition: all .15s;
+  font-weight: 700; font-size: 14px; text-decoration: none; transition: all .15s;
 }
 
 .page-btn:hover   { border-color: var(--teal, #0E7490); color: var(--teal, #0E7490); }
 .page-btn.active  { background: var(--teal, #0E7490); border-color: var(--teal, #0E7490); color: #fff; }
 .page-btn.disabled { background: var(--surface, #F0F7FA); color: var(--muted, #5A7A91); pointer-events: none; }
 
-.page-ellipsis { color: var(--muted, #5A7A91); font-size: 13px; padding: 0 2px; }
+.page-ellipsis { color: var(--muted, #5A7A91); font-size: 14px; padding: 0 2px; }
 
 
 /* ── Empty State ── */
