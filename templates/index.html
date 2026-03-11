@@ -369,7 +369,7 @@
               <div style="margin-top:4px;max-width:150px;"><span style="background:#FEE2E2;border:1px solid #FECACA;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;color:#991B1B;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ doc.rejection_reason }}">❌ {{ doc.rejection_reason }}</span></div>
               {% endif %}
             {% else %}<span class="badge badge-archived">{{ s }}</span>{% endif %}
-            {% if logged_in and doc.logged_by == current_username %}
+            {% if logged_in and session.get('role') in ['admin', 'staff'] %}
             <div style="margin-top:8px;"><a href="/transfer/{{ doc.id }}" class="btn btn-xs" style="background:#7C3AED;color:#fff;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">🔄 Transfer</a></div>
             {% endif %}
           </td>
