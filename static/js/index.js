@@ -291,6 +291,8 @@ function onTransferStaffChange() {
 
 function submitTransfer() {
   console.log('=== submitTransfer() called ===');
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  console.log('csrf token:', csrfToken ? 'present' : 'MISSING — will be blocked!');
 
   const transferType = document.getElementById('transfer-type').value;
   const office = document.getElementById('transfer-office').value || modalCurrentOffice;
