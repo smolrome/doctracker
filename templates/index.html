@@ -149,9 +149,12 @@
 
 <!-- ══ SINGLE SOURCE OF TRUTH for transfer modal ══ -->
 {% set actual_office = current_office if current_office else session.get('office', '') %}
+{% if not actual_office %}
+{% set actual_office = 'Personnel' %}
+{% endif %}
 <script type="application/json" id="modal-offices-data">{{ offices_dict | tojson | safe }}</script>
 <script type="application/json" id="modal-sorted-offices">{{ sorted_offices | tojson | safe }}</script>
-<script type="application/json" id="modal-current-office">{{ actual_office | tojson | safe }}</script>
+<script type="application/json" id="modal-current-office">"{{ actual_office }}"</script>
 <!-- DEBUG: current_office = '{{ current_office }}', session office = '{{ session.get('office', '') }}', actual = '{{ actual_office }}' -->
 <div id="current-office-fallback" data-office="{{ actual_office }}" style="display:none;"></div>
 
