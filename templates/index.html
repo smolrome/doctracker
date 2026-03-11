@@ -1,6 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
 
+<script>
+// Session data from server
+var serverSessionData = {
+  username: '{{ session.get("username", "") }}',
+  role: '{{ session.get("role", "") }}',
+  office: '{{ session.get("office", "") }}',
+  full_name: '{{ session.get("full_name", "") }}'
+};
+console.log('Server session data:', serverSessionData);
+</script>
+
 <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
 
 <script src="{{ url_for('static', filename='js/index.js') }}"></script>

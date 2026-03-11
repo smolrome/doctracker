@@ -50,15 +50,21 @@ try {
     }
   }
   
+  // Fallback: use server session data
+  if (!modalCurrentOffice || modalCurrentOffice === 'null' || modalCurrentOffice === null) {
+    if (typeof serverSessionData !== 'undefined' && serverSessionData.office) {
+      modalCurrentOffice = serverSessionData.office;
+    }
+  }
+  
   console.log('Modal current office:', modalCurrentOffice);
 } catch(e) {
   console.error('Error initializing modal data:', e);
   var modalOfficesData   = {};
   var modalSortedOffices = [];
-  // Fallback: try to get from data attribute
-  var fallbackEl = document.getElementById('current-office-fallback');
-  if (fallbackEl) {
-    modalCurrentOffice = fallbackEl.getAttribute('data-office') || null;
+  // Fallback: use server session data
+  if (typeof serverSessionData !== 'undefined' && serverSessionData.office) {
+    modalCurrentOffice = serverSessionData.office;
   } else {
     modalCurrentOffice = null;
   }
