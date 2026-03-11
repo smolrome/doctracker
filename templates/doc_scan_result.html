@@ -1,74 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-<style>
-  .scan-hero{border-radius:20px;padding:28px 24px;text-align:center;margin-bottom:22px;
-    box-shadow:0 8px 28px rgba(10,45,100,.2);}
-  .scan-hero.ok-rec{background:linear-gradient(135deg,#1D4ED8,#0E7490);}
-  .scan-hero.ok-rel{background:linear-gradient(135deg,#059669,#0E7490);}
-  .scan-hero.err{background:linear-gradient(135deg,#DC2626,#9A3412);}
-  .scan-hero .hero-icon{font-size:60px;margin-bottom:10px;}
-  .scan-hero h1{font-family:'Outfit',sans-serif;font-size:26px;font-weight:900;
-    color:#fff;margin-bottom:6px;}
-  .scan-hero p{font-size:17px;color:rgba(255,255,255,.9);}
 
-  .info-card{background:#fff;border:2px solid var(--border);border-radius:16px;
-    padding:20px;margin-bottom:16px;}
-  .info-card-title{font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;
-    text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
-    margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--border);}
-  .doc-name-big{font-family:'Outfit',sans-serif;font-size:22px;font-weight:900;
-    color:var(--navy);margin-bottom:6px;}
-  .doc-meta{font-size:16px;color:var(--text);line-height:2;}
-  .doc-meta strong{color:var(--navy);}
-
-  /* Status badge */
-  .status-rec{display:inline-flex;align-items:center;gap:8px;background:#DBEAFE;
-    color:#1D4ED8;border-radius:30px;padding:8px 20px;font-size:17px;font-weight:800;margin-top:8px;}
-  .status-rel{display:inline-flex;align-items:center;gap:8px;background:#D1FAE5;
-    color:#065F46;border-radius:30px;padding:8px 20px;font-size:17px;font-weight:800;margin-top:8px;}
-
-  /* Traffic counter */
-  .traffic-card{background:linear-gradient(135deg,var(--dark),#0E7490);
-    border-radius:16px;padding:20px 24px;margin-bottom:16px;
-    display:flex;align-items:center;justify-content:space-around;gap:16px;flex-wrap:wrap;}
-  .traffic-stat{text-align:center;}
-  .traffic-num{font-family:'Outfit',sans-serif;font-size:40px;font-weight:900;color:#fff;line-height:1;}
-  .traffic-label{font-size:14px;font-weight:700;color:rgba(255,255,255,.75);
-    text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
-  .traffic-divider{width:2px;height:60px;background:rgba(255,255,255,.2);flex-shrink:0;}
-  .traffic-title{font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;
-    color:rgba(255,255,255,.7);text-align:center;width:100%;
-    margin-bottom:4px;text-transform:uppercase;letter-spacing:.07em;}
-
-  /* Release QR */
-  .release-qr-card{background:#fff;border:3px solid #059669;border-radius:18px;
-    padding:22px;margin-bottom:16px;text-align:center;}
-  .release-qr-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;
-    color:#065F46;margin-bottom:6px;}
-  .release-qr-sub{font-size:15px;color:var(--muted);margin-bottom:16px;line-height:1.5;}
-  .release-qr-img{width:min(200px,55vw);height:min(200px,55vw);
-    border-radius:12px;border:2px solid var(--border);display:block;margin:0 auto 14px;}
-  .btn-dl-rel{display:inline-flex;align-items:center;gap:6px;padding:11px 20px;
-    border-radius:10px;background:#D1FAE5;color:#065F46;border:2px solid #059669;
-    font-size:16px;font-weight:700;text-decoration:none;}
-  .btn-dl-rel:hover{background:#059669;color:#fff;}
-
-  .btn-done{display:flex;align-items:center;justify-content:center;gap:8px;
-    padding:16px;border-radius:14px;background:linear-gradient(135deg,var(--dark),var(--teal));
-    color:#fff;font-size:18px;font-weight:800;font-family:inherit;border:none;
-    cursor:pointer;text-decoration:none;margin-top:8px;min-height:56px;
-    box-shadow:0 5px 16px rgba(10,77,104,.3);}
-
-  @media(max-width:480px){
-    .scan-hero h1{font-size:22px;}
-    .traffic-num{font-size:32px;}
-    .traffic-card{padding:16px;}
-  }
-  @media print{
-    .page-header,.btn-done,nav{display:none!important;}
-    .release-qr-card{border:3px solid #059669!important;-webkit-print-color-adjust:exact;}
-  }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/doc_scan_result.css') }}">
 
 <div class="page-header" style="display:none;"></div>
 

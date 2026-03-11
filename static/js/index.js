@@ -458,3 +458,47 @@ document.addEventListener('DOMContentLoaded', function () {
     window.checkPendingDocuments();
   }
 });
+
+/* ── Sticky offset calculator ──────────────────────────────────────────────
+   Measures the real nav height (works with base.html's plain <nav> tag)
+   and cascades every sticky layer below it.
+────────────────────────────────────────────────────────────────────────── */
+function recalcStickyOffsets() {
+  const root = document.documentElement;
+
+  /* Use offsetHeight — this is the CSS layout height, independent of
+     scroll position (unlike getBoundingClientRect which shifts as you scroll).
+     Each sticky layer's top = sum of all layers above it. */
+
+  const navbar  = document.querySelector('nav');
+  const navH    = navbar ? navbar.offsetHeight : 0;
+  root.style.setProperty('--navbar-h', navH + 'px');
+
+  /* Stats bar → sticks at navH */
+  const statsBar = document.getElementById('stats-sticky-bar');
+  const statsH   = statsBar ? statsBar.offsetHeight : 0;
+  root.style.setProperty('--filter-top', navH + 'px');
+
+  /* Filter bar → sticks at navH + statsH */
+  const filterBar = document.getElementById('filter-sticky-bar');
+  const filterH   = filterBar ? filterBar.offsetHeight : 0;
+  root.style.setProperty('--thead-top', (navH + statsH) + 'px');
+
+  /* Table action bar → sticks at navH + statsH + filterH */
+  const tableHead  = document.getElementById('table-action-bar');
+  const tableHeadH = tableHead ? tableHead.offsetHeight : 0;
+  const colHeadTop = navH + statsH + filterH;
+  root.style.setProperty('--col-head-top', colHeadTop + 'px');
+
+  /* Note: #table-action-bar itself sticks at --thead-top = navH + statsH.
+     Then <thead> sticks at --col-head-top = navH + statsH + filterH.
+     That means there's a gap of filterH between them — filterH includes
+     the filter bar's padding, so this is correct. */
+  root.style.setProperty('--tbody-top', (colHeadTop + tableHeadH) + 'px');
+}
+
+document.addEventListener('DOMContentLoaded', recalcStickyOffsets);
+window.addEventListener('resize', recalcStickyOffsets);
+window.addEventListener('load',   recalcStickyOffsets);
+setTimeout(recalcStickyOffsets, 150);
+setTimeout(recalcStickyOffsets, 600);
