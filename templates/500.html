@@ -5,16 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Server Error — DocTracker</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'DM Sans',sans-serif;background:#F4F7FB;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
-    .card{background:#fff;border-radius:18px;padding:40px 32px;max-width:460px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.08);border:1.5px solid #DDE3EE;}
-    .icon{font-size:56px;margin-bottom:16px;}
-    h1{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:#0D1B2A;margin-bottom:8px;}
-    p{font-size:14px;color:#6B7FA3;line-height:1.6;margin-bottom:20px;}
-    .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;background:#3B82F6;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;}
-    .btn:hover{background:#2563EB;}
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/500.css') }}"/>
 </head>
 <body>
   <div class="card">
