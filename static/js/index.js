@@ -34,51 +34,63 @@ function setToday() { document.querySelector('[name="date"]').value = new Date()
 function setType(val) { document.getElementById('type-hidden').value = val; document.getElementById('filter-form').submit(); }
 function clearField(name, val='') { const el = document.querySelector('[name="'+name+'"]'); if(el) el.value=val; document.getElementById('filter-form').submit(); }
 
-// Modal data
+// Modal data - Initialize when DOM is ready
 var modalCurrentOffice = null;
 var currentUserName = null;
 var currentUserRole = null;
-try {
-  var officesDataEl = document.getElementById('offices-data');
-  console.log('offices-data textContent:', officesDataEl?.textContent);
-  var officesData   = JSON.parse(officesDataEl?.textContent   || '{}');
-  var sortedOffices = JSON.parse(document.getElementById('sorted-offices')?.textContent || '[]');
-  var currentOfficeEl = document.getElementById('current-office-data');
-  modalCurrentOffice = currentOfficeEl ? JSON.parse(currentOfficeEl.textContent || 'null') : null;
-  
-  // Get user name and role from server session data (more reliable)
-  if (typeof serverSessionData !== 'undefined') {
-    currentUserName = serverSessionData.full_name || serverSessionData.username || null;
-    currentUserRole = serverSessionData.role || null;
-  }
+var officesData = {};
+var sortedOffices = [];
 
-  // Fallback: use server session data for office
-  if (!modalCurrentOffice || modalCurrentOffice === 'null' || modalCurrentOffice === null) {
+function initModalData() {
+  try {
+    var officesDataEl = document.getElementById('offices-data');
+    console.log('offices-data textContent:', officesDataEl?.textContent);
+    officesData   = JSON.parse(officesDataEl?.textContent   || '{}');
+    sortedOffices = JSON.parse(document.getElementById('sorted-offices')?.textContent || '[]');
+    var currentOfficeEl = document.getElementById('current-office-data');
+    modalCurrentOffice = currentOfficeEl ? JSON.parse(currentOfficeEl.textContent || 'null') : null;
+    
+    // Get user name and role from server session data (more reliable)
+    if (typeof serverSessionData !== 'undefined') {
+      currentUserName = serverSessionData.full_name || serverSessionData.username || null;
+      currentUserRole = serverSessionData.role || null;
+    }
+
+    // Fallback: use server session data for office
+    if (!modalCurrentOffice || modalCurrentOffice === 'null' || modalCurrentOffice === null) {
+      if (typeof serverSessionData !== 'undefined' && serverSessionData.office) {
+        modalCurrentOffice = serverSessionData.office;
+      }
+    }
+    
+    // Log user info and staff in logged in user's office (Console log)
+    console.log('=== Transfer Modal - User Info ===');
+    console.log('Name:', currentUserName);
+    console.log('Role:', currentUserRole);
+    console.log('Office:', modalCurrentOffice);
+    console.log('Staff in office:', officesData[modalCurrentOffice] || []);
+    console.log('===================================');
+
+    console.log('Current office:', modalCurrentOffice);
+    console.log('Offices data:', officesData);
+  } catch(e) {
+    console.error('Error initializing modal data:', e);
+    officesData   = {};
+    sortedOffices = [];
+    // Fallback: use server session data
     if (typeof serverSessionData !== 'undefined' && serverSessionData.office) {
       modalCurrentOffice = serverSessionData.office;
+    } else {
+      modalCurrentOffice = null;
     }
   }
-  
-  // Log user info and staff in logged in user's office (Console log)
-  console.log('=== Transfer Modal - User Info ===');
-  console.log('Name:', currentUserName);
-  console.log('Role:', currentUserRole);
-  console.log('Office:', modalCurrentOffice);
-  console.log('Staff in office:', officesData[modalCurrentOffice] || []);
-  console.log('===================================');
+}
 
-  console.log('Current office:', modalCurrentOffice);
-  console.log('Offices data:', officesData);
-} catch(e) {
-  console.error('Error initializing modal data:', e);
-  var officesData   = {};
-  var sortedOffices = [];
-  // Fallback: use server session data
-  if (typeof serverSessionData !== 'undefined' && serverSessionData.office) {
-    modalCurrentOffice = serverSessionData.office;
-  } else {
-    modalCurrentOffice = null;
-  }
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initModalData);
+} else {
+  initModalData();
 }
 
 // Page load initialization
@@ -90,7 +102,9 @@ function rowClick(e,docId) { if(e.target.type==='checkbox') return; window.locat
 // ROUTING MODAL
 function openRoutingModal() { document.getElementById('routing-modal').style.display='flex'; updateSelectedPreview(); const sd=document.getElementById('slip-date'); if(sd&&!sd.value) sd.value=new Date().toISOString().slice(0,10); }
 function closeRoutingModal() { document.getElementById('routing-modal').style.display='none'; }
-document.getElementById('routing-modal').addEventListener('click',function(e){ if(e.target===this) closeRoutingModal(); });
+if (document.getElementById('routing-modal')) {
+  document.getElementById('routing-modal').addEventListener('click',function(e){ if(e.target===this) closeRoutingModal(); });
+}
 
 // TRANSFER MODAL
 function openTransferModal() {
@@ -112,7 +126,9 @@ function openTransferModal() {
   document.getElementById('transfer-modal').style.display='flex';
 }
 function closeTransferModal() { document.getElementById('transfer-modal').style.display='none'; }
-document.getElementById('transfer-modal').addEventListener('click',function(e){ if(e.target===this) closeTransferModal(); });
+if (document.getElementById('transfer-modal')) {
+  document.getElementById('transfer-modal').addEventListener('click',function(e){ if(e.target===this) closeTransferModal(); });
+}
 
 function updateTransferOffices() {
   const transferType=document.getElementById('transfer-type').value;
