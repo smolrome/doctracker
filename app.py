@@ -115,6 +115,7 @@ def create_app() -> Flask:
             current_full_name = session.get("full_name", ""),
             current_office  = session.get("office", ""),
             now             = datetime.now,
+            session         = session,
         )
 
     # ── Request audit logger ──────────────────────────────────────────────────

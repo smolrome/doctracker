@@ -148,10 +148,12 @@
 </datalist>
 
 <!-- ══ SINGLE SOURCE OF TRUTH for transfer modal ══ -->
+{% set actual_office = current_office if current_office else session.get('office', '') %}
 <script type="application/json" id="modal-offices-data">{{ offices_dict | tojson | safe }}</script>
 <script type="application/json" id="modal-sorted-offices">{{ sorted_offices | tojson | safe }}</script>
-<script type="application/json" id="modal-current-office">{{ current_office | tojson | safe }}</script>
-<div id="current-office-fallback" data-office="{{ current_office }}" style="display:none;"></div>
+<script type="application/json" id="modal-current-office">{{ actual_office | tojson | safe }}</script>
+<!-- DEBUG: current_office = '{{ current_office }}', session office = '{{ session.get('office', '') }}', actual = '{{ actual_office }}' -->
+<div id="current-office-fallback" data-office="{{ actual_office }}" style="display:none;"></div>
 
 <!-- ── ROUTING MODAL ── -->
 <div id="routing-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(10,37,64,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;">
