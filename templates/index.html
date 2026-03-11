@@ -64,7 +64,7 @@
           <div class="oqs-card-name">{{ office.office_name }}</div>
           <img src="/office-qr/{{ sub_slug }}.png" class="oqs-qr-img" loading="lazy"/>
           <div class="oqs-actions">
-            {% if current_role == 'client' %}
+            {% if session.get('role') == 'client' %}
             <a href="/client/submit?office_slug={{ office.office_slug|urlencode }}&office_name={{ office.office_name|urlencode }}" class="btn-scan-sub">📋 Submit Here</a>
             {% else %}
             <a href="/office-action/{{ sub_slug }}" class="btn-scan-sub">📋 Submit Docs</a>
@@ -256,7 +256,7 @@
 <div class="table-wrap">
   
   <!-- Pending Documents Banner -->
-  {% if logged_in and current_role in ('staff', 'admin') %}
+  {% if logged_in and session.get('role') in ('staff', 'admin') %}
   <div id="pending-banner" style="display:none; margin-bottom:16px; padding:16px 20px; background:linear-gradient(135deg,#FEF3C7,#FDE68A); border:2px solid #FCD34D; border-radius:12px; cursor:pointer;" onclick="showPendingDocumentsModal()">
     <div style="display:flex; align-items:center; gap:12px;">
       <span style="font-size:28px;">📥</span>
