@@ -60,6 +60,8 @@ window.addEventListener('resize', recalcStickyOffsets);
 window.addEventListener('load', recalcStickyOffsets);
 setTimeout(recalcStickyOffsets, 150);
 setTimeout(recalcStickyOffsets, 600);
+setTimeout(function(){ recalcStickyOffsets(); syncColWidths(); }, 300);
+setTimeout(function(){ recalcStickyOffsets(); syncColWidths(); }, 800);
 
 // Sync sticky column header horizontal scroll with table body
 document.addEventListener('DOMContentLoaded', function() {
@@ -70,7 +72,44 @@ document.addEventListener('DOMContentLoaded', function() {
       headScroll.scrollLeft = bodyScroll.scrollLeft;
     });
   }
+
+  // Sync sticky header column widths to match actual table columns
+  syncColWidths();
+  window.addEventListener('resize', syncColWidths);
 });
+
+function syncColWidths() {
+  const table = document.getElementById('docs-table');
+  const headTable = document.querySelector('.col-head-table');
+  if (!table || !headTable) return;
+
+  // Get widths from the actual rendered table cells in first tbody row
+  const firstRow = table.querySelector('tbody tr');
+  if (!firstRow) return;
+
+  const cells = firstRow.querySelectorAll('td');
+  const headCells = headTable.querySelectorAll('th');
+
+  // Set col-head-sticky to exactly match table-scroll width
+  const colHeadScroll = document.getElementById('col-head-scroll');
+  const tableScroll = document.getElementById('table-scroll-body');
+  if (colHeadScroll && tableScroll) {
+    colHeadScroll.style.width = tableScroll.offsetWidth + 'px';
+  }
+
+  // Match each header cell width to its corresponding body cell
+  cells.forEach(function(cell, i) {
+    if (headCells[i]) {
+      const w = cell.getBoundingClientRect().width;
+      headCells[i].style.width = w + 'px';
+      headCells[i].style.minWidth = w + 'px';
+    }
+  });
+
+  // Also set the head table width to match the actual table
+  headTable.style.width = table.getBoundingClientRect().width + 'px';
+  headTable.style.tableLayout = 'fixed';
+}
 </script>
 
 {# ══════════════════════════════════

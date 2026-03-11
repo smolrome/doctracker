@@ -322,8 +322,9 @@
 }
 
 .col-head-scroll {
-  overflow-x: hidden; /* synced via JS */
+  overflow-x: hidden; /* synced via JS scroll listener */
   overflow-y: visible;
+  width: 100%;
 }
 
 .col-head-table {
@@ -466,7 +467,7 @@
 
 .table-scroll {
   overflow-x: auto;
-  overflow-y: visible; /* MUST be visible so thead sticky works on page scroll */
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
 }
 
