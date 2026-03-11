@@ -26,16 +26,7 @@ dashboard_bp = Blueprint("dashboard", __name__)
 def _get_staff_by_office(current_username: str = ""):
     """Get staff members grouped by office for transfer modal."""
     all_users = get_all_users()
-    print(f"DEBUG _get_staff_by_office: current_username='{current_username}', total_users={len(all_users)}")
-    
-    # Debug: print sample users
-    if all_users:
-        sample = all_users[:3]
-        print(f"DEBUG sample users: {[(u.get('username'), u.get('role'), u.get('office')) for u in sample]}")
-    
     staff = [u for u in all_users if u.get("role") != "client" and u.get("username") != current_username]
-    print(f"DEBUG staff count (excluding clients and self): {len(staff)}")
-    
     offices = {}
 
     # Ensure current user's office is always in the dict even if they're the only one there
@@ -52,7 +43,6 @@ def _get_staff_by_office(current_username: str = ""):
             offices[office] = []
         offices[office].append(s)
 
-    print(f"DEBUG _get_staff_by_office result: offices keys = {list(offices.keys())}")
     return offices
 
 
@@ -158,18 +148,18 @@ def index():
     start       = (page - 1) * per_page
     paginated   = filtered[start : start + per_page]
 
-    # Transfer modal data — current_office = logged-in user's office
-    # Use session office as primary (more reliable), fallback to DB lookup
-    # Normalize empty office to "No Office" to match _get_staff_by_office logic
-    session_office = session.get("office", "")
-    db_office = _get_user_office(current_username)
-    raw_office = session_office or db_office
+    # Transfer modal data — resolve office of currently logged-in user (for internal transfers)
+    # Using EXACT same logic as transfer_doc route
+    all_users = get_all_users()
+    logged_in_user = session.get("username", "")
+    raw_office = ""
+    for u in all_users:
+        if u.get("username") == logged_in_user:
+            raw_office = u.get("office", "") or ""
+            break
     current_office = raw_office if raw_office else "No Office"
     
-    # DEBUG: Log for troubleshooting
-    print(f"DEBUG index: current_username={current_username}, session_office='{session_office}', db_office='{db_office}', current_office='{current_office}'")
-    
-    offices_dict, sorted_offices = _build_offices_dict_and_sorted(current_username, current_office)
+    offices_dict, sorted_offices = _build_offices_dict_and_sorted(logged_in_user, current_office)
 
     return render_template("index.html",
         docs=paginated, stats=get_stats(docs),
