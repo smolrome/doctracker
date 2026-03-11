@@ -22,27 +22,35 @@ var serverSessionData = {
 function recalcStickyOffsets() {
   const root = document.documentElement;
 
-  /* FIXED: base.html uses a plain <nav> tag — previous selectors missed it */
-  const navbar = document.querySelector('nav');
-  const navH   = navbar ? navbar.getBoundingClientRect().height : 0;
+  /* Use offsetHeight — this is the CSS layout height, independent of
+     scroll position (unlike getBoundingClientRect which shifts as you scroll).
+     Each sticky layer's top = sum of all layers above it. */
+
+  const navbar  = document.querySelector('nav');
+  const navH    = navbar ? navbar.offsetHeight : 0;
   root.style.setProperty('--navbar-h', navH + 'px');
 
+  /* Stats bar → sticks at navH */
   const statsBar = document.getElementById('stats-sticky-bar');
-  const statsH   = statsBar ? statsBar.getBoundingClientRect().height : 0;
-  root.style.setProperty('--filter-top', (navH + statsH) + 'px');
+  const statsH   = statsBar ? statsBar.offsetHeight : 0;
+  root.style.setProperty('--filter-top', navH + 'px');
 
+  /* Filter bar → sticks at navH + statsH */
   const filterBar = document.getElementById('filter-sticky-bar');
-  const filterH   = filterBar ? filterBar.getBoundingClientRect().height : 0;
-  const theadTop  = navH + statsH + filterH;
-  root.style.setProperty('--thead-top', theadTop + 'px');
+  const filterH   = filterBar ? filterBar.offsetHeight : 0;
+  root.style.setProperty('--thead-top', (navH + statsH) + 'px');
 
+  /* Table action bar → sticks at navH + statsH + filterH */
   const tableHead  = document.getElementById('table-action-bar');
-  const tableHeadH = tableHead ? tableHead.getBoundingClientRect().height : 0;
-  root.style.setProperty('--col-head-top', (theadTop + tableHeadH) + 'px');
+  const tableHeadH = tableHead ? tableHead.offsetHeight : 0;
+  const colHeadTop = navH + statsH + filterH;
+  root.style.setProperty('--col-head-top', colHeadTop + 'px');
 
-  const colHead  = document.getElementById('col-head-sticky');
-  const colHeadH = colHead ? colHead.getBoundingClientRect().height : 0;
-  root.style.setProperty('--tbody-top', (theadTop + tableHeadH + colHeadH) + 'px');
+  /* Note: #table-action-bar itself sticks at --thead-top = navH + statsH.
+     Then <thead> sticks at --col-head-top = navH + statsH + filterH.
+     That means there's a gap of filterH between them — filterH includes
+     the filter bar's padding, so this is correct. */
+  root.style.setProperty('--tbody-top', (colHeadTop + tableHeadH) + 'px');
 }
 
 document.addEventListener('DOMContentLoaded', recalcStickyOffsets);

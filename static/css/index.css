@@ -6,7 +6,7 @@
 /* ── Stats sticky bar ── */
 .stats-sticky-bar {
   position: sticky;
-  top: var(--navbar-h, 0px);
+  top: var(--navbar-h, 0px);   /* sticks just below nav */
   z-index: 100;
   background: var(--surface, #F0F7FA);
   padding: 10px 0 8px;
@@ -134,7 +134,7 @@
 /* ── Filter sticky bar ── */
 .filter-sticky-bar {
   position: sticky;
-  top: var(--filter-top, 160px);
+  top: var(--filter-top, 0px);   /* sticks just below stats bar */
   z-index: 90;
   background: var(--surface, #F0F7FA);
   padding-bottom: 8px;
@@ -320,7 +320,7 @@
   flex-wrap: wrap;
   gap: 8px;
   position: sticky;
-  top: var(--thead-top, 0px);
+  top: var(--thead-top, 0px);   /* sticks just below filter bar */
   z-index: 9;
   box-shadow: 0 2px 8px rgba(10,45,100,.07);
 }
@@ -335,7 +335,7 @@
 
 #docs-table thead th {
   position: sticky;
-  top: var(--col-head-top, 0px);
+  top: var(--col-head-top, 0px);   /* sticks just below table action bar */
   z-index: 8;
   background: #fff;
   padding: 11px 16px;
