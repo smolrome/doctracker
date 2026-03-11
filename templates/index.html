@@ -9,7 +9,6 @@ var serverSessionData = {
   office: '{{ session.get("office", "") }}',
   full_name: '{{ session.get("full_name", "") }}'
 };
-console.log('Server session data:', serverSessionData);
 </script>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">

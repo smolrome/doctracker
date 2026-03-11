@@ -728,8 +728,10 @@ def transfer_batch():
         if not doc:
             print(f"  SKIP: doc {doc_id} not found", flush=True)
             continue
-        if user_role != "admin" and doc.get("logged_by") != current_user:
-            print(f"  SKIP: doc {doc_id} not owned by {current_user}, logged_by={doc.get('logged_by')}", flush=True)
+        if user_role != "admin" \
+        and doc.get("logged_by") != current_user \
+        and doc.get("transferred_by") != current_user:
+            print(f"  SKIP: doc {doc_id} not owned or transferred by {current_user}, logged_by={doc.get('logged_by')}, transferred_by={doc.get('transferred_by')}", flush=True)
             continue
 
         old_staff  = doc.get("logged_by", "unknown")
@@ -843,11 +845,6 @@ def get_pending_count():
         if u.get("username") == current_user:
             current_office = u.get("office", "") or "No Office"
             break
-    
-    print(f"[pending-count] Checking for pending documents...")
-    print(f"[pending-count] current_user: {current_user}")
-    print(f"[pending-count] current_role: {current_role}")
-    print(f"[pending-count] current_office: {current_office}")
     
     if not current_user:
         print("[pending-count] No user, returning 0")
