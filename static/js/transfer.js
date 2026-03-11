@@ -1,6 +1,16 @@
 const officesData   = JSON.parse(document.getElementById('offices-data').textContent || '{}');
 const sortedOffices = JSON.parse(document.getElementById('sorted-offices').textContent || '[]');
 const currentOffice = JSON.parse(document.getElementById('current-office-data').textContent);
+const currentUserName = JSON.parse(document.getElementById('current-user-data').textContent || '""');
+const currentUserRole = JSON.parse(document.getElementById('current-role-data').textContent || '""');
+
+// Log user info and staff in logged in user's office
+console.log('=== Transfer Page - User Info ===');
+console.log('Name:', currentUserName);
+console.log('Role:', currentUserRole);
+console.log('Office:', currentOffice);
+console.log('Staff in office:', officesData[currentOffice] || []);
+console.log('=================================');
 
 function show(id)  { document.getElementById(id).classList.add('visible'); }
 function hide(id)  { document.getElementById(id).classList.remove('visible'); }
@@ -11,8 +21,6 @@ function resetFrom(step) {
   const from  = order.indexOf('step-' + step + '-block');
   for (let i = from; i < order.length; i++) hide(order[i]);
 }
-
-console.log('Current user office:', currentOffice);
 function onTransferTypeChange() {
 const type = document.getElementById('transfer_type').value;
 

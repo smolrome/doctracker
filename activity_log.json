@@ -61,5 +61,40 @@
     "ip": "127.0.0.1",
     "detail": "method=POST path=/add fields={'doc_name': 'test'}",
     "ts": "2026-03-08T08:24:19.902444"
+  },
+  {
+    "username": "anonymous",
+    "action": "404_not_found",
+    "ip": "192.168.0.181",
+    "detail": "path=/favicon.ico",
+    "ts": "2026-03-11T08:59:19.573847"
+  },
+  {
+    "username": "anonymous",
+    "action": "404_not_found",
+    "ip": "127.0.0.1",
+    "detail": "path=/favicon.ico",
+    "ts": "2026-03-11T09:00:01.705025"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "127.0.0.1",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-11T09:00:15.236281"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_ok",
+    "ip": "127.0.0.1",
+    "detail": "role=admin",
+    "ts": "2026-03-11T09:00:15.245763"
+  },
+  {
+    "username": "admin",
+    "action": "admin_users_viewed",
+    "ip": "127.0.0.1",
+    "detail": "Admin accessed user management",
+    "ts": "2026-03-11T09:00:35.907533"
   }
 ]

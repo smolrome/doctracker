@@ -619,12 +619,23 @@ def transfer_doc(doc_id):
     print(f"DEBUG transfer_doc: logged_in_user={logged_in_user}, current_user_office={current_user_office}")
     print(f"DEBUG all_users sample: {all_users[:3] if all_users else 'empty'}")
 
+    # Log user info and staff in the logged in user's office (Railway/Server log)
+    staff_in_office = offices_dict.get(current_user_office, [])
+    print(f"=== Transfer Page - User Info (Railway Log) ===")
+    print(f"Name: {session.get('full_name', '')}")
+    print(f"Role: {session.get('role', '')}")
+    print(f"Office: {current_user_office}")
+    print(f"Staff in office: {staff_in_office}")
+    print(f"=================================================")
+
     offices_dict, sorted_offices = _build_offices_dict_and_sorted(current_user, current_user_office)
 
     return render_template("transfer.html", doc=doc,
                            offices_dict=offices_dict,
                            sorted_offices=sorted_offices,
-                           current_office=current_user_office)
+                           current_office=current_user_office,
+                           current_user_name=session.get('full_name', ''),
+                           current_user_role=session.get('role', ''))
 
 
 # ── Batch Transfer ─────────────────────────────────────────────────────────────
