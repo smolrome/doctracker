@@ -347,22 +347,173 @@
   font-size: 13.5px;
 }
 
+/* Column headers — light grey, uppercase, airy */
 #docs-table thead th {
   position: sticky;
   top: var(--col-head-top, 0px);
   z-index: 8;
-  background: var(--surface, #F8FAFC);
-  padding: 9px 14px;
-  font-size: 10.5px;
-  font-weight: 700;
+  background: #fff;
+  padding: 11px 16px;
+  font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: .07em;
-  color: var(--muted, #64748B);
-  border-bottom: 1.5px solid var(--border, #E2E8F0);
+  letter-spacing: .09em;
+  color: #94A3B8;
+  border-bottom: 1px solid #F1F5F9;
   text-align: left;
   white-space: nowrap;
-  box-shadow: 0 2px 4px rgba(0,0,0,.04);
 }
+
+/* Rows — generous padding, very light separator */
+#docs-table tbody tr.doc-row {
+  border-bottom: 1px solid #F1F5F9;
+  transition: background .1s;
+  cursor: pointer;
+}
+
+#docs-table tbody tr.doc-row:last-child { border-bottom: none; }
+#docs-table tbody tr.doc-row:hover td  { background: #FAFBFC; }
+
+#docs-table tbody td {
+  padding: 18px 16px;
+  vertical-align: middle;
+}
+
+/* Document / Content column */
+.td-doc { min-width: 220px; max-width: 340px; }
+
+.doc-name {
+  font-weight: 700;
+  color: #0F172A;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.doc-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+}
+
+.doc-id {
+  font-size: 11.5px;
+  color: #94A3B8;
+  font-weight: 500;
+  font-family: monospace;
+  letter-spacing: .02em;
+}
+
+.doc-cat {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0E7490;
+  background: #F0FDFF;
+  border: 1px solid #A5F3FC;
+  border-radius: 20px;
+  padding: 2px 9px;
+}
+
+.doc-client-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #059669;
+  background: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  border-radius: 20px;
+  padding: 2px 9px;
+}
+
+/* Regular text columns */
+.td-text {
+  font-size: 13px;
+  color: #334155;
+  min-width: 110px;
+}
+
+.td-empty { color: #CBD5E1; }
+
+/* Date column */
+.td-date { white-space: nowrap; min-width: 120px; }
+
+.date-main {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.date-time {
+  display: block;
+  font-size: 11.5px;
+  color: #64748B;
+  margin-top: 3px;
+  font-weight: 400;
+}
+
+/* Status column */
+.td-status { min-width: 130px; }
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 13px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1.5px solid transparent;
+  white-space: nowrap;
+}
+
+.status-logged   { background: #FEF9C3; color: #854D0E; border-color: #FDE047; }
+.status-pending  { background: #FEF9C3; color: #854D0E; border-color: #FDE047; }
+.status-received { background: #DCFCE7; color: #166534; border-color: #86EFAC; }
+.status-review   { background: #CFFAFE; color: #164E63; border-color: #67E8F9; }
+.status-transit  { background: #DBEAFE; color: #1E3A8A; border-color: #93C5FD; }
+.status-released { background: #D1FAE5; color: #065F46; border-color: #6EE7B7; }
+.status-hold     { background: #FEE2E2; color: #7F1D1D; border-color: #FCA5A5; }
+.status-rejected { background: #FEE2E2; color: #7F1D1D; border-color: #FCA5A5; }
+.status-archived { background: #F1F5F9; color: #475569; border-color: #CBD5E1; }
+
+.status-sub {
+  margin-top: 5px;
+  font-size: 11px;
+  color: #94A3B8;
+  font-weight: 500;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+tr.row-selected { background: #F0FDFF !important; }
+tr.row-selected:hover td { background: #E0F9FF !important; }
+
+/* Checkbox cells */
+.cb-cell {
+  width: 44px;
+  padding: 0 12px !important;
+  text-align: center;
+  vertical-align: middle;
+}
+
+th.cb-cell { background: #fff; }
+
+.doc-checkbox, #select-all {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #0E7490;
+  border-radius: 4px;
+}
+
+
 
 .table-title {
   font-size: 14px;
@@ -425,96 +576,6 @@
 }
 
 
-
-
-
-#docs-table tbody tr {
-  border-bottom: 1px solid var(--border, #E2E8F0);
-  transition: background .1s;
-}
-
-#docs-table tbody tr:last-child {
-  border-bottom: none;
-}
-
-#docs-table tbody tr:hover td {
-  background: #F8FAFC;
-}
-
-#docs-table tbody td {
-  padding: 11px 14px;
-  vertical-align: middle;
-  color: var(--text, #1E293B);
-}
-
-.doc-name {
-  font-weight: 700;
-  color: var(--navy, #0A2540);
-  font-size: 13.5px;
-  line-height: 1.35;
-}
-
-.doc-id {
-  font-size: 11px;
-  color: var(--muted, #64748B);
-  font-weight: 600;
-  margin-top: 2px;
-  font-family: monospace;
-  letter-spacing: .03em;
-}
-
-.doc-cat {
-  display: inline-block;
-  font-size: 10.5px;
-  font-weight: 700;
-  color: var(--teal, #0E7490);
-  background: #F0FDFF;
-  border: 1px solid #A5F3FC;
-  border-radius: 4px;
-  padding: 1px 6px;
-  margin-top: 3px;
-}
-
-/* Badges */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 9px;
-  border-radius: 6px;
-  font-size: 11.5px;
-  font-weight: 700;
-  border: 1px solid transparent;
-  white-space: nowrap;
-}
-
-.badge-pending  { background: #FEF9C3; color: #854D0E; border-color: #FDE047; }
-.badge-received { background: #DCFCE7; color: #14532D; border-color: #86EFAC; }
-.badge-review   { background: #CFFAFE; color: #164E63; border-color: #67E8F9; }
-.badge-transit  { background: #DBEAFE; color: #1E3A8A; border-color: #93C5FD; }
-.badge-released { background: #D1FAE5; color: #065F46; border-color: #6EE7B7; }
-.badge-hold     { background: #FEE2E2; color: #7F1D1D; border-color: #FCA5A5; }
-.badge-archived { background: #F1F5F9; color: #475569; border-color: #CBD5E1; }
-
-/* Checkbox cells */
-.cb-cell {
-  width: 44px;
-  padding: 0 10px !important;
-  text-align: center;
-  vertical-align: middle;
-}
-
-th.cb-cell { background: var(--surface, #F8FAFC); }
-
-.doc-checkbox, #select-all {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: var(--teal, #0E7490);
-  border-radius: 4px;
-}
-
-tr.row-selected { background: #F0FDFF !important; }
-tr.row-selected:hover td { background: #E0F9FF !important; }
 
 
 /* ── Pending Banner ── */
