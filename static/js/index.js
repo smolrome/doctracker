@@ -37,18 +37,10 @@ function clearField(name, val='') { const el = document.querySelector('[name="'+
 // Modal data
 var modalCurrentOffice = null;
 try {
-  var modalOfficesData   = JSON.parse(document.getElementById('modal-offices-data')?.textContent   || '{}');
-  var modalSortedOffices = JSON.parse(document.getElementById('modal-sorted-offices')?.textContent || '[]');
-  var modalCurrentOfficeEl = document.getElementById('modal-current-office');
-  modalCurrentOffice = modalCurrentOfficeEl ? JSON.parse(modalCurrentOfficeEl.textContent || 'null') : null;
-  
-  // Fallback: try to get from data attribute
-  if (!modalCurrentOffice || modalCurrentOffice === 'null') {
-    var fallbackEl = document.getElementById('current-office-fallback');
-    if (fallbackEl) {
-      modalCurrentOffice = fallbackEl.getAttribute('data-office') || null;
-    }
-  }
+  var officesData   = JSON.parse(document.getElementById('offices-data')?.textContent   || '{}');
+  var sortedOffices = JSON.parse(document.getElementById('sorted-offices')?.textContent || '[]');
+  var currentOfficeEl = document.getElementById('current-office-data');
+  modalCurrentOffice = currentOfficeEl ? JSON.parse(currentOfficeEl.textContent || 'null') : null;
   
   // Fallback: use server session data
   if (!modalCurrentOffice || modalCurrentOffice === 'null' || modalCurrentOffice === null) {
@@ -57,11 +49,12 @@ try {
     }
   }
   
-  console.log('Modal current office:', modalCurrentOffice);
+  console.log('Current office:', modalCurrentOffice);
+  console.log('Offices data:', officesData);
 } catch(e) {
   console.error('Error initializing modal data:', e);
-  var modalOfficesData   = {};
-  var modalSortedOffices = [];
+  var officesData   = {};
+  var sortedOffices = [];
   // Fallback: use server session data
   if (typeof serverSessionData !== 'undefined' && serverSessionData.office) {
     modalCurrentOffice = serverSessionData.office;
@@ -112,7 +105,7 @@ function updateTransferOffices() {
   document.getElementById('btn-do-transfer').disabled=true;
   if(!transferType){ officeSelect.innerHTML='<option value="">-- Select Office --</option>'; officeSelect.disabled=true; document.getElementById('transfer-office-info').textContent=''; return; }
   let options='<option value="">-- Select Office --</option>';
-  for(const office of modalSortedOffices){ if(office==='No Office') continue; options+=`<option value="${office}">${office}</option>`; }
+  for(const office of sortedOffices){ if(office==='No Office') continue; options+=`<option value="${office}">${office}</option>`; }
   officeSelect.innerHTML=options;
   if(transferType==='inside_office' && modalCurrentOffice && modalCurrentOffice!=='None' && modalCurrentOffice!==''){
     officeSelect.value=modalCurrentOffice;
@@ -185,7 +178,7 @@ function onTransferTypeChangeIndex() {
       
       // Populate all offices (excluding own office for external)
       let options = '<option value="">-- Select Office --</option>';
-      for (const office of modalSortedOffices) {
+      for (const office of sortedOffices) {
         if (office === 'No Office' || office === modalCurrentOffice) continue;
         options += `<option value="${office}">${office}</option>`;
       }
@@ -214,18 +207,18 @@ function updateTransferStaffIndex() {
 
 function populateTransferStaff(office) {
   console.log('populateTransferStaff called with office:', office);
-  console.log('modalOfficesData:', modalOfficesData);
-  console.log('modalOfficesData[office]:', modalOfficesData[office]);
+  console.log('Offices data:', officesData);
+  console.log('officesData[office]:', officesData[office]);
   
   const staffSelect = document.getElementById('transfer-staff');
   staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
   
-  if (!office || !modalOfficesData[office]) {
-    console.log('Returning early - office not found in modalOfficesData');
+  if (!office || !officesData[office]) {
+    console.log('Returning early - office not found in officesData');
     return;
   }
   
-  const staff = modalOfficesData[office];
+  const staff = officesData[office];
   console.log('Found staff for office:', staff);
   for (const s of staff) {
     const name = s.full_name || s.username;
@@ -247,8 +240,8 @@ function onTransferStaffChangeIndex() {
 function updateTransferStaff() {
   const office=document.getElementById('transfer-office').value;
   const staffSelect=document.getElementById('transfer-staff');
-  if(!office||!modalOfficesData[office]){ staffSelect.innerHTML='<option value="">-- Select Staff --</option>'; staffSelect.disabled=true; document.getElementById('btn-do-transfer').disabled=true; return; }
-  const staff=modalOfficesData[office];
+  if(!office||!officesData[office]){ staffSelect.innerHTML='<option value="">-- Select Staff --</option>'; staffSelect.disabled=true; document.getElementById('btn-do-transfer').disabled=true; return; }
+  const staff=officesData[office];
   let options='<option value="">-- Select Staff --</option>';
   for(const s of staff){ const name=s.full_name||s.username; options+=`<option value="${s.username}">${name} (@${s.username})</option>`; }
   staffSelect.innerHTML=options;
