@@ -304,7 +304,8 @@
   border: 1.5px solid var(--border, #C8DDE8);
   border-radius: 14px;
   background: #fff;
-  min-width: 820px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table-head {
@@ -324,8 +325,7 @@
 }
 
 .table-scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  min-width: 820px;
 }
 
 #docs-table {
@@ -336,7 +336,7 @@
 
 #docs-table thead th {
   position: sticky;
-  top: var(--col-head-top, 0px);   /* sticks just below table action bar */
+  top: 0;
   z-index: 8;
   background: #fff;
   padding: 11px 16px;
@@ -345,7 +345,7 @@
   text-transform: uppercase;
   letter-spacing: .09em;
   color: #94A3B8;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 2px solid #E2E8F0;
   text-align: left;
   white-space: nowrap;
 }
