@@ -372,6 +372,7 @@ def view_logging_slip(slip_id):
 # ── View / Edit / Delete ──────────────────────────────────────────────────────
 
 @dashboard_bp.route("/view/<doc_id>")
+@login_required
 def view_doc(doc_id):
     doc = get_doc(doc_id)
     if not doc:

@@ -197,7 +197,7 @@
   <a href="/transfer/{{ doc.id }}" class="btn btn-secondary" style="background:#7C3AED;color:#fff;">🔄 Transfer</a>
   <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ QR Code</a>
   <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
-  {% if doc.routing_slip_id %}
+  {% if doc.routing_slip_id and (current_role in ['admin', 'staff']) %}
   <a href="/routing-slip/{{ doc.routing_slip_id }}" target="_blank" class="btn btn-secondary" style="background:#0E7490;color:#fff;">🖨️ Routing Slip</a>
   {% endif %}
   {% if doc.logged_by %}
