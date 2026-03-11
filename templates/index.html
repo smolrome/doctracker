@@ -169,6 +169,7 @@ var serverSessionData = {
 <script type="application/json" id="current-office-data">"{{ actual_office }}"</script>
 <script type="application/json" id="current-user-data">{{ current_user_name | tojson | safe }}</script>
 <script type="application/json" id="current-role-data">{{ current_user_role | tojson | safe }}</script>
+<input type="hidden" id="csrf-token-value" value="{{ csrf_token }}">
 
 <!-- ── ROUTING MODAL ── -->
 <div id="routing-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(10,37,64,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;">

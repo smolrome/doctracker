@@ -161,11 +161,6 @@ def index():
     
     offices_dict, sorted_offices = _build_offices_dict_and_sorted(logged_in_user, current_office)
 
-    # DEBUG: Log offices_dict details
-    print(f"DEBUG offices_dict keys: {list(offices_dict.keys())}")
-    print(f"DEBUG offices_dict Personnel: {offices_dict.get('Personnel', 'NOT FOUND')}")
-    print(f"DEBUG logged_in_user: {logged_in_user}")
-
     # Log user info and staff in the logged in user's office (Railway/Server log)
     staff_in_office = offices_dict.get(current_office, [])
     print(f"=== Transfer Modal (Index) - User Info (Railway Log) ===")
@@ -865,13 +860,11 @@ def get_pending_count():
     # Admin can see all pending transfers
     if current_role == "admin":
         count = len(pending_docs)
-        print(f"[pending-count] Admin view - total pending: {count}")
     else:
         count = sum(
             1 for d in pending_docs
             if d.get("pending_at_staff") == current_user
         )
-        print(f"[pending-count] Staff view - pending for {current_user}: {count}")
     
     return jsonify({"count": count})
 

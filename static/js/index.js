@@ -327,7 +327,8 @@ function submitTransfer() {
     console.log('MODE: single doc → POST to', form.action);
     [['transfer_type', transferType],
      ['new_office', office],
-     ['new_staff', staff]
+     ['new_staff', staff],
+     ['_csrf_token', csrfToken]
     ].forEach(([name, value]) => {
       const input = document.createElement('input');
       input.type = 'hidden'; input.name = name; input.value = value;
@@ -342,7 +343,8 @@ function submitTransfer() {
     [['doc_ids', selectedIds.join(',')],
      ['transfer_type', transferType],
      ['new_office', office],
-     ['new_staff', staff]
+     ['new_staff', staff],
+     ['_csrf_token', csrfToken]
     ].forEach(([name, value]) => {
       const input = document.createElement('input');
       input.type = 'hidden'; input.name = name; input.value = value;
