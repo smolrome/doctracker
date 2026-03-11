@@ -60,56 +60,6 @@ window.addEventListener('resize', recalcStickyOffsets);
 window.addEventListener('load', recalcStickyOffsets);
 setTimeout(recalcStickyOffsets, 150);
 setTimeout(recalcStickyOffsets, 600);
-setTimeout(function(){ recalcStickyOffsets(); syncColWidths(); }, 300);
-setTimeout(function(){ recalcStickyOffsets(); syncColWidths(); }, 800);
-
-// Sync sticky column header horizontal scroll with table body
-document.addEventListener('DOMContentLoaded', function() {
-  const bodyScroll = document.getElementById('table-scroll-body');
-  const headScroll = document.getElementById('col-head-scroll');
-  if (bodyScroll && headScroll) {
-    bodyScroll.addEventListener('scroll', function() {
-      headScroll.scrollLeft = bodyScroll.scrollLeft;
-    });
-  }
-
-  // Sync sticky header column widths to match actual table columns
-  syncColWidths();
-  window.addEventListener('resize', syncColWidths);
-});
-
-function syncColWidths() {
-  const table = document.getElementById('docs-table');
-  const headTable = document.querySelector('.col-head-table');
-  if (!table || !headTable) return;
-
-  // Get widths from the actual rendered table cells in first tbody row
-  const firstRow = table.querySelector('tbody tr');
-  if (!firstRow) return;
-
-  const cells = firstRow.querySelectorAll('td');
-  const headCells = headTable.querySelectorAll('th');
-
-  // Set col-head-sticky to exactly match table-scroll width
-  const colHeadScroll = document.getElementById('col-head-scroll');
-  const tableScroll = document.getElementById('table-scroll-body');
-  if (colHeadScroll && tableScroll) {
-    colHeadScroll.style.width = tableScroll.offsetWidth + 'px';
-  }
-
-  // Match each header cell width to its corresponding body cell
-  cells.forEach(function(cell, i) {
-    if (headCells[i]) {
-      const w = cell.getBoundingClientRect().width;
-      headCells[i].style.width = w + 'px';
-      headCells[i].style.minWidth = w + 'px';
-    }
-  });
-
-  // Also set the head table width to match the actual table
-  headTable.style.width = table.getBoundingClientRect().width + 'px';
-  headTable.style.tableLayout = 'fixed';
-}
 </script>
 
 {# ══════════════════════════════════
@@ -504,38 +454,13 @@ function syncColWidths() {
 {% endif %}
 
 {# ══════════════════════════════════
-   STICKY COLUMN HEADERS — outside table-scroll
-══════════════════════════════════ #}
-{% if docs %}
-<div class="col-head-sticky" id="col-head-sticky">
-  <div class="col-head-scroll" id="col-head-scroll">
-    <table class="col-head-table">
-      <thead>
-        <tr>
-          {% if logged_in %}<th class="cb-cell" style="width:44px;"></th>{% endif %}
-          <th>Document / Content</th>
-          <th>Unit / Office / School</th>
-          <th>Source / Sender</th>
-          <th>Referred To</th>
-          <th>Date &amp; Time</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-    </table>
-  </div>
-</div>
-{% endif %}
-
-{# ══════════════════════════════════
    DOCUMENTS TABLE
 ══════════════════════════════════ #}
 <div class="table-wrap">
-
-  {# Table #}
   {% if docs %}
   <div class="table-scroll" id="table-scroll-body">
     <table id="docs-table">
-      <thead class="thead-hidden">
+      <thead>
         <tr>
           {% if logged_in %}<th class="cb-cell"><input type="checkbox" id="select-all" title="Select all"/></th>{% endif %}
           <th>Document / Content</th>

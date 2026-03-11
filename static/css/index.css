@@ -309,64 +309,18 @@
 .pill-x:hover { color: #1D4ED8; }
 
 
-/* ── Sticky Column Headers ── */
-.col-head-sticky {
-  position: sticky;
-  top: var(--col-head-top, 0px);
-  z-index: 8;
-  background: var(--surface, #F8FAFC);
-  border: 1.5px solid var(--border, #E2E8F0);
-  border-top: none;
-  border-bottom: none;
-  overflow: hidden;
-}
-
-.col-head-scroll {
-  overflow-x: hidden; /* synced via JS scroll listener */
-  overflow-y: visible;
-  width: 100%;
-}
-
-.col-head-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-
-.col-head-table th {
-  padding: 9px 14px;
-  font-size: 10.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .07em;
-  color: var(--muted, #64748B);
-  background: var(--surface, #F8FAFC);
-  border-bottom: 1.5px solid var(--border, #E2E8F0);
-  text-align: left;
-  white-space: nowrap;
-  box-shadow: 0 2px 4px rgba(0,0,0,.04);
-}
-
-/* Hide original thead — it's just for column sizing */
-.thead-hidden {
-  visibility: hidden;
-  height: 0;
-  line-height: 0;
-}
-.thead-hidden th {
-  padding: 0 !important;
-  height: 0 !important;
-  border: none !important;
-  font-size: 0 !important;
-}
-
 /* ── Table Wrap ── */
 .table-wrap {
   border: 1.5px solid var(--border, #E2E8F0);
-  border-top: none;
-  border-radius: 0 0 14px 14px;
+  border-radius: 14px;
   background: #fff;
   box-shadow: 0 1px 8px rgba(10,45,100,.05);
+  /* overflow-x on the outer container handles wide tables.
+     overflow-y must stay visible so thead position:sticky works
+     relative to the page scroll, not a clipped container. */
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table-head {
@@ -375,16 +329,42 @@
   justify-content: space-between;
   padding: 10px 16px;
   background: #fff;
-  border: 1.5px solid var(--border, #E2E8F0);
+  border-bottom: 1.5px solid var(--border, #E2E8F0);
   border-radius: 14px 14px 0 0;
-  border-bottom: none;
   flex-wrap: wrap;
   gap: 8px;
-  /* Sticky — sits immediately below the filter bar */
   position: sticky;
   top: var(--thead-top, 0px);
   z-index: 9;
   box-shadow: 0 2px 8px rgba(10,45,100,.07);
+}
+
+.table-scroll {
+  /* No overflow — .table-wrap owns it */
+  min-width: 0;
+}
+
+#docs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+#docs-table thead th {
+  position: sticky;
+  top: var(--col-head-top, 0px);
+  z-index: 8;
+  background: var(--surface, #F8FAFC);
+  padding: 9px 14px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted, #64748B);
+  border-bottom: 1.5px solid var(--border, #E2E8F0);
+  text-align: left;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0,0,0,.04);
 }
 
 .table-title {
@@ -447,35 +427,7 @@
   font-weight: 900;
 }
 
-/* Update thead top to sit below the now-sticky table-head */
-#docs-table thead th {
-  position: sticky;
-  top: var(--col-head-top, 0px);
-  z-index: 8;
-  background: var(--surface, #F8FAFC);
-  padding: 9px 14px;
-  font-size: 10.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .07em;
-  color: var(--muted, #64748B);
-  border-bottom: 1.5px solid var(--border, #E2E8F0);
-  text-align: left;
-  white-space: nowrap;
-  box-shadow: 0 2px 4px rgba(0,0,0,.04);
-}
 
-.table-scroll {
-  overflow-x: auto;
-  overflow-y: visible;
-  -webkit-overflow-scrolling: touch;
-}
-
-#docs-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13.5px;
-}
 
 
 
