@@ -213,12 +213,20 @@ function updateTransferStaffIndex() {
 }
 
 function populateTransferStaff(office) {
+  console.log('populateTransferStaff called with office:', office);
+  console.log('modalOfficesData:', modalOfficesData);
+  console.log('modalOfficesData[office]:', modalOfficesData[office]);
+  
   const staffSelect = document.getElementById('transfer-staff');
   staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
   
-  if (!office || !modalOfficesData[office]) return;
+  if (!office || !modalOfficesData[office]) {
+    console.log('Returning early - office not found in modalOfficesData');
+    return;
+  }
   
   const staff = modalOfficesData[office];
+  console.log('Found staff for office:', staff);
   for (const s of staff) {
     const name = s.full_name || s.username;
     staffSelect.innerHTML += `<option value="${s.username}">${name} (@${s.username})</option>`;
