@@ -161,6 +161,15 @@ def index():
     
     offices_dict, sorted_offices = _build_offices_dict_and_sorted(logged_in_user, current_office)
 
+    # Log user info and staff in the logged in user's office (Railway/Server log)
+    staff_in_office = offices_dict.get(current_office, [])
+    print(f"=== Transfer Modal (Index) - User Info (Railway Log) ===")
+    print(f"Name: {session.get('full_name', '')}")
+    print(f"Role: {session.get('role', '')}")
+    print(f"Office: {current_office}")
+    print(f"Staff in office: {staff_in_office}")
+    print(f"===============================================================")
+
     return render_template("index.html",
         docs=paginated, stats=get_stats(docs),
         search=search, filter_status=filter_status,
@@ -173,7 +182,9 @@ def index():
         staff_by_office=offices_dict,
         current_office=current_office,
         offices_dict=offices_dict,
-        sorted_offices=sorted_offices)
+        sorted_offices=sorted_offices,
+        current_user_name=session.get('full_name', ''),
+        current_user_role=session.get('role', ''))
 
 
 @dashboard_bp.route("/dashboard")

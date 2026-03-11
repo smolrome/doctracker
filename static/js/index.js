@@ -36,12 +36,20 @@ function clearField(name, val='') { const el = document.querySelector('[name="'+
 
 // Modal data
 var modalCurrentOffice = null;
+var currentUserName = null;
+var currentUserRole = null;
 try {
   var officesData   = JSON.parse(document.getElementById('offices-data')?.textContent   || '{}');
   var sortedOffices = JSON.parse(document.getElementById('sorted-offices')?.textContent || '[]');
   var currentOfficeEl = document.getElementById('current-office-data');
   modalCurrentOffice = currentOfficeEl ? JSON.parse(currentOfficeEl.textContent || 'null') : null;
   
+  // Get user name and role
+  var currentUserNameEl = document.getElementById('current-user-data');
+  var currentUserRoleEl = document.getElementById('current-role-data');
+  currentUserName = currentUserNameEl ? JSON.parse(currentUserNameEl.textContent || 'null') : null;
+  currentUserRole = currentUserRoleEl ? JSON.parse(currentUserRoleEl.textContent || 'null') : null;
+
   // Fallback: use server session data
   if (!modalCurrentOffice || modalCurrentOffice === 'null' || modalCurrentOffice === null) {
     if (typeof serverSessionData !== 'undefined' && serverSessionData.office) {
@@ -49,6 +57,14 @@ try {
     }
   }
   
+  // Log user info and staff in logged in user's office (Console log)
+  console.log('=== Transfer Modal - User Info ===');
+  console.log('Name:', currentUserName);
+  console.log('Role:', currentUserRole);
+  console.log('Office:', modalCurrentOffice);
+  console.log('Staff in office:', officesData[modalCurrentOffice] || []);
+  console.log('===================================');
+
   console.log('Current office:', modalCurrentOffice);
   console.log('Offices data:', officesData);
 } catch(e) {
