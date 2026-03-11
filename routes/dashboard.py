@@ -26,7 +26,16 @@ dashboard_bp = Blueprint("dashboard", __name__)
 def _get_staff_by_office(current_username: str = ""):
     """Get staff members grouped by office for transfer modal."""
     all_users = get_all_users()
+    print(f"DEBUG _get_staff_by_office: current_username='{current_username}', total_users={len(all_users)}")
+    
+    # Debug: print sample users
+    if all_users:
+        sample = all_users[:3]
+        print(f"DEBUG sample users: {[(u.get('username'), u.get('role'), u.get('office')) for u in sample]}")
+    
     staff = [u for u in all_users if u.get("role") != "client" and u.get("username") != current_username]
+    print(f"DEBUG staff count (excluding clients and self): {len(staff)}")
+    
     offices = {}
 
     # Ensure current user's office is always in the dict even if they're the only one there
@@ -43,6 +52,7 @@ def _get_staff_by_office(current_username: str = ""):
             offices[office] = []
         offices[office].append(s)
 
+    print(f"DEBUG _get_staff_by_office result: offices keys = {list(offices.keys())}")
     return offices
 
 
