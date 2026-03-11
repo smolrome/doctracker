@@ -312,9 +312,9 @@
 /* ── Table Wrap ── */
 .table-wrap {
   border: 1.5px solid var(--border, #E2E8F0);
-  border-radius: 14px;
+  border-radius: 0 0 14px 14px;
   background: #fff;
-  overflow: hidden;
+  /* No overflow:hidden — it breaks position:sticky on children */
   box-shadow: 0 1px 8px rgba(10,45,100,.05);
 }
 
@@ -322,16 +322,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 11px 16px;
-  border-bottom: 1.5px solid var(--border, #E2E8F0);
+  padding: 10px 16px;
   background: #fff;
+  border: 1.5px solid var(--border, #E2E8F0);
+  border-radius: 14px 14px 0 0;
+  border-bottom: none;
   flex-wrap: wrap;
   gap: 8px;
-  /* Sticky: sits right below the filter bar */
+  /* Sticky — sits immediately below the filter bar */
   position: sticky;
   top: var(--thead-top, 0px);
   z-index: 9;
-  box-shadow: 0 2px 8px rgba(10,45,100,.06);
+  box-shadow: 0 2px 8px rgba(10,45,100,.07);
 }
 
 .table-title {

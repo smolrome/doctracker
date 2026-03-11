@@ -397,6 +397,41 @@ setTimeout(recalcStickyOffsets, 600);
 </form>
 
 {# ══════════════════════════════════
+   TABLE ACTION BAR — sticky, outside table-wrap
+══════════════════════════════════ #}
+{% if logged_in %}
+<div class="table-head" id="table-action-bar">
+  <div class="table-title">📋 Document Records
+    <span class="table-count">
+      {% if total is defined %}
+        {{ total }} record{% if total != 1 %}s{% endif %}{% if total_pages > 1 %} · page {{ page }} of {{ total_pages }}{% endif %}
+      {% else %}
+        {{ docs|length }} record{% if docs|length != 1 %}s{% endif %}
+      {% endif %}
+    </span>
+  </div>
+  <div class="table-actions">
+    <div style="display:flex;align-items:center;gap:5px;">
+      <label style="font-size:12px;color:var(--muted);white-space:nowrap;">Show</label>
+      <select onchange="changePerPage(this.value)" style="padding:3px 7px;border:1.5px solid var(--border);border-radius:7px;font-size:12.5px;color:var(--navy);background:#fff;cursor:pointer;outline:none;">
+        {% for n in [10,25,50,100] %}<option value="{{ n }}" {% if per_page is defined and per_page == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
+      </select>
+    </div>
+    <a href="/add" class="tbl-btn tbl-btn-green">➕ Add</a>
+    <a href="/routed-documents" class="tbl-btn tbl-btn-navy">🚌 Routed</a>
+    {% if session.get('role') in ['admin', 'staff'] %}
+    <button id="btn-create-slip" onclick="openRoutingModal()" class="tbl-btn tbl-btn-purple" style="display:none;">
+      📤 Routing Slip <span id="slip-sel-badge" class="tbl-btn-badge"></span>
+    </button>
+    <button id="btn-transfer" onclick="openTransferModal()" class="tbl-btn tbl-btn-red" style="display:none;">
+      🔄 Transfer <span id="transfer-sel-badge" class="tbl-btn-badge"></span>
+    </button>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{# ══════════════════════════════════
    DOCUMENTS TABLE
 ══════════════════════════════════ #}
 <div class="table-wrap">
@@ -414,40 +449,6 @@ setTimeout(recalcStickyOffsets, 600);
     </div>
   </div>
   {% endif %}
-
-  {# Table Header — sticky so buttons always visible while scrolling #}
-  <div class="table-head" id="table-action-bar">
-    <div class="table-title">📋 Document Records
-      <span class="table-count" style="margin-left:8px;">
-        {% if total is defined %}
-          {{ total }} record{% if total != 1 %}s{% endif %}{% if total_pages > 1 %} · page {{ page }} of {{ total_pages }}{% endif %}
-        {% else %}
-          {{ docs|length }} record{% if docs|length != 1 %}s{% endif %}
-        {% endif %}
-      </span>
-    </div>
-
-    {% if logged_in %}
-    <div class="table-actions">
-      <div style="display:flex;align-items:center;gap:5px;">
-        <label style="font-size:12px;color:var(--muted);white-space:nowrap;">Show</label>
-        <select onchange="changePerPage(this.value)" style="padding:3px 7px;border:1.5px solid var(--border);border-radius:7px;font-size:12.5px;color:var(--navy);background:#fff;cursor:pointer;outline:none;">
-          {% for n in [10,25,50,100] %}<option value="{{ n }}" {% if per_page is defined and per_page == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
-        </select>
-      </div>
-      <a href="/add" class="tbl-btn tbl-btn-green" title="Add a new document">➕ Add</a>
-      <a href="/routed-documents" class="tbl-btn tbl-btn-navy" title="View all routing slips">🚌 Routed</a>
-      {% if session.get('role') in ['admin', 'staff'] %}
-      <button id="btn-create-slip" onclick="openRoutingModal()" class="tbl-btn tbl-btn-purple" style="display:none;">
-        📤 Routing Slip <span id="slip-sel-badge" class="tbl-btn-badge"></span>
-      </button>
-      <button id="btn-transfer" onclick="openTransferModal()" class="tbl-btn tbl-btn-red" style="display:none;">
-        🔄 Transfer <span id="transfer-sel-badge" class="tbl-btn-badge"></span>
-      </button>
-      {% endif %}
-    </div>
-    {% endif %}
-  </div>
 
   {# Table #}
   {% if docs %}
