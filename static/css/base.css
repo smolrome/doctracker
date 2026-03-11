@@ -251,11 +251,21 @@ nav::after {
 /* ════════════════════════════════════
    FLASH MESSAGES
 ════════════════════════════════════ */
-.flash-wrap { padding: 14px 20px 0; max-width: 1200px; margin: 0 auto; }
+.flash-wrap { 
+  position: fixed; 
+  top: 20px; 
+  right: 20px; 
+  z-index: 9999; 
+  max-width: 400px; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 10px;
+}
 .flash {
   padding: 14px 18px; border-radius: var(--radius-sm);
-  font-size: var(--fs-base); font-weight: 600; margin-bottom: 10px;
+  font-size: var(--fs-base); font-weight: 600; margin-bottom: 0;
   display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   /* CHANGED: added entrance animation */
   animation: flashIn .25s ease;
 }

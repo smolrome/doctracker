@@ -367,13 +367,11 @@ setTimeout(recalcStickyOffsets, 600);
    PENDING BANNER
 ══════════════════════════════════ #}
 {% if logged_in and session.get('role') in ('staff', 'admin') %}
-<div id="pending-banner" class="pending-banner" onclick="showPendingDocumentsModal()" role="button" tabindex="0">
-  <span class="pending-banner-icon">📥</span>
-  <div class="pending-banner-text">
-    <div class="pending-banner-title">Documents to Receive</div>
-    <div class="pending-banner-sub">Click to view and accept / reject transferred documents</div>
+<div id="floating-notification" class="fab-notify" onclick="showPendingDocumentsModal()" role="button" aria-label="Documents to Receive" tabindex="0">
+  <div class="fab-notify-circle">
+    <span aria-hidden="true">📥</span>
+    <span id="pending-badge" class="fab-notify-badge" aria-live="polite">0</span>
   </div>
-  <span id="pending-banner-count" class="pending-banner-count">0</span>
 </div>
 {% endif %}
 
