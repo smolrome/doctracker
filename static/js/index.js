@@ -119,6 +119,8 @@ function resetTransferFrom(step) {
 
 function onTransferTypeChangeIndex() {
   console.log('onTransferTypeChangeIndex called');
+  console.log('modalCurrentOffice:', modalCurrentOffice);
+  console.log('modalOfficesData keys:', Object.keys(modalOfficesData));
   try {
     const type = document.getElementById('transfer-type').value;
     const officeSelect = document.getElementById('transfer-office');
@@ -190,10 +192,15 @@ function updateTransferStaffIndex() {
 }
 
 function populateTransferStaff(office) {
+  console.log('populateTransferStaff called with office:', office);
+  console.log('modalOfficesData[office]:', modalOfficesData[office]);
   const staffSelect = document.getElementById('transfer-staff');
   staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
   
-  if (!office || !modalOfficesData[office]) return;
+  if (!office || !modalOfficesData[office]) {
+    console.log('No staff found for office:', office);
+    return;
+  }
   
   const staff = modalOfficesData[office];
   for (const s of staff) {

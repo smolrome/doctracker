@@ -151,8 +151,14 @@ def index():
     # Transfer modal data — current_office = logged-in user's office
     # Use session office as primary (more reliable), fallback to DB lookup
     # Normalize empty office to "No Office" to match _get_staff_by_office logic
-    raw_office = session.get("office") or _get_user_office(current_username)
+    session_office = session.get("office", "")
+    db_office = _get_user_office(current_username)
+    raw_office = session_office or db_office
     current_office = raw_office if raw_office else "No Office"
+    
+    # DEBUG: Log for troubleshooting
+    print(f"DEBUG index: current_username={current_username}, session_office='{session_office}', db_office='{db_office}', current_office='{current_office}'")
+    
     offices_dict, sorted_offices = _build_offices_dict_and_sorted(current_username, current_office)
 
     return render_template("index.html",
