@@ -43,15 +43,12 @@ def get_conn():
 
 def init_db():
     """Create all tables and run safe column migrations on startup."""
-    print("[init_db] Starting database initialization...")
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
                 _create_tables(cur)
                 _run_migrations(cur)
-        print("[init_db] ✅ Database initialized successfully.")
     except Exception as e:
-        print(f"[init_db] ❌ FAILED: {type(e).__name__}: {e}")
         raise
 
 
@@ -212,4 +209,3 @@ def _run_migrations(cur):
             cur.execute("RELEASE SAVEPOINT mig")
         except Exception as e:
             cur.execute("ROLLBACK TO SAVEPOINT mig")  # keep transaction alive
-            print(f"Migration skipped (ok): {str(e)[:120]}")

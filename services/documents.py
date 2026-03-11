@@ -36,7 +36,6 @@ def load_docs(include_deleted: bool = False) -> list[dict]:
                     cur.execute("SELECT data FROM documents ORDER BY created_at DESC")
                     docs = [row["data"] for row in cur.fetchall()]
         except Exception as e:
-            print(f"load_docs error: {e}")
             docs = []
     else:
         if os.path.exists(DATA_FILE):
@@ -59,7 +58,6 @@ def get_doc(doc_id: str) -> dict | None:
                     row = cur.fetchone()
                     return row["data"] if row else None
         except Exception as e:
-            print(f"get_doc error: {e}")
             return None
     return next((d for d in load_docs() if d["id"] == doc_id), None)
 
@@ -78,7 +76,6 @@ def get_docs_by_ids(doc_ids: list[str]) -> dict[str, dict]:
                     )
                     return {row["data"]["id"]: row["data"] for row in cur.fetchall()}
         except Exception as e:
-            print(f"get_docs_by_ids error: {e}")
             return {}
     # JSON fallback — load once, filter
     all_docs = load_docs(include_deleted=True)
@@ -98,7 +95,7 @@ def insert_doc(doc: dict):
                     )
                 conn.commit()
         except Exception as e:
-            print(f"insert_doc error: {e}")
+            pass
     else:
         docs = load_docs()
         docs.insert(0, doc)
@@ -119,7 +116,7 @@ def save_doc(doc: dict):
                     )
                 conn.commit()
         except Exception as e:
-            print(f"save_doc error: {e}")
+            pass
     else:
         docs = load_docs()
         for i, d in enumerate(docs):
@@ -148,7 +145,7 @@ def batch_save_docs(docs: list[dict]):
                         )
                 conn.commit()
         except Exception as e:
-            print(f"batch_save_docs error: {e}")
+            pass
     else:
         # JSON fallback — load once, update all, save once
         all_docs = load_docs(include_deleted=True)

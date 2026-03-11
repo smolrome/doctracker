@@ -580,7 +580,6 @@ def _export_documents() -> list[dict]:
                     cur.execute("SELECT data FROM documents ORDER BY created_at DESC")
                     return [row["data"] for row in cur.fetchall()]
         except Exception as e:
-            print(f"backup _export_documents error: {e}")
             return []
     return load_docs(include_deleted=True)
 
@@ -599,7 +598,6 @@ def _export_users() -> list[dict]:
                     )
                     return [dict(r) for r in cur.fetchall()]
         except Exception as e:
-            print(f"backup _export_users error: {e}")
             return []
     import os, json as _json
     if os.path.exists("users.json"):
@@ -625,7 +623,6 @@ def _export_routing_slips() -> list[dict]:
                         result.append(d)
                     return result
         except Exception as e:
-            print(f"backup _export_routing_slips error: {e}")
             return []
     import os
     if os.path.exists("routing_slips.json"):
@@ -648,7 +645,6 @@ def _export_saved_offices() -> list[dict]:
                         r["created_at"] = str(r["created_at"])[:19] if r.get("created_at") else ""
                     return rows
         except Exception as e:
-            print(f"backup _export_saved_offices error: {e}")
             return []
     import os
     if os.path.exists("saved_offices.json"):
@@ -674,7 +670,6 @@ def _export_office_traffic() -> list[dict]:
                         r["scanned_at"] = str(r["scanned_at"])[:19] if r.get("scanned_at") else ""
                     return rows
         except Exception as e:
-            print(f"backup _export_office_traffic error: {e}")
             return []
     return []
 
@@ -721,7 +716,7 @@ def _wipe_tables():
                 # Note: we do NOT wipe users in replace mode for safety
             conn.commit()
     except Exception as e:
-        print(f"_wipe_tables error: {e}")
+        pass
 
 
 def _restore_documents(docs: list, mode: str, summary: dict) -> int:

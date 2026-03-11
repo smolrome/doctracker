@@ -141,7 +141,7 @@ def create_doc_token(doc_id: str, token_type: str) -> str:
                     )
                 conn.commit()
         except Exception as e:
-            print(f"create_doc_token error: {e}")
+            pass
     else:
         path = "doc_qr_tokens.json"
         tokens = {}
@@ -171,7 +171,6 @@ def use_doc_token(token: str) -> tuple[str | None, str | None]:
                 conn.commit()
                 return row["doc_id"], row["token_type"]
         except Exception as e:
-            print(f"use_doc_token error: {e}")
             return None, None
     else:
         path = "doc_qr_tokens.json"
@@ -469,7 +468,7 @@ def create_slip_token(slip_id: str, token_type: str) -> str:
                     )
                 conn.commit()
         except Exception as e:
-            print(f"create_slip_token error: {e}")
+            pass
     else:
         path = "doc_qr_tokens.json"
         tokens = {}
@@ -506,7 +505,6 @@ def use_slip_token(token: str):
             slip_id = raw.removeprefix("SLIP:") if raw.startswith("SLIP:") else None
             return slip_id, row["token_type"]
         except Exception as e:
-            print(f"use_slip_token error: {e}")
             return None, None
     else:
         path = "doc_qr_tokens.json"

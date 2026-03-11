@@ -75,7 +75,6 @@ def create_user(username: str, password: str, full_name: str = "",
                 role: str = "staff", office: str = "") -> tuple[bool, str | None]:
     """Create a new user. Returns (success, error_message)."""
     uname = username.lower().strip()
-    print(f"[create_user] attempting uname={uname!r} role={role!r} USE_DB={USE_DB}")
     if USE_DB:
         try:
             with get_conn() as conn:
@@ -85,10 +84,8 @@ def create_user(username: str, password: str, full_name: str = "",
                            VALUES (%s, %s, %s, %s, %s)""",
                         (uname, hash_password(password), full_name.strip(), role, office.strip())
                     )
-            print(f"[create_user] ✅ DB insert OK for {uname!r}")
             return True, None
         except Exception as e:
-            print(f"[create_user ERROR] {type(e).__name__}: {e}")
             if "unique" in str(e).lower():
                 return False, "Username already taken."
             return False, f"Database error: {e}"
@@ -110,12 +107,10 @@ def create_user(username: str, password: str, full_name: str = "",
 def verify_user(username: str, password: str) -> tuple[str | None, str | None, str]:
     """Verify credentials. Returns (full_name, role, office) or (None, None, "")."""
     uname = username.strip().lower()
-    print(f"[verify_user] attempting uname={uname!r} USE_DB={USE_DB}")
 
     # Admin via env var — constant-time compare prevents timing attacks
     if (secrets.compare_digest(uname, ADMIN_USERNAME.lower())
             and secrets.compare_digest(password, ADMIN_PASSWORD)):
-        print(f"[verify_user] matched admin account")
         return ADMIN_USERNAME, "admin", "DepEd Leyte Division"
 
     if USE_DB:
@@ -129,24 +124,16 @@ def verify_user(username: str, password: str) -> tuple[str | None, str | None, s
                         (uname,)
                     )
                     row = cur.fetchone()
-                    print(f"[verify_user] DB row found: {bool(row)} | active={row['active'] if row else 'N/A'}")
                     if row is None:
-                        print(f"[verify_user] username not found in DB")
                         return None, None, ""
                     if not row["active"]:
-                        print(f"[verify_user] account is disabled")
                         return None, None, ""
                     pw_ok = verify_password(password, row["password_hash"])
-                    print(f"[verify_user] password check: {pw_ok} | hash_prefix={row['password_hash'][:10]!r}")
                     if pw_ok:
                         _upgrade_hash_if_needed(uname, password, row["password_hash"])
-                        print(f"[verify_user] LOGIN OK role={row['role']!r}")
                         return row["full_name"] or uname, row["role"], row["office"] or ""
-                    else:
-                        print(f"[verify_user] WRONG PASSWORD")
         except Exception as e:
-            print(f"[verify_user] EXCEPTION: {type(e).__name__}: {e}")
-            import traceback; traceback.print_exc()
+            pass
     else:
         for u in _load_users_json():
             if u["username"] == uname and verify_password(password, u.get("password_hash", "")):
@@ -182,7 +169,6 @@ def get_all_users() -> list[dict]:
                     )
                     return [dict(r) for r in cur.fetchall()]
         except Exception as e:
-            print(f"get_all_users error: {e}")
             return []
     return _load_users_json()
 
@@ -194,7 +180,7 @@ def set_user_active(username: str, active: bool):
                 with conn.cursor() as cur:
                     cur.execute("UPDATE users SET active=%s WHERE username=%s", (active, username))
         except Exception as e:
-            print(f"set_user_active error: {e}")
+            pass
     else:
         users = _load_users_json()
         for u in users:
@@ -211,7 +197,7 @@ def delete_user(username: str):
                     cur.execute("DELETE FROM users WHERE username=%s", (username,))
                 conn.commit()
         except Exception as e:
-            print(f"delete_user error: {e}")
+            pass
     else:
         _save_users_json([u for u in _load_users_json() if u["username"] != username])
 
@@ -233,7 +219,6 @@ def update_user_password(username: str, new_password: str) -> tuple[bool, str | 
                     )
             return True, None
         except Exception as e:
-            print(f"update_user_password error: {e}")
             return False, f"Database error: {e}"
     else:
         users = _load_users_json()
@@ -288,7 +273,6 @@ def update_user(username: str, full_name: str = None, role: str = None, office: 
                     )
             return True, None
         except Exception as e:
-            print(f"update_user error: {e}")
             return False, f"Database error: {e}"
     else:
         users = _load_users_json()
@@ -316,7 +300,7 @@ def update_last_login(username: str):
                 with conn.cursor() as cur:
                     cur.execute("UPDATE users SET last_login=NOW() WHERE username=%s", (username,))
         except Exception as e:
-            print(f"update_last_login error: {e}")
+            pass
 
 
 # ── JSON fallback helpers ─────────────────────────────────────────────────────

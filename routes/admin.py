@@ -95,8 +95,6 @@ def send_invite():
                                tokens=tokens,
                                now=datetime.now())
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
         flash(f"Error: {e}", "error")
         return redirect(url_for("admin.manage_users"))
 

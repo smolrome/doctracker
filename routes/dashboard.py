@@ -161,14 +161,7 @@ def index():
     
     offices_dict, sorted_offices = _build_offices_dict_and_sorted(logged_in_user, current_office)
 
-    # Log user info and staff in the logged in user's office (Railway/Server log)
     staff_in_office = offices_dict.get(current_office, [])
-    print(f"=== Transfer Modal (Index) - User Info (Railway Log) ===")
-    print(f"Name: {session.get('full_name', '')}")
-    print(f"Role: {session.get('role', '')}")
-    print(f"Office: {current_office}")
-    print(f"Staff in office: {staff_in_office}")
-    print(f"===============================================================")
 
     return render_template("index.html",
         docs=paginated, stats=get_stats(docs),
@@ -335,7 +328,7 @@ def add():
                 try:
                     save_routing_slip(logging_slip)
                 except Exception as e:
-                    print(f"Error saving logging slip: {e}")
+                    pass
                 
                 # Update each logged document with the slip ID
                 for doc_id in logged_doc_ids:
@@ -626,20 +619,9 @@ def transfer_doc(doc_id):
             break
     current_user_office = raw_office if raw_office else "No Office"
 
-    # DEBUG: Log to console
-    print(f"DEBUG transfer_doc: logged_in_user={logged_in_user}, current_user_office={current_user_office}")
-    print(f"DEBUG all_users sample: {all_users[:3] if all_users else 'empty'}")
-
     offices_dict, sorted_offices = _build_offices_dict_and_sorted(current_user, current_user_office)
 
-    # Log user info and staff in the logged in user's office (Railway/Server log)
     staff_in_office = offices_dict.get(current_user_office, [])
-    print(f"=== Transfer Page - User Info (Railway Log) ===")
-    print(f"Name: {session.get('full_name', '')}")
-    print(f"Role: {session.get('role', '')}")
-    print(f"Office: {current_user_office}")
-    print(f"Staff in office: {staff_in_office}")
-    print(f"=================================================")
 
     return render_template("transfer.html", doc=doc,
                            offices_dict=offices_dict,
@@ -654,34 +636,22 @@ def transfer_doc(doc_id):
 @dashboard_bp.route("/transfer-batch", methods=["POST"])
 @login_required
 def transfer_batch():
-    print("=== /transfer-batch POST called ===", flush=True)
-    print(f"  Form data: {dict(request.form)}", flush=True)
-
     doc_ids       = request.form.get("doc_ids", "").strip()
     transfer_type = request.form.get("transfer_type", "").strip()
     new_staff     = request.form.get("new_staff", "").strip()
     new_office    = request.form.get("new_office", "").strip()
 
-    print(f"  doc_ids: {doc_ids}", flush=True)
-    print(f"  transfer_type: {transfer_type}", flush=True)
-    print(f"  new_staff: {new_staff}", flush=True)
-    print(f"  new_office: {new_office}", flush=True)
-
     if not doc_ids:
-        print("  BLOCKED: no doc_ids", flush=True)
         flash("No documents selected.", "error")
         return redirect(url_for("dashboard.index"))
 
     if not new_staff or not transfer_type:
-        print("  BLOCKED: missing new_staff or transfer_type", flush=True)
         flash("Please select transfer type and staff member.", "error")
         return redirect(url_for("dashboard.index"))
 
     id_list = [d.strip() for d in doc_ids.split(",") if d.strip()]
-    print(f"  id_list: {id_list}", flush=True)
 
     if not id_list:
-        print("  BLOCKED: id_list is empty after split", flush=True)
         flash("No valid document IDs.", "error")
         return redirect(url_for("dashboard.index"))
 
@@ -690,17 +660,11 @@ def transfer_batch():
     all_users    = get_all_users()
     valid_staff  = [u["username"] for u in all_users if u.get("role") != "client"]
 
-    print(f"  current_user: {current_user}", flush=True)
-    print(f"  user_role: {user_role}", flush=True)
-    print(f"  new_staff in valid_staff: {new_staff in valid_staff}", flush=True)
-
     if new_staff not in valid_staff:
-        print("  BLOCKED: new_staff not in valid_staff", flush=True)
         flash("Invalid staff member.", "error")
         return redirect(url_for("dashboard.index"))
 
     if new_staff == current_user:
-        print("  BLOCKED: cannot transfer to yourself", flush=True)
         flash("Cannot transfer to yourself.", "error")
         return redirect(url_for("dashboard.index"))
 
@@ -712,26 +676,20 @@ def transfer_batch():
             new_staff_full_name = u.get("full_name", "") or new_staff
             break
 
-    print(f"  new_staff_office: {new_staff_office}", flush=True)
-    print(f"  new_staff_full_name: {new_staff_full_name}", flush=True)
-
     status_note       = "(Inside Office)" if transfer_type == "inside_office" else "(Outside Office)"
     transferred_count = 0
 
     for doc_id in id_list:
         doc = get_doc(doc_id)
         if not doc:
-            print(f"  SKIP: doc {doc_id} not found", flush=True)
             continue
         if user_role != "admin" \
         and doc.get("logged_by") != current_user \
         and doc.get("transferred_by") != current_user:
-            print(f"  SKIP: doc {doc_id} not owned or transferred by {current_user}, logged_by={doc.get('logged_by')}, transferred_by={doc.get('transferred_by')}", flush=True)
             continue
 
         old_staff  = doc.get("logged_by", "unknown")
         old_status = doc.get("status", "")
-        print(f"  Processing doc {doc_id}: old_staff={old_staff}, old_status={old_status}", flush=True)
 
         doc["status"]                = "Pending"
         doc["logged_by"]             = new_staff
@@ -754,10 +712,6 @@ def transfer_batch():
         })
         save_doc(doc)
         transferred_count += 1
-        print(f"  Saved doc {doc_id} → status=Pending, transfer_status=pending, pending_at_staff={new_staff}", flush=True)
-
-    print(f"  transferred_count: {transferred_count}", flush=True)
-    print("=== /transfer-batch DONE ===", flush=True)
 
     audit_log("doc_batch_transferred",
               f"count={transferred_count} to={new_staff} type={transfer_type}",
@@ -842,18 +796,14 @@ def get_pending_count():
             break
     
     if not current_user:
-        print("[pending-count] No user, returning 0")
         return jsonify({"count": 0})
     
     docs = load_docs()
     
-    # Debug: print all docs with transfer_status
+    # Filter documents with pending transfer_status
     pending_docs = []
     for d in docs:
         ts = d.get("transfer_status")
-        pas = d.get("pending_at_staff")
-        if ts:
-            print(f"[pending-count] Doc {d.get('id')} has transfer_status={ts}, pending_at_staff={pas}")
         if ts == "pending":
             pending_docs.append(d)
     
@@ -876,27 +826,17 @@ def accept_document(doc_id):
     current_user = session.get("username", "")
     current_full_name = session.get("full_name", "")
     
-    # Force print to flush
-    import sys
-    print(f"[accept_document] === START === doc_id={doc_id} current_user={current_user}", flush=True)
-    
     doc = get_doc(doc_id)
     if not doc:
-        print(f"[accept_document] Document not found: {doc_id}", flush=True)
         flash("Document not found.", "error")
         return redirect(url_for("dashboard.index"))
     
-    print(f"[accept_document] doc pending_at_staff='{doc.get('pending_at_staff')}' transfer_status='{doc.get('transfer_status')}'", flush=True)
-    print(f"[accept_document] current_user='{current_user}'", flush=True)
-    
     # Verify this document is pending for the current user
     if doc.get("pending_at_staff") != current_user:
-        print(f"[accept_document] Authorization failed!", flush=True)
         flash(f"You are not authorized to accept this document. Document is pending for: {doc.get('pending_at_staff')}", "error")
         return redirect(url_for("dashboard.index"))
     
     if doc.get("transfer_status") != "pending":
-        print(f"[accept_document] Already processed: transfer_status={doc.get('transfer_status')}", flush=True)
         flash("This document has already been processed.", "error")
         return redirect(url_for("dashboard.index"))
     
@@ -923,9 +863,7 @@ def accept_document(doc_id):
             "remarks":   f"Document accepted by {current_full_name or current_user}.",
         })
         
-        print(f"[accept_document] Saving doc with status={doc.get('status')}", flush=True)
         save_doc(doc)
-        print(f"[accept_document] Save complete!", flush=True)
         
         audit_log("doc_accepted",
                   f"doc_id={doc_id} accepted_by={current_user} doc_name={doc.get('doc_name','')[:60]}",
@@ -934,9 +872,6 @@ def accept_document(doc_id):
         flash("Document accepted successfully!", "success")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
     except Exception as e:
-        print(f"[accept_document] ERROR: {e}", flush=True)
-        import traceback
-        traceback.print_exc()
         flash(f"Error accepting document: {e}", "error")
         return redirect(url_for("dashboard.index"))
 

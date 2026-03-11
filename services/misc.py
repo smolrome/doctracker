@@ -33,7 +33,7 @@ def audit_log(action: str, detail: str = "", username: str = "anonymous",
                     )
                 conn.commit()
         except Exception as e:
-            print(f"audit_log error: {e}")
+            pass
     else:
         path = "activity_log.json"
         logs = []
@@ -61,7 +61,6 @@ def get_activity_logs(limit: int = 200) -> list[dict]:
                     )
                     return [dict(r) for r in cur.fetchall()]
         except Exception as e:
-            print(f"get_activity_logs error: {e}")
             return []
     path = "activity_log.json"
     if not os.path.exists(path):
@@ -91,7 +90,7 @@ def save_office(office_name: str, created_by: str) -> str:
                     )
                 conn.commit()
         except Exception as e:
-            print(f"save_office error: {e}")
+            pass
     else:
         path    = "saved_offices.json"
         offices = {}
@@ -116,7 +115,6 @@ def load_saved_offices() -> list[dict]:
                     )
                     return [dict(r) for r in cur.fetchall()]
         except Exception as e:
-            print(f"load_saved_offices error: {e}")
             return []
     path = "saved_offices.json"
     if not os.path.exists(path):
@@ -137,7 +135,7 @@ def delete_saved_office(office_slug: str):
                     cur.execute("DELETE FROM saved_offices WHERE office_slug=%s", (office_slug,))
                 conn.commit()
         except Exception as e:
-            print(f"delete_saved_office error: {e}")
+            pass
     else:
         path = "saved_offices.json"
         if os.path.exists(path):
@@ -162,7 +160,7 @@ def log_office_traffic(office_slug: str, office_name: str,
                     )
                 conn.commit()
         except Exception as e:
-            print(f"log_office_traffic error: {e}")
+            pass
     else:
         path = "office_traffic.json"
         logs = []
@@ -199,7 +197,6 @@ def get_office_traffic_today(office_slug: str) -> dict:
                             result["released"] = r["cnt"]
                     return result
         except Exception as e:
-            print(f"get_office_traffic_today error: {e}")
             return {"received": 0, "released": 0}
     path = "office_traffic.json"
     if not os.path.exists(path):
@@ -274,7 +271,7 @@ def save_routing_slip(slip: dict):
                 conn.commit()
                 return True
         except Exception as e:
-            print(f"save_routing_slip error: {e}")
+            pass
             # Fallback to JSON
             return save_routing_slip_json(slip)
     else:
@@ -309,7 +306,6 @@ def get_routing_slip(slip_id: str) -> dict | None:
                     r["created_at"] = str(r["created_at"])[:19] if r.get("created_at") else now_str()
                     return r
         except Exception as e:
-            print(f"get_routing_slip error: {e}")
             return None
     path = "routing_slips.json"
     if not os.path.exists(path):
@@ -335,7 +331,7 @@ def get_all_routing_slips() -> list[dict]:
                         slips.append(r)
                     return slips
         except Exception as e:
-            print(f"get_all_routing_slips error: {e}")
+            pass
             # Fallback to JSON
             return get_all_routing_slips_json()
     else:

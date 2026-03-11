@@ -30,7 +30,7 @@ def generate_invite_token(email: str, name: str = "") -> str:
                     )
                 conn.commit()
         except Exception as e:
-            print(f"generate_invite_token error: {e}")
+            pass
     else:
         tokens = _load_tokens_json()
         tokens = [t for t in tokens if not (t["email"] == email and not t.get("used"))]
@@ -41,7 +41,6 @@ def generate_invite_token(email: str, name: str = "") -> str:
 
 def validate_invite_token(token: str) -> tuple[str | None, str | None]:
     """Check token is valid, unused, and not expired. Returns (email, name)."""
-    print(f"[validate_invite_token] USE_DB={USE_DB} token_prefix={token[:12] if token else 'NONE'}")
     if USE_DB:
         try:
             with get_conn() as conn:
@@ -49,24 +48,16 @@ def validate_invite_token(token: str) -> tuple[str | None, str | None]:
                     # First check if token exists at all (for diagnostics)
                     cur.execute("SELECT email, name, used, expires_at FROM invite_tokens WHERE token=%s", (token,))
                     raw = cur.fetchone()
-                    print(f"[validate_invite_token] raw row = {dict(raw) if raw else None}")
                     if raw is None:
-                        print(f"[validate_invite_token] token NOT FOUND in DB")
                         return None, None
                     if raw["used"]:
-                        print(f"[validate_invite_token] token already USED")
                         return None, None
                     if raw["expires_at"] and raw["expires_at"] < __import__('datetime').datetime.now():
-                        print(f"[validate_invite_token] token EXPIRED at {raw['expires_at']}")
                         return None, None
-                    print(f"[validate_invite_token] token OK → email={raw['email']!r}")
                     return raw["email"], raw["name"]
         except Exception as e:
-            print(f"[validate_invite_token ERROR] {type(e).__name__}: {e}")
-            import traceback; traceback.print_exc()
             return None, None
     else:
-        print(f"[validate_invite_token] USE_DB=False — using JSON fallback")
         for t in _load_tokens_json():
             if t["token"] == token and not t.get("used"):
                 return t["email"], t.get("name", "")
@@ -82,7 +73,7 @@ def consume_invite_token(token: str):
                     cur.execute("UPDATE invite_tokens SET used=TRUE WHERE token=%s", (token,))
                 conn.commit()
         except Exception as e:
-            print(f"consume_invite_token error: {e}")
+            pass
     else:
         tokens = _load_tokens_json()
         for t in tokens:
@@ -103,7 +94,6 @@ def get_all_tokens() -> list[dict]:
                     )
                     return [dict(r) for r in cur.fetchall()]
         except Exception as e:
-            print(f"get_all_tokens error: {e}")
             return []
     return _load_tokens_json()
 

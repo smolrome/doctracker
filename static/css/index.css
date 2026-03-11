@@ -310,13 +310,21 @@
 
 
 /* ── Table Wrap ── */
+/* table-outer: ONLY element with overflow-x.
+   Keeping overflow off table-wrap lets position:sticky on thead
+   resolve against the page scroll container (<body>). */
+.table-outer {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 14px;
+  box-shadow: 0 1px 8px rgba(10,45,100,.05);
+}
+
 .table-wrap {
   border: 1.5px solid var(--border, #E2E8F0);
   border-radius: 14px;
   background: #fff;
-  box-shadow: 0 1px 8px rgba(10,45,100,.05);
-  /* No overflow here — child .table-scroll handles horizontal,
-     page handles vertical so thead sticky works */
+  min-width: 820px; /* triggers scroll on table-outer when viewport is narrow */
 }
 
 .table-head {
@@ -336,9 +344,8 @@
 }
 
 .table-scroll {
-  /* ONLY overflow-x — never set overflow-y or sticky thead breaks */
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  /* Empty — no overflow. .table-wrap owns horizontal scroll.
+     This element must NOT have any overflow or sticky thead breaks. */
 }
 
 #docs-table {
@@ -347,7 +354,7 @@
   font-size: 13.5px;
 }
 
-/* Column headers — light grey, uppercase, airy */
+/* Column headers */
 #docs-table thead th {
   position: sticky;
   top: var(--col-head-top, 0px);

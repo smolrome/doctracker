@@ -41,7 +41,7 @@ def _load_dropdown_options_from_db(field_name: str) -> list | None:
                 if row and row["options"]:
                     return row["options"]
     except Exception as e:
-        print(f"Error loading dropdown options for {field_name}: {e}")
+        pass
     return None
 
 
@@ -62,8 +62,8 @@ def _save_dropdown_options_to_db(field_name: str, options: list) -> bool:
             conn.commit()
         return True
     except Exception as e:
-        print(f"Error saving dropdown options for {field_name}: {e}")
-        return False
+        pass
+    return False
 
 
 def get_dropdown_options(field_name: str) -> list:

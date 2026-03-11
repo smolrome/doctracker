@@ -19,13 +19,11 @@ auth_bp = Blueprint("auth", __name__)
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
-    print(f"[LOGIN ROUTE] hit — method={request.method}")
     if is_logged_in():
         return redirect(url_for("dashboard.index"))
     error = None
     lockout_remaining = 0
     if request.method == "POST":
-        print(f"[LOGIN ROUTE] POST received — username={request.form.get('username','')!r}")
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
         ip = get_client_ip()
@@ -37,9 +35,7 @@ def login():
             audit_log("login_blocked", f"username={username}",
                       username=username, ip=ip)
         else:
-            print(f"[LOGIN] attempting username={username!r} ip={ip}")
             full_name, role, office = verify_user(username, password)
-            print(f"[LOGIN] verify_user result → full_name={full_name!r} role={role!r}")
             if full_name:
                 reset_rate_limit("login", f"{ip}:{username.lower()}")
                 session.clear()
@@ -55,7 +51,6 @@ def login():
                 update_last_login(username.lower().strip())
                 audit_log("login_ok", f"role={role}",
                           username=username, ip=ip)
-                print(f"[LOGIN] SUCCESS — redirecting role={role!r}")
                 if role == "client":
                     return redirect(url_for("client.portal"))
                 next_raw = request.args.get("next", "")
@@ -83,19 +78,14 @@ def register():
 
     token = request.args.get("token") or request.form.get("token", "")
 
-    print(f"[REGISTER] ===== method={request.method} =====")
-    print(f"[REGISTER] token present: {bool(token)} | token prefix: {token[:12] if token else 'NONE'}")
-
     token_email, token_name = (None, None)
     if token:
         try:
             token_email, token_name = validate_invite_token(token)
-            print(f"[REGISTER] validate_invite_token → email={token_email!r} name={token_name!r}")
         except Exception as e:
-            print(f"[REGISTER] validate_invite_token EXCEPTION: {type(e).__name__}: {e}")
+            pass
 
     token_valid = bool(token_email)
-    print(f"[REGISTER] token_valid={token_valid}")
     error = None
     
     # Load existing offices for dropdown
@@ -104,16 +94,11 @@ def register():
         try:
             existing_offices = load_saved_offices()
         except Exception as e:
-            print(f"[REGISTER] load_saved_offices error: {e}")
+            pass
     
-    print(f"[REGISTER] existing_offices count: {len(existing_offices)}")
-
     if request.method == "POST":
-        print(f"[REGISTER] POST fields: username={request.form.get('username','')!r} office={request.form.get('office','')!r} full_name={request.form.get('full_name','')!r}")
-
         if not token_valid:
             error = "Invalid or expired invite link. Please ask the admin for a new one."
-            print(f"[REGISTER] BLOCKED — token_valid=False")
         else:
             username  = request.form.get("username", "").strip()
             full_name = request.form.get("full_name", "").strip()
@@ -121,30 +106,20 @@ def register():
             confirm   = request.form.get("confirm_password", "").strip()
             office    = request.form.get("office", "").strip()
 
-            print(f"[REGISTER] Validating: username={username!r} office={office!r} pw_len={len(password)}")
-
             if not username or not password:
                 error = "Username and password are required."
-                print(f"[REGISTER] FAIL — missing username/password")
             elif not office:
                 error = "Please enter your office or unit name."
-                print(f"[REGISTER] FAIL — missing office")
             elif len(password) < 8:
                 error = "Password must be at least 8 characters."
-                print(f"[REGISTER] FAIL — password too short")
             elif not re.search(r'[0-9]', password):
                 error = "Password must contain at least one number."
-                print(f"[REGISTER] FAIL — password missing number")
             elif password != confirm:
                 error = "Passwords do not match."
-                print(f"[REGISTER] FAIL — passwords do not match")
             else:
-                print(f"[REGISTER] Calling create_user({username!r}, role=staff, office={office!r})")
                 ok, err = create_user(username, password, full_name or token_name,
                                       office=office)
-                print(f"[REGISTER] create_user result → ok={ok}, err={err!r}")
                 if ok:
-                    print(f"[REGISTER] SUCCESS — consuming token and saving office")
                     consume_invite_token(token)
                     
                     # Check if office already exists - only create QR if new
@@ -170,13 +145,10 @@ def register():
                             f"Account created! You've been assigned to the existing office '{office}'.",
                             "success"
                         )
-                    print(f"[REGISTER] Done — redirecting to login")
                     return redirect(url_for("auth.login"))
                 else:
                     error = err
-                    print(f"[REGISTER] create_user FAILED: {err!r}")
 
-    print(f"[REGISTER] Rendering form — error={error!r} token_valid={token_valid}")
     return render_template("register.html", error=error, token=token,
                            token_valid=token_valid,
                            token_email=token_email,

@@ -456,10 +456,11 @@ setTimeout(recalcStickyOffsets, 600);
 {# ══════════════════════════════════
    DOCUMENTS TABLE
 ══════════════════════════════════ #}
+{# .table-outer handles ONLY horizontal scroll — never vertical.
+   .table-wrap and thead use position:sticky relative to page scroll. #}
+<div class="table-outer">
 <div class="table-wrap">
   {% if docs %}
-  {# .table-scroll is the ONLY element with overflow-x.
-     It must have NO overflow-y so the page scroll drives thead sticky. #}
   <div class="table-scroll">
     <table id="docs-table">
       <thead>
@@ -597,6 +598,7 @@ setTimeout(recalcStickyOffsets, 600);
   </div>
   {% endif %}
 
-</div>
+</div>{# /table-wrap #}
+</div>{# /table-outer #}
 
 {% endblock %}
