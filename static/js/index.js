@@ -289,16 +289,68 @@ function onTransferStaffChange() {
 }
 
 function submitTransfer() {
-  const transferType=document.getElementById('transfer-type').value;
-  const office=document.getElementById('transfer-office').value||modalCurrentOffice;
-  const staff=document.getElementById('transfer-staff').value;
-  const selectedIds=[...document.querySelectorAll('.doc-checkbox:checked')].map(c=>c.value);
-  if(!selectedIds.length||!transferType||!staff){ alert('Please select documents, transfer type, and a staff member.'); return; }
-  const form=document.createElement('form'); form.method='POST'; form.action='/transfer-batch';
-  [['doc_ids',selectedIds.join(',')],['transfer_type',transferType],['new_office',office],['new_staff',staff]].forEach(([name,value])=>{
-    const input=document.createElement('input'); input.type='hidden'; input.name=name; input.value=value; form.appendChild(input);
-  });
-  document.body.appendChild(form); form.submit();
+  console.log('=== submitTransfer() called ===');
+
+  const transferType = document.getElementById('transfer-type').value;
+  const office = document.getElementById('transfer-office').value || modalCurrentOffice;
+  const staff = document.getElementById('transfer-staff').value;
+  const selectedIds = [...document.querySelectorAll('.doc-checkbox:checked')].map(c => c.value);
+
+  console.log('transfer_type:', transferType);
+  console.log('office:', office);
+  console.log('staff:', staff);
+  console.log('selectedIds:', selectedIds);
+  console.log('transferSingleDocId:', transferSingleDocId);
+  console.log('modalCurrentOffice:', modalCurrentOffice);
+
+  if (!transferType || !staff) {
+    console.warn('BLOCKED: missing transferType or staff');
+    alert('Please complete all steps before transferring.');
+    return;
+  }
+
+  if (!transferSingleDocId && !selectedIds.length) {
+    console.warn('BLOCKED: no docs selected and no single doc id');
+    alert('Please select at least one document to transfer.');
+    return;
+  }
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+
+  if (transferSingleDocId) {
+    // Single doc mode — same endpoint as transfer page
+    form.action = '/transfer/' + transferSingleDocId;
+    console.log('MODE: single doc → POST to', form.action);
+    [['transfer_type', transferType],
+     ['new_office', office],
+     ['new_staff', staff]
+    ].forEach(([name, value]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden'; input.name = name; input.value = value;
+      form.appendChild(input);
+      console.log('  field:', name, '=', value);
+    });
+
+  } else {
+    // Bulk mode — batch endpoint
+    form.action = '/transfer-batch';
+    console.log('MODE: bulk → POST to', form.action);
+    [['doc_ids', selectedIds.join(',')],
+     ['transfer_type', transferType],
+     ['new_office', office],
+     ['new_staff', staff]
+    ].forEach(([name, value]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden'; input.name = name; input.value = value;
+      form.appendChild(input);
+      console.log('  field:', name, '=', value);
+    });
+  }
+
+  console.log('Submitting form to:', form.action);
+  document.body.appendChild(form);
+  form.submit();
 }
 
 // SELECTION

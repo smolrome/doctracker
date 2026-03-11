@@ -659,20 +659,34 @@ def transfer_doc(doc_id):
 @dashboard_bp.route("/transfer-batch", methods=["POST"])
 @login_required
 def transfer_batch():
+    print("=== /transfer-batch POST called ===", flush=True)
+    print(f"  Form data: {dict(request.form)}", flush=True)
+
     doc_ids       = request.form.get("doc_ids", "").strip()
     transfer_type = request.form.get("transfer_type", "").strip()
     new_staff     = request.form.get("new_staff", "").strip()
+    new_office    = request.form.get("new_office", "").strip()
+
+    print(f"  doc_ids: {doc_ids}", flush=True)
+    print(f"  transfer_type: {transfer_type}", flush=True)
+    print(f"  new_staff: {new_staff}", flush=True)
+    print(f"  new_office: {new_office}", flush=True)
 
     if not doc_ids:
+        print("  BLOCKED: no doc_ids", flush=True)
         flash("No documents selected.", "error")
         return redirect(url_for("dashboard.index"))
 
     if not new_staff or not transfer_type:
+        print("  BLOCKED: missing new_staff or transfer_type", flush=True)
         flash("Please select transfer type and staff member.", "error")
         return redirect(url_for("dashboard.index"))
 
     id_list = [d.strip() for d in doc_ids.split(",") if d.strip()]
+    print(f"  id_list: {id_list}", flush=True)
+
     if not id_list:
+        print("  BLOCKED: id_list is empty after split", flush=True)
         flash("No valid document IDs.", "error")
         return redirect(url_for("dashboard.index"))
 
@@ -681,11 +695,17 @@ def transfer_batch():
     all_users    = get_all_users()
     valid_staff  = [u["username"] for u in all_users if u.get("role") != "client"]
 
+    print(f"  current_user: {current_user}", flush=True)
+    print(f"  user_role: {user_role}", flush=True)
+    print(f"  new_staff in valid_staff: {new_staff in valid_staff}", flush=True)
+
     if new_staff not in valid_staff:
+        print("  BLOCKED: new_staff not in valid_staff", flush=True)
         flash("Invalid staff member.", "error")
         return redirect(url_for("dashboard.index"))
 
     if new_staff == current_user:
+        print("  BLOCKED: cannot transfer to yourself", flush=True)
         flash("Cannot transfer to yourself.", "error")
         return redirect(url_for("dashboard.index"))
 
@@ -697,18 +717,24 @@ def transfer_batch():
             new_staff_full_name = u.get("full_name", "") or new_staff
             break
 
+    print(f"  new_staff_office: {new_staff_office}", flush=True)
+    print(f"  new_staff_full_name: {new_staff_full_name}", flush=True)
+
     status_note       = "(Inside Office)" if transfer_type == "inside_office" else "(Outside Office)"
     transferred_count = 0
 
     for doc_id in id_list:
         doc = get_doc(doc_id)
         if not doc:
+            print(f"  SKIP: doc {doc_id} not found", flush=True)
             continue
         if user_role != "admin" and doc.get("logged_by") != current_user:
+            print(f"  SKIP: doc {doc_id} not owned by {current_user}, logged_by={doc.get('logged_by')}", flush=True)
             continue
 
         old_staff  = doc.get("logged_by", "unknown")
         old_status = doc.get("status", "")
+        print(f"  Processing doc {doc_id}: old_staff={old_staff}, old_status={old_status}", flush=True)
 
         doc["status"]                = "Pending"
         doc["logged_by"]             = new_staff
@@ -720,7 +746,7 @@ def transfer_batch():
         doc["pending_at_staff"]      = new_staff
         doc["pending_at_office"]     = new_staff_office
         doc["pending_at_staff_name"] = new_staff_full_name
-        doc["transfer_status"]       = "pending"  # Track accept/reject status
+        doc["transfer_status"]       = "pending"
 
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
@@ -731,6 +757,10 @@ def transfer_batch():
         })
         save_doc(doc)
         transferred_count += 1
+        print(f"  Saved doc {doc_id} → status=Pending, transfer_status=pending, pending_at_staff={new_staff}", flush=True)
+
+    print(f"  transferred_count: {transferred_count}", flush=True)
+    print("=== /transfer-batch DONE ===", flush=True)
 
     audit_log("doc_batch_transferred",
               f"count={transferred_count} to={new_staff} type={transfer_type}",
