@@ -131,53 +131,7 @@ setTimeout(recalcStickyOffsets, 600);
   </div>
 </div>
 
-{# ══════════════════════════════════
-   OFFICE QR FAB + MODAL
-══════════════════════════════════ #}
-{% if saved_offices %}
-<button class="oqs-fab" onclick="openOqsModal()" title="Office Submission QR Codes" aria-label="Office QR Codes">
-  📋
-  <span class="oqs-fab-badge">{{ saved_offices|length }}</span>
-</button>
 
-<div class="oqs-modal-overlay" id="oqs-modal-overlay" onclick="if(event.target===this)closeOqsModal()">
-  <div class="oqs-modal">
-    <div class="oqs-modal-header">
-      <div class="oqs-modal-title">📋 Office Submission QR Codes</div>
-      <button class="oqs-modal-close" onclick="closeOqsModal()">✕ Close</button>
-    </div>
-    <div class="oqs-modal-search-wrap">
-      <input type="text" class="oqs-modal-search" id="oqs-search"
-        placeholder="🔍 Search office name…"
-        oninput="filterOffices(this.value)" autocomplete="off"/>
-    </div>
-    <div class="oqs-modal-body">
-      <div class="oqs-count" id="oqs-count">
-        {{ saved_offices|length }} office{% if saved_offices|length != 1 %}s{% endif %} registered
-      </div>
-      <div class="oqs-grid" id="oqs-grid">
-        {% for office in saved_offices %}
-        {% set sub_slug = office.office_slug + '-sub' %}
-        <div class="oqs-card" data-name="{{ office.office_name | lower }}">
-          <div class="oqs-card-badge">📋 SUB</div>
-          <div class="oqs-card-name">{{ office.office_name }}</div>
-          <img src="/office-qr/{{ sub_slug }}.png" class="oqs-qr-img" loading="lazy"/>
-          <div class="oqs-actions">
-            {% if session.get('role') == 'client' %}
-            <a href="/client/submit?office_slug={{ office.office_slug|urlencode }}&office_name={{ office.office_name|urlencode }}" class="btn-scan-sub">📋 Submit Here</a>
-            {% else %}
-            <a href="/office-action/{{ sub_slug }}" class="btn-scan-sub">📋 Submit Docs</a>
-            {% endif %}
-            <a href="/office-qr/{{ sub_slug }}.png" download="{{ sub_slug }}.png" class="btn-dl-sub">⬇️ Download QR</a>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      <div class="oqs-none" id="oqs-none">No offices match your search.</div>
-    </div>
-  </div>
-</div>
-{% endif %}
 
 {# ══════════════════════════════════
    FILTER BAR

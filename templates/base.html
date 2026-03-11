@@ -122,7 +122,7 @@
 </nav>
 
 <!-- ═══ Floating Notification + Modals (staff/admin only) ═══ -->
-{% if logged_in and current_role in ('staff', 'admin') and request.endpoint not in ('dashboard.add') %}
+{% if logged_in and current_role in ('staff', 'admin') and request.endpoint == 'dashboard.index' %}
 
 <div id="floating-notification"
      class="fab-notify"
