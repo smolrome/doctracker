@@ -40,6 +40,7 @@ var currentUserName = null;
 var currentUserRole = null;
 var officesData = {};
 var sortedOffices = [];
+var transferSingleDocId = null;
 
 function initModalData() {
   try {
