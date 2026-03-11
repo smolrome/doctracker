@@ -14,70 +14,112 @@ var serverSessionData = {
 <meta name="csrf-token" content="{{ csrf_token }}">
 <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 
+<script>
+/* ── Sticky offset calculator ──────────────────────────────
+   Measures the app navbar and each sticky band so every
+   layer sits exactly below the one above it, at any
+   viewport size or zoom level.
+──────────────────────────────────────────────────────────── */
+function recalcStickyOffsets() {
+  const root = document.documentElement;
+
+  // 1. Navbar: look for common selectors used by base templates
+  const navbar =
+    document.querySelector('nav.navbar') ||
+    document.querySelector('header') ||
+    document.querySelector('.navbar') ||
+    document.querySelector('#navbar') ||
+    document.querySelector('[data-navbar]');
+
+  const navH = navbar ? navbar.getBoundingClientRect().height : 0;
+  root.style.setProperty('--navbar-h', navH + 'px');
+
+  // 2. Stats bar height → filter bar sits below it
+  const statsBar = document.getElementById('stats-sticky-bar');
+  const statsH = statsBar ? statsBar.getBoundingClientRect().height : 0;
+  root.style.setProperty('--filter-top', (navH + statsH) + 'px');
+
+  // 3. Filter bar height → table thead sits below it
+  const filterBar = document.getElementById('filter-sticky-bar');
+  const filterH = filterBar ? filterBar.getBoundingClientRect().height : 0;
+  root.style.setProperty('--thead-top', (navH + statsH + filterH) + 'px');
+}
+
+// Run on load and whenever layout might change
+document.addEventListener('DOMContentLoaded', recalcStickyOffsets);
+window.addEventListener('resize', recalcStickyOffsets);
+// Also run after a short delay to catch late-rendering navbars
+setTimeout(recalcStickyOffsets, 150);
+setTimeout(recalcStickyOffsets, 600);
+</script>
+
 {# ══════════════════════════════════
    STATS ROW
 ══════════════════════════════════ #}
-<div style="position:sticky;top:0;z-index:100;background:var(--surface,#F8FAFC);padding:12px 0 10px;margin-bottom:4px;">
+<div id="stats-sticky-bar" style="position:sticky;top:var(--navbar-h,0px);z-index:100;background:var(--surface,#F8FAFC);padding:10px 0 8px;margin-bottom:4px;box-shadow:0 2px 8px rgba(10,45,100,.06);">
+
   <div class="stats-grid">
     <a class="stat-card {% if filter_status=='All' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('All')">
       <div class="stat-card-inner">
         <div class="stat-label">Total</div>
         <div class="stat-num">{{ stats.total }}</div>
+        <div class="stat-clear">● All</div>
       </div>
     </a>
     <a class="stat-card yellow {% if filter_status=='Pending' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Pending')">
       <div class="stat-card-inner">
         <div class="stat-label">Pending</div>
         <div class="stat-num">{{ stats.pending }}</div>
+        <div class="stat-clear">● Filtered</div>
       </div>
     </a>
     <a class="stat-card olive {% if filter_status=='Logged' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Logged')">
       <div class="stat-card-inner">
         <div class="stat-label">Logged</div>
         <div class="stat-num">{{ stats.logged or 0 }}</div>
-        
+        <div class="stat-clear">● Filtered</div>
       </div>
     </a>
     <a class="stat-card emerald {% if filter_status=='Received' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Received')">
       <div class="stat-card-inner">
         <div class="stat-label">Received</div>
         <div class="stat-num">{{ stats.received }}</div>
-        
+        <div class="stat-clear">● Filtered</div>
       </div>
     </a>
     <a class="stat-card teal {% if filter_status=='In Review' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('In Review')">
       <div class="stat-card-inner">
         <div class="stat-label">In Review</div>
         <div class="stat-num">{{ stats.in_review }}</div>
-        
+        <div class="stat-clear">● Filtered</div>
       </div>
     </a>
     <a class="stat-card blue {% if filter_status=='In Transit' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('In Transit')">
       <div class="stat-card-inner">
         <div class="stat-label">In Transit</div>
         <div class="stat-num">{{ stats.in_transit }}</div>
-        
+        <div class="stat-clear">● Filtered</div>
       </div>
     </a>
     <a class="stat-card green {% if filter_status=='Released' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Released')">
       <div class="stat-card-inner">
         <div class="stat-label">Released</div>
         <div class="stat-num">{{ stats.released }}</div>
-        
+        <div class="stat-clear">● Filtered</div>
       </div>
     </a>
     <a class="stat-card red {% if filter_status=='On Hold' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('On Hold')">
       <div class="stat-card-inner">
         <div class="stat-label">On Hold</div>
         <div class="stat-num">{{ stats.on_hold }}</div>
-        
+        <div class="stat-clear">● Filtered</div>
       </div>
     </a>
     <a class="stat-card {% if filter_status=='Archived' %}active{% endif %}" style="--stat-accent:#64748B;" href="#" onclick="event.preventDefault();statFilter('Archived')">
       <div class="stat-card-inner">
         <div class="stat-label">Archived</div>
         <div class="stat-num">{{ stats.archived }}</div>
-        
+        <div class="stat-clear">● Filtered</div>
       </div>
     </a>
   </div>
@@ -134,7 +176,7 @@ var serverSessionData = {
 {# ══════════════════════════════════
    FILTER BAR
 ══════════════════════════════════ #}
-<div style="position:sticky;top:var(--stats-height,160px);z-index:90;background:var(--surface,#F8FAFC);padding-bottom:8px;margin-bottom:0;">
+<div id="filter-sticky-bar" style="position:sticky;top:var(--filter-top,160px);z-index:90;background:var(--surface,#F8FAFC);padding-bottom:8px;margin-bottom:0;">
 <form method="get" action="/" id="filter-form">
   <div class="filter-bar">
 

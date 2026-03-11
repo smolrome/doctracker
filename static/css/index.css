@@ -347,8 +347,8 @@
 
 .table-scroll {
   overflow-x: auto;
-  overflow-y: auto;
-  max-height: calc(100vh - 420px);
+  /* Let the PAGE scroll, not this container.
+     Sticky thead works with page scroll, not inner scroll. */
 }
 
 #docs-table {
@@ -359,7 +359,7 @@
 
 #docs-table thead th {
   position: sticky;
-  top: 0;
+  top: var(--thead-top, 0px);
   z-index: 10;
   background: var(--surface, #F8FAFC);
   padding: 10px 14px;
@@ -371,6 +371,7 @@
   border-bottom: 1.5px solid var(--border, #E2E8F0);
   text-align: left;
   white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0,0,0,.05);
 }
 
 #docs-table tbody tr {
