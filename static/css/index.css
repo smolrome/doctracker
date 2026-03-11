@@ -315,12 +315,8 @@
   border-radius: 14px;
   background: #fff;
   box-shadow: 0 1px 8px rgba(10,45,100,.05);
-  /* overflow-x on the outer container handles wide tables.
-     overflow-y must stay visible so thead position:sticky works
-     relative to the page scroll, not a clipped container. */
-  overflow-x: auto;
-  overflow-y: visible;
-  -webkit-overflow-scrolling: touch;
+  /* No overflow here — child .table-scroll handles horizontal,
+     page handles vertical so thead sticky works */
 }
 
 .table-head {
@@ -340,8 +336,9 @@
 }
 
 .table-scroll {
-  /* No overflow — .table-wrap owns it */
-  min-width: 0;
+  /* ONLY overflow-x — never set overflow-y or sticky thead breaks */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 #docs-table {

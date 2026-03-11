@@ -458,7 +458,9 @@ setTimeout(recalcStickyOffsets, 600);
 ══════════════════════════════════ #}
 <div class="table-wrap">
   {% if docs %}
-  <div class="table-scroll" id="table-scroll-body">
+  {# .table-scroll is the ONLY element with overflow-x.
+     It must have NO overflow-y so the page scroll drives thead sticky. #}
+  <div class="table-scroll">
     <table id="docs-table">
       <thead>
         <tr>
@@ -549,12 +551,6 @@ setTimeout(recalcStickyOffsets, 600);
               {% endif %}
             {% else %}
               <span class="badge badge-archived">{{ s }}</span>
-            {% endif %}
-
-            {% if logged_in and session.get('role') in ['admin', 'staff'] %}
-            <div style="margin-top:8px;">
-              <a href="/transfer/{{ doc.id }}" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:5px;background:#7C3AED;color:#fff;font-size:11px;font-weight:700;text-decoration:none;">🔄 Transfer</a>
-            </div>
             {% endif %}
           </td>
         </tr>
