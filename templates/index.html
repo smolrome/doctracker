@@ -456,9 +456,9 @@ setTimeout(recalcStickyOffsets, 600);
           <td class="td-text">{{ doc.referred_to or '—' }}</td>
 
           <td class="td-date">
-            {% if doc.date_received %}
-              <span class="date-main">{{ doc.date_received }}</span>
-              <span class="date-time">{{ doc.created_at | time12 }}</span>
+            {% if doc.date_received or doc.created_at %}
+              <span class="date-main">{{ doc.created_at[:10] if doc.created_at else '—' }}</span>
+              <span class="date-time">{{ doc.created_at | time12 if doc.created_at else '' }}</span>
             {% else %}<span class="td-empty">—</span>{% endif %}
           </td>
 
