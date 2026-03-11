@@ -151,6 +151,7 @@
 <script type="application/json" id="modal-offices-data">{{ offices_dict | tojson | safe }}</script>
 <script type="application/json" id="modal-sorted-offices">{{ sorted_offices | tojson | safe }}</script>
 <script type="application/json" id="modal-current-office">{{ current_office | tojson | safe }}</script>
+<div id="current-office-fallback" data-office="{{ current_office }}" style="display:none;"></div>
 
 <!-- ── ROUTING MODAL ── -->
 <div id="routing-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(10,37,64,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;">
@@ -286,12 +287,14 @@
       </div>
       <a href="/add" style="display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,#059669,#10B981);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 10px rgba(5,150,105,.3);text-decoration:none;" title="Add a new document">➕ Add Document</a>
       <a href="/routed-documents" style="display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,#0A2540,#1D4ED8);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 10px rgba(29,78,216,.3);text-decoration:none;" title="View all routing slips">🚌 Routed Documents</a>
+      {% if session.get('role') in ['admin', 'staff'] %}
       <button id="btn-create-slip" onclick="openRoutingModal()" style="display:none;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,#7C3AED,#A855F7);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 10px rgba(124,58,237,.3);">
         📤 Create Routing Slip <span id="slip-sel-badge" style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:900;"></span>
       </button>
       <button id="btn-transfer" onclick="openTransferModal()" style="display:none;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,#DC2626,#EF4444);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 10px rgba(220,38,38,.3);">
         🔄 Transfer <span id="transfer-sel-badge" style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:900;"></span>
       </button>
+      {% endif %}
       {% endif %}
     </div>
   </div>

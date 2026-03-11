@@ -35,15 +35,33 @@ function setType(val) { document.getElementById('type-hidden').value = val; docu
 function clearField(name, val='') { const el = document.querySelector('[name="'+name+'"]'); if(el) el.value=val; document.getElementById('filter-form').submit(); }
 
 // Modal data
+var modalCurrentOffice = null;
 try {
-  var modalOfficesData   = JSON.parse(document.getElementById('modal-offices-data').textContent   || '{}');
-  var modalSortedOffices = JSON.parse(document.getElementById('modal-sorted-offices').textContent || '[]');
-  var modalCurrentOffice = JSON.parse(document.getElementById('modal-current-office').textContent || 'null');
+  var modalOfficesData   = JSON.parse(document.getElementById('modal-offices-data')?.textContent   || '{}');
+  var modalSortedOffices = JSON.parse(document.getElementById('modal-sorted-offices')?.textContent || '[]');
+  var modalCurrentOfficeEl = document.getElementById('modal-current-office');
+  modalCurrentOffice = modalCurrentOfficeEl ? JSON.parse(modalCurrentOfficeEl.textContent || 'null') : null;
+  
+  // Fallback: try to get from data attribute
+  if (!modalCurrentOffice || modalCurrentOffice === 'null') {
+    var fallbackEl = document.getElementById('current-office-fallback');
+    if (fallbackEl) {
+      modalCurrentOffice = fallbackEl.getAttribute('data-office') || null;
+    }
+  }
+  
+  console.log('Modal current office:', modalCurrentOffice);
 } catch(e) {
   console.error('Error initializing modal data:', e);
   var modalOfficesData   = {};
   var modalSortedOffices = [];
-  var modalCurrentOffice = null;
+  // Fallback: try to get from data attribute
+  var fallbackEl = document.getElementById('current-office-fallback');
+  if (fallbackEl) {
+    modalCurrentOffice = fallbackEl.getAttribute('data-office') || null;
+  } else {
+    modalCurrentOffice = null;
+  }
 }
 
 // Page load initialization
