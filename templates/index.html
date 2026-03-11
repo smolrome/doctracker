@@ -468,7 +468,7 @@ setTimeout(recalcStickyOffsets, 600);
 <div class="table-outer">
 <div class="table-wrap">
   {% if docs %}
-  <div class="table-scroll">
+  
     <table id="docs-table">
       <thead>
         <tr>
@@ -547,7 +547,6 @@ setTimeout(recalcStickyOffsets, 600);
         {% endfor %}
       </tbody>
     </table>
-  </div>
 
   {# Pagination #}
   {% if total_pages is defined and total_pages > 1 %}
