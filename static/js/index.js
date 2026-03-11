@@ -39,7 +39,9 @@ var modalCurrentOffice = null;
 var currentUserName = null;
 var currentUserRole = null;
 try {
-  var officesData   = JSON.parse(document.getElementById('offices-data')?.textContent   || '{}');
+  var officesDataEl = document.getElementById('offices-data');
+  console.log('offices-data textContent:', officesDataEl?.textContent);
+  var officesData   = JSON.parse(officesDataEl?.textContent   || '{}');
   var sortedOffices = JSON.parse(document.getElementById('sorted-offices')?.textContent || '[]');
   var currentOfficeEl = document.getElementById('current-office-data');
   modalCurrentOffice = currentOfficeEl ? JSON.parse(currentOfficeEl.textContent || 'null') : null;

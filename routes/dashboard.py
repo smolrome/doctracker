@@ -164,6 +164,7 @@ def index():
     # DEBUG: Log offices_dict details
     print(f"DEBUG offices_dict keys: {list(offices_dict.keys())}")
     print(f"DEBUG offices_dict Personnel: {offices_dict.get('Personnel', 'NOT FOUND')}")
+    print(f"DEBUG logged_in_user: {logged_in_user}")
 
     # Log user info and staff in the logged in user's office (Railway/Server log)
     staff_in_office = offices_dict.get(current_office, [])
