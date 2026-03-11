@@ -161,6 +161,10 @@ def index():
     
     offices_dict, sorted_offices = _build_offices_dict_and_sorted(logged_in_user, current_office)
 
+    # DEBUG: Log offices_dict details
+    print(f"DEBUG offices_dict keys: {list(offices_dict.keys())}")
+    print(f"DEBUG offices_dict Personnel: {offices_dict.get('Personnel', 'NOT FOUND')}")
+
     # Log user info and staff in the logged in user's office (Railway/Server log)
     staff_in_office = offices_dict.get(current_office, [])
     print(f"=== Transfer Modal (Index) - User Info (Railway Log) ===")

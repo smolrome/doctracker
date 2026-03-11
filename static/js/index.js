@@ -44,13 +44,13 @@ try {
   var currentOfficeEl = document.getElementById('current-office-data');
   modalCurrentOffice = currentOfficeEl ? JSON.parse(currentOfficeEl.textContent || 'null') : null;
   
-  // Get user name and role
-  var currentUserNameEl = document.getElementById('current-user-data');
-  var currentUserRoleEl = document.getElementById('current-role-data');
-  currentUserName = currentUserNameEl ? JSON.parse(currentUserNameEl.textContent || 'null') : null;
-  currentUserRole = currentUserRoleEl ? JSON.parse(currentUserRoleEl.textContent || 'null') : null;
+  // Get user name and role from server session data (more reliable)
+  if (typeof serverSessionData !== 'undefined') {
+    currentUserName = serverSessionData.full_name || serverSessionData.username || null;
+    currentUserRole = serverSessionData.role || null;
+  }
 
-  // Fallback: use server session data
+  // Fallback: use server session data for office
   if (!modalCurrentOffice || modalCurrentOffice === 'null' || modalCurrentOffice === null) {
     if (typeof serverSessionData !== 'undefined' && serverSessionData.office) {
       modalCurrentOffice = serverSessionData.office;

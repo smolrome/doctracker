@@ -71,6 +71,16 @@
   </form>
 </div>
 
+<script>
+// Session data from server
+var serverSessionData = {
+  username: '{{ session.get("username", "") }}',
+  role: '{{ session.get("role", "") }}',
+  office: '{{ session.get("office", "") }}',
+  full_name: '{{ session.get("full_name", "") }}'
+};
+</script>
+
 <script type="application/json" id="offices-data">{{ offices_dict | tojson | safe }}</script>
 <script type="application/json" id="sorted-offices">{{ sorted_offices | tojson | safe }}</script>
 <script type="application/json" id="current-office-data">{{ current_office | tojson | safe }}</script>

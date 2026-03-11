@@ -1,8 +1,14 @@
 const officesData   = JSON.parse(document.getElementById('offices-data').textContent || '{}');
 const sortedOffices = JSON.parse(document.getElementById('sorted-offices').textContent || '[]');
 const currentOffice = JSON.parse(document.getElementById('current-office-data').textContent);
-const currentUserName = JSON.parse(document.getElementById('current-user-data').textContent || '""');
-const currentUserRole = JSON.parse(document.getElementById('current-role-data').textContent || '""');
+
+// Get user name and role from server session data
+var currentUserName = null;
+var currentUserRole = null;
+if (typeof serverSessionData !== 'undefined') {
+  currentUserName = serverSessionData.full_name || serverSessionData.username || null;
+  currentUserRole = serverSessionData.role || null;
+}
 
 // Log user info and staff in logged in user's office
 console.log('=== Transfer Page - User Info ===');
