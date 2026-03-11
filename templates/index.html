@@ -42,7 +42,7 @@ function recalcStickyOffsets() {
   const theadTop = navH + statsH + filterH;
   root.style.setProperty('--thead-top', theadTop + 'px');
 
-  // Table action bar (table-head) height → column headers sit below it
+  // Table action bar height → column headers sit below it
   const tableHead = document.getElementById('table-action-bar');
   const tableHeadH = tableHead ? tableHead.getBoundingClientRect().height : 0;
   root.style.setProperty('--col-head-top', (theadTop + tableHeadH) + 'px');
@@ -51,7 +51,7 @@ function recalcStickyOffsets() {
 // Run on load and whenever layout might change
 document.addEventListener('DOMContentLoaded', recalcStickyOffsets);
 window.addEventListener('resize', recalcStickyOffsets);
-// Also run after a short delay to catch late-rendering navbars
+window.addEventListener('load', recalcStickyOffsets);
 setTimeout(recalcStickyOffsets, 150);
 setTimeout(recalcStickyOffsets, 600);
 </script>

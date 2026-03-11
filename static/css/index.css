@@ -416,8 +416,9 @@
 
 .table-scroll {
   overflow-x: auto;
-  /* Let the PAGE scroll, not this container.
-     Sticky thead works with page scroll, not inner scroll. */
+  overflow-y: visible; /* MUST be visible so thead sticky works on page scroll */
+  -webkit-overflow-scrolling: touch;
+}
 }
 
 #docs-table {
