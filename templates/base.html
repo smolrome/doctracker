@@ -10,9 +10,7 @@
 </head>
 <body>
 {% if logged_in %}
-<script>
-  window.CSRF_TOKEN = "{{ csrf_token }}";
-</script>
+<script>window.CSRF_TOKEN = "{{ csrf_token }}";</script>
 {% endif %}
 
 <!-- ═══ NAV ═══ -->
@@ -94,6 +92,7 @@
           <div class="dd-divider"></div>
           <div class="dd-section">
             <span class="dd-label">Danger Zone</span>
+            <!-- CHANGED: onclick now opens the modal, not a bare POST -->
             <button class="dd-item danger" onclick="confirmClearDB()">
               <span class="dd-icon">⚠️</span>
               <span class="dd-text">Clear Database<span class="dd-desc">Wipe all documents permanently</span></span>
@@ -108,7 +107,8 @@
         <div class="avatar">👤</div>
         {{ current_full_name.split()[0] if current_full_name else current_user }}
       </div>
-      <a href="/logout" class="nav-btn danger">⏻ Logout</a>
+      <!-- Logout is styled distinctly from the "danger" Clear DB button -->
+      <a href="/logout" class="nav-btn nav-btn-logout">⏻ Logout</a>
 
     {% else %}
       <span style="font-size:13px;color:rgba(255,255,255,.7);padding:0 4px;">👁 View Only</span>
@@ -116,7 +116,7 @@
     {% endif %}
   </div>
 
-  <button class="nav-hamburger" onclick="toggleMenu()" aria-label="Menu">
+  <button class="nav-hamburger" onclick="toggleMenu()" aria-label="Open navigation menu">
     <span></span><span></span><span></span>
   </button>
 </nav>
@@ -124,64 +124,94 @@
 <!-- ═══ Floating Notification + Modals (staff/admin only) ═══ -->
 {% if logged_in and current_role in ('staff', 'admin') and request.endpoint not in ('dashboard.add') %}
 
-<!--
-  bottom: 104px = 28px (OQS FAB bottom) + 56px (OQS FAB height) + 20px gap
-  Sits cleanly above the OQS clipboard FAB from index.html.
-  No text label — tooltip shown via CSS on hover instead.
-  z-index: 7000 — above content (300) but below all modals (8000+).
--->
 <div id="floating-notification"
      class="fab-notify"
      onclick="showPendingDocumentsModal()"
-     title="Documents to Receive">
+     role="button"
+     aria-label="Documents to Receive"
+     tabindex="0">
   <div class="fab-notify-circle">
-    <span>📥</span>
-    <span id="pending-badge" class="fab-notify-badge">0</span>
+    <span aria-hidden="true">📥</span>
+    <span id="pending-badge" class="fab-notify-badge" aria-live="polite">0</span>
   </div>
 </div>
 
-<!-- Pending Documents Modal -->
-<div id="pending-documents-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(10,37,64,0.8);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px;">
-    <div style="background:white;border-radius:20px;max-width:700px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.4);">
-        <div style="background:linear-gradient(135deg,#0E7490 0%,#059669 100%);padding:24px 28px;border-radius:20px 20px 0 0;display:flex;align-items:center;justify-content:space-between;">
-            <div style="display:flex;align-items:center;gap:12px;">
-                <span style="font-size:32px;">📥</span>
-                <h2 style="color:white;font-size:1.4rem;margin:0;">Documents to Receive</h2>
-            </div>
-            <button onclick="closePendingDocumentsModal()" style="background:rgba(255,255,255,0.2);border:none;color:white;width:40px;height:40px;border-radius:50%;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
-        </div>
-        <div id="pending-documents-list" style="padding:20px 28px;">
-            <div style="text-align:center;padding:40px;color:#5A7A91;">
-                <span style="font-size:48px;">📭</span>
-                <p style="margin-top:12px;">Loading documents...</p>
-            </div>
-        </div>
+<!-- ── Pending Documents Modal ── -->
+<div id="pending-documents-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="pending-modal-title">
+  <div class="modal-sheet">
+    <div class="modal-header modal-header-teal">
+      <div class="modal-header-content">
+        <span class="modal-header-icon" aria-hidden="true">📥</span>
+        <h2 class="modal-title" id="pending-modal-title">Documents to Receive</h2>
+      </div>
+      <button class="modal-close-btn" onclick="closePendingDocumentsModal()" aria-label="Close">✕</button>
     </div>
+    <div id="pending-documents-list" class="modal-body">
+      <div class="modal-loading-state">
+        <span aria-hidden="true">📭</span>
+        <p>Loading documents…</p>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Rejection Reason Modal -->
-<div id="rejection-reason-modal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(10,37,64,0.8);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px;">
-    <div style="background:white;border-radius:20px;max-width:500px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.4);">
-        <div style="background:linear-gradient(135deg,#DC2626 0%,#B91C1C 100%);padding:24px 28px;border-radius:20px 20px 0 0;display:flex;align-items:center;gap:12px;">
-            <span style="font-size:32px;">❌</span>
-            <h2 style="color:white;font-size:1.4rem;margin:0;">Reject Document</h2>
-        </div>
-        <div style="padding:24px 28px;">
-            <p style="color:#374151;margin-bottom:16px;">Please provide a reason for rejecting this document:</p>
-            <input type="hidden" id="reject-doc-id" value="">
-            <textarea id="rejection-reason-input" placeholder="Enter reason for rejection..." style="width:100%;padding:14px;border:2px solid #CBD5E1;border-radius:10px;font-size:15px;font-family:inherit;resize:vertical;min-height:120px;box-sizing:border-box;"></textarea>
-            <div style="display:flex;gap:12px;margin-top:20px;justify-content:flex-end;">
-                <button type="button" onclick="closeRejectionModal()" style="padding:12px 24px;border-radius:9px;border:1.5px solid #CBD5E1;background:#F8FAFC;color:#374151;font-weight:700;font-size:15px;cursor:pointer;">Cancel</button>
-                <button type="button" onclick="submitRejection()" style="padding:12px 24px;border-radius:9px;border:none;background:#DC2626;color:white;font-weight:700;font-size:15px;cursor:pointer;">Submit Rejection</button>
-            </div>
-        </div>
+<!-- ── Accept Confirmation Modal ── -->
+<div id="accept-confirm-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="accept-modal-title">
+  <div class="modal-sheet modal-sheet-sm">
+    <div class="modal-header modal-header-green">
+      <div class="modal-header-content">
+        <span class="modal-header-icon" aria-hidden="true">✅</span>
+        <h2 class="modal-title" id="accept-modal-title">Accept Document</h2>
+      </div>
+      <button class="modal-close-btn" onclick="closeAcceptModal()" aria-label="Close">✕</button>
     </div>
+    <div class="modal-body">
+      <p class="modal-body-text">Are you sure you want to <strong>accept</strong> this document? It will be marked as Received and added to your dashboard.</p>
+      <input type="hidden" id="accept-doc-id" value="">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeAcceptModal()">Cancel</button>
+      <button class="btn btn-success" onclick="submitAccept()">✓ Accept Document</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Rejection Reason Modal ── -->
+<div id="rejection-reason-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="rejection-modal-title">
+  <div class="modal-sheet modal-sheet-sm">
+    <div class="modal-header modal-header-red">
+      <div class="modal-header-content">
+        <span class="modal-header-icon" aria-hidden="true">❌</span>
+        <h2 class="modal-title" id="rejection-modal-title">Reject Document</h2>
+      </div>
+      <button class="modal-close-btn" onclick="closeRejectionModal()" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-body-text">Please provide a reason for rejecting this document. The sender will be notified.</p>
+      <input type="hidden" id="reject-doc-id" value="">
+      <div class="form-group" style="margin-top:14px;">
+        <label class="form-label" for="rejection-reason-input">Rejection Reason <span class="req">*</span></label>
+        <textarea
+          id="rejection-reason-input"
+          class="form-textarea"
+          placeholder="e.g. Incomplete attachments, wrong office, duplicate submission…"
+          rows="4"
+          aria-required="true"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeRejectionModal()">Cancel</button>
+      <button class="btn btn-danger-solid" onclick="submitRejection()">✕ Submit Rejection</button>
+    </div>
+  </div>
 </div>
 
 {% endif %}
 
 <!-- ═══ MOBILE DRAWER ═══ -->
-<div class="nav-drawer" id="nav-drawer">
+<!-- CHANGED: added overlay div so tapping outside closes drawer -->
+<div class="nav-drawer-overlay" id="nav-drawer-overlay" onclick="closeMenu()"></div>
+<div class="nav-drawer" id="nav-drawer" aria-hidden="true">
   {% if logged_in %}
     <div class="nav-drawer-section">Actions</div>
     <a href="/scan"      class="nav-btn" onclick="closeMenu()">📷 Scan QR</a>
@@ -198,11 +228,14 @@
       <a href="/trash"            class="nav-btn" onclick="closeMenu()">🗑️ Trash</a>
       <a href="/import-excel"     class="nav-btn" onclick="closeMenu()">📥 Import Excel</a>
       <a href="/backup"           class="nav-btn" onclick="closeMenu()">🗄️ Backup &amp; Restore</a>
-      <button class="nav-btn danger" onclick="closeMenu();confirmClearDB();" style="border:none;width:100%;justify-content:center;">⚠️ Clear Database</button>
+      <!-- CHANGED: visually separated, clearly labelled danger -->
+      <div class="nav-divider"></div>
+      <div class="nav-drawer-section nav-drawer-section-danger">⚠️ Danger Zone</div>
+      <button class="nav-btn nav-btn-danger-drawer" onclick="closeMenu(); confirmClearDB();">⚠️ Clear Database</button>
     {% endif %}
     <div class="nav-divider"></div>
     <a href="/"       class="nav-btn" onclick="closeMenu()">🏠 Dashboard</a>
-    <a href="/logout" class="nav-btn danger" onclick="closeMenu()">⏻ Logout ({{ current_full_name or current_user }})</a>
+    <a href="/logout" class="nav-btn nav-btn-logout" onclick="closeMenu()">⏻ Logout ({{ current_full_name or current_user }})</a>
   {% else %}
     <a href="/"      class="nav-btn" onclick="closeMenu()">🏠 Dashboard</a>
     <a href="/login" class="nav-btn primary" onclick="closeMenu()">🔐 Staff Login</a>
@@ -210,24 +243,43 @@
 </div>
 
 <!-- ═══ Clear DB modal ═══ -->
-<div id="clear-db-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(10,37,64,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:20px;padding:36px;max-width:440px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,.35);text-align:center;">
-    <div style="font-size:3rem;margin-bottom:12px;">⚠️</div>
-    <h2 style="color:#991B1B;font-size:1.4rem;margin-bottom:10px;">Clear Entire Database?</h2>
-    <p style="color:#374151;font-size:.95rem;line-height:1.6;margin-bottom:8px;">
-      This will <strong>permanently delete all documents</strong> from the system. This cannot be undone.
-    </p>
-    <p style="color:#DC2626;font-size:.88rem;font-weight:700;margin-bottom:24px;">
-      Download a backup first before doing this!
-    </p>
-    <div style="display:flex;gap:12px;justify-content:center;">
-      <button onclick="document.getElementById('clear-db-modal').style.display='none'" style="padding:12px 24px;border-radius:9px;border:1.5px solid #CBD5E1;background:#F8FAFC;color:#374151;font-weight:700;font-size:.95rem;cursor:pointer;">
-        Cancel
-      </button>
+<!-- CHANGED: requires typing DELETE to unlock the confirm button -->
+<div id="clear-db-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cleardb-modal-title">
+  <div class="modal-sheet modal-sheet-sm">
+    <div class="modal-header modal-header-red">
+      <div class="modal-header-content">
+        <span class="modal-header-icon" aria-hidden="true">⚠️</span>
+        <h2 class="modal-title" id="cleardb-modal-title">Clear Entire Database?</h2>
+      </div>
+      <button class="modal-close-btn" onclick="closeClearDBModal()" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-warning-box">
+        This will <strong>permanently delete every document</strong> in the system. This action cannot be undone.
+      </div>
+      <p class="modal-body-text" style="margin-top:12px;color:#B45309;font-weight:700;">
+        Download a backup first before doing this!
+      </p>
+      <div class="form-group" style="margin-top:16px;">
+        <label class="form-label" for="cleardb-confirm-input">
+          Type <code class="confirm-code">DELETE</code> to confirm
+        </label>
+        <input
+          type="text"
+          id="cleardb-confirm-input"
+          class="form-input"
+          placeholder="Type DELETE here"
+          oninput="onClearDBType(this.value)"
+          autocomplete="off"
+          spellcheck="false"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeClearDBModal()">Cancel</button>
       <form method="POST" action="/clear-database" style="margin:0;">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/>
-        <button type="submit" style="padding:12px 24px;border-radius:9px;border:none;background:#DC2626;color:#fff;font-weight:700;font-size:.95rem;cursor:pointer;">
-          Yes, Delete Everything
+        <button type="submit" id="cleardb-confirm-btn" class="btn btn-danger-solid" disabled>
+          🗑️ Delete Everything
         </button>
       </form>
     </div>
@@ -237,10 +289,12 @@
 <!-- ═══ FLASH ═══ -->
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
-    <div class="flash-wrap">
+    <div class="flash-wrap" id="flash-wrap">
       {% for category, message in messages %}
-        <div class="flash {{ category }}">
-          {{ '✅' if category=='success' else '❌' }} {{ message }}
+        <div class="flash {{ category }}" role="alert">
+          <span aria-hidden="true">{{ '✅' if category=='success' else '❌' }}</span>
+          <span>{{ message }}</span>
+          <button class="flash-close" onclick="this.parentElement.remove()" aria-label="Dismiss">✕</button>
         </div>
       {% endfor %}
     </div>
