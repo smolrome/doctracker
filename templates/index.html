@@ -42,10 +42,16 @@ function recalcStickyOffsets() {
   const theadTop = navH + statsH + filterH;
   root.style.setProperty('--thead-top', theadTop + 'px');
 
-  // Table action bar height → column headers sit below it
+  // Table action bar height → sticky col headers sit below it
   const tableHead = document.getElementById('table-action-bar');
   const tableHeadH = tableHead ? tableHead.getBoundingClientRect().height : 0;
-  root.style.setProperty('--col-head-top', (theadTop + tableHeadH) + 'px');
+  const colHeadTop = theadTop + tableHeadH;
+  root.style.setProperty('--col-head-top', colHeadTop + 'px');
+
+  // Sticky col header height → table body starts below it (for any future use)
+  const colHead = document.getElementById('col-head-sticky');
+  const colHeadH = colHead ? colHead.getBoundingClientRect().height : 0;
+  root.style.setProperty('--tbody-top', (colHeadTop + colHeadH) + 'px');
 }
 
 // Run on load and whenever layout might change
@@ -54,6 +60,17 @@ window.addEventListener('resize', recalcStickyOffsets);
 window.addEventListener('load', recalcStickyOffsets);
 setTimeout(recalcStickyOffsets, 150);
 setTimeout(recalcStickyOffsets, 600);
+
+// Sync sticky column header horizontal scroll with table body
+document.addEventListener('DOMContentLoaded', function() {
+  const bodyScroll = document.getElementById('table-scroll-body');
+  const headScroll = document.getElementById('col-head-scroll');
+  if (bodyScroll && headScroll) {
+    bodyScroll.addEventListener('scroll', function() {
+      headScroll.scrollLeft = bodyScroll.scrollLeft;
+    });
+  }
+});
 </script>
 
 {# ══════════════════════════════════
@@ -397,7 +414,23 @@ setTimeout(recalcStickyOffsets, 600);
 </form>
 
 {# ══════════════════════════════════
-   TABLE ACTION BAR — sticky, outside table-wrap
+   PENDING BANNER — above the table entirely
+══════════════════════════════════ #}
+{% if logged_in and session.get('role') in ('staff', 'admin') %}
+<div id="pending-banner" style="display:none;margin-bottom:8px;padding:14px 18px;background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1.5px solid #FCD34D;border-radius:12px;cursor:pointer;" onclick="showPendingDocumentsModal()">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span style="font-size:24px;">📥</span>
+    <div style="flex:1;">
+      <div style="font-size:14px;font-weight:800;color:#92400E;">Documents to Receive</div>
+      <div style="font-size:12px;color:#78350F;margin-top:2px;">Click to view and accept / reject transferred documents</div>
+    </div>
+    <span id="pending-banner-count" style="background:#DC2626;color:#fff;font-size:15px;font-weight:900;padding:5px 13px;border-radius:20px;min-width:34px;text-align:center;">0</span>
+  </div>
+</div>
+{% endif %}
+
+{# ══════════════════════════════════
+   TABLE ACTION BAR — sticky
 ══════════════════════════════════ #}
 {% if logged_in %}
 <div class="table-head" id="table-action-bar">
@@ -432,29 +465,38 @@ setTimeout(recalcStickyOffsets, 600);
 {% endif %}
 
 {# ══════════════════════════════════
+   STICKY COLUMN HEADERS — outside table-scroll
+══════════════════════════════════ #}
+{% if docs %}
+<div class="col-head-sticky" id="col-head-sticky">
+  <div class="col-head-scroll" id="col-head-scroll">
+    <table class="col-head-table">
+      <thead>
+        <tr>
+          {% if logged_in %}<th class="cb-cell" style="width:44px;"></th>{% endif %}
+          <th>Document / Content</th>
+          <th>Unit / Office / School</th>
+          <th>Source / Sender</th>
+          <th>Referred To</th>
+          <th>Date &amp; Time</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{# ══════════════════════════════════
    DOCUMENTS TABLE
 ══════════════════════════════════ #}
 <div class="table-wrap">
 
-  {# Pending Banner #}
-  {% if logged_in and session.get('role') in ('staff', 'admin') %}
-  <div id="pending-banner" style="display:none;margin:14px 14px 0;padding:14px 18px;background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1.5px solid #FCD34D;border-radius:12px;cursor:pointer;" onclick="showPendingDocumentsModal()">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <span style="font-size:26px;">📥</span>
-      <div style="flex:1;">
-        <div style="font-size:15px;font-weight:800;color:#92400E;">Documents to Receive</div>
-        <div style="font-size:12.5px;color:#78350F;margin-top:2px;">Click to view and accept / reject transferred documents</div>
-      </div>
-      <span id="pending-banner-count" style="background:#DC2626;color:#fff;font-size:16px;font-weight:900;padding:6px 14px;border-radius:20px;min-width:36px;text-align:center;">0</span>
-    </div>
-  </div>
-  {% endif %}
-
   {# Table #}
   {% if docs %}
-  <div class="table-scroll">
+  <div class="table-scroll" id="table-scroll-body">
     <table id="docs-table">
-      <thead>
+      <thead class="thead-hidden">
         <tr>
           {% if logged_in %}<th class="cb-cell"><input type="checkbox" id="select-all" title="Select all"/></th>{% endif %}
           <th>Document / Content</th>
