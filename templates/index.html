@@ -23,7 +23,6 @@ var serverSessionData = {
 function recalcStickyOffsets() {
   const root = document.documentElement;
 
-  // 1. Navbar: look for common selectors used by base templates
   const navbar =
     document.querySelector('nav.navbar') ||
     document.querySelector('header') ||
@@ -34,15 +33,19 @@ function recalcStickyOffsets() {
   const navH = navbar ? navbar.getBoundingClientRect().height : 0;
   root.style.setProperty('--navbar-h', navH + 'px');
 
-  // 2. Stats bar height → filter bar sits below it
   const statsBar = document.getElementById('stats-sticky-bar');
   const statsH = statsBar ? statsBar.getBoundingClientRect().height : 0;
   root.style.setProperty('--filter-top', (navH + statsH) + 'px');
 
-  // 3. Filter bar height → table thead sits below it
   const filterBar = document.getElementById('filter-sticky-bar');
   const filterH = filterBar ? filterBar.getBoundingClientRect().height : 0;
-  root.style.setProperty('--thead-top', (navH + statsH + filterH) + 'px');
+  const theadTop = navH + statsH + filterH;
+  root.style.setProperty('--thead-top', theadTop + 'px');
+
+  // Table action bar (table-head) height → column headers sit below it
+  const tableHead = document.getElementById('table-action-bar');
+  const tableHeadH = tableHead ? tableHead.getBoundingClientRect().height : 0;
+  root.style.setProperty('--col-head-top', (theadTop + tableHeadH) + 'px');
 }
 
 // Run on load and whenever layout might change
@@ -412,40 +415,38 @@ setTimeout(recalcStickyOffsets, 600);
   </div>
   {% endif %}
 
-  {# Table Header #}
-  <div class="table-head">
-    <div class="table-title">📋 Document Records</div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <div class="table-count">
+  {# Table Header — sticky so buttons always visible while scrolling #}
+  <div class="table-head" id="table-action-bar">
+    <div class="table-title">📋 Document Records
+      <span class="table-count" style="margin-left:8px;">
         {% if total is defined %}
-          {{ total }} record{% if total != 1 %}s{% endif %}{% if total_pages > 1 %} &nbsp;·&nbsp; page {{ page }} of {{ total_pages }}{% endif %}
+          {{ total }} record{% if total != 1 %}s{% endif %}{% if total_pages > 1 %} · page {{ page }} of {{ total_pages }}{% endif %}
         {% else %}
           {{ docs|length }} record{% if docs|length != 1 %}s{% endif %}
         {% endif %}
-      </div>
+      </span>
+    </div>
 
-      {% if logged_in %}
-      <div style="display:flex;align-items:center;gap:6px;">
-        <label style="font-size:12.5px;color:var(--muted);white-space:nowrap;">Show</label>
-        <select onchange="changePerPage(this.value)" style="padding:4px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;color:var(--navy);background:#fff;cursor:pointer;outline:none;">
+    {% if logged_in %}
+    <div class="table-actions">
+      <div style="display:flex;align-items:center;gap:5px;">
+        <label style="font-size:12px;color:var(--muted);white-space:nowrap;">Show</label>
+        <select onchange="changePerPage(this.value)" style="padding:3px 7px;border:1.5px solid var(--border);border-radius:7px;font-size:12.5px;color:var(--navy);background:#fff;cursor:pointer;outline:none;">
           {% for n in [10,25,50,100] %}<option value="{{ n }}" {% if per_page is defined and per_page == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
         </select>
-        <label style="font-size:12.5px;color:var(--muted);">per page</label>
       </div>
-
-      <a href="/add" style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;background:linear-gradient(135deg,#059669,#10B981);color:#fff;font-weight:700;font-size:13px;text-decoration:none;box-shadow:0 2px 8px rgba(5,150,105,.25);" title="Add a new document">➕ Add Document</a>
-      <a href="/routed-documents" style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;background:linear-gradient(135deg,#0A2540,#1D4ED8);color:#fff;font-weight:700;font-size:13px;text-decoration:none;box-shadow:0 2px 8px rgba(29,78,216,.25);" title="View all routing slips">🚌 Routed Docs</a>
-
+      <a href="/add" class="tbl-btn tbl-btn-green" title="Add a new document">➕ Add</a>
+      <a href="/routed-documents" class="tbl-btn tbl-btn-navy" title="View all routing slips">🚌 Routed</a>
       {% if session.get('role') in ['admin', 'staff'] %}
-      <button id="btn-create-slip" onclick="openRoutingModal()" style="display:none;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;border:none;background:linear-gradient(135deg,#7C3AED,#A855F7);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 8px rgba(124,58,237,.25);">
-        📤 Create Routing Slip <span id="slip-sel-badge" style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:900;"></span>
+      <button id="btn-create-slip" onclick="openRoutingModal()" class="tbl-btn tbl-btn-purple" style="display:none;">
+        📤 Routing Slip <span id="slip-sel-badge" class="tbl-btn-badge"></span>
       </button>
-      <button id="btn-transfer" onclick="openTransferModal()" style="display:none;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;border:none;background:linear-gradient(135deg,#DC2626,#EF4444);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 8px rgba(220,38,38,.25);">
-        🔄 Transfer <span id="transfer-sel-badge" style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:900;"></span>
+      <button id="btn-transfer" onclick="openTransferModal()" class="tbl-btn tbl-btn-red" style="display:none;">
+        🔄 Transfer <span id="transfer-sel-badge" class="tbl-btn-badge"></span>
       </button>
-      {% endif %}
       {% endif %}
     </div>
+    {% endif %}
   </div>
 
   {# Table #}

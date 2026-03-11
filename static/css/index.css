@@ -322,27 +322,94 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
+  padding: 11px 16px;
   border-bottom: 1.5px solid var(--border, #E2E8F0);
-  background: var(--surface, #F8FAFC);
+  background: #fff;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
+  /* Sticky: sits right below the filter bar */
+  position: sticky;
+  top: var(--thead-top, 0px);
+  z-index: 9;
+  box-shadow: 0 2px 8px rgba(10,45,100,.06);
 }
 
 .table-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
   color: var(--navy, #0A2540);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .table-count {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--muted, #64748B);
   font-weight: 600;
-  padding: 4px 10px;
+  padding: 3px 9px;
   background: var(--surface, #F8FAFC);
   border: 1.5px solid var(--border, #E2E8F0);
   border-radius: 20px;
+  white-space: nowrap;
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+/* Compact action buttons */
+.tbl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 12.5px;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: filter .15s, transform .15s;
+}
+
+.tbl-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+.tbl-btn-green  { background: linear-gradient(135deg,#059669,#10B981); color:#fff; box-shadow:0 2px 8px rgba(5,150,105,.25); }
+.tbl-btn-navy   { background: linear-gradient(135deg,#0A2540,#1D4ED8); color:#fff; box-shadow:0 2px 8px rgba(29,78,216,.2); }
+.tbl-btn-purple { background: linear-gradient(135deg,#7C3AED,#A855F7); color:#fff; box-shadow:0 2px 8px rgba(124,58,237,.25); }
+.tbl-btn-red    { background: linear-gradient(135deg,#DC2626,#EF4444); color:#fff; box-shadow:0 2px 8px rgba(220,38,38,.25); }
+
+.tbl-btn-badge {
+  background: rgba(255,255,255,.25);
+  border-radius: 20px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+/* Update thead top to sit below the now-sticky table-head */
+#docs-table thead th {
+  position: sticky;
+  top: var(--col-head-top, 0px);
+  z-index: 8;
+  background: var(--surface, #F8FAFC);
+  padding: 9px 14px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted, #64748B);
+  border-bottom: 1.5px solid var(--border, #E2E8F0);
+  text-align: left;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0,0,0,.04);
 }
 
 .table-scroll {
@@ -357,22 +424,7 @@
   font-size: 13.5px;
 }
 
-#docs-table thead th {
-  position: sticky;
-  top: var(--thead-top, 0px);
-  z-index: 10;
-  background: var(--surface, #F8FAFC);
-  padding: 10px 14px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .07em;
-  color: var(--muted, #64748B);
-  border-bottom: 1.5px solid var(--border, #E2E8F0);
-  text-align: left;
-  white-space: nowrap;
-  box-shadow: 0 2px 4px rgba(0,0,0,.05);
-}
+
 
 #docs-table tbody tr {
   border-bottom: 1px solid var(--border, #E2E8F0);
