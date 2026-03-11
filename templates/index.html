@@ -2,7 +2,6 @@
 {% block content %}
 
 <script>
-// Session data from server
 var serverSessionData = {
   username: '{{ session.get("username", "") }}',
   role: '{{ session.get("role", "") }}',
@@ -12,51 +11,87 @@ var serverSessionData = {
 </script>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
-
 <meta name="csrf-token" content="{{ csrf_token }}">
-
 <script src="{{ url_for('static', filename='js/index.js') }}"></script>
-<div style="position:sticky; top:0; z-index:100; background:var(--surface,#F8FAFC); padding:12px 0 10px; margin-bottom:4px; overflow-x:auto; overflow-y:visible;">
+
+{# ══════════════════════════════════
+   STATS ROW
+══════════════════════════════════ #}
+<div style="position:sticky;top:0;z-index:100;background:var(--surface,#F8FAFC);padding:12px 0 10px;margin-bottom:4px;">
   <div class="stats-grid">
     <a class="stat-card {% if filter_status=='All' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('All')">
-      <div class="stat-card-inner"><div class="stat-num">{{ stats.total }}</div><div class="stat-label">📋 Total</div><div class="stat-clear">● All</div></div>
+      <div class="stat-card-inner">
+        <div class="stat-label">Total</div>
+        <div class="stat-num">{{ stats.total }}</div>
+      </div>
     </a>
     <a class="stat-card yellow {% if filter_status=='Pending' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Pending')">
-      <div class="stat-card-inner"><div class="stat-num">{{ stats.pending }}</div><div class="stat-label">⏳ Pending</div><div class="stat-clear">● Filtered</div></div>
+      <div class="stat-card-inner">
+        <div class="stat-label">Pending</div>
+        <div class="stat-num">{{ stats.pending }}</div>
+      </div>
     </a>
     <a class="stat-card olive {% if filter_status=='Logged' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Logged')">
-      <div class="stat-card-inner"><div class="stat-num">{{ stats.logged or 0 }}</div><div class="stat-label">🖊️ Logged</div><div class="stat-clear">● Filtered</div></div>
+      <div class="stat-card-inner">
+        <div class="stat-label">Logged</div>
+        <div class="stat-num">{{ stats.logged or 0 }}</div>
+        
+      </div>
     </a>
     <a class="stat-card emerald {% if filter_status=='Received' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Received')">
-      <div class="stat-card-inner"><div class="stat-num">{{ stats.received }}</div><div class="stat-label">📥 Received</div><div class="stat-clear">● Filtered</div></div>
+      <div class="stat-card-inner">
+        <div class="stat-label">Received</div>
+        <div class="stat-num">{{ stats.received }}</div>
+        
+      </div>
     </a>
     <a class="stat-card teal {% if filter_status=='In Review' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('In Review')">
-      <div class="stat-card-inner"><div class="stat-num">{{ stats.in_review }}</div><div class="stat-label">🔍 In Review</div><div class="stat-clear">● Filtered</div></div>
+      <div class="stat-card-inner">
+        <div class="stat-label">In Review</div>
+        <div class="stat-num">{{ stats.in_review }}</div>
+        
+      </div>
     </a>
     <a class="stat-card blue {% if filter_status=='In Transit' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('In Transit')">
-      <div class="stat-card-inner"><div class="stat-num">{{ stats.in_transit }}</div><div class="stat-label">🚌 In Transit</div><div class="stat-clear">● Filtered</div></div>
+      <div class="stat-card-inner">
+        <div class="stat-label">In Transit</div>
+        <div class="stat-num">{{ stats.in_transit }}</div>
+        
+      </div>
     </a>
     <a class="stat-card green {% if filter_status=='Released' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Released')">
-      <div class="stat-card-inner"><div class="stat-num">{{ stats.released }}</div><div class="stat-label">✅ Released</div><div class="stat-clear">● Filtered</div></div>
+      <div class="stat-card-inner">
+        <div class="stat-label">Released</div>
+        <div class="stat-num">{{ stats.released }}</div>
+        
+      </div>
     </a>
     <a class="stat-card red {% if filter_status=='On Hold' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('On Hold')">
-      <div class="stat-card-inner"><div class="stat-num">{{ stats.on_hold }}</div><div class="stat-label">⏸️ On Hold</div><div class="stat-clear">● Filtered</div></div>
+      <div class="stat-card-inner">
+        <div class="stat-label">On Hold</div>
+        <div class="stat-num">{{ stats.on_hold }}</div>
+        
+      </div>
     </a>
     <a class="stat-card {% if filter_status=='Archived' %}active{% endif %}" style="--stat-accent:#64748B;" href="#" onclick="event.preventDefault();statFilter('Archived')">
-      <div class="stat-card-inner"><div class="stat-num">{{ stats.archived }}</div><div class="stat-label">🗄️ Archived</div><div class="stat-clear">● Filtered</div></div>
+      <div class="stat-card-inner">
+        <div class="stat-label">Archived</div>
+        <div class="stat-num">{{ stats.archived }}</div>
+        
+      </div>
     </a>
   </div>
 </div>
 
+{# ══════════════════════════════════
+   OFFICE QR FAB + MODAL
+══════════════════════════════════ #}
 {% if saved_offices %}
-
-<!-- FAB Button -->
 <button class="oqs-fab" onclick="openOqsModal()" title="Office Submission QR Codes">
   📋
   <span class="oqs-fab-badge">{{ saved_offices|length }}</span>
 </button>
 
-<!-- Modal -->
 <div class="oqs-modal-overlay" id="oqs-modal-overlay" onclick="if(event.target===this)closeOqsModal()">
   <div class="oqs-modal">
     <div class="oqs-modal-header">
@@ -64,10 +99,14 @@ var serverSessionData = {
       <button class="oqs-modal-close" onclick="closeOqsModal()">✕ Close</button>
     </div>
     <div class="oqs-modal-search-wrap">
-      <input type="text" class="oqs-modal-search" id="oqs-search" placeholder="🔍 Search office name..." oninput="filterOffices(this.value)" autocomplete="off"/>
+      <input type="text" class="oqs-modal-search" id="oqs-search"
+        placeholder="🔍 Search office name…"
+        oninput="filterOffices(this.value)" autocomplete="off"/>
     </div>
     <div class="oqs-modal-body">
-      <div class="oqs-count" id="oqs-count">{{ saved_offices|length }} office{% if saved_offices|length != 1 %}s{% endif %} registered</div>
+      <div class="oqs-count" id="oqs-count">
+        {{ saved_offices|length }} office{% if saved_offices|length != 1 %}s{% endif %} registered
+      </div>
       <div class="oqs-grid" id="oqs-grid">
         {% for office in saved_offices %}
         {% set sub_slug = office.office_slug + '-sub' %}
@@ -90,66 +129,100 @@ var serverSessionData = {
     </div>
   </div>
 </div>
-
 {% endif %}
-<div style="position:sticky; top:var(--stats-height, 160px); z-index:90; background:var(--surface,#F8FAFC); padding-bottom:8px; margin-bottom:0;">
+
+{# ══════════════════════════════════
+   FILTER BAR
+══════════════════════════════════ #}
+<div style="position:sticky;top:var(--stats-height,160px);z-index:90;background:var(--surface,#F8FAFC);padding-bottom:8px;margin-bottom:0;">
 <form method="get" action="/" id="filter-form">
   <div class="filter-bar">
+
+    {# — Row 1: Search + Date + Buttons — #}
     <div class="filter-row">
       <div class="filter-group grow">
         <span class="filter-label">🔍 Search</span>
-        <input type="text" name="search" class="filter-input {% if search %}has-value{% endif %}" value="{{ search }}" placeholder="Document name, ID, sender, office, referred to…" autocomplete="off"/>
+        <input type="text" name="search"
+          class="filter-input {% if search %}has-value{% endif %}"
+          value="{{ search }}"
+          placeholder="Document name, ID, sender, office, referred to…"
+          autocomplete="off"/>
       </div>
       <div class="filter-divider"></div>
       <div class="filter-group w-date">
         <span class="filter-label">📅 Date</span>
-        <input type="date" name="date" class="filter-input {% if filter_date %}has-value{% endif %}" value="{{ filter_date }}" onchange="this.form.submit()"/>
+        <input type="date" name="date"
+          class="filter-input {% if filter_date %}has-value{% endif %}"
+          value="{{ filter_date }}"
+          onchange="this.form.submit()"/>
       </div>
       <div class="filter-divider"></div>
       <div class="filter-group" style="flex-shrink:0;">
         <span class="filter-label">&nbsp;</span>
         <div style="display:flex;gap:8px;">
-          <button type="submit" class="btn btn-primary btn-sm" style="min-height:42px;white-space:nowrap;">🔍 Search</button>
-          <a href="/" class="btn-clear-filters" style="min-height:42px;display:flex;align-items:center;">✕ Clear</a>
+          <button type="submit" class="btn btn-primary btn-sm" style="min-height:40px;white-space:nowrap;">🔍 Search</button>
+          <a href="/" class="btn-clear-filters">✕ Clear</a>
         </div>
       </div>
     </div>
+
+    {# — Row 2: Time Range — #}
     <div class="filter-row" style="margin-top:10px;padding-top:10px;border-top:1.5px dashed var(--border);">
       <label class="time-toggle-label" for="toggle-time-range" style="flex-shrink:0;">
-        <input type="checkbox" id="toggle-time-range" onchange="toggleTimeRange(this.checked)" {% if filter_time_from or filter_time_to %}checked{% endif %}/>
+        <input type="checkbox" id="toggle-time-range"
+          onchange="toggleTimeRange(this.checked)"
+          {% if filter_time_from or filter_time_to %}checked{% endif %}/>
         🕐 Filter by time range
       </label>
       <div id="time-range-row" style="display:{% if filter_time_from or filter_time_to %}flex{% else %}none{% endif %};align-items:flex-end;gap:10px;flex-wrap:wrap;flex:1;">
         <div class="filter-group w-time">
           <span class="filter-label">🕐 From</span>
-          <input type="time" name="time_from" class="filter-input {% if filter_time_from %}has-value{% endif %}" value="{{ filter_time_from }}"/>
+          <input type="time" name="time_from"
+            class="filter-input {% if filter_time_from %}has-value{% endif %}"
+            value="{{ filter_time_from }}"/>
         </div>
         <div class="filter-group w-time">
           <span class="filter-label">🕑 To</span>
-          <input type="time" name="time_to" class="filter-input {% if filter_time_to %}has-value{% endif %}" value="{{ filter_time_to }}"/>
+          <input type="time" name="time_to"
+            class="filter-input {% if filter_time_to %}has-value{% endif %}"
+            value="{{ filter_time_to }}"/>
         </div>
         <div class="filter-group" style="flex-shrink:0;">
           <span class="filter-label">&nbsp;</span>
-          <button type="submit" class="btn btn-primary btn-sm" style="min-height:42px;">Apply</button>
+          <button type="submit" class="btn btn-primary btn-sm" style="min-height:40px;">Apply</button>
         </div>
       </div>
     </div>
+
+    {# — Row 3: Type Filters + Active Pills — #}
     <div class="filter-type-row">
       <button type="button" class="type-btn {% if filter_type=='All' %}active{% endif %}" onclick="setType('All')">All</button>
       <button type="button" class="type-btn {% if filter_type=='Received' %}active{% endif %}" onclick="setType('Received')">📥 Received</button>
       <button type="button" class="type-btn {% if filter_type=='Released' %}active{% endif %}" onclick="setType('Released')">✅ Released</button>
       <button type="button" class="type-btn" onclick="setToday()">📆 Today</button>
+
       {% set any_filter = search or filter_status != 'All' or filter_type != 'All' or filter_date or filter_time_from or filter_time_to %}
       {% if any_filter %}
       <div class="filter-active-pills">
-        {% if filter_date %}<span class="filter-pill">📅 {{ filter_date }}<span class="pill-x" onclick="clearField('date')"> ×</span></span>{% endif %}
-        {% if filter_time_from or filter_time_to %}<span class="filter-pill">🕐 {{ filter_time_from or '00:00' }}–{{ filter_time_to or '23:59' }}<span class="pill-x" onclick="clearField('time_from');clearField('time_to');"> ×</span></span>{% endif %}
-        {% if filter_status != 'All' %}<span class="filter-pill">{{ filter_status }}<span class="pill-x" onclick="clearField('status','All')"> ×</span></span>{% endif %}
-        {% if search %}<span class="filter-pill">🔍 "{{ search }}"<span class="pill-x" onclick="clearField('search','')"> ×</span></span>{% endif %}
-        {% if filter_type != 'All' %}<span class="filter-pill">{{ filter_type }}<span class="pill-x" onclick="clearField('type','All')"> ×</span></span>{% endif %}
+        {% if filter_date %}
+        <span class="filter-pill">📅 {{ filter_date }}<span class="pill-x" onclick="clearField('date')"> ×</span></span>
+        {% endif %}
+        {% if filter_time_from or filter_time_to %}
+        <span class="filter-pill">🕐 {{ filter_time_from or '00:00' }}–{{ filter_time_to or '23:59' }}<span class="pill-x" onclick="clearField('time_from');clearField('time_to');"> ×</span></span>
+        {% endif %}
+        {% if filter_status != 'All' %}
+        <span class="filter-pill">{{ filter_status }}<span class="pill-x" onclick="clearField('status','All')"> ×</span></span>
+        {% endif %}
+        {% if search %}
+        <span class="filter-pill">🔍 "{{ search }}"<span class="pill-x" onclick="clearField('search','')"> ×</span></span>
+        {% endif %}
+        {% if filter_type != 'All' %}
+        <span class="filter-pill">{{ filter_type }}<span class="pill-x" onclick="clearField('type','All')"> ×</span></span>
+        {% endif %}
       </div>
       {% endif %}
     </div>
+
   </div>
   <input type="hidden" name="type" id="type-hidden" value="{{ filter_type }}"/>
   <input type="hidden" name="per_page" value="{{ per_page }}"/>
@@ -160,11 +233,11 @@ var serverSessionData = {
   {% for office in saved_offices %}<option value="{{ office.office_name }}">{% endfor %}
 </datalist>
 
-<!-- ══ SINGLE SOURCE OF TRUTH for transfer modal ══ -->
+{# ══════════════════════════════════
+   DATA INJECTIONS
+══════════════════════════════════ #}
 {% set actual_office = current_office if current_office else session.get('office', '') %}
-{% if not actual_office %}
-{% set actual_office = 'Personnel' %}
-{% endif %}
+{% if not actual_office %}{% set actual_office = 'Personnel' %}{% endif %}
 <script type="application/json" id="offices-data">{{ offices_dict | tojson | safe }}</script>
 <script type="application/json" id="sorted-offices">{{ sorted_offices | tojson | safe }}</script>
 <script type="application/json" id="current-office-data">"{{ actual_office }}"</script>
@@ -172,97 +245,103 @@ var serverSessionData = {
 <script type="application/json" id="current-role-data">{{ current_user_role | tojson | safe }}</script>
 <input type="hidden" id="csrf-token-value" value="{{ csrf_token }}">
 
-<!-- ── ROUTING MODAL ── -->
-<div id="routing-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(10,37,64,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;">
-<div class="route-panel" style="display:block;position:relative;top:auto;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.5);">
-  <div class="rp-header">
-    <div class="rp-title">📤 Create Routing Slip <span class="rp-count" id="sel-count">0 selected</span></div>
-    <button class="rp-close" onclick="closeRoutingModal()">✕ Close</button>
-  </div>
-  <div id="selected-preview" style="margin-bottom:14px;display:none;">
-    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:8px;">Selected Documents</div>
-    <div id="selected-list" style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px 14px;max-height:120px;overflow-y:auto;font-size:13px;color:rgba(255,255,255,.9);"></div>
-  </div>
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.15);">
-    <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.55);white-space:nowrap;">FROM:</span>
-    <span style="font-size:14px;font-weight:800;color:#fff;">{{ current_office or current_full_name or current_user or 'Your Office' }}</span>
-    <span style="margin:0 4px;color:rgba(255,255,255,.4);">→</span>
-    <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.55);white-space:nowrap;">TO:</span>
-    <span style="font-size:14px;font-weight:700;color:#93C5FD;" id="modal-dest-preview">(enter destination below)</span>
-  </div>
-  <div class="rp-fields">
-    <div class="rp-field">
-      <label>📍 Destination Office *</label>
-      <input type="text" class="rp-input" id="route-dest" placeholder="e.g. Budget Section, HR Unit..." list="office-suggestions" autocomplete="off" oninput="document.getElementById('modal-dest-preview').textContent=this.value||'(enter destination below)'"/>
+{# ══════════════════════════════════
+   ROUTING MODAL
+══════════════════════════════════ #}
+<div id="routing-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(10,37,64,.65);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:16px;">
+  <div class="route-panel" style="display:block;position:relative;top:auto;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;">
+    <div class="rp-header">
+      <div class="rp-title">📤 Create Routing Slip <span class="rp-count" id="sel-count">0 selected</span></div>
+      <button class="rp-close" onclick="closeRoutingModal()">✕ Close</button>
     </div>
-    <div class="rp-field"><label>📅 Slip Date</label><input type="date" class="rp-input" id="slip-date"/></div>
-    <div class="rp-field" style="grid-column:span 2">
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
-        <input type="checkbox" id="use-time-range" onchange="toggleModalTimeRange(this.checked)" style="width:16px;height:16px;accent-color:#fff;cursor:pointer"/>
-        🕐 Include Time Range <span style="font-size:12px;font-weight:400;color:rgba(255,255,255,.5)">(optional)</span>
-      </label>
+
+    <div id="selected-preview" style="margin-bottom:14px;display:none;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.5);margin-bottom:7px;">Selected Documents</div>
+      <div id="selected-list" style="background:rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;max-height:110px;overflow-y:auto;font-size:13px;color:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.12);"></div>
     </div>
-    <div class="rp-field" id="time-from-field" style="display:none"><label>From</label><input type="time" class="rp-input" id="time-from"/></div>
-    <div class="rp-field" id="time-to-field" style="display:none"><label>To</label><input type="time" class="rp-input" id="time-to"/></div>
-    <div class="rp-field notes-field"><label>📝 Notes / Instructions (optional)</label><textarea class="rp-notes" id="route-notes" rows="2" placeholder="e.g. For immediate action..."></textarea></div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);">
+      <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.5);white-space:nowrap;text-transform:uppercase;letter-spacing:.05em;">FROM</span>
+      <span style="font-size:14px;font-weight:800;color:#fff;">{{ current_office or current_full_name or current_user or 'Your Office' }}</span>
+      <span style="margin:0 4px;color:rgba(255,255,255,.35);">→</span>
+      <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.5);white-space:nowrap;text-transform:uppercase;letter-spacing:.05em;">TO</span>
+      <span style="font-size:14px;font-weight:700;color:#93C5FD;" id="modal-dest-preview">(enter destination below)</span>
+    </div>
+
+    <div class="rp-fields">
+      <div class="rp-field">
+        <label>📍 Destination Office *</label>
+        <input type="text" class="rp-input" id="route-dest"
+          placeholder="e.g. Budget Section, HR Unit…"
+          list="office-suggestions" autocomplete="off"
+          oninput="document.getElementById('modal-dest-preview').textContent=this.value||'(enter destination below)'"/>
+      </div>
+      <div class="rp-field"><label>📅 Slip Date</label><input type="date" class="rp-input" id="slip-date"/></div>
+      <div class="rp-field" style="grid-column:span 2">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;">
+          <input type="checkbox" id="use-time-range" onchange="toggleModalTimeRange(this.checked)" style="width:15px;height:15px;accent-color:#fff;cursor:pointer;"/>
+          🕐 Include Time Range <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,.45);">(optional)</span>
+        </label>
+      </div>
+      <div class="rp-field" id="time-from-field" style="display:none"><label>From</label><input type="time" class="rp-input" id="time-from"/></div>
+      <div class="rp-field" id="time-to-field" style="display:none"><label>To</label><input type="time" class="rp-input" id="time-to"/></div>
+      <div class="rp-field notes-field"><label>📝 Notes / Instructions (optional)</label><textarea class="rp-notes" id="route-notes" rows="2" placeholder="e.g. For immediate action…"></textarea></div>
+    </div>
+
+    <div class="rp-bottom">
+      <button class="btn-time-filter" id="btn-auto-select" onclick="autoSelectByTime()" style="display:none;">⏱️ Auto-select by Time</button>
+      <div class="rp-hint" style="flex:1;">💡 Check rows in the table first, or use <strong>Auto-select by Time</strong>.</div>
+      <button class="btn-route" onclick="submitRouting()">🚀 Create Routing Slip</button>
+    </div>
   </div>
-  <div class="rp-bottom">
-    <button class="btn-time-filter" id="btn-auto-select" onclick="autoSelectByTime()" style="display:none">⏱️ Auto-select by Time</button>
-    <div class="rp-hint" style="flex:1">💡 Check rows in the table first, or use <strong>Auto-select by Time</strong>.</div>
-    <button class="btn-route" onclick="submitRouting()">🚀 Create Routing Slip</button>
-  </div>
-</div>
 </div>
 
-<!-- ── TRANSFER MODAL ── -->
-<div id="transfer-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(10,37,64,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;">
-<div class="route-panel" style="display:block;position:relative;top:auto;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.5);">
-  <div class="rp-header">
-    <div class="rp-title">🔄 Transfer Documents <span class="rp-count" id="transfer-sel-count">0 selected</span></div>
-    <button class="rp-close" onclick="closeTransferModal()">✕ Close</button>
-  </div>
-  
-  <div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:12px 16px;margin:16px 20px 0;">
-    <p style="margin:0;font-size:13px;color:#92400E;">⚠️ The document status will change to <strong>Pending</strong> after transfer. The recipient will see this document in their dashboard.</p>
-  </div>
-  
-  <div class="rp-fields" style="grid-template-columns:1fr;padding:20px;">
-    <!-- Step 1: Transfer Type -->
-    <div class="rp-field">
-      <label>Step 1: Transfer Type *</label>
-      <select class="rp-input" id="transfer-type" onchange="onTransferTypeChangeIndex()">
-        <option value="">-- Select Type --</option>
-        <option value="inside_office">🏢 Internal (same office)</option>
-        <option value="outside_office">🌐 External (different office)</option>
-      </select>
+{# ══════════════════════════════════
+   TRANSFER MODAL
+══════════════════════════════════ #}
+<div id="transfer-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(10,37,64,.65);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:16px;">
+  <div class="route-panel" style="display:block;position:relative;top:auto;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;">
+    <div class="rp-header">
+      <div class="rp-title">🔄 Transfer Documents <span class="rp-count" id="transfer-sel-count">0 selected</span></div>
+      <button class="rp-close" onclick="closeTransferModal()">✕ Close</button>
     </div>
-    
-    <!-- Step 2: Office (shown for both, read-only for internal) -->
-    <div class="rp-field" id="transfer-office-block" style="display:none;">
-      <label id="transfer-office-label">Step 2: Office *</label>
-      <select class="rp-input" id="transfer-office" onchange="updateTransferStaffIndex()" disabled>
-        <option value="">-- Select Office --</option>
-      </select>
-      <small id="transfer-office-info" style="color:#93C5FD;margin-top:4px;display:block;font-size:13px;"></small>
+
+    <div style="background:rgba(254,243,199,.15);border:1px solid rgba(252,211,77,.35);border-radius:10px;padding:12px 16px;margin-bottom:16px;">
+      <p style="margin:0;font-size:13px;color:rgba(255,255,255,.8);">⚠️ The document status will change to <strong style="color:#FDE047;">Pending</strong> after transfer. The recipient will see this document in their dashboard.</p>
     </div>
-    
-    <!-- Step 3: Staff Selection -->
-    <div class="rp-field" id="transfer-staff-block" style="display:none;">
-      <label>Step 3: Transfer to Staff *</label>
-      <select class="rp-input" id="transfer-staff" disabled onchange="onTransferStaffChangeIndex()">
-        <option value="">-- Select Staff --</option>
-      </select>
+
+    <div class="rp-fields" style="grid-template-columns:1fr;">
+      <div class="rp-field">
+        <label>Step 1: Transfer Type *</label>
+        <select class="rp-input" id="transfer-type" onchange="onTransferTypeChangeIndex()">
+          <option value="">— Select Type —</option>
+          <option value="inside_office">🏢 Internal (same office)</option>
+          <option value="outside_office">🌐 External (different office)</option>
+        </select>
+      </div>
+      <div class="rp-field" id="transfer-office-block" style="display:none;">
+        <label id="transfer-office-label">Step 2: Office *</label>
+        <select class="rp-input" id="transfer-office" onchange="updateTransferStaffIndex()" disabled>
+          <option value="">— Select Office —</option>
+        </select>
+        <small id="transfer-office-info" style="color:#93C5FD;margin-top:5px;display:block;font-size:12.5px;"></small>
+      </div>
+      <div class="rp-field" id="transfer-staff-block" style="display:none;">
+        <label>Step 3: Transfer to Staff *</label>
+        <select class="rp-input" id="transfer-staff" disabled onchange="onTransferStaffChangeIndex()">
+          <option value="">— Select Staff —</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="rp-bottom" id="transfer-submit-block" style="display:none;">
+      <div class="rp-hint" style="flex:1;">💡 Select documents using checkboxes first, then click Transfer.</div>
+      <button class="btn-route" onclick="submitTransfer()" id="btn-do-transfer">🔄 Transfer Documents</button>
     </div>
   </div>
-  
-  <div class="rp-bottom" id="transfer-submit-block" style="display:none;">
-    <div class="rp-hint" style="flex:1">💡 Select documents using checkboxes first, then click Transfer.</div>
-    <button class="btn-route" onclick="submitTransfer()" id="btn-do-transfer">🔄 Transfer Documents</button>
-  </div>
-</div>
 </div>
 
-<!-- Hidden routing form -->
+{# Hidden routing form #}
 <form method="post" action="/routing-slip/create" id="routing-form" style="display:none;">
   <input type="hidden" name="doc_ids" id="routing-doc-ids"/>
   <input type="hidden" name="destination" id="routing-dest-field"/>
@@ -272,45 +351,54 @@ var serverSessionData = {
   <input type="hidden" name="time_to" id="routing-time-to"/>
 </form>
 
-<!-- Documents Table -->
+{# ══════════════════════════════════
+   DOCUMENTS TABLE
+══════════════════════════════════ #}
 <div class="table-wrap">
-  
-  <!-- Pending Documents Banner -->
+
+  {# Pending Banner #}
   {% if logged_in and session.get('role') in ('staff', 'admin') %}
-  <div id="pending-banner" style="display:none; margin-bottom:16px; padding:16px 20px; background:linear-gradient(135deg,#FEF3C7,#FDE68A); border:2px solid #FCD34D; border-radius:12px; cursor:pointer;" onclick="showPendingDocumentsModal()">
-    <div style="display:flex; align-items:center; gap:12px;">
-      <span style="font-size:28px;">📥</span>
+  <div id="pending-banner" style="display:none;margin:14px 14px 0;padding:14px 18px;background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1.5px solid #FCD34D;border-radius:12px;cursor:pointer;" onclick="showPendingDocumentsModal()">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:26px;">📥</span>
       <div style="flex:1;">
-        <div style="font-size:16px; font-weight:800; color:#92400E;">Documents to Receive</div>
-        <div style="font-size:13px; color:#78350F;">Click to view and accept/reject transferred documents</div>
+        <div style="font-size:15px;font-weight:800;color:#92400E;">Documents to Receive</div>
+        <div style="font-size:12.5px;color:#78350F;margin-top:2px;">Click to view and accept / reject transferred documents</div>
       </div>
-      <span id="pending-banner-count" style="background:#DC2626; color:white; font-size:18px; font-weight:900; padding:8px 16px; border-radius:20px;">0</span>
+      <span id="pending-banner-count" style="background:#DC2626;color:#fff;font-size:16px;font-weight:900;padding:6px 14px;border-radius:20px;min-width:36px;text-align:center;">0</span>
     </div>
   </div>
   {% endif %}
-  
+
+  {# Table Header #}
   <div class="table-head">
     <div class="table-title">📋 Document Records</div>
-    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <div class="table-count">
-        {% if total is defined %}{{ total }} record{% if total != 1 %}s{% endif %}{% if total_pages > 1 %} &nbsp;·&nbsp; page {{ page }} of {{ total_pages }}{% endif %}
-        {% else %}{{ docs|length }} record{% if docs|length != 1 %}s{% endif %}{% endif %}
+        {% if total is defined %}
+          {{ total }} record{% if total != 1 %}s{% endif %}{% if total_pages > 1 %} &nbsp;·&nbsp; page {{ page }} of {{ total_pages }}{% endif %}
+        {% else %}
+          {{ docs|length }} record{% if docs|length != 1 %}s{% endif %}
+        {% endif %}
       </div>
+
       {% if logged_in %}
       <div style="display:flex;align-items:center;gap:6px;">
-        <label style="font-size:13px;color:var(--muted);white-space:nowrap;">Show</label>
-        <select onchange="changePerPage(this.value)" style="padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;color:var(--navy);background:#fff;cursor:pointer;">
+        <label style="font-size:12.5px;color:var(--muted);white-space:nowrap;">Show</label>
+        <select onchange="changePerPage(this.value)" style="padding:4px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;color:var(--navy);background:#fff;cursor:pointer;outline:none;">
           {% for n in [10,25,50,100] %}<option value="{{ n }}" {% if per_page is defined and per_page == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
         </select>
-        <label style="font-size:13px;color:var(--muted);">per page</label>
+        <label style="font-size:12.5px;color:var(--muted);">per page</label>
       </div>
-      <a href="/add" style="display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,#059669,#10B981);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 10px rgba(5,150,105,.3);text-decoration:none;" title="Add a new document">➕ Add Document</a>
-      <a href="/routed-documents" style="display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,#0A2540,#1D4ED8);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 10px rgba(29,78,216,.3);text-decoration:none;" title="View all routing slips">🚌 Routed Documents</a>
+
+      <a href="/add" style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;background:linear-gradient(135deg,#059669,#10B981);color:#fff;font-weight:700;font-size:13px;text-decoration:none;box-shadow:0 2px 8px rgba(5,150,105,.25);" title="Add a new document">➕ Add Document</a>
+      <a href="/routed-documents" style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;background:linear-gradient(135deg,#0A2540,#1D4ED8);color:#fff;font-weight:700;font-size:13px;text-decoration:none;box-shadow:0 2px 8px rgba(29,78,216,.25);" title="View all routing slips">🚌 Routed Docs</a>
+
       {% if session.get('role') in ['admin', 'staff'] %}
-      <button id="btn-create-slip" onclick="openRoutingModal()" style="display:none;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,#7C3AED,#A855F7);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 10px rgba(124,58,237,.3);">
+      <button id="btn-create-slip" onclick="openRoutingModal()" style="display:none;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;border:none;background:linear-gradient(135deg,#7C3AED,#A855F7);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 8px rgba(124,58,237,.25);">
         📤 Create Routing Slip <span id="slip-sel-badge" style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:900;"></span>
       </button>
-      <button id="btn-transfer" onclick="openTransferModal()" style="display:none;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,#DC2626,#EF4444);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 10px rgba(220,38,38,.3);">
+      <button id="btn-transfer" onclick="openTransferModal()" style="display:none;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;border:none;background:linear-gradient(135deg,#DC2626,#EF4444);color:#fff;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 8px rgba(220,38,38,.25);">
         🔄 Transfer <span id="transfer-sel-badge" style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:900;"></span>
       </button>
       {% endif %}
@@ -318,81 +406,105 @@ var serverSessionData = {
     </div>
   </div>
 
+  {# Table #}
   {% if docs %}
   <div class="table-scroll">
     <table id="docs-table">
       <thead>
         <tr>
           {% if logged_in %}<th class="cb-cell"><input type="checkbox" id="select-all" title="Select all"/></th>{% endif %}
-          <th>Document / Content</th><th>Unit / Office / School</th><th>Source / Sender</th><th>Referred To</th><th>Date &amp; Time Received</th><th>Status</th>
+          <th>Document / Content</th>
+          <th>Unit / Office / School</th>
+          <th>Source / Sender</th>
+          <th>Referred To</th>
+          <th>Date &amp; Time</th>
+          <th>Status</th>
         </tr>
       </thead>
       <tbody>
         {% for doc in docs %}
         <tr onclick="rowClick(event,'{{ doc.id }}')" style="cursor:pointer;" data-created-at="{{ doc.created_at or '' }}" data-doc-id="{{ doc.id }}">
           {% if logged_in %}
-          <td class="cb-cell" onclick="event.stopPropagation()"><input type="checkbox" class="doc-checkbox" value="{{ doc.id }}" onchange="updateSelection()"/></td>
+          <td class="cb-cell" onclick="event.stopPropagation()">
+            <input type="checkbox" class="doc-checkbox" value="{{ doc.id }}" onchange="updateSelection()"/>
+          </td>
           {% endif %}
+
+          {# Document name + meta #}
           <td>
             <div class="doc-name">{{ doc.doc_name }}</div>
             {% if doc.doc_id %}<div class="doc-id">{{ doc.doc_id }}</div>{% endif %}
             {% if doc.category %}<div class="doc-cat">{{ doc.category }}</div>{% endif %}
-            {% if doc.submitted_by %}<div style="font-size:11px;color:var(--emerald);margin-top:2px;font-weight:700;">📱 Client</div>{% endif %}
+            {% if doc.submitted_by %}<div style="font-size:11px;color:var(--emerald);margin-top:3px;font-weight:700;">📱 Client</div>{% endif %}
           </td>
+
           <td style="font-size:var(--fs-sm);">{{ doc.sender_org or '—' }}</td>
           <td style="font-size:var(--fs-sm);">{{ doc.sender_name or '—' }}</td>
           <td style="font-size:var(--fs-sm);">{{ doc.referred_to or '—' }}</td>
+
+          {# Date/time #}
           <td style="white-space:nowrap;font-size:var(--fs-sm);">
             {% if doc.date_received %}
               <div style="font-weight:700;color:var(--navy);">{{ doc.date_received }}</div>
-              <div style="font-size:12px;color:var(--teal);margin-top:2px;font-weight:600;">{{ doc.created_at | time12 }}</div>
+              <div style="font-size:11.5px;color:var(--teal);margin-top:2px;font-weight:600;">{{ doc.created_at | time12 }}</div>
             {% else %}<span style="color:var(--muted);">—</span>{% endif %}
           </td>
+
+          {# Status badge #}
           <td>
             {% set s = doc.status %}
-            {% if s=='Logged' %}
-              <span class="badge" style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;">{{ s }}</span>
-            {% elif s=='Pending' %}
+            {% if s == 'Logged' %}
+              <span class="badge" style="background:#FEF3C7;color:#92400E;border-color:#FCD34D;">{{ s }}</span>
+            {% elif s == 'Pending' %}
               <span class="badge badge-pending">{{ s }}</span>
               {% if doc.pending_at_staff %}
               <div style="margin-top:5px;display:flex;align-items:center;gap:4px;">
                 <span style="font-size:11px;color:var(--muted);font-weight:600;">→</span>
-                <span style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#92400E;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;">{% if doc.pending_at_staff_name %}{{ doc.pending_at_staff_name }}{% else %}{{ doc.pending_at_staff }}{% endif %}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</span>
+                <span style="background:#FEF9C3;border:1px solid #FDE047;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#854D0E;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;">{% if doc.pending_at_staff_name %}{{ doc.pending_at_staff_name }}{% else %}{{ doc.pending_at_staff }}{% endif %}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</span>
               </div>
               {% endif %}
-              {# Show transfer status indicator #}
               {% if doc.transfer_status == 'pending' %}
-              <div style="margin-top:4px;"><span style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;color:#92400E;">⏳ Awaiting Accept</span></div>
+              <div style="margin-top:4px;"><span style="background:#FEF9C3;border:1px solid #FDE047;border-radius:5px;padding:2px 7px;font-size:10.5px;font-weight:700;color:#854D0E;">⏳ Awaiting Accept</span></div>
               {% endif %}
-            {% elif s=='Received' %}
+            {% elif s == 'Received' %}
               <span class="badge badge-received">{{ s }}</span>
-              {# Show accepted indicator if transferred #}
               {% if doc.transfer_status == 'accepted' %}
-              <div style="margin-top:4px;"><span style="background:#D1FAE5;border:1px solid #6EE7B7;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;color:#065F46;">✅ Accepted</span></div>
+              <div style="margin-top:4px;"><span style="background:#D1FAE5;border:1px solid #6EE7B7;border-radius:5px;padding:2px 7px;font-size:10.5px;font-weight:700;color:#065F46;">✅ Accepted</span></div>
               {% endif %}
-            {% elif s=='In Review' %}<span class="badge badge-review">{{ s }}</span>
-            {% elif s=='In Transit' %}
+            {% elif s == 'In Review' %}
+              <span class="badge badge-review">{{ s }}</span>
+            {% elif s == 'In Transit' %}
               <span class="badge badge-transit">🚌 In Transit</span>
               {% if doc.pending_at_staff %}
               <div style="margin-top:5px;display:flex;align-items:center;gap:4px;">
                 <span style="font-size:11px;color:var(--muted);font-weight:600;">→</span>
-                <span style="background:#DBEAFE;border:1px solid #93C5FD;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#1D4ED8;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;">{{ doc.pending_at_staff }}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</span>
+                <span style="background:#DBEAFE;border:1px solid #93C5FD;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#1E3A8A;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;">{{ doc.pending_at_staff }}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</span>
               </div>
               {% elif doc.forwarded_to %}
               <div style="margin-top:5px;display:flex;align-items:center;gap:4px;">
                 <span style="font-size:11px;color:var(--muted);font-weight:600;">→</span>
-                <span style="background:#DBEAFE;border:1px solid #93C5FD;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#1D4ED8;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;">{{ doc.forwarded_to }}</span>
-              </div>{% endif %}
-            {% elif s=='Released' %}<span class="badge badge-released">{{ s }}</span>
-            {% elif s=='On Hold' %}<span class="badge badge-hold">{{ s }}</span>
-            {% elif s=='Rejected' %}
-              <span class="badge badge-hold" style="background:#FEE2E2;color:#991B1B;border-color:#FECACA;">{{ s }}</span>
-              {% if doc.rejection_reason %}
-              <div style="margin-top:4px;max-width:150px;"><span style="background:#FEE2E2;border:1px solid #FECACA;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;color:#991B1B;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ doc.rejection_reason }}">❌ {{ doc.rejection_reason }}</span></div>
+                <span style="background:#DBEAFE;border:1px solid #93C5FD;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#1E3A8A;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;">{{ doc.forwarded_to }}</span>
+              </div>
               {% endif %}
-            {% else %}<span class="badge badge-archived">{{ s }}</span>{% endif %}
+            {% elif s == 'Released' %}
+              <span class="badge badge-released">{{ s }}</span>
+            {% elif s == 'On Hold' %}
+              <span class="badge badge-hold">{{ s }}</span>
+            {% elif s == 'Rejected' %}
+              <span class="badge badge-hold" style="background:#FEE2E2;color:#7F1D1D;border-color:#FCA5A5;">{{ s }}</span>
+              {% if doc.rejection_reason %}
+              <div style="margin-top:4px;max-width:150px;">
+                <span style="background:#FEE2E2;border:1px solid #FCA5A5;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;color:#7F1D1D;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ doc.rejection_reason }}">❌ {{ doc.rejection_reason }}</span>
+              </div>
+              {% endif %}
+            {% else %}
+              <span class="badge badge-archived">{{ s }}</span>
+            {% endif %}
+
             {% if logged_in and session.get('role') in ['admin', 'staff'] %}
-            <div style="margin-top:8px;"><a href="/transfer/{{ doc.id }}" class="btn btn-xs" style="background:#7C3AED;color:#fff;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">🔄 Transfer</a></div>
+            <div style="margin-top:8px;">
+              <a href="/transfer/{{ doc.id }}" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:5px;background:#7C3AED;color:#fff;font-size:11px;font-weight:700;text-decoration:none;">🔄 Transfer</a>
+            </div>
             {% endif %}
           </td>
         </tr>
@@ -401,20 +513,42 @@ var serverSessionData = {
     </table>
   </div>
 
+  {# Pagination #}
   {% if total_pages is defined and total_pages > 1 %}
-  <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:16px 20px;border-top:1.5px solid var(--border);flex-wrap:wrap;">
-    {% set qs %}search={{ search }}&status={{ filter_status }}&type={{ filter_type }}&date={{ filter_date }}&time_from={{ filter_time_from }}&time_to={{ filter_time_to }}&per_page={{ per_page }}{% endset %}
-    {% if page > 1 %}<a href="/?{{ qs }}&page={{ page - 1 }}" style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:#fff;color:var(--navy);font-weight:700;font-size:13px;text-decoration:none;">‹ Prev</a>
-    {% else %}<span style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:13px;">‹ Prev</span>{% endif %}
-    {% set start_p = [1, page - 2] | max %}{% set end_p = [total_pages, page + 2] | min %}
-    {% if start_p > 1 %}<a href="/?{{ qs }}&page=1" style="padding:7px 11px;border-radius:8px;border:1.5px solid var(--border);background:#fff;color:var(--navy);font-weight:600;font-size:13px;text-decoration:none;">1</a>{% if start_p > 2 %}<span style="color:var(--muted);font-size:13px;padding:0 2px;">…</span>{% endif %}{% endif %}
+  {% set qs %}search={{ search }}&status={{ filter_status }}&type={{ filter_type }}&date={{ filter_date }}&time_from={{ filter_time_from }}&time_to={{ filter_time_to }}&per_page={{ per_page }}{% endset %}
+  <div class="pagination-wrap">
+    {% if page > 1 %}
+      <a href="/?{{ qs }}&page={{ page - 1 }}" class="page-btn">‹ Prev</a>
+    {% else %}
+      <span class="page-btn disabled">‹ Prev</span>
+    {% endif %}
+
+    {% set start_p = [1, page - 2] | max %}
+    {% set end_p = [total_pages, page + 2] | min %}
+
+    {% if start_p > 1 %}
+      <a href="/?{{ qs }}&page=1" class="page-btn">1</a>
+      {% if start_p > 2 %}<span style="color:var(--muted);font-size:13px;padding:0 2px;">…</span>{% endif %}
+    {% endif %}
+
     {% for p in range(start_p, end_p + 1) %}
-      {% if p == page %}<span style="padding:7px 11px;border-radius:8px;background:linear-gradient(135deg,var(--g-start),var(--g-mid));color:#fff;font-weight:700;font-size:13px;border:none;">{{ p }}</span>
-      {% else %}<a href="/?{{ qs }}&page={{ p }}" style="padding:7px 11px;border-radius:8px;border:1.5px solid var(--border);background:#fff;color:var(--navy);font-weight:600;font-size:13px;text-decoration:none;">{{ p }}</a>{% endif %}
+      {% if p == page %}
+        <span class="page-btn active">{{ p }}</span>
+      {% else %}
+        <a href="/?{{ qs }}&page={{ p }}" class="page-btn">{{ p }}</a>
+      {% endif %}
     {% endfor %}
-    {% if end_p < total_pages %}{% if end_p < total_pages - 1 %}<span style="color:var(--muted);font-size:13px;padding:0 2px;">…</span>{% endif %}<a href="/?{{ qs }}&page={{ total_pages }}" style="padding:7px 11px;border-radius:8px;border:1.5px solid var(--border);background:#fff;color:var(--navy);font-weight:600;font-size:13px;text-decoration:none;">{{ total_pages }}</a>{% endif %}
-    {% if page < total_pages %}<a href="/?{{ qs }}&page={{ page + 1 }}" style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:#fff;color:var(--navy);font-weight:700;font-size:13px;text-decoration:none;">Next ›</a>
-    {% else %}<span style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:13px;">Next ›</span>{% endif %}
+
+    {% if end_p < total_pages %}
+      {% if end_p < total_pages - 1 %}<span style="color:var(--muted);font-size:13px;padding:0 2px;">…</span>{% endif %}
+      <a href="/?{{ qs }}&page={{ total_pages }}" class="page-btn">{{ total_pages }}</a>
+    {% endif %}
+
+    {% if page < total_pages %}
+      <a href="/?{{ qs }}&page={{ page + 1 }}" class="page-btn">Next ›</a>
+    {% else %}
+      <span class="page-btn disabled">Next ›</span>
+    {% endif %}
   </div>
   {% endif %}
 
@@ -422,9 +556,10 @@ var serverSessionData = {
   <div class="empty">
     <div class="empty-icon">📭</div>
     <h3>No documents found</h3>
-    <p>Try adjusting filters or <a href="/add" style="color:var(--teal);font-weight:700;">add a new document</a>.</p>
+    <p>Try adjusting your filters or <a href="/add" style="color:var(--teal);font-weight:700;">add a new document</a>.</p>
   </div>
   {% endif %}
+
 </div>
 
 {% endblock %}
