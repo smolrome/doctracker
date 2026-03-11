@@ -19,6 +19,13 @@
 .stat-card.active .stat-clear { opacity:1; }
 .stat-card:not(.active):hover::after { content:'filter';position:absolute;bottom:7px;right:10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);opacity:.5; }
 .stat-card { position:relative; }
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);  /* 9 cards, always 1 row */
+  gap: 10px;
+  overflow-x: auto;      /* allow horizontal scroll on small screens */
+  padding-bottom: 4px;   /* prevent clipping box-shadow */
+}
 
 .table-wrap {
   border: 2px solid var(--border);
@@ -31,16 +38,18 @@
 }
 
 .table-scroll {
-  max-height: 60vh;
+  max-height: calc(100vh - 420px);  /* dynamic: viewport minus stats+filter+table-head */
   overflow-y: auto;
   overflow-x: auto;
 }
 
+/* thead th already has position:sticky;top:0 — keep that, it works within .table-scroll */
 .table-scroll table thead th {
   position: sticky;
   top: 0;
   z-index: 10;
   background: var(--surface, #F8FAFC);
+  box-shadow: 0 2px 4px rgba(0,0,0,.06); /* visual separator when scrolling */
 }
 
 /* Office QR Modal Styles */
@@ -74,7 +83,18 @@
 .oqs-none.visible{display:block;}
 
 /* Filter Bar Styles */
-.filter-bar{background:#fff;border:2px solid var(--border);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(10,45,100,.05);}
+/* Make the filter bar sticky below the stats */
+.filter-bar {
+  position: sticky;
+  top: 120px; /* adjust this to match the height of your stats grid */
+  z-index: 90;
+  background: #fff;
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 10px rgba(10,45,100,.05);
+}
 .filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
 .filter-group{display:flex;flex-direction:column;gap:5px;min-width:0;}
 .filter-group.grow{flex:1;min-width:200px;}

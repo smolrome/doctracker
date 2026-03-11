@@ -16,7 +16,7 @@ var serverSessionData = {
 <meta name="csrf-token" content="{{ csrf_token }}">
 
 <script src="{{ url_for('static', filename='js/index.js') }}"></script>
-<div style="position:sticky;top:0;z-index:100;background:var(--surface,#F8FAFC);padding:12px 0 16px;margin-bottom:4px;overflow:visible;">
+<div style="position:sticky; top:0; z-index:100; background:var(--surface,#F8FAFC); padding:12px 0 10px; margin-bottom:4px; overflow-x:auto; overflow-y:visible;">
   <div class="stats-grid">
     <a class="stat-card {% if filter_status=='All' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('All')">
       <div class="stat-card-inner"><div class="stat-num">{{ stats.total }}</div><div class="stat-label">📋 Total</div><div class="stat-clear">● All</div></div>
@@ -92,7 +92,7 @@ var serverSessionData = {
 </div>
 
 {% endif %}
-
+<div style="position:sticky; top:var(--stats-height, 160px); z-index:90; background:var(--surface,#F8FAFC); padding-bottom:8px; margin-bottom:0;">
 <form method="get" action="/" id="filter-form">
   <div class="filter-bar">
     <div class="filter-row">
@@ -154,6 +154,7 @@ var serverSessionData = {
   <input type="hidden" name="type" id="type-hidden" value="{{ filter_type }}"/>
   <input type="hidden" name="per_page" value="{{ per_page }}"/>
 </form>
+</div>
 
 <datalist id="office-suggestions">
   {% for office in saved_offices %}<option value="{{ office.office_name }}">{% endfor %}
