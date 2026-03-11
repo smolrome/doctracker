@@ -3,9 +3,9 @@
 
 <script>
 var serverSessionData = {
-  username: '{{ session.get("username", "") }}',
-  role: '{{ session.get("role", "") }}',
-  office: '{{ session.get("office", "") }}',
+  username:  '{{ session.get("username", "") }}',
+  role:      '{{ session.get("role", "") }}',
+  office:    '{{ session.get("office", "") }}',
   full_name: '{{ session.get("full_name", "") }}'
 };
 </script>
@@ -15,49 +15,39 @@ var serverSessionData = {
 <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 
 <script>
-/* ── Sticky offset calculator ──────────────────────────────
-   Measures the app navbar and each sticky band so every
-   layer sits exactly below the one above it, at any
-   viewport size or zoom level.
-──────────────────────────────────────────────────────────── */
+/* ── Sticky offset calculator ──────────────────────────────────────────────
+   Measures the real nav height (works with base.html's plain <nav> tag)
+   and cascades every sticky layer below it.
+────────────────────────────────────────────────────────────────────────── */
 function recalcStickyOffsets() {
   const root = document.documentElement;
 
-  const navbar =
-    document.querySelector('nav.navbar') ||
-    document.querySelector('header') ||
-    document.querySelector('.navbar') ||
-    document.querySelector('#navbar') ||
-    document.querySelector('[data-navbar]');
-
-  const navH = navbar ? navbar.getBoundingClientRect().height : 0;
+  /* FIXED: base.html uses a plain <nav> tag — previous selectors missed it */
+  const navbar = document.querySelector('nav');
+  const navH   = navbar ? navbar.getBoundingClientRect().height : 0;
   root.style.setProperty('--navbar-h', navH + 'px');
 
   const statsBar = document.getElementById('stats-sticky-bar');
-  const statsH = statsBar ? statsBar.getBoundingClientRect().height : 0;
+  const statsH   = statsBar ? statsBar.getBoundingClientRect().height : 0;
   root.style.setProperty('--filter-top', (navH + statsH) + 'px');
 
   const filterBar = document.getElementById('filter-sticky-bar');
-  const filterH = filterBar ? filterBar.getBoundingClientRect().height : 0;
-  const theadTop = navH + statsH + filterH;
+  const filterH   = filterBar ? filterBar.getBoundingClientRect().height : 0;
+  const theadTop  = navH + statsH + filterH;
   root.style.setProperty('--thead-top', theadTop + 'px');
 
-  // Table action bar height → sticky col headers sit below it
-  const tableHead = document.getElementById('table-action-bar');
+  const tableHead  = document.getElementById('table-action-bar');
   const tableHeadH = tableHead ? tableHead.getBoundingClientRect().height : 0;
-  const colHeadTop = theadTop + tableHeadH;
-  root.style.setProperty('--col-head-top', colHeadTop + 'px');
+  root.style.setProperty('--col-head-top', (theadTop + tableHeadH) + 'px');
 
-  // Sticky col header height → table body starts below it (for any future use)
-  const colHead = document.getElementById('col-head-sticky');
+  const colHead  = document.getElementById('col-head-sticky');
   const colHeadH = colHead ? colHead.getBoundingClientRect().height : 0;
-  root.style.setProperty('--tbody-top', (colHeadTop + colHeadH) + 'px');
+  root.style.setProperty('--tbody-top', (theadTop + tableHeadH + colHeadH) + 'px');
 }
 
-// Run on load and whenever layout might change
 document.addEventListener('DOMContentLoaded', recalcStickyOffsets);
 window.addEventListener('resize', recalcStickyOffsets);
-window.addEventListener('load', recalcStickyOffsets);
+window.addEventListener('load',   recalcStickyOffsets);
 setTimeout(recalcStickyOffsets, 150);
 setTimeout(recalcStickyOffsets, 600);
 </script>
@@ -65,8 +55,7 @@ setTimeout(recalcStickyOffsets, 600);
 {# ══════════════════════════════════
    STATS ROW
 ══════════════════════════════════ #}
-<div id="stats-sticky-bar" style="position:sticky;top:var(--navbar-h,0px);z-index:100;background:var(--surface,#F8FAFC);padding:10px 0 8px;margin-bottom:4px;box-shadow:0 2px 8px rgba(10,45,100,.06);">
-
+<div id="stats-sticky-bar" class="stats-sticky-bar">
   <div class="stats-grid">
     <a class="stat-card {% if filter_status=='All' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('All')">
       <div class="stat-card-inner">
@@ -124,7 +113,7 @@ setTimeout(recalcStickyOffsets, 600);
         <div class="stat-clear">● Filtered</div>
       </div>
     </a>
-    <a class="stat-card {% if filter_status=='Archived' %}active{% endif %}" style="--stat-accent:#64748B;" href="#" onclick="event.preventDefault();statFilter('Archived')">
+    <a class="stat-card archived {% if filter_status=='Archived' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Archived')">
       <div class="stat-card-inner">
         <div class="stat-label">Archived</div>
         <div class="stat-num">{{ stats.archived }}</div>
@@ -138,7 +127,7 @@ setTimeout(recalcStickyOffsets, 600);
    OFFICE QR FAB + MODAL
 ══════════════════════════════════ #}
 {% if saved_offices %}
-<button class="oqs-fab" onclick="openOqsModal()" title="Office Submission QR Codes">
+<button class="oqs-fab" onclick="openOqsModal()" title="Office Submission QR Codes" aria-label="Office QR Codes">
   📋
   <span class="oqs-fab-badge">{{ saved_offices|length }}</span>
 </button>
@@ -185,7 +174,7 @@ setTimeout(recalcStickyOffsets, 600);
 {# ══════════════════════════════════
    FILTER BAR
 ══════════════════════════════════ #}
-<div id="filter-sticky-bar" style="position:sticky;top:var(--filter-top,160px);z-index:90;background:var(--surface,#F8FAFC);padding-bottom:8px;margin-bottom:0;">
+<div id="filter-sticky-bar" class="filter-sticky-bar">
 <form method="get" action="/" id="filter-form">
   <div class="filter-bar">
 
@@ -211,21 +200,21 @@ setTimeout(recalcStickyOffsets, 600);
       <div class="filter-group" style="flex-shrink:0;">
         <span class="filter-label">&nbsp;</span>
         <div style="display:flex;gap:8px;">
-          <button type="submit" class="btn btn-primary btn-sm" style="min-height:40px;white-space:nowrap;">🔍 Search</button>
-          <a href="/" class="btn-clear-filters">✕ Clear</a>
+          <button type="submit" class="btn btn-primary btn-sm">🔍 Search</button>
+          <a href="/" class="btn btn-secondary btn-sm">✕ Clear</a>
         </div>
       </div>
     </div>
 
     {# — Row 2: Time Range — #}
-    <div class="filter-row" style="margin-top:10px;padding-top:10px;border-top:1.5px dashed var(--border);">
-      <label class="time-toggle-label" for="toggle-time-range" style="flex-shrink:0;">
+    <div class="filter-row filter-row-time">
+      <label class="time-toggle-label" for="toggle-time-range">
         <input type="checkbox" id="toggle-time-range"
           onchange="toggleTimeRange(this.checked)"
           {% if filter_time_from or filter_time_to %}checked{% endif %}/>
         🕐 Filter by time range
       </label>
-      <div id="time-range-row" style="display:{% if filter_time_from or filter_time_to %}flex{% else %}none{% endif %};align-items:flex-end;gap:10px;flex-wrap:wrap;flex:1;">
+      <div id="time-range-row" class="time-range-row" style="display:{% if filter_time_from or filter_time_to %}flex{% else %}none{% endif %};">
         <div class="filter-group w-time">
           <span class="filter-label">🕐 From</span>
           <input type="time" name="time_from"
@@ -240,14 +229,14 @@ setTimeout(recalcStickyOffsets, 600);
         </div>
         <div class="filter-group" style="flex-shrink:0;">
           <span class="filter-label">&nbsp;</span>
-          <button type="submit" class="btn btn-primary btn-sm" style="min-height:40px;">Apply</button>
+          <button type="submit" class="btn btn-primary btn-sm">Apply</button>
         </div>
       </div>
     </div>
 
     {# — Row 3: Type Filters + Active Pills — #}
     <div class="filter-type-row">
-      <button type="button" class="type-btn {% if filter_type=='All' %}active{% endif %}" onclick="setType('All')">All</button>
+      <button type="button" class="type-btn {% if filter_type=='All' %}active{% endif %}"      onclick="setType('All')">All</button>
       <button type="button" class="type-btn {% if filter_type=='Received' %}active{% endif %}" onclick="setType('Received')">📥 Received</button>
       <button type="button" class="type-btn {% if filter_type=='Released' %}active{% endif %}" onclick="setType('Released')">✅ Released</button>
       <button type="button" class="type-btn" onclick="setToday()">📆 Today</button>
@@ -255,28 +244,18 @@ setTimeout(recalcStickyOffsets, 600);
       {% set any_filter = search or filter_status != 'All' or filter_type != 'All' or filter_date or filter_time_from or filter_time_to %}
       {% if any_filter %}
       <div class="filter-active-pills">
-        {% if filter_date %}
-        <span class="filter-pill">📅 {{ filter_date }}<span class="pill-x" onclick="clearField('date')"> ×</span></span>
-        {% endif %}
-        {% if filter_time_from or filter_time_to %}
-        <span class="filter-pill">🕐 {{ filter_time_from or '00:00' }}–{{ filter_time_to or '23:59' }}<span class="pill-x" onclick="clearField('time_from');clearField('time_to');"> ×</span></span>
-        {% endif %}
-        {% if filter_status != 'All' %}
-        <span class="filter-pill">{{ filter_status }}<span class="pill-x" onclick="clearField('status','All')"> ×</span></span>
-        {% endif %}
-        {% if search %}
-        <span class="filter-pill">🔍 "{{ search }}"<span class="pill-x" onclick="clearField('search','')"> ×</span></span>
-        {% endif %}
-        {% if filter_type != 'All' %}
-        <span class="filter-pill">{{ filter_type }}<span class="pill-x" onclick="clearField('type','All')"> ×</span></span>
-        {% endif %}
+        {% if filter_date %}<span class="filter-pill">📅 {{ filter_date }}<span class="pill-x" onclick="clearField('date')"> ×</span></span>{% endif %}
+        {% if filter_time_from or filter_time_to %}<span class="filter-pill">🕐 {{ filter_time_from or '00:00' }}–{{ filter_time_to or '23:59' }}<span class="pill-x" onclick="clearField('time_from');clearField('time_to');"> ×</span></span>{% endif %}
+        {% if filter_status != 'All' %}<span class="filter-pill">{{ filter_status }}<span class="pill-x" onclick="clearField('status','All')"> ×</span></span>{% endif %}
+        {% if search %}<span class="filter-pill">🔍 "{{ search }}"<span class="pill-x" onclick="clearField('search','')"> ×</span></span>{% endif %}
+        {% if filter_type != 'All' %}<span class="filter-pill">{{ filter_type }}<span class="pill-x" onclick="clearField('type','All')"> ×</span></span>{% endif %}
       </div>
       {% endif %}
     </div>
 
   </div>
-  <input type="hidden" name="type" id="type-hidden" value="{{ filter_type }}"/>
-  <input type="hidden" name="per_page" value="{{ per_page }}"/>
+  <input type="hidden" name="type"     id="type-hidden" value="{{ filter_type }}"/>
+  <input type="hidden" name="per_page"                  value="{{ per_page }}"/>
 </form>
 </div>
 
@@ -298,25 +277,29 @@ setTimeout(recalcStickyOffsets, 600);
 
 {# ══════════════════════════════════
    ROUTING MODAL
+   Uses the unified .modal-overlay system from base.css
 ══════════════════════════════════ #}
-<div id="routing-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(10,37,64,.65);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:16px;">
-  <div class="route-panel" style="display:block;position:relative;top:auto;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;">
+<div id="routing-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="routing-modal-title">
+  <div class="route-panel">
     <div class="rp-header">
-      <div class="rp-title">📤 Create Routing Slip <span class="rp-count" id="sel-count">0 selected</span></div>
-      <button class="rp-close" onclick="closeRoutingModal()">✕ Close</button>
+      <div class="rp-title" id="routing-modal-title">
+        📤 Create Routing Slip
+        <span class="rp-count" id="sel-count">0 selected</span>
+      </div>
+      <button class="rp-close" onclick="closeRoutingModal()" aria-label="Close">✕ Close</button>
     </div>
 
-    <div id="selected-preview" style="margin-bottom:14px;display:none;">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.5);margin-bottom:7px;">Selected Documents</div>
-      <div id="selected-list" style="background:rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;max-height:110px;overflow-y:auto;font-size:13px;color:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.12);"></div>
+    <div id="selected-preview" class="rp-selected-preview">
+      <div class="rp-selected-label">Selected Documents</div>
+      <div id="selected-list" class="rp-selected-list"></div>
     </div>
 
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);">
-      <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.5);white-space:nowrap;text-transform:uppercase;letter-spacing:.05em;">FROM</span>
-      <span style="font-size:14px;font-weight:800;color:#fff;">{{ current_office or current_full_name or current_user or 'Your Office' }}</span>
-      <span style="margin:0 4px;color:rgba(255,255,255,.35);">→</span>
-      <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.5);white-space:nowrap;text-transform:uppercase;letter-spacing:.05em;">TO</span>
-      <span style="font-size:14px;font-weight:700;color:#93C5FD;" id="modal-dest-preview">(enter destination below)</span>
+    <div class="rp-from-to">
+      <span class="rp-from-label">FROM</span>
+      <span class="rp-from-name">{{ current_office or current_full_name or current_user or 'Your Office' }}</span>
+      <span class="rp-arrow">→</span>
+      <span class="rp-to-label">TO</span>
+      <span class="rp-to-name" id="modal-dest-preview">(enter destination below)</span>
     </div>
 
     <div class="rp-fields">
@@ -327,21 +310,33 @@ setTimeout(recalcStickyOffsets, 600);
           list="office-suggestions" autocomplete="off"
           oninput="document.getElementById('modal-dest-preview').textContent=this.value||'(enter destination below)'"/>
       </div>
-      <div class="rp-field"><label>📅 Slip Date</label><input type="date" class="rp-input" id="slip-date"/></div>
-      <div class="rp-field" style="grid-column:span 2">
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;">
-          <input type="checkbox" id="use-time-range" onchange="toggleModalTimeRange(this.checked)" style="width:15px;height:15px;accent-color:#fff;cursor:pointer;"/>
-          🕐 Include Time Range <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,.45);">(optional)</span>
+      <div class="rp-field">
+        <label>📅 Slip Date</label>
+        <input type="date" class="rp-input" id="slip-date"/>
+      </div>
+      <div class="rp-field rp-field-span2">
+        <label class="rp-checkbox-label">
+          <input type="checkbox" id="use-time-range" onchange="toggleModalTimeRange(this.checked)"/>
+          🕐 Include Time Range <span class="rp-optional">(optional)</span>
         </label>
       </div>
-      <div class="rp-field" id="time-from-field" style="display:none"><label>From</label><input type="time" class="rp-input" id="time-from"/></div>
-      <div class="rp-field" id="time-to-field" style="display:none"><label>To</label><input type="time" class="rp-input" id="time-to"/></div>
-      <div class="rp-field notes-field"><label>📝 Notes / Instructions (optional)</label><textarea class="rp-notes" id="route-notes" rows="2" placeholder="e.g. For immediate action…"></textarea></div>
+      <div class="rp-field" id="time-from-field" style="display:none">
+        <label>From</label>
+        <input type="time" class="rp-input" id="time-from"/>
+      </div>
+      <div class="rp-field" id="time-to-field" style="display:none">
+        <label>To</label>
+        <input type="time" class="rp-input" id="time-to"/>
+      </div>
+      <div class="rp-field rp-field-full">
+        <label>📝 Notes / Instructions (optional)</label>
+        <textarea class="rp-notes" id="route-notes" rows="2" placeholder="e.g. For immediate action…"></textarea>
+      </div>
     </div>
 
     <div class="rp-bottom">
       <button class="btn-time-filter" id="btn-auto-select" onclick="autoSelectByTime()" style="display:none;">⏱️ Auto-select by Time</button>
-      <div class="rp-hint" style="flex:1;">💡 Check rows in the table first, or use <strong>Auto-select by Time</strong>.</div>
+      <p class="rp-hint">💡 Check rows in the table first, or use <strong>Auto-select by Time</strong>.</p>
       <button class="btn-route" onclick="submitRouting()">🚀 Create Routing Slip</button>
     </div>
   </div>
@@ -349,19 +344,23 @@ setTimeout(recalcStickyOffsets, 600);
 
 {# ══════════════════════════════════
    TRANSFER MODAL
+   Uses the unified .modal-overlay system from base.css
 ══════════════════════════════════ #}
-<div id="transfer-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(10,37,64,.65);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:16px;">
-  <div class="route-panel" style="display:block;position:relative;top:auto;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;">
+<div id="transfer-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="transfer-modal-title">
+  <div class="route-panel route-panel-sm">
     <div class="rp-header">
-      <div class="rp-title">🔄 Transfer Documents <span class="rp-count" id="transfer-sel-count">0 selected</span></div>
-      <button class="rp-close" onclick="closeTransferModal()">✕ Close</button>
+      <div class="rp-title" id="transfer-modal-title">
+        🔄 Transfer Documents
+        <span class="rp-count" id="transfer-sel-count">0 selected</span>
+      </div>
+      <button class="rp-close" onclick="closeTransferModal()" aria-label="Close">✕ Close</button>
     </div>
 
-    <div style="background:rgba(254,243,199,.15);border:1px solid rgba(252,211,77,.35);border-radius:10px;padding:12px 16px;margin-bottom:16px;">
-      <p style="margin:0;font-size:13px;color:rgba(255,255,255,.8);">⚠️ The document status will change to <strong style="color:#FDE047;">Pending</strong> after transfer. The recipient will see this document in their dashboard.</p>
+    <div class="rp-warning-box">
+      ⚠️ The document status will change to <strong>Pending</strong> after transfer. The recipient will see this in their dashboard.
     </div>
 
-    <div class="rp-fields" style="grid-template-columns:1fr;">
+    <div class="rp-fields rp-fields-single">
       <div class="rp-field">
         <label>Step 1: Transfer Type *</label>
         <select class="rp-input" id="transfer-type" onchange="onTransferTypeChangeIndex()">
@@ -375,7 +374,7 @@ setTimeout(recalcStickyOffsets, 600);
         <select class="rp-input" id="transfer-office" onchange="updateTransferStaffIndex()" disabled>
           <option value="">— Select Office —</option>
         </select>
-        <small id="transfer-office-info" style="color:#93C5FD;margin-top:5px;display:block;font-size:12.5px;"></small>
+        <small id="transfer-office-info" class="rp-field-info"></small>
       </div>
       <div class="rp-field" id="transfer-staff-block" style="display:none;">
         <label>Step 3: Transfer to Staff *</label>
@@ -386,35 +385,33 @@ setTimeout(recalcStickyOffsets, 600);
     </div>
 
     <div class="rp-bottom" id="transfer-submit-block" style="display:none;">
-      <div class="rp-hint" style="flex:1;">💡 Select documents using checkboxes first, then click Transfer.</div>
-      <button class="btn-route" onclick="submitTransfer()" id="btn-do-transfer">🔄 Transfer Documents</button>
+      <p class="rp-hint">💡 Select documents using checkboxes first, then click Transfer.</p>
+      <button class="btn-route btn-route-amber" onclick="submitTransfer()" id="btn-do-transfer">🔄 Transfer Documents</button>
     </div>
   </div>
 </div>
 
 {# Hidden routing form #}
 <form method="post" action="/routing-slip/create" id="routing-form" style="display:none;">
-  <input type="hidden" name="doc_ids" id="routing-doc-ids"/>
+  <input type="hidden" name="doc_ids"     id="routing-doc-ids"/>
   <input type="hidden" name="destination" id="routing-dest-field"/>
-  <input type="hidden" name="notes" id="routing-notes"/>
-  <input type="hidden" name="slip_date" id="routing-slip-date"/>
-  <input type="hidden" name="time_from" id="routing-time-from"/>
-  <input type="hidden" name="time_to" id="routing-time-to"/>
+  <input type="hidden" name="notes"       id="routing-notes"/>
+  <input type="hidden" name="slip_date"   id="routing-slip-date"/>
+  <input type="hidden" name="time_from"   id="routing-time-from"/>
+  <input type="hidden" name="time_to"     id="routing-time-to"/>
 </form>
 
 {# ══════════════════════════════════
-   PENDING BANNER — above the table entirely
+   PENDING BANNER
 ══════════════════════════════════ #}
 {% if logged_in and session.get('role') in ('staff', 'admin') %}
-<div id="pending-banner" style="display:none;margin-bottom:8px;padding:14px 18px;background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1.5px solid #FCD34D;border-radius:12px;cursor:pointer;" onclick="showPendingDocumentsModal()">
-  <div style="display:flex;align-items:center;gap:12px;">
-    <span style="font-size:24px;">📥</span>
-    <div style="flex:1;">
-      <div style="font-size:14px;font-weight:800;color:#92400E;">Documents to Receive</div>
-      <div style="font-size:12px;color:#78350F;margin-top:2px;">Click to view and accept / reject transferred documents</div>
-    </div>
-    <span id="pending-banner-count" style="background:#DC2626;color:#fff;font-size:15px;font-weight:900;padding:5px 13px;border-radius:20px;min-width:34px;text-align:center;">0</span>
+<div id="pending-banner" class="pending-banner" onclick="showPendingDocumentsModal()" role="button" tabindex="0">
+  <span class="pending-banner-icon">📥</span>
+  <div class="pending-banner-text">
+    <div class="pending-banner-title">Documents to Receive</div>
+    <div class="pending-banner-sub">Click to view and accept / reject transferred documents</div>
   </div>
+  <span id="pending-banner-count" class="pending-banner-count">0</span>
 </div>
 {% endif %}
 
@@ -423,7 +420,8 @@ setTimeout(recalcStickyOffsets, 600);
 ══════════════════════════════════ #}
 {% if logged_in %}
 <div class="table-head" id="table-action-bar">
-  <div class="table-title">📋 Document Records
+  <div class="table-title">
+    📋 Document Records
     <span class="table-count">
       {% if total is defined %}
         {{ total }} record{% if total != 1 %}s{% endif %}{% if total_pages > 1 %} · page {{ page }} of {{ total_pages }}{% endif %}
@@ -433,19 +431,22 @@ setTimeout(recalcStickyOffsets, 600);
     </span>
   </div>
   <div class="table-actions">
-    <div style="display:flex;align-items:center;gap:5px;">
-      <label style="font-size:12px;color:var(--muted);white-space:nowrap;">Show</label>
-      <select onchange="changePerPage(this.value)" style="padding:3px 7px;border:1.5px solid var(--border);border-radius:7px;font-size:12.5px;color:var(--navy);background:#fff;cursor:pointer;outline:none;">
-        {% for n in [10,25,50,100] %}<option value="{{ n }}" {% if per_page is defined and per_page == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
+    <div class="per-page-group">
+      <label class="per-page-label">Show</label>
+      <select class="per-page-select" onchange="changePerPage(this.value)">
+        {% for n in [10,25,50,100] %}
+        <option value="{{ n }}" {% if per_page is defined and per_page == n %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
       </select>
     </div>
-    <a href="/add" class="tbl-btn tbl-btn-green">➕ Add</a>
+    <a href="/add"              class="tbl-btn tbl-btn-green">➕ Add</a>
     <a href="/routed-documents" class="tbl-btn tbl-btn-navy">🚌 Routed</a>
     {% if session.get('role') in ['admin', 'staff'] %}
-    <button id="btn-create-slip" onclick="openRoutingModal()" class="tbl-btn tbl-btn-purple" style="display:none;">
+    {# CHANGED: always visible, dimmed until selection, .selection-active unlocks them #}
+    <button id="btn-create-slip" onclick="openRoutingModal()" class="tbl-btn tbl-btn-purple">
       📤 Routing Slip <span id="slip-sel-badge" class="tbl-btn-badge"></span>
     </button>
-    <button id="btn-transfer" onclick="openTransferModal()" class="tbl-btn tbl-btn-red" style="display:none;">
+    <button id="btn-transfer" onclick="openTransferModal()" class="tbl-btn tbl-btn-amber">
       🔄 Transfer <span id="transfer-sel-badge" class="tbl-btn-badge"></span>
     </button>
     {% endif %}
@@ -456,8 +457,6 @@ setTimeout(recalcStickyOffsets, 600);
 {# ══════════════════════════════════
    DOCUMENTS TABLE
 ══════════════════════════════════ #}
-{# .table-outer handles ONLY horizontal scroll — never vertical.
-   .table-wrap and thead use position:sticky relative to page scroll. #}
 <div class="table-outer">
 <div class="table-wrap">
   {% if docs %}
@@ -483,7 +482,6 @@ setTimeout(recalcStickyOffsets, 600);
           </td>
           {% endif %}
 
-          {# Document name + meta #}
           <td class="td-doc">
             <div class="doc-name">{{ doc.doc_name }}</div>
             <div class="doc-meta-row">
@@ -497,7 +495,6 @@ setTimeout(recalcStickyOffsets, 600);
           <td class="td-text">{{ doc.sender_name or '—' }}</td>
           <td class="td-text">{{ doc.referred_to or '—' }}</td>
 
-          {# Date/time #}
           <td class="td-date">
             {% if doc.date_received %}
               <span class="date-main">{{ doc.date_received }}</span>
@@ -505,44 +502,37 @@ setTimeout(recalcStickyOffsets, 600);
             {% else %}<span class="td-empty">—</span>{% endif %}
           </td>
 
-          {# Status #}
           <td class="td-status">
             {% set s = doc.status %}
             {% if s == 'Logged' %}
-              <span class="status-pill status-logged">● {{ s }}</span>
+              <span class="status-pill status-logged">{{ s }}</span>
             {% elif s == 'Pending' %}
-              <span class="status-pill status-pending">● {{ s }}</span>
+              <span class="status-pill status-pending">{{ s }}</span>
               {% if doc.pending_at_staff %}
               <div class="status-sub">→ {% if doc.pending_at_staff_name %}{{ doc.pending_at_staff_name }}{% else %}{{ doc.pending_at_staff }}{% endif %}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</div>
               {% endif %}
-              {% if doc.transfer_status == 'pending' %}
-              <div class="status-sub">⏳ Awaiting Accept</div>
-              {% endif %}
+              {% if doc.transfer_status == 'pending' %}<div class="status-sub">⏳ Awaiting Accept</div>{% endif %}
             {% elif s == 'Received' %}
-              <span class="status-pill status-received">● {{ s }}</span>
-              {% if doc.transfer_status == 'accepted' %}
-              <div class="status-sub">✓ Accepted</div>
-              {% endif %}
+              <span class="status-pill status-received">{{ s }}</span>
+              {% if doc.transfer_status == 'accepted' %}<div class="status-sub">✓ Accepted</div>{% endif %}
             {% elif s == 'In Review' %}
-              <span class="status-pill status-review">● {{ s }}</span>
+              <span class="status-pill status-review">{{ s }}</span>
             {% elif s == 'In Transit' %}
-              <span class="status-pill status-transit">● {{ s }}</span>
+              <span class="status-pill status-transit">{{ s }}</span>
               {% if doc.pending_at_staff %}
               <div class="status-sub">→ {{ doc.pending_at_staff }}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</div>
               {% elif doc.forwarded_to %}
               <div class="status-sub">→ {{ doc.forwarded_to }}</div>
               {% endif %}
             {% elif s == 'Released' %}
-              <span class="status-pill status-released">● {{ s }}</span>
+              <span class="status-pill status-released">{{ s }}</span>
             {% elif s == 'On Hold' %}
-              <span class="status-pill status-hold">● {{ s }}</span>
+              <span class="status-pill status-hold">{{ s }}</span>
             {% elif s == 'Rejected' %}
-              <span class="status-pill status-rejected">● {{ s }}</span>
-              {% if doc.rejection_reason %}
-              <div class="status-sub" title="{{ doc.rejection_reason }}">{{ doc.rejection_reason }}</div>
-              {% endif %}
+              <span class="status-pill status-rejected">{{ s }}</span>
+              {% if doc.rejection_reason %}<div class="status-sub" title="{{ doc.rejection_reason }}">{{ doc.rejection_reason }}</div>{% endif %}
             {% else %}
-              <span class="status-pill status-archived">● {{ s }}</span>
+              <span class="status-pill status-archived">{{ s }}</span>
             {% endif %}
           </td>
         </tr>
@@ -560,15 +550,12 @@ setTimeout(recalcStickyOffsets, 600);
     {% else %}
       <span class="page-btn disabled">‹ Prev</span>
     {% endif %}
-
     {% set start_p = [1, page - 2] | max %}
-    {% set end_p = [total_pages, page + 2] | min %}
-
+    {% set end_p   = [total_pages, page + 2] | min %}
     {% if start_p > 1 %}
       <a href="/?{{ qs }}&page=1" class="page-btn">1</a>
-      {% if start_p > 2 %}<span style="color:var(--muted);font-size:13px;padding:0 2px;">…</span>{% endif %}
+      {% if start_p > 2 %}<span class="page-ellipsis">…</span>{% endif %}
     {% endif %}
-
     {% for p in range(start_p, end_p + 1) %}
       {% if p == page %}
         <span class="page-btn active">{{ p }}</span>
@@ -576,12 +563,10 @@ setTimeout(recalcStickyOffsets, 600);
         <a href="/?{{ qs }}&page={{ p }}" class="page-btn">{{ p }}</a>
       {% endif %}
     {% endfor %}
-
     {% if end_p < total_pages %}
-      {% if end_p < total_pages - 1 %}<span style="color:var(--muted);font-size:13px;padding:0 2px;">…</span>{% endif %}
+      {% if end_p < total_pages - 1 %}<span class="page-ellipsis">…</span>{% endif %}
       <a href="/?{{ qs }}&page={{ total_pages }}" class="page-btn">{{ total_pages }}</a>
     {% endif %}
-
     {% if page < total_pages %}
       <a href="/?{{ qs }}&page={{ page + 1 }}" class="page-btn">Next ›</a>
     {% else %}
