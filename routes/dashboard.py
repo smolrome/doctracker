@@ -150,7 +150,9 @@ def index():
 
     # Transfer modal data — current_office = logged-in user's office
     # Use session office as primary (more reliable), fallback to DB lookup
-    current_office = session.get("office") or _get_user_office(current_username)
+    # Normalize empty office to "No Office" to match _get_staff_by_office logic
+    raw_office = session.get("office") or _get_user_office(current_username)
+    current_office = raw_office if raw_office else "No Office"
     offices_dict, sorted_offices = _build_offices_dict_and_sorted(current_username, current_office)
 
     return render_template("index.html",
@@ -596,13 +598,15 @@ def transfer_doc(doc_id):
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
     
     # GET — resolve office of currently logged-in user (for internal transfers)
+    # Normalize empty office to "No Office" to match _get_staff_by_office logic
     all_users      = get_all_users()
     logged_in_user = session.get("username", "")
-    current_user_office = ""
+    raw_office = ""
     for u in all_users:
         if u.get("username") == logged_in_user:
-            current_user_office = u.get("office", "") or ""
+            raw_office = u.get("office", "") or ""
             break
+    current_user_office = raw_office if raw_office else "No Office"
 
     # DEBUG: Log to console
     print(f"DEBUG transfer_doc: logged_in_user={logged_in_user}, current_user_office={current_user_office}")
