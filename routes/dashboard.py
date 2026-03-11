@@ -778,9 +778,18 @@ def get_pending_count():
     current_user = session.get("username", "")
     current_role = session.get("role", "")
     
+    # Get user's office
+    all_users = get_all_users()
+    current_office = "Not Found"
+    for u in all_users:
+        if u.get("username") == current_user:
+            current_office = u.get("office", "") or "No Office"
+            break
+    
     print(f"[pending-count] Checking for pending documents...")
     print(f"[pending-count] current_user: {current_user}")
     print(f"[pending-count] current_role: {current_role}")
+    print(f"[pending-count] current_office: {current_office}")
     
     if not current_user:
         print("[pending-count] No user, returning 0")
