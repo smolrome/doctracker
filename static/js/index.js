@@ -109,6 +109,7 @@ if (document.getElementById('routing-modal')) {
 
 // TRANSFER MODAL
 function openTransferModal() {
+  console.log('=== openTransferModal() — bulk mode, transferSingleDocId reset to null ===');
   const checked=document.querySelectorAll('.doc-checkbox:checked');
   if(checked.length===0){ alert('Please select at least one document to transfer.'); return; }
   document.getElementById('transfer-sel-count').textContent=checked.length+' selected';
