@@ -200,8 +200,11 @@
 <div class="slip-block">
 
   <!-- Slip header -->
-  <div class="slip-head">
+  <div class="slip-head" {% if slip.status == 'Archived' %}style="background:linear-gradient(135deg,#FEF3C7,#FDE68A);border-bottom:2px solid #F59E0B;"{% endif %}>
     <span class="slip-no-badge">{{ slip.slip_no }}</span>
+    {% if slip.status == 'Archived' %}
+    <span class="slip-no-badge" style="background:#92400E;">🗄️ Archived</span>
+    {% endif %}
     <div class="slip-route">
       <span class="slip-from">{{ slip.from_office if slip.from_office and slip.from_office != 'DepEd Leyte Division' else (slip.prepared_by + "'s Office" if slip.prepared_by else 'DepEd Leyte Division') }}</span>
       <span class="slip-arrow">→</span>
@@ -209,12 +212,39 @@
     </div>
     <div class="slip-meta">
       <span>📅 {{ slip.slip_date or slip.created_at[:10] }}</span>
+      <span>🕐 {{ slip.created_at[11:19] if slip.created_at else '' }}</span>
+      {% if slip.is_rerouted %}
+      <span style="color:#B45309;font-weight:800;">🔄 Re-routed to {{ slip.rerouted_to }} ({{ slip.rerouted_at[:19] if slip.rerouted_at else '' }})</span>
+      {% endif %}
+      {% if slip.original_slip_no %}
+      <span style="color:#0369A1;font-weight:700;">📤 From: {{ slip.rerouted_from }} (Original: {{ slip.original_slip_no }})</span>
+      {% endif %}
       <span>📄 {{ slip.docs|length }} doc{{ 's' if slip.docs|length != 1 else '' }}</span>
       <span>👤 {{ slip.prepared_by }}</span>
     </div>
     <a href="/routing-slip/{{ slip.id }}" class="slip-view-link">View Slip →</a>
+    {% if slip.status != 'Archived' %}
     <button type="button" class="slip-view-link" onclick="openRerouteModal('{{ slip.id }}', '{{ slip.destination }}')" style="background:#fff;border-color:#F59E0B;color:#B45309;">🔄 Re-route</button>
+    {% endif %}
   </div>
+
+  <!-- Routing History -->
+  {% set doc_first = slip.docs[0] if slip.docs else {} %}
+  {% set travel_log = doc_first.get('travel_log', []) %}
+  {% if travel_log %}
+  <div style="background:linear-gradient(135deg,#F0F9FF,#E0F2FE);border-bottom:2px solid #BAE6FD;padding:14px 24px;">
+    <div style="font-size:.82rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#0369A1;margin-bottom:10px;">📜 Routing History</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+      {% for entry in travel_log %}
+      <div style="background:#fff;border:1.5px solid #7DD3FC;border-radius:8px;padding:8px 12px;font-size:.85rem;box-shadow:0 1px 3px rgba(0,0,0,.08);">
+        <div style="font-weight:700;color:#0369A1;">{{ entry.office or entry.get('action', 'Unknown')[:30] }}</div>
+        <div style="color:#64748B;font-size:.78rem;">{{ entry.timestamp[:19] if entry.timestamp else '' }} {% if entry.officer %}<span style="color:#0369A1;">· {{ entry.officer }}</span>{% endif %}</div>
+        {% if entry.remarks %}<div style="color:#475569;font-size:.76rem;margin-top:3px;">{{ entry.remarks[:60] }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Table header: title + doc count -->
   <div class="doc-table-head">

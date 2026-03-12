@@ -201,6 +201,14 @@ def _run_migrations(cur):
         "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS type        TEXT DEFAULT 'routing'",
         "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS logged_at   TEXT",
         "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS status      TEXT DEFAULT 'In Transit'",
+        # New reroute fields
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS is_rerouted         BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS archived_at       TEXT",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS archived_by      TEXT",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS rerouted_to      TEXT",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS original_slip_id TEXT",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS original_slip_no TEXT",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS rerouted_from     TEXT",
     ]
     for sql in migrations:
         try:

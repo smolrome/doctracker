@@ -205,8 +205,13 @@
 
   <!-- Status banner (screen only) -->
   <div class="status-banner screen-only">
+    {% if slip.status == 'Archived' %}
+    <div class="status-dot" style="background:#F59E0B;"></div>
+    🗄️ This routing slip has been <strong>archived</strong> — documents were re-routed to <strong>{{ slip.rerouted_to }}</strong>
+    {% else %}
     <div class="status-dot"></div>
-    🚌 {{ docs|length }} document{{ 's' if docs|length != 1 else '' }} routed — status updated to <strong style="margin-left:4px">Pending</strong>
+    🚌 {{ docs|length }} document{{ 's' if docs|length != 1 else '' }} routed — status updated to <strong style="margin-left:4px">{{ slip.status }}</strong>
+    {% endif %}
   </div>
 
   <!-- ═══════════ PRINTABLE SLIP CARD ═══════════ -->
@@ -235,6 +240,10 @@
       <div class="meta-cell">
         <div class="meta-label">Date</div>
         <div class="meta-val">{{ slip.slip_date or slip.created_at[:10] }}</div>
+      </div>
+      <div class="meta-cell">
+        <div class="meta-label">Time Routed</div>
+        <div class="meta-val">{{ slip.created_at[11:19] if slip.created_at else '—' }}</div>
       </div>
       {% if slip.time_from or slip.time_to %}
       <div class="meta-cell">
@@ -273,6 +282,18 @@
         </div>
       </div>
 
+      <!-- Rerouted Info Banner -->
+      {% if slip.original_slip_no %}
+      <div style="background:linear-gradient(135deg,#FEF3C7,#FDE68A);border:2px solid #F59E0B;border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+        <div style="font-size:1.5rem;">🔄</div>
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#92400E;">Re-routed Document</div>
+          <div style="font-weight:800;color:#78350F;font-size:.95rem;">From: {{ slip.rerouted_from }} → To: {{ slip.destination }}</div>
+          <div style="font-size:12px;color:#92400E;">Original Slip: {{ slip.original_slip_no }} | Re-routed: {{ slip.rerouted_at[:19] if slip.rerouted_at else '' }}</div>
+        </div>
+      </div>
+      {% endif %}
+
       <!-- Destination -->
       <div class="dest-strip">
         <div class="dest-ico">🏢</div>
@@ -287,6 +308,23 @@
       <div class="notes-strip">
         <div class="notes-lbl">📝 Notes / Instructions</div>
         <div class="notes-text">{{ slip.notes }}</div>
+      </div>
+      {% endif %}
+
+      <!-- Routing History -->
+      {% set travel_log = docs[0].get('travel_log', []) if docs else [] %}
+      {% if travel_log %}
+      <div style="background:linear-gradient(135deg,#F0F9FF,#E0F2FE);border:2px solid #7DD3FC;border-radius:14px;padding:16px 20px;margin-bottom:22px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#0369A1;margin-bottom:12px;">📜 Routing History</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;">
+          {% for entry in travel_log %}
+          <div style="background:#fff;border:1.5px solid #7DD3FC;border-radius:10px;padding:10px 14px;font-size:13px;box-shadow:0 1px 4px rgba(0,0,0,.08);flex:1 1 250px;max-width:350px;">
+            <div style="font-weight:800;color:#0369A1;font-size:13px;">{{ entry.office or entry.get('action', 'Unknown')[:35] }}</div>
+            <div style="color:#64748B;font-size:11px;margin-top:4px;">{{ entry.timestamp[:19] if entry.timestamp else '—' }} {% if entry.officer %}<span style="color:#0369A1;">· {{ entry.officer }}</span>{% endif %}</div>
+            {% if entry.remarks %}<div style="color:#475569;font-size:11px;margin-top:5px;line-height:1.4;">{{ entry.remarks[:80] }}</div>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
       </div>
       {% endif %}
 
@@ -359,7 +397,7 @@
     <!-- Bottom bar -->
     <div class="slip-footer-bar">
       <span>DocTracker — DepEd Leyte Division Office</span>
-      <span>Slip No.: <strong>{{ slip.slip_no }}</strong> &nbsp;·&nbsp; Generated: {{ slip.created_at[:10] }} {{ slip.created_at | time12 }}</span>
+      <span>Slip No.: <strong>{{ slip.slip_no }}</strong> &nbsp;·&nbsp; Generated: {{ slip.created_at[:10] }} {{ slip.created_at[11:19] if slip.created_at else '' }}</span>
     </div>
 
   </div><!-- /slip-card -->

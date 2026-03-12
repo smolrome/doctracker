@@ -133,6 +133,14 @@
       {% if not loop.last %}<span class="route-arrow">→</span>{% endif %}
     {% endfor %}
   </div>
+  {% if doc.routing_slip_no %}
+  <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:13px;">
+    <span style="color:var(--muted);">Routing Slip:</span> <strong>{{ doc.routing_slip_no }}</strong>
+    {% if doc.routing_slip_id %}
+    <a href="/routing-slip/{{ doc.routing_slip_id }}" style="color:var(--teal);margin-left:8px;">View Slip →</a>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
 {% endif %}
 
@@ -354,12 +362,21 @@
         </thead>
         <tbody>
           {% for entry in doc.travel_log %}
-          <tr>
+          <tr {% if 'rerouted' in (entry.action|lower) %}style="background:#FEF3C7;"{% endif %}>
             <td class="tlog-num">{{ loop.index }}</td>
-            <td class="tlog-office">{{ entry.office }}</td>
+            <td class="tlog-office">{{ entry.office }}
+              {% if entry.original_slip_no %}
+              <div style="font-size:10px;color:#92400E;">From: {{ entry.original_slip_no }}</div>
+              {% endif %}
+              {% if entry.new_slip_no %}
+              <div style="font-size:10px;color:#0369A1;">New: {{ entry.new_slip_no }}</div>
+              {% endif %}
+            </td>
             <td>
               {% set act = entry.action | lower %}
-              {% if 'received' in act %}
+              {% if 'rerouted' in act %}
+                <span class="tlog-action-badge" style="background:#FEF3C7;color:#92400E;border-color:#F59E0B;">🔄 {{ entry.action }}</span>
+              {% elif 'received' in act %}
                 <span class="tlog-action-badge received">📥 {{ entry.action }}</span>
               {% elif 'released' in act or 'picked up' in act %}
                 <span class="tlog-action-badge released">✅ {{ entry.action }}</span>
@@ -372,7 +389,7 @@
               {% endif %}
             </td>
             <td style="color:var(--text);">{{ entry.officer or '—' }}</td>
-            <td class="tlog-ts">{{ entry.timestamp[:10] if entry.timestamp else "—" }}<br/><span style="color:var(--teal);font-weight:600;">{{ entry.timestamp | time12 }}</span></td>
+            <td class="tlog-ts">{{ entry.timestamp[:10] if entry.timestamp else "—" }}<br/><span style="color:var(--teal);font-weight:600;">{{ entry.timestamp[11:19] if entry.timestamp and entry.timestamp|length > 10 else '' }}</span></td>
             <td style="font-size:13px;color:var(--muted);">{{ entry.remarks or '—' }}</td>
           </tr>
           {% endfor %}

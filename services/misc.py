@@ -241,8 +241,10 @@ def save_routing_slip(slip: dict):
                         """INSERT INTO routing_slips
                                (id, slip_no, destination, prepared_by,
                                 doc_ids, notes, slip_date, time_from, time_to,
-                                recv_token, rel_token, from_office, type, logged_at, status)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                recv_token, rel_token, from_office, type, logged_at, status,
+                                is_rerouted, archived_at, archived_by, rerouted_to,
+                                original_slip_id, original_slip_no, rerouted_from)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                            ON CONFLICT (id) DO UPDATE SET
                                destination = EXCLUDED.destination,
                                doc_ids     = EXCLUDED.doc_ids,
@@ -255,7 +257,14 @@ def save_routing_slip(slip: dict):
                                from_office = EXCLUDED.from_office,
                                type        = EXCLUDED.type,
                                logged_at   = EXCLUDED.logged_at,
-                               status      = EXCLUDED.status""",
+                               status      = EXCLUDED.status,
+                               is_rerouted = EXCLUDED.is_rerouted,
+                               archived_at = EXCLUDED.archived_at,
+                               archived_by = EXCLUDED.archived_by,
+                               rerouted_to = EXCLUDED.rerouted_to,
+                               original_slip_id = EXCLUDED.original_slip_id,
+                               original_slip_no = EXCLUDED.original_slip_no,
+                               rerouted_from = EXCLUDED.rerouted_from""",
                         (
                             slip["id"], slip["slip_no"], slip["destination"],
                             slip["prepared_by"], json.dumps(slip["doc_ids"]),
@@ -266,6 +275,13 @@ def save_routing_slip(slip: dict):
                             slip.get("type", "routing"),
                             slip.get("logged_at", ""),
                             slip.get("status", "In Transit"),
+                            slip.get("is_rerouted", False),
+                            slip.get("archived_at", ""),
+                            slip.get("archived_by", ""),
+                            slip.get("rerouted_to", ""),
+                            slip.get("original_slip_id", ""),
+                            slip.get("original_slip_no", ""),
+                            slip.get("rerouted_from", ""),
                         )
                     )
                 conn.commit()
