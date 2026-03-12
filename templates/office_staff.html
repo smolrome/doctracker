@@ -115,6 +115,7 @@
 <script src="{{ url_for('static', filename='js/office_staff.js') }}"></script>
 <script>
 initOfficeStaff({{ office_staff_json | tojson | safe }});
+console.log('officeStaffData:', {{ office_staff_json | tojson | safe }});
 </script>
 
 {% endblock %}

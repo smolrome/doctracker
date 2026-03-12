@@ -83,6 +83,10 @@ def office_staff():
                 office = user['office']
                 staff_counts[office] = staff_counts.get(office, 0) + 1
     
+    # DEBUG: Print staff matching info
+    print(f"DEBUG: offices = {[o.get('office_name') for o in offices]}")
+    print(f"DEBUG: all_users = {[(u.get('username'), u.get('office'), u.get('role')) for u in all_users]}")
+    
     office_staff_counts = []
     
     for office in offices:
@@ -102,6 +106,8 @@ def office_staff():
                 # Match if office name is same or if user's office contains the office name
                 if user_office_lower == office_name_lower or office_name_lower in user_office_lower:
                     office_staff_list.append(u)
+        
+        print(f"DEBUG: office '{office_name}' matched staff: {[(u.get('username'), u.get('office')) for u in office_staff_list]}")
         
         office_staff_counts.append({
             'office_name': office_name,
@@ -123,14 +129,15 @@ def office_staff():
                 'staff': []
             })
     
-    office_staff_json = {
-        o['office_slug']: [
+    office_staff_json = {}
+    for o in office_staff_counts:
+        staff_list = [
             {'username': s['username'], 'full_name': s.get('full_name') or s['username']}
             for s in (o.get('staff') or [])
         ]
-        for o in office_staff_counts
-    }
-    
+        office_staff_json[o['office_slug']] = staff_list
+        office_staff_json[o['office_name']] = staff_list
+
     return render_template("office_staff.html",
                            office_staff=office_staff_counts,
                            staff_members=staff_members,

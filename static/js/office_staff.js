@@ -22,7 +22,8 @@ function openRecipientModal(slug, name, currentRecipient) {
   const select = document.getElementById('primaryRecipientSelect');
   select.innerHTML = '<option value="">— Auto-assign to first staff —</option>';
 
-  const staffList = officeStaffData[slug] || [];
+  // Try slug first, fall back to name
+  const staffList = officeStaffData[slug] || officeStaffData[name] || [];
   for (let i = 0; i < staffList.length; i++) {
     const staff = staffList[i];
     const option = document.createElement('option');
