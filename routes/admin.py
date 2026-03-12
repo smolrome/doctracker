@@ -62,6 +62,14 @@ def office_staff():
     
     offices = load_saved_offices()
     all_users = get_all_users()
+    # If no saved offices, auto-build from users' office field
+    if not offices:
+        seen = set()
+        for u in all_users:
+            o = (u.get('office') or '').strip()
+            if o and o not in seen:
+                seen.add(o)
+                offices.append({'office_name': o, 'office_slug': o, 'created_by': '', 'primary_recipient': ''})
     staff_members = [u for u in all_users if u.get("role") in ("staff", "admin")]
     
     if USE_DB:
