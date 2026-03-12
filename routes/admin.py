@@ -125,13 +125,18 @@ def office_staff():
 
     for office_key, count in staff_counts.items():
         if not any(o['office_name'] == office_key or o['office_slug'] == office_key for o in office_staff_counts):
+            fallback_staff = [
+                u for u in all_users
+                if u.get("role") in ("staff", "admin")
+                and (u.get("office") or "").strip().lower() == office_key.strip().lower()
+            ]
             office_staff_counts.append({
                 'office_name': office_key,
                 'office_slug': office_key,
                 'staff_count': count,
                 'created_by': '',
                 'primary_recipient': '',
-                'staff': []
+                'staff': fallback_staff
             })
 
     office_staff_json = {}
@@ -142,6 +147,8 @@ def office_staff():
         ]
         office_staff_json[o['office_slug']] = staff_list
         office_staff_json[o['office_name']] = staff_list
+
+    print(f"DEBUG office_staff_json: {office_staff_json}")
 
     return render_template("office_staff.html",
                            office_staff=office_staff_counts,

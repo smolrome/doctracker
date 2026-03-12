@@ -35,6 +35,21 @@ def _require_client(fn):
     return wrapper
 
 
+def _get_saved_offices():
+    """Load saved offices, auto-building from users if none exist."""
+    offices = load_saved_offices()
+    if not offices:
+        from services.auth import get_all_users
+        all_users = get_all_users()
+        seen = set()
+        for u in all_users:
+            o = (u.get('office') or '').strip()
+            if o and o not in seen:
+                seen.add(o)
+                offices.append({'office_name': o, 'office_slug': o, 'primary_recipient': ''})
+    return offices
+
+
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 @client_bp.route("/login", methods=["GET", "POST"])
@@ -126,7 +141,6 @@ def register():
         else:
             ok, err = create_user(username, password, full_name, role="client")
             if ok:
-                # Client registration requires admin approval
                 flash("Registration successful! Your account is pending approval by the administrator. You will be able to login once your account is approved.", "info")
                 return redirect(url_for("client.login"))
             else:
@@ -146,7 +160,7 @@ def portal():
     docs     = load_docs()
     my_docs  = [d for d in docs if d.get("submitted_by") == username]
     return render_template("client_portal.html", docs=my_docs,
-                          saved_offices=load_saved_offices())
+                           saved_offices=_get_saved_offices())
 
 
 @client_bp.route("/track/<doc_id>")
@@ -212,44 +226,33 @@ def submit():
                 receive_tokens = []
                 office_slug    = session.get("submit_office_slug", "")
                 office_name    = session.get("submit_office_name", "")
-                
-                # Find staff assigned to this office
+
                 from services.auth import get_all_users
-                from services.misc import load_saved_offices
                 all_users = get_all_users()
-                
-                # Check if office has a primary recipient defined
-                saved_offices = load_saved_offices()
+
+                saved_offices = _get_saved_offices()
                 primary_recipient = ""
-                primary_recipient_name = ""
                 for off in saved_offices:
-                    if off.get("office_slug") == office_slug or off.get("office_name", "").strip().lower() == office_name.strip().lower():
+                    if (off.get("office_slug") == office_slug or
+                            off.get("office_name", "").strip().lower() == office_name.strip().lower()):
                         primary_recipient = off.get("primary_recipient", "")
                         break
-                
-                # If primary_recipient is set, use that specific staff
+
                 if primary_recipient:
+                    assigned_staff = ""
+                    assigned_staff_name = ""
                     for u in all_users:
                         if u.get("username") == primary_recipient:
                             assigned_staff = primary_recipient
                             assigned_staff_name = u.get("full_name", "") or u.get("username", "")
                             break
-                    else:
-                        # Primary recipient not found, fall back to auto-assign
-                        assigned_staff = ""
-                        assigned_staff_name = ""
                 else:
-                    # Auto-assign: find staff assigned to this office
                     office_staff = [u for u in all_users if u.get("office", "").strip().lower() == office_name.strip().lower() and u.get("role") in ("staff", "admin")]
-                    
-                    # If no specific staff found, try to find any staff
                     if not office_staff:
                         office_staff = [u for u in all_users if u.get("role") in ("staff", "admin")]
-                    
-                    # Assign to first available staff or leave unassigned
                     assigned_staff = office_staff[0].get("username") if office_staff else ""
                     assigned_staff_name = office_staff[0].get("full_name", "") if office_staff else ""
-                
+
                 for item in cart:
                     doc = {
                         "id":                  str(uuid.uuid4())[:8].upper(),
@@ -276,7 +279,6 @@ def submit():
                         "submitted_by_name":   session.get("full_name") or session.get("username"),
                         "target_office_slug":  office_slug,
                         "target_office_name":  office_name,
-                        # Auto-assign to office staff
                         "pending_at_staff":    assigned_staff,
                         "pending_at_staff_name": assigned_staff_name,
                         "pending_at_office":   office_name,
@@ -303,31 +305,27 @@ def submit():
 
         cart = session.get("submit_cart", [])
 
-    # Capture office context from QR scan
     if request.args.get("office_slug") and request.args.get("office_name"):
         session["submit_office_slug"] = request.args["office_slug"]
         session["submit_office_name"] = request.args["office_name"]
         session.modified = True
-    
-    # Get assigned staff for the selected office
+
     office_name = session.get("submit_office_name", "")
     office_slug = session.get("submit_office_slug", "")
     assigned_staff = ""
     assigned_staff_name = ""
     if office_name:
         from services.auth import get_all_users
-        from services.misc import load_saved_offices
         all_users = get_all_users()
-        
-        # Check if office has a primary recipient defined
-        saved_offices = load_saved_offices()
+
+        saved_offices = _get_saved_offices()
         primary_recipient = ""
         for off in saved_offices:
-            if off.get("office_slug") == office_slug or off.get("office_name", "").strip().lower() == office_name.strip().lower():
+            if (off.get("office_slug") == office_slug or
+                    off.get("office_name", "").strip().lower() == office_name.strip().lower()):
                 primary_recipient = off.get("primary_recipient", "")
                 break
-        
-        # If primary_recipient is set, use that specific staff
+
         if primary_recipient:
             for u in all_users:
                 if u.get("username") == primary_recipient:
@@ -335,7 +333,6 @@ def submit():
                     assigned_staff_name = u.get("full_name", "") or u.get("username", "")
                     break
         else:
-            # Auto-assign: find staff assigned to this office
             office_staff = [u for u in all_users if u.get("office", "").strip().lower() == office_name.strip().lower() and u.get("role") in ("staff", "admin")]
             if not office_staff:
                 office_staff = [u for u in all_users if u.get("role") in ("staff", "admin")]
@@ -345,11 +342,11 @@ def submit():
 
     return render_template("client_submit.html",
                            cart=cart, error=error, doc={},
-                           office_slug=session.get("submit_office_slug", ""),
-                           office_name=session.get("submit_office_name", ""),
+                           office_slug=office_slug,
+                           office_name=office_name,
                            unit_office_default=_get_client_org(session.get("username", "")),
                            category_options=get_dropdown_options("category"),
-                           saved_offices=load_saved_offices(),
+                           saved_offices=_get_saved_offices(),
                            assigned_staff=assigned_staff,
                            assigned_staff_name=assigned_staff_name)
 
