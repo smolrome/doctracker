@@ -48,24 +48,26 @@
       <span>👤 Created by: <strong>{{ office.created_by }}</strong></span>
       {% endif %}
     </div>
-    {% if office.staff %}
-    <div class="office-meta" style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;">
-      <span>📋 Primary Recipient:
+    <div class="office-meta office-meta-primary">
+      <span>📋 Primary Recipient: 
         <strong id="recipient-{{ office.office_slug }}">
           {% if office.primary_recipient %}
-            {% for staff in office.staff %}
-              {% if staff.username == office.primary_recipient %}
-                {{ staff.full_name or staff.username }}
-              {% endif %}
-            {% endfor %}
+            {% if office.staff %}
+              {% for staff in office.staff %}
+                {% if staff.username == office.primary_recipient %}
+                  {{ staff.full_name or staff.username }}
+                {% endif %}
+              {% endfor %}
+            {% else %}
+              {{ office.primary_recipient }}
+            {% endif %}
           {% else %}
-            <span style="color:var(--muted);">Auto-assign (first staff)</span>
+            <span class="muted-text">Auto-assign (first staff)</span>
           {% endif %}
         </strong>
-        <button type="button" onclick="openRecipientModal('{{ office.office_slug }}', '{{ office.office_name }}', '{{ office.primary_recipient }}')" style="margin-left:8px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;background:#E0E7FF;color:#3730A3;border:1px solid #818CF8;cursor:pointer;">✏️ Edit</button>
+        <button type="button" class="btn-edit-recipient" onclick="openRecipientModal('{{ office.office_slug }}', '{{ office.office_name }}', '{{ office.primary_recipient }}')">✏️ Edit</button>
       </span>
     </div>
-    {% endif %}
   </div>
   {% endfor %}
 {% else %}
@@ -98,54 +100,21 @@
       <input type="hidden" name="office_slug" id="recipientOfficeSlug">
       <div class="form-group">
         <label for="primary_recipient">Primary Recipient</label>
-        <select name="primary_recipient" id="primaryRecipientSelect" style="font-size:15px;padding:10px;">
+        <select name="primary_recipient" id="primaryRecipientSelect">
           <option value="">— Auto-assign to first staff —</option>
         </select>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn-cancel" onclick="closeRecipientModal()">Cancel</button>
-        <button type="submit" class="btn-confirm" style="background:#059669;border-color:#059669;">Save</button>
+        <button type="submit" class="btn-confirm btn-save">Save</button>
       </div>
     </form>
   </div>
 </div>
 
+<script src="{{ url_for('static', filename='js/office_staff.js') }}"></script>
 <script>
-const officeStaffData = {{ office_staff_json | tojson | safe }};
-
-function openRecipientModal(slug, name, currentRecipient) {
-  document.getElementById('recipientOfficeName').textContent = name;
-  document.getElementById('recipientOfficeSlug').value = slug;
-
-  const select = document.getElementById('primaryRecipientSelect');
-  select.innerHTML = '<option value="">— Auto-assign to first staff —</option>';
-
-  const staffList = officeStaffData[slug] || [];
-  for (let i = 0; i < staffList.length; i++) {
-    const staff = staffList[i];
-    const option = document.createElement('option');
-    option.value = staff.username;
-    option.textContent = staff.full_name + ' (' + staff.username + ')';
-    select.appendChild(option);
-  }
-
-  select.value = currentRecipient || '';
-  document.getElementById('recipientModal').classList.add('active');
-}
-
-function closeRecipientModal() {
-  document.getElementById('recipientModal').classList.remove('active');
-}
-
-function confirmDeleteOffice(slug, name) {
-  document.getElementById('deleteOfficeName').textContent = name;
-  document.getElementById('deleteForm').action = '/delete-office/' + slug;
-  document.getElementById('deleteModal').classList.add('active');
-}
-
-function closeDeleteModal() {
-  document.getElementById('deleteModal').classList.remove('active');
-}
+initOfficeStaff({{ office_staff_json | tojson | safe }});
 </script>
 
 {% endblock %}

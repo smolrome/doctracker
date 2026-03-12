@@ -57,6 +57,16 @@
     gap: 4px;
   }
   
+  .office-meta-primary {
+    border-top: 1px solid var(--border);
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+  
+  .muted-text {
+    color: var(--muted);
+  }
+  
   .empty-offices {
     text-align: center;
     padding: 60px 20px;
@@ -146,6 +156,31 @@
   .btn-delete:hover {
     background: #DC2626;
     color: #fff;
+  }
+  
+  .btn-edit-recipient {
+    margin-left: 8px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    background: #E0E7FF;
+    color: #3730A3;
+    border: 1px solid #818CF8;
+    cursor: pointer;
+  }
+  
+  .btn-edit-recipient:hover {
+    background: #C7D2FE;
+  }
+  
+  .btn-save {
+    background: #059669 !important;
+    border-color: #059669 !important;
+  }
+  
+  .btn-save:hover {
+    background: #047857 !important;
   }
   
   .modal-overlay {
