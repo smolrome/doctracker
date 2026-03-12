@@ -55,13 +55,14 @@ def office_staff():
                   username=session.get("username","admin"), ip=get_client_ip())
     except Exception:
         pass
-    
+
     from services.misc import load_saved_offices
     from services.database import USE_DB, get_conn
     from services.auth import get_all_users
-    
+
     offices = load_saved_offices()
     all_users = get_all_users()
+
     # If no saved offices, auto-build from users' office field
     if not offices:
         seen = set()
@@ -70,8 +71,9 @@ def office_staff():
             if o and o not in seen:
                 seen.add(o)
                 offices.append({'office_name': o, 'office_slug': o, 'created_by': '', 'primary_recipient': ''})
+
     staff_members = [u for u in all_users if u.get("role") in ("staff", "admin")]
-    
+
     if USE_DB:
         try:
             with get_conn() as conn:
@@ -90,33 +92,28 @@ def office_staff():
             if user.get('role') in ('staff', 'admin') and user.get('office'):
                 office = user['office']
                 staff_counts[office] = staff_counts.get(office, 0) + 1
-    
-    # DEBUG: Print staff matching info
-    print(f"DEBUG: offices = {[o.get('office_name') for o in offices]}")
-    print(f"DEBUG: all_users = {[(u.get('username'), u.get('office'), u.get('role')) for u in all_users]}")
-    
+
     office_staff_counts = []
-    
+
     for office in offices:
         office_slug = office.get('office_slug', '')
         office_name = office.get('office_name', '')
-        staff_count = staff_counts.get(office_name, 0) + staff_counts.get(office_slug, 0)
-        
-        # Match staff by office - case insensitive, flexible matching
+
+        # Avoid double-counting when slug == name
+        if office_name == office_slug:
+            staff_count = staff_counts.get(office_name, 0)
+        else:
+            staff_count = staff_counts.get(office_name, 0) + staff_counts.get(office_slug, 0)
+
         office_name_lower = office_name.strip().lower() if office_name else ''
-        
+
         office_staff_list = []
         for u in all_users:
             if u.get("role") in ("staff", "admin"):
-                user_office = u.get("office", "") or ""
-                user_office_lower = user_office.strip().lower()
-                
-                # Match if office name is same or if user's office contains the office name
-                if user_office_lower == office_name_lower or office_name_lower in user_office_lower:
+                user_office = (u.get("office") or "").strip().lower()
+                if user_office == office_name_lower:
                     office_staff_list.append(u)
-        
-        print(f"DEBUG: office '{office_name}' matched staff: {[(u.get('username'), u.get('office')) for u in office_staff_list]}")
-        
+
         office_staff_counts.append({
             'office_name': office_name,
             'office_slug': office_slug,
@@ -125,7 +122,7 @@ def office_staff():
             'primary_recipient': office.get('primary_recipient', ''),
             'staff': office_staff_list
         })
-    
+
     for office_key, count in staff_counts.items():
         if not any(o['office_name'] == office_key or o['office_slug'] == office_key for o in office_staff_counts):
             office_staff_counts.append({
@@ -136,7 +133,7 @@ def office_staff():
                 'primary_recipient': '',
                 'staff': []
             })
-    
+
     office_staff_json = {}
     for o in office_staff_counts:
         staff_list = [
@@ -151,17 +148,17 @@ def office_staff():
                            staff_members=staff_members,
                            office_staff_json=office_staff_json)
 
+
 @admin_bp.route("/delete-office/<office_slug>", methods=["POST"])
 @admin_required
 def delete_office(office_slug):
     """Delete an office from saved_offices."""
     from services.misc import delete_saved_office, audit_log
     from utils import get_client_ip
-    
-    # Decode the office_slug (handle URL encoding)
+
     from urllib.parse import unquote
     office_slug_decoded = unquote(office_slug)
-    
+
     delete_saved_office(office_slug_decoded)
     audit_log("office_deleted", f"deleted_office={office_slug_decoded}",
               username=session.get("username", "admin"), ip=get_client_ip())
@@ -176,13 +173,13 @@ def update_office_recipient():
     from services.misc import update_office_primary_recipient, audit_log
     from utils import get_client_ip
     from urllib.parse import unquote
-    
+
     office_slug = request.form.get("office_slug", "").strip()
     office_slug = unquote(office_slug)
     primary_recipient = request.form.get("primary_recipient", "").strip()
-    
+
     update_office_primary_recipient(office_slug, primary_recipient)
-    
+
     if primary_recipient:
         audit_log("office_recipient_updated", f"office={office_slug} recipient={primary_recipient}",
                   username=session.get("username", "admin"), ip=get_client_ip())
@@ -191,7 +188,7 @@ def update_office_recipient():
         audit_log("office_recipient_cleared", f"office={office_slug}",
                   username=session.get("username", "admin"), ip=get_client_ip())
         flash(f"Primary recipient cleared for office.", "success")
-    
+
     return redirect(url_for("admin.office_staff"))
 
 
@@ -227,7 +224,6 @@ def send_invite():
                     generated_link = f"{base}/register?token={token_or_err}"
                     result = {"ok": True, "msg": f"Invite sent to {to_email}!"}
                 else:
-                    # Email failed but generate link anyway for manual sharing
                     token = generate_invite_token(to_email, to_name)
                     generated_link = f"{base}/register?token={token}"
                     result = {"ok": False,
@@ -299,23 +295,23 @@ def change_user_password(username):
     """Admin can change any user's password."""
     new_password = request.form.get("new_password", "").strip()
     confirm_password = request.form.get("confirm_password", "").strip()
-    
+
     if username == ADMIN_USERNAME:
         flash("Cannot change the main admin password through this interface.", "error")
         return redirect(url_for("admin.manage_users"))
-    
+
     if not new_password:
         flash("Password cannot be empty.", "error")
         return redirect(url_for("admin.manage_users"))
-    
+
     if new_password != confirm_password:
         flash("Passwords do not match.", "error")
         return redirect(url_for("admin.manage_users"))
-    
+
     if len(new_password) < 6:
         flash("Password must be at least 6 characters.", "error")
         return redirect(url_for("admin.manage_users"))
-    
+
     success, error = update_user_password(username, new_password)
     if success:
         audit_log("user_password_changed", f"password_changed_for={username}",
@@ -324,7 +320,7 @@ def change_user_password(username):
         flash(f"Password for '{username}' has been changed.", "success")
     else:
         flash(f"Error: {error}", "error")
-    
+
     return redirect(url_for("admin.manage_users"))
 
 
@@ -333,25 +329,23 @@ def change_user_password(username):
 def edit_user(username):
     """Admin can edit user details: full_name, role, and office."""
     from services.misc import load_saved_offices
-    
+
     if request.method == "POST":
         full_name = request.form.get("full_name", "").strip()
         role = request.form.get("role", "").strip()
         office = request.form.get("office", "").strip()
-        
-        # Prevent editing main admin
+
         if username == ADMIN_USERNAME:
             flash("Cannot edit the main admin account.", "error")
             return redirect(url_for("admin.manage_users"))
-        
-        # Update user - only pass non-empty values
+
         success, error = update_user(
             username,
             full_name=full_name if full_name else None,
             role=role if role else None,
             office=office if office else None
         )
-        
+
         if success:
             audit_log("user_edited", f"edited_user={username}, role={role}, office={office}",
                       username=session.get("username", "admin"),
@@ -359,21 +353,20 @@ def edit_user(username):
             flash(f"User '{username}' has been updated.", "success")
         else:
             flash(f"Error: {error}", "error")
-        
+
         return redirect(url_for("admin.manage_users"))
-    
-    # GET request - show edit form
+
     users = get_all_users()
     user = next((u for u in users if u["username"] == username), None)
-    
+
     if not user:
         flash("User not found.", "error")
         return redirect(url_for("admin.manage_users"))
-    
+
     if username == ADMIN_USERNAME:
         flash("Cannot edit the main admin account.", "error")
         return redirect(url_for("admin.manage_users"))
-    
+
     offices = load_saved_offices()
     return render_template("edit_user.html", user=user, offices=offices,
                            admin_username=ADMIN_USERNAME)
@@ -424,15 +417,14 @@ def clear_database():
 @admin_bp.route("/dropdown-options")
 @admin_required
 def manage_dropdown_options():
-    """Admin page to view and manage customizable dropdown options."""
     try:
         audit_log("dropdown_options_viewed", "Admin accessed dropdown options management",
                   username=session.get("username", "admin"), ip=get_client_ip())
     except Exception:
         pass
-    
+
     configs = get_all_dropdown_configs()
-    return render_template("manage_dropdowns.html", 
+    return render_template("manage_dropdowns.html",
                           configs=configs,
                           manageable_fields=MANAGEABLE_FIELDS)
 
@@ -440,34 +432,31 @@ def manage_dropdown_options():
 @admin_bp.route("/dropdown-options/edit/<field_name>", methods=["GET", "POST"])
 @admin_required
 def edit_dropdown_options(field_name):
-    """Edit dropdown options for a specific field."""
     if field_name not in MANAGEABLE_FIELDS:
         flash(f"Invalid field: {field_name}", "error")
         return redirect(url_for("admin.manage_dropdown_options"))
-    
+
     if request.method == "POST":
         options_raw = request.form.get("options", "").strip()
-        # Split by newlines or commas
         options = []
         for line in options_raw.replace(",", "\n").split("\n"):
             opt = line.strip()
             if opt:
                 options.append(opt)
-        
+
         success, message = update_dropdown_options(field_name, options)
-        
+
         if success:
-            audit_log("dropdown_options_updated", 
+            audit_log("dropdown_options_updated",
                       f"field={field_name}, count={len(options)}",
-                      username=session.get("username", "admin"), 
+                      username=session.get("username", "admin"),
                       ip=get_client_ip())
             flash(message, "success")
         else:
             flash(message, "error")
-        
+
         return redirect(url_for("admin.manage_dropdown_options"))
-    
-    # GET request - show edit form
+
     configs = get_all_dropdown_configs()
     config = configs.get(field_name, {
         "field_name": field_name,
@@ -475,8 +464,8 @@ def edit_dropdown_options(field_name):
         "options": [],
         "is_default": True
     })
-    
-    return render_template("edit_dropdown.html", 
+
+    return render_template("edit_dropdown.html",
                           config=config,
                           field_name=field_name,
                           display_name=MANAGEABLE_FIELDS.get(field_name, field_name.title()))
@@ -485,22 +474,21 @@ def edit_dropdown_options(field_name):
 @admin_bp.route("/dropdown-options/reset/<field_name>", methods=["POST"])
 @admin_required
 def reset_dropdown_options(field_name):
-    """Reset dropdown options for a field to default."""
     if field_name not in MANAGEABLE_FIELDS:
         flash(f"Invalid field: {field_name}", "error")
         return redirect(url_for("admin.manage_dropdown_options"))
-    
+
     success, message = reset_to_default(field_name)
-    
+
     if success:
-        audit_log("dropdown_options_reset", 
+        audit_log("dropdown_options_reset",
                   f"field={field_name}",
-                  username=session.get("username", "admin"), 
+                  username=session.get("username", "admin"),
                   ip=get_client_ip())
         flash(message, "success")
     else:
         flash(message, "error")
-    
+
     return redirect(url_for("admin.manage_dropdown_options"))
 
 
@@ -509,13 +497,12 @@ def reset_dropdown_options(field_name):
 @admin_bp.route("/pending-clients")
 @admin_required
 def pending_clients():
-    """Admin page to view and approve pending client registrations."""
     try:
         audit_log("pending_clients_viewed", "Admin accessed pending clients list",
                   username=session.get("username", "admin"), ip=get_client_ip())
     except Exception:
         pass
-    
+
     pending = get_pending_clients()
     return render_template("pending_clients.html", pending_clients=pending)
 
@@ -523,9 +510,8 @@ def pending_clients():
 @admin_bp.route("/approve-client/<username>", methods=["POST"])
 @admin_required
 def approve_client_route(username):
-    """Approve a pending client account."""
     success, error = approve_user(username)
-    
+
     if success:
         audit_log("client_approved", f"approved_client={username}",
                   username=session.get("username", "admin"),
@@ -533,5 +519,5 @@ def approve_client_route(username):
         flash(f"Client '{username}' has been approved. They can now login.", "success")
     else:
         flash(f"Error: {error}", "error")
-    
+
     return redirect(url_for("admin.pending_clients"))
