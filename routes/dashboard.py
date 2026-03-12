@@ -537,7 +537,11 @@ def update_status(doc_id):
         "timestamp": now_str(),
         "remarks":   "Manual status update by staff.",
     })
-    save_doc(doc)
+    try:
+        save_doc(doc)
+    except Exception as e:
+        flash(f"Failed to update status: {str(e)}", "error")
+        return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
     audit_log("status_updated",
               f"doc_id={doc_id} new_status={new_status} doc_name={doc.get('doc_name','')[:60]}",
               username=session.get("username","?"), ip=get_client_ip())
@@ -575,10 +579,12 @@ def bulk_update_status():
     current_user = session.get("username", "")
     current_full_name = session.get("full_name", current_user)
     updated_count = 0
+    failed_count = 0
     
     for doc_id in doc_ids:
         doc = get_doc(doc_id)
         if not doc:
+            failed_count += 1
             continue
         
         old_status = doc.get("status", "")
@@ -598,13 +604,20 @@ def bulk_update_status():
             "remarks":   remarks or f"Bulk status update from {old_status} to {new_status} by {current_full_name}.",
         })
         
-        save_doc(doc)
-        audit_log("bulk_status_updated",
-                  f"doc_id={doc_id} new_status={new_status} old_status={old_status}",
-                  username=current_user, ip=get_client_ip())
-        updated_count += 1
+        try:
+            save_doc(doc)
+            audit_log("bulk_status_updated",
+                      f"doc_id={doc_id} new_status={new_status} old_status={old_status}",
+                      username=current_user, ip=get_client_ip())
+            updated_count += 1
+        except Exception as e:
+            failed_count += 1
+            print(f"Failed to update document {doc_id}: {e}")
     
-    flash(f"Status updated to '{new_status}' for {updated_count} document(s).", "success")
+    if failed_count > 0:
+        flash(f"Updated {updated_count} document(s). Failed to update {failed_count} document(s).", "warning")
+    else:
+        flash(f"Status updated to '{new_status}' for {updated_count} document(s).", "success")
     return redirect(url_for("dashboard.index"))
 
 

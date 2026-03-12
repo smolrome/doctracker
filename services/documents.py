@@ -116,7 +116,8 @@ def save_doc(doc: dict):
                     )
                 conn.commit()
         except Exception as e:
-            pass
+            print(f"Error saving document {doc.get('id')}: {e}")
+            raise
     else:
         docs = load_docs()
         for i, d in enumerate(docs):
