@@ -106,9 +106,14 @@
       </div>
       <div class="form-group">
         <label>Password <span class="req">*</span></label>
-        <input type="password" name="password" id="pw1"
-               placeholder="At least 8 characters"
-               autocomplete="new-password" required/>
+        <div class="password-input-wrapper">
+          <input type="password" name="password" id="pw1"
+                 placeholder="At least 8 characters"
+                 autocomplete="new-password" required/>
+          <button type="button" class="password-toggle" id="pw1-toggle" data-input-id="pw1" aria-label="Toggle password visibility">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
         <div class="pw-rules" id="pw-rules">
           <div id="rule-len" class="rule">✗ At least 8 characters</div>
           <div id="rule-num" class="rule">✗ At least one number (0–9)</div>
@@ -116,9 +121,14 @@
       </div>
       <div class="form-group">
         <label>Confirm Password <span class="req">*</span></label>
-        <input type="password" name="confirm_password" id="pw2"
-               placeholder="Re-enter your password"
-               autocomplete="new-password" required/>
+        <div class="password-input-wrapper">
+          <input type="password" name="confirm_password" id="pw2"
+                 placeholder="Re-enter your password"
+                 autocomplete="new-password" required/>
+          <button type="button" class="password-toggle" id="pw2-toggle" data-input-id="pw2" aria-label="Toggle confirm password visibility">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
       </div>
 
       <button type="submit" class="btn-register" id="submit-btn">

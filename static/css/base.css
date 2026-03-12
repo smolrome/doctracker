@@ -516,6 +516,40 @@ nav::after {
 }
 .filters input { flex: 1; min-width: 200px; }
 .filters input:focus, .filters select:focus {
+
+/* ════════════════════════════════════
+   PASSWORD TOGGLE
+════════════════════════════════════ */
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper input {
+  padding-right: 45px;
+  width: 100%;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.password-toggle:hover {
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.05);
+}
   border-color: var(--teal); box-shadow: 0 0 0 3px rgba(14,116,144,.15);
 }
 .btn-filter {
