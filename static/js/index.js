@@ -185,6 +185,84 @@ function openTransferModal() {
 
 function closeTransferModal() { closeModal('transfer-modal'); }
 
+// ── Bulk Status Update Modal ────────────────────────────────────────────────
+function openStatusModal() {
+  const checked = document.querySelectorAll('.doc-checkbox:checked');
+  if (checked.length === 0) {
+    alert('Please select at least one document to update.');
+    return;
+  }
+
+  document.getElementById('status-sel-count').textContent = checked.length + ' selected';
+  
+  // Reset fields
+  document.getElementById('new-status').value = '';
+  document.getElementById('status-remarks').value = '';
+  
+  // Reset button
+  const btn = document.getElementById('btn-do-status-update');
+  if (btn) {
+    btn.disabled = true;
+  }
+
+  openModal('status-modal');
+}
+
+function closeStatusModal() { closeModal('status-modal'); }
+
+function submitBulkStatusUpdate() {
+  const checked = document.querySelectorAll('.doc-checkbox:checked');
+  if (checked.length === 0) {
+    alert('Please select at least one document.');
+    return;
+  }
+
+  const newStatus = document.getElementById('new-status').value;
+  if (!newStatus) {
+    alert('Please select a status.');
+    return;
+  }
+
+  const remarks = document.getElementById('status-remarks').value;
+  const docIds = Array.from(checked).map(cb => cb.value);
+
+  // Create form and submit
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/bulk-update-status';
+
+  const idsInput = document.createElement('input');
+  idsInput.type = 'hidden';
+  idsInput.name = 'doc_ids';
+  idsInput.value = docIds.join(',');
+  form.appendChild(idsInput);
+
+  const statusInput = document.createElement('input');
+  statusInput.type = 'hidden';
+  statusInput.name = 'new_status';
+  statusInput.value = newStatus;
+  form.appendChild(statusInput);
+
+  if (remarks) {
+    const remarksInput = document.createElement('input');
+    remarksInput.type = 'hidden';
+    remarksInput.name = 'remarks';
+    remarksInput.value = remarks;
+    form.appendChild(remarksInput);
+  }
+
+  document.body.appendChild(form);
+  form.submit();
+}
+
+// Enable/disable status update button based on selection
+document.getElementById('new-status').addEventListener('change', function() {
+  const btn = document.getElementById('btn-do-status-update');
+  if (btn) {
+    btn.disabled = !this.value;
+  }
+});
+
 // Internal helpers
 function _showTransferBlock(id) { const el = document.getElementById(id); if (el) el.style.display = 'block'; }
 function _hideTransferBlock(id) { const el = document.getElementById(id); if (el) el.style.display = 'none';  }
@@ -353,6 +431,7 @@ function updateSelection() {
 
   const slipBtn     = document.getElementById('btn-create-slip');
   const transferBtn = document.getElementById('btn-transfer');
+  const statusBtn   = document.getElementById('btn-update-status');
 
   if (slipBtn) {
     slipBtn.classList.toggle('selection-active', n > 0);
@@ -363,6 +442,12 @@ function updateSelection() {
   if (transferBtn) {
     transferBtn.classList.toggle('selection-active', n > 0);
     const badge = document.getElementById('transfer-sel-badge');
+    if (badge) badge.textContent = n > 0 ? n + ' doc' + (n > 1 ? 's' : '') : '';
+  }
+
+  if (statusBtn) {
+    statusBtn.classList.toggle('selection-active', n > 0);
+    const badge = document.getElementById('status-sel-badge');
     if (badge) badge.textContent = n > 0 ? n + ' doc' + (n > 1 ? 's' : '') : '';
   }
 

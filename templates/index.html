@@ -331,6 +331,45 @@ var serverSessionData = {
   </div>
 </div>
 
+{# ══════════════════════════════════
+   BULK STATUS UPDATE MODAL
+   Uses the unified .modal-overlay system from base.css
+══════════════════════════════════ #}
+<div id="status-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="status-modal-title">
+  <div class="route-panel route-panel-sm">
+    <div class="rp-header">
+      <div class="rp-title" id="status-modal-title">
+        📋 Update Status
+        <span class="rp-count" id="status-sel-count">0 selected</span>
+      </div>
+      <button class="rp-close" onclick="closeStatusModal()" aria-label="Close">✕ Close</button>
+    </div>
+
+    <div class="rp-fields rp-fields-single">
+      <div class="rp-field">
+        <label>Select New Status *</label>
+        <select class="rp-input" id="new-status">
+          <option value="">— Select Status —</option>
+          {% for status_opt in status_options %}
+            {% if status_opt != 'All' %}
+            <option value="{{ status_opt }}">{{ status_opt }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div class="rp-field">
+        <label>Remarks (optional)</label>
+        <input type="text" class="rp-input" id="status-remarks" placeholder="Add a note about this status change..."/>
+      </div>
+    </div>
+
+    <div class="rp-bottom">
+      <p class="rp-hint">💡 This will update the status for all selected documents.</p>
+      <button class="btn-route btn-route-teal" onclick="submitBulkStatusUpdate()" id="btn-do-status-update">📋 Update Status</button>
+    </div>
+  </div>
+</div>
+
 {# Hidden routing form #}
 <form method="post" action="/routing-slip/create" id="routing-form" style="display:none;">
   <input type="hidden" name="doc_ids"     id="routing-doc-ids"/>
@@ -386,6 +425,9 @@ var serverSessionData = {
     </button>
     <button id="btn-transfer" onclick="openTransferModal()" class="tbl-btn tbl-btn-amber">
       🔄 Transfer <span id="transfer-sel-badge" class="tbl-btn-badge"></span>
+    </button>
+    <button id="btn-update-status" onclick="openStatusModal()" class="tbl-btn tbl-btn-teal">
+      📋 Update Status <span id="status-sel-badge" class="tbl-btn-badge"></span>
     </button>
     {% endif %}
   </div>

@@ -545,6 +545,69 @@ def update_status(doc_id):
     return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
 
 
+# ── Bulk Status Update ─────────────────────────────────────────────────────────
+
+@dashboard_bp.route("/bulk-update-status", methods=["POST"])
+@login_required
+def bulk_update_status():
+    doc_ids_str = request.form.get("doc_ids", "").strip()
+    new_status = request.form.get("new_status", "").strip()
+    remarks = request.form.get("remarks", "").strip()
+    
+    if not doc_ids_str:
+        flash("No documents selected.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    if not new_status:
+        flash("Please select a status.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    allowed_statuses = get_dropdown_options("status")
+    if new_status not in allowed_statuses:
+        flash("Invalid status.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    doc_ids = [d.strip() for d in doc_ids_str.split(",") if d.strip()]
+    if not doc_ids:
+        flash("No valid document IDs provided.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    current_user = session.get("username", "")
+    current_full_name = session.get("full_name", current_user)
+    updated_count = 0
+    
+    for doc_id in doc_ids:
+        doc = get_doc(doc_id)
+        if not doc:
+            continue
+        
+        old_status = doc.get("status", "")
+        doc["status"] = new_status
+        
+        if new_status == "Received" and not doc.get("date_received"):
+            doc["date_received"] = now_str()[:16].replace('T', ' ')
+        if new_status == "Released" and not doc.get("date_released"):
+            doc["date_released"] = now_str()[:16].replace('T', ' ')
+        
+        # Add to travel log
+        doc.setdefault("travel_log", []).append({
+            "office":    doc.get("target_office_name", "DepEd Leyte Division Office"),
+            "action":    f"Status Updated to {new_status}",
+            "officer":   current_full_name,
+            "timestamp": now_str(),
+            "remarks":   remarks or f"Bulk status update from {old_status} to {new_status} by {current_full_name}.",
+        })
+        
+        save_doc(doc)
+        audit_log("bulk_status_updated",
+                  f"doc_id={doc_id} new_status={new_status} old_status={old_status}",
+                  username=current_user, ip=get_client_ip())
+        updated_count += 1
+    
+    flash(f"Status updated to '{new_status}' for {updated_count} document(s).", "success")
+    return redirect(url_for("dashboard.index"))
+
+
 # ── Transfer / Route to Staff ─────────────────────────────────────────────────
 
 @dashboard_bp.route("/transfer/<doc_id>", methods=["GET", "POST"])
