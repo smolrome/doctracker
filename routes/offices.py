@@ -8,6 +8,7 @@ from flask import (Blueprint, flash, redirect, render_template,
                    request, send_file, session, url_for)
 from io import BytesIO
 
+from services.auth import get_all_users
 from services.documents import get_doc, now_str
 from services.misc import (
     audit_log, delete_saved_office, get_office_traffic_today,
@@ -37,13 +38,14 @@ def office_qr_page():
 
     office_name = (request.args.get("office", "").strip()
                    or request.form.get("office_name", "").strip())
+    primary_recipient = request.form.get("primary_recipient", "").strip()
     qr_data = None
 
     def make_slug(name, suffix):
         return re.sub(r'\s+', '-', name.strip()) + suffix
 
     if office_name:
-        save_office(office_name, session.get("username", ""))
+        save_office(office_name, session.get("username", ""), primary_recipient)
         qr_data = {
             "reg": make_slug(office_name, "-reg"),
             "sub": make_slug(office_name, "-sub"),
@@ -56,13 +58,18 @@ def office_qr_page():
     else:
         office_traffic = None
 
+    # Get all staff members for the dropdown
+    all_users = get_all_users()
+    staff_members = [u for u in all_users if u.get("role") in ("staff", "admin")]
+
     return render_template("office_qr_page.html",
                            base=base,
                            office_name=office_name,
                            qr_data=qr_data,
                            office_traffic=office_traffic,
                            saved_offices=load_saved_offices(),
-                           client_reg_code=CLIENT_REG_CODE)
+                           client_reg_code=CLIENT_REG_CODE,
+                           staff_members=staff_members)
 
 
 # ── Welcome / public page ─────────────────────────────────────────────────────

@@ -73,7 +73,7 @@ def get_activity_logs(limit: int = 200) -> list[dict]:
 #  OFFICES
 # ═══════════════════════════════════════════════════════════════════
 
-def save_office(office_name: str, created_by: str) -> str:
+def save_office(office_name: str, created_by: str, primary_recipient: str = "") -> str:
     """Persist an office name so it shows on any device. Returns reg_code."""
     slug     = re.sub(r'\s+', '-', office_name.strip().lower())
     reg_code = _make_office_reg_code(slug)
@@ -82,11 +82,11 @@ def save_office(office_name: str, created_by: str) -> str:
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
-                        """INSERT INTO saved_offices (office_slug, office_name, created_by)
-                           VALUES (%s, %s, %s)
+                        """INSERT INTO saved_offices (office_slug, office_name, created_by, primary_recipient)
+                           VALUES (%s, %s, %s, %s)
                            ON CONFLICT (office_slug)
-                           DO UPDATE SET office_name=EXCLUDED.office_name""",
-                        (slug, office_name.strip(), created_by)
+                           DO UPDATE SET office_name=EXCLUDED.office_name, primary_recipient=EXCLUDED.primary_recipient""",
+                        (slug, office_name.strip(), created_by, primary_recipient)
                     )
                 conn.commit()
         except Exception as e:
@@ -97,7 +97,7 @@ def save_office(office_name: str, created_by: str) -> str:
         if os.path.exists(path):
             with open(path) as f:
                 offices = json.load(f)
-        offices[slug] = {"office_name": office_name.strip(), "created_by": created_by}
+        offices[slug] = {"office_name": office_name.strip(), "created_by": created_by, "primary_recipient": primary_recipient}
         with open(path, "w") as f:
             json.dump(offices, f, indent=2)
     return reg_code
@@ -110,7 +110,7 @@ def load_saved_offices() -> list[dict]:
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
-                        """SELECT office_name, office_slug, created_by, created_at
+                        """SELECT office_name, office_slug, created_by, created_at, primary_recipient
                            FROM saved_offices ORDER BY created_at DESC"""
                     )
                     return [dict(r) for r in cur.fetchall()]
@@ -122,7 +122,7 @@ def load_saved_offices() -> list[dict]:
     with open(path) as f:
         offices = json.load(f)
     return [
-        {"office_name": v["office_name"], "office_slug": k, "created_by": v.get("created_by", "")}
+        {"office_name": v["office_name"], "office_slug": k, "created_by": v.get("created_by", ""), "primary_recipient": v.get("primary_recipient", "")}
         for k, v in offices.items()
     ]
 
@@ -144,6 +144,30 @@ def delete_saved_office(office_slug: str):
             offices.pop(office_slug, None)
             with open(path, "w") as f:
                 json.dump(offices, f, indent=2)
+
+
+def update_office_primary_recipient(office_slug: str, primary_recipient: str):
+    """Update the primary recipient for an office."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE saved_offices SET primary_recipient=%s WHERE office_slug=%s",
+                        (primary_recipient, office_slug)
+                    )
+                conn.commit()
+        except Exception as e:
+            pass
+    else:
+        path = "saved_offices.json"
+        if os.path.exists(path):
+            with open(path) as f:
+                offices = json.load(f)
+            if office_slug in offices:
+                offices[office_slug]["primary_recipient"] = primary_recipient
+                with open(path, "w") as f:
+                    json.dump(offices, f, indent=2)
 
 
 def log_office_traffic(office_slug: str, office_name: str,

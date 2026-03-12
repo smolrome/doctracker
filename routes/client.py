@@ -215,16 +215,40 @@ def submit():
                 
                 # Find staff assigned to this office
                 from services.auth import get_all_users
+                from services.misc import load_saved_offices
                 all_users = get_all_users()
-                office_staff = [u for u in all_users if u.get("office", "").strip().lower() == office_name.strip().lower() and u.get("role") in ("staff", "admin")]
                 
-                # If no specific staff found, try to find any staff
-                if not office_staff:
-                    office_staff = [u for u in all_users if u.get("role") in ("staff", "admin")]
+                # Check if office has a primary recipient defined
+                saved_offices = load_saved_offices()
+                primary_recipient = ""
+                primary_recipient_name = ""
+                for off in saved_offices:
+                    if off.get("office_slug") == office_slug or off.get("office_name", "").strip().lower() == office_name.strip().lower():
+                        primary_recipient = off.get("primary_recipient", "")
+                        break
                 
-                # Assign to first available staff or leave unassigned
-                assigned_staff = office_staff[0].get("username") if office_staff else ""
-                assigned_staff_name = office_staff[0].get("full_name", "") if office_staff else ""
+                # If primary_recipient is set, use that specific staff
+                if primary_recipient:
+                    for u in all_users:
+                        if u.get("username") == primary_recipient:
+                            assigned_staff = primary_recipient
+                            assigned_staff_name = u.get("full_name", "") or u.get("username", "")
+                            break
+                    else:
+                        # Primary recipient not found, fall back to auto-assign
+                        assigned_staff = ""
+                        assigned_staff_name = ""
+                else:
+                    # Auto-assign: find staff assigned to this office
+                    office_staff = [u for u in all_users if u.get("office", "").strip().lower() == office_name.strip().lower() and u.get("role") in ("staff", "admin")]
+                    
+                    # If no specific staff found, try to find any staff
+                    if not office_staff:
+                        office_staff = [u for u in all_users if u.get("role") in ("staff", "admin")]
+                    
+                    # Assign to first available staff or leave unassigned
+                    assigned_staff = office_staff[0].get("username") if office_staff else ""
+                    assigned_staff_name = office_staff[0].get("full_name", "") if office_staff else ""
                 
                 for item in cart:
                     doc = {
@@ -287,17 +311,37 @@ def submit():
     
     # Get assigned staff for the selected office
     office_name = session.get("submit_office_name", "")
+    office_slug = session.get("submit_office_slug", "")
     assigned_staff = ""
     assigned_staff_name = ""
     if office_name:
         from services.auth import get_all_users
+        from services.misc import load_saved_offices
         all_users = get_all_users()
-        office_staff = [u for u in all_users if u.get("office", "").strip().lower() == office_name.strip().lower() and u.get("role") in ("staff", "admin")]
-        if not office_staff:
-            office_staff = [u for u in all_users if u.get("role") in ("staff", "admin")]
-        if office_staff:
-            assigned_staff = office_staff[0].get("username", "")
-            assigned_staff_name = office_staff[0].get("full_name", "")
+        
+        # Check if office has a primary recipient defined
+        saved_offices = load_saved_offices()
+        primary_recipient = ""
+        for off in saved_offices:
+            if off.get("office_slug") == office_slug or off.get("office_name", "").strip().lower() == office_name.strip().lower():
+                primary_recipient = off.get("primary_recipient", "")
+                break
+        
+        # If primary_recipient is set, use that specific staff
+        if primary_recipient:
+            for u in all_users:
+                if u.get("username") == primary_recipient:
+                    assigned_staff = primary_recipient
+                    assigned_staff_name = u.get("full_name", "") or u.get("username", "")
+                    break
+        else:
+            # Auto-assign: find staff assigned to this office
+            office_staff = [u for u in all_users if u.get("office", "").strip().lower() == office_name.strip().lower() and u.get("role") in ("staff", "admin")]
+            if not office_staff:
+                office_staff = [u for u in all_users if u.get("role") in ("staff", "admin")]
+            if office_staff:
+                assigned_staff = office_staff[0].get("username", "")
+                assigned_staff_name = office_staff[0].get("full_name", "")
 
     return render_template("client_submit.html",
                            cart=cart, error=error, doc={},

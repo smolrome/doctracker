@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
 
+<link rel="stylesheet" href="{{ url_for('static', filename='css/office_qr_page.css') }}">
+
 <div class="page-header">
   <a href="/" class="page-back">← Dashboard</a>
   <div class="page-title">🖨️ Office QR Codes</div>
@@ -8,32 +10,6 @@
 
 {% if current_role == 'admin' %}
 <!-- ── APP WELCOME QR — admin only ── -->
-<style>
-  .app-qr-banner{background:linear-gradient(135deg,#0A2540,#1D4ED8);
-    border-radius:18px;padding:20px 22px;margin-bottom:22px;
-    display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
-  .app-qr-left{flex:1;min-width:200px;}
-  .app-qr-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;
-    color:#fff;margin-bottom:6px;display:flex;align-items:center;gap:10px;}
-  .app-qr-desc{font-size:15px;color:rgba(255,255,255,.8);line-height:1.6;margin-bottom:14px;}
-  .app-qr-badges{display:flex;gap:8px;flex-wrap:wrap;}
-  .app-qr-badge{padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700;
-    background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.25);
-    color:rgba(255,255,255,.9);}
-  .app-qr-right{display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0;}
-  .app-qr-img{width:140px;height:140px;border-radius:14px;border:4px solid rgba(255,255,255,.3);
-    background:#fff;display:block;}
-  .app-qr-actions{display:flex;gap:8px;}
-  .btn-app-qr{padding:10px 18px;border-radius:10px;font-family:inherit;
-    font-size:14px;font-weight:800;text-decoration:none;cursor:pointer;
-    border:none;min-height:42px;display:inline-flex;align-items:center;gap:7px;
-    transition:all .15s;}
-  .btn-app-qr.primary{background:#fff;color:#1D4ED8;}
-  .btn-app-qr.primary:hover{background:#DBEAFE;}
-  .btn-app-qr.secondary{background:rgba(255,255,255,.15);color:#fff;
-    border:1.5px solid rgba(255,255,255,.3);}
-  .btn-app-qr.secondary:hover{background:rgba(255,255,255,.25);}
-</style>
 
 <div class="app-qr-banner">
   <div class="app-qr-left">
@@ -66,118 +42,6 @@
 </div>
 {% endif %}
 
-<style>
-  .gen-card{background:#fff;border:2px solid var(--border);border-radius:var(--radius);
-    padding:22px;margin-bottom:20px;box-shadow:0 2px 10px rgba(10,45,100,.05);}
-  .gen-title{font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;
-    text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
-    margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--border);}
-  .gen-form{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
-  .gen-form .form-group{flex:1;min-width:220px;margin-bottom:0;}
-
-  /* System explanation */
-  .system-explainer{background:linear-gradient(135deg,var(--dark),var(--teal));
-    border-radius:18px;padding:22px 24px;margin-bottom:22px;
-    display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
-  .explain-step{text-align:center;padding:14px;background:rgba(255,255,255,.1);
-    border-radius:12px;border:1.5px solid rgba(255,255,255,.2);}
-  .explain-step .es-num{font-family:'Outfit',sans-serif;font-size:28px;font-weight:900;color:#fff;}
-  .explain-step .es-title{font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;
-    color:rgba(255,255,255,.9);margin:4px 0;}
-  .explain-step .es-desc{font-size:13px;color:rgba(255,255,255,.75);line-height:1.5;}
-  .explain-arrow{display:flex;align-items:center;justify-content:center;
-    font-size:24px;color:rgba(255,255,255,.5);}
-
-  /* Traffic stats */
-  .traffic-bar{background:#fff;border:2px solid #059669;border-radius:16px;
-    padding:18px 22px;margin-bottom:20px;
-    display:flex;align-items:center;justify-content:space-around;gap:12px;flex-wrap:wrap;}
-  .traffic-bar-title{font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;
-    color:var(--navy);width:100%;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
-  .t-stat{text-align:center;flex:1;}
-  .t-num{font-family:'Outfit',sans-serif;font-size:36px;font-weight:900;}
-  .t-num.rec{color:#1D4ED8;}
-  .t-num.rel{color:#059669;}
-  .t-num.inside{color:#D97706;}
-  .t-label{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
-  .t-div{width:2px;height:50px;background:var(--border);flex-shrink:0;}
-
-  /* QR grid — 2x2 */
-  .qr-section-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;
-    color:var(--navy);margin-bottom:14px;display:flex;align-items:center;
-    justify-content:space-between;flex-wrap:wrap;gap:10px;}
-  .qr-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
-  .qr-card{background:#fff;border-radius:16px;padding:20px;text-align:center;
-    border:3px solid var(--border);transition:box-shadow .15s;}
-  .qr-card:hover{box-shadow:0 6px 24px rgba(10,45,100,.12);}
-  .qr-card.qr1{border-color:#D97706;}
-  .qr-card.qr2{border-color:#7C3AED;}
-  .qr-card.qr3{border-color:#1D4ED8;}
-  .qr-card.qr4{border-color:#059669;}
-  .qr-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;
-    border-radius:30px;font-size:14px;font-weight:800;margin-bottom:10px;}
-  .b1{background:#FEF3C7;color:#92400E;}
-  .b2{background:#EDE9FE;color:#5B21B6;}
-  .b3{background:#DBEAFE;color:#1D4ED8;}
-  .b4{background:#D1FAE5;color:#065F46;}
-  .qr-card-title{font-family:'Outfit',sans-serif;font-size:16px;font-weight:900;
-    color:var(--navy);margin-bottom:4px;}
-  .qr-card-who{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:8px;}
-  .qr-card-desc{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5;min-height:50px;}
-  .qr-img{width:min(160px,100%);aspect-ratio:1;border-radius:10px;
-    border:2px solid var(--border);display:block;margin:0 auto 12px;object-fit:contain;}
-  .qr-slug{font-family:monospace;font-size:12px;color:var(--muted);
-    background:var(--surface);padding:5px 8px;border-radius:6px;margin-bottom:10px;
-    word-break:break-all;}
-  .btn-dl{display:flex;align-items:center;justify-content:center;gap:6px;
-    padding:10px;border-radius:9px;font-size:14px;font-weight:700;
-    text-decoration:none;border:2px solid var(--border);color:var(--muted);
-    background:var(--surface);transition:all .15s;}
-  .btn-dl:hover{border-color:var(--teal);color:var(--teal);}
-
-  /* Saved offices */
-  .saved-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;
-    color:var(--navy);margin-bottom:12px;display:flex;align-items:center;
-    justify-content:space-between;flex-wrap:wrap;gap:10px;}
-  .saved-title span{font-size:14px;color:var(--muted);}
-  .office-row{background:#fff;border:2px solid var(--border);border-radius:14px;
-    padding:14px 18px;margin-bottom:10px;
-    display:flex;align-items:center;justify-content:space-between;
-    gap:12px;flex-wrap:wrap;transition:border .15s,box-shadow .15s;}
-  .office-row:hover{border-color:var(--teal);box-shadow:0 4px 16px rgba(14,116,144,.12);}
-  .office-row-name{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:var(--navy);}
-  .office-row-slug{font-family:monospace;font-size:13px;color:var(--muted);margin-top:2px;}
-  .office-row-actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;}
-  .btn-view{padding:9px 16px;border-radius:8px;font-size:14px;font-weight:700;
-    text-decoration:none;background:linear-gradient(135deg,var(--dark),var(--teal));
-    color:#fff;border:none;cursor:pointer;min-height:40px;
-    display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
-  .btn-del{padding:9px 14px;border-radius:8px;font-size:14px;font-weight:700;
-    background:#FEE2E2;color:#DC2626;border:2px solid #FECACA;cursor:pointer;
-    font-family:inherit;min-height:40px;display:inline-flex;align-items:center;gap:4px;}
-  .btn-del:hover{background:#DC2626;color:#fff;}
-
-  .empty-box{text-align:center;padding:36px 20px;background:#fff;
-    border:2px solid var(--border);border-radius:16px;}
-  .empty-box .ei{font-size:44px;margin-bottom:10px;}
-
-  @media(max-width:900px){.system-explainer{grid-template-columns:1fr;}}
-  @media(max-width:640px){.qr-grid{grid-template-columns:1fr;}}
-  @media(max-width:480px){
-    .gen-form{flex-direction:column;}
-    .office-row{flex-direction:column;align-items:flex-start;}
-    .office-row-actions{width:100%;}
-    .btn-view,.btn-del{flex:1;justify-content:center;}
-    .traffic-bar{flex-direction:column;gap:8px;}
-    .t-div{width:100%;height:2px;}
-  }
-  @media print{
-    .page-header,.gen-card,.saved-section,.btn-dl,.system-explainer{display:none!important;}
-    .qr-grid{grid-template-columns:1fr 1fr;gap:10px;}
-    .qr-img{width:140px!important;}
-  }
-</style>
-
 <!-- ── HOW IT WORKS ── -->
 <div class="system-explainer">
   <div class="explain-step">
@@ -208,6 +72,19 @@
       <input type="text" name="office" value="{{ office_name }}"
              placeholder="e.g. Ormoc City, Budget Section, Leyte NHS"
              style="font-size:17px;min-height:52px;" required/>
+    </div>
+    <div class="form-group">
+      <label style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:8px;display:block;">
+        Primary Document Recipient (Optional)
+      </label>
+      <select name="primary_recipient" style="font-size:15px;min-height:44px;">
+        <option value="">— Auto-assign to first staff —</option>
+        {% if staff_members %}
+          {% for staff in staff_members %}
+          <option value="{{ staff.username }}">{{ staff.full_name or staff.username }} ({{ staff.username }})</option>
+          {% endfor %}
+        {% endif %}
+      </select>
     </div>
     <button type="submit" class="btn btn-primary" style="min-height:52px;font-size:16px;white-space:nowrap;">
       🖨️ Generate &amp; Save

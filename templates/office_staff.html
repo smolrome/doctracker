@@ -1,241 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
 
+<link rel="stylesheet" href="{{ url_for('static', filename='css/office_staff.css') }}">
+
 <div class="page-header">
   <a href="/" class="page-back">← Dashboard</a>
   <div class="page-title">🏢 Office Staff List</div>
 </div>
-
-<style>
-  .office-card {
-    background: #fff;
-    border: 2px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    margin-bottom: 16px;
-  }
-  
-  .office-header {
-    padding: 16px 20px;
-    border-bottom: 2px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-  
-  .office-header h3 {
-    font-family: 'Outfit', sans-serif;
-    font-size: 18px;
-    font-weight: 800;
-    color: var(--navy);
-    margin: 0;
-  }
-  
-  .staff-count-badge {
-    background: var(--teal);
-    color: #fff;
-    padding: 6px 16px;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  
-  .office-meta {
-    padding: 12px 20px;
-    font-size: 13px;
-    color: var(--muted);
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  
-  .office-meta span {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  
-  .empty-offices {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--muted);
-  }
-  
-  .empty-offices .icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.5;
-  }
-  
-  .empty-offices p {
-    font-size: 16px;
-    margin: 0;
-  }
-  
-  .summary-box {
-    background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
-    color: #fff;
-    border-radius: var(--radius);
-    padding: 20px 24px;
-    margin-bottom: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 16px;
-  }
-  
-  .summary-box h2 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 700;
-  }
-  
-  .summary-box p {
-    margin: 4px 0 0 0;
-    font-size: 14px;
-    opacity: 0.9;
-  }
-  
-  .summary-stats {
-    display: flex;
-    gap: 24px;
-    flex-wrap: wrap;
-  }
-  
-  .stat-item {
-    text-align: center;
-  }
-  
-  .stat-number {
-    font-size: 28px;
-    font-weight: 900;
-    line-height: 1;
-  }
-  
-  .stat-label {
-    font-size: 12px;
-    opacity: 0.85;
-    margin-top: 4px;
-  }
-  
-  .office-actions {
-    display: flex;
-    gap: 8px;
-    margin-left: auto;
-  }
-  
-  .btn-delete {
-    padding: 8px 14px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 700;
-    background: #FEE2E2;
-    color: #DC2626;
-    border: 2px solid #FECACA;
-    cursor: pointer;
-    font-family: inherit;
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
-  
-  .btn-delete:hover {
-    background: #DC2626;
-    color: #fff;
-  }
-  
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-  
-  .modal-overlay.active {
-    display: flex;
-  }
-  
-  .modal {
-    background: #fff;
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 400px;
-    width: 90%;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-  }
-  
-  .modal h3 {
-    margin: 0 0 16px 0;
-    color: var(--navy);
-    font-size: 18px;
-  }
-  
-  .modal p {
-    margin: 0 0 20px 0;
-    color: var(--muted);
-  }
-  
-  .modal-actions {
-    display: flex;
-    gap: 10px;
-  }
-  
-  .modal-actions button {
-    flex: 1;
-    padding: 10px 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-    border: 2px solid var(--border);
-    background: #fff;
-  }
-  
-  .modal-actions .btn-confirm {
-    background: #DC2626;
-    color: #fff;
-    border-color: #DC2626;
-  }
-  
-  .modal-actions .btn-confirm:hover {
-    background: #B91C1C;
-  }
-  
-  .modal-actions .btn-cancel:hover {
-    background: #F3F4F6;
-  }
-  
-  @media (max-width: 600px) {
-    .office-header {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    
-    .summary-box {
-      flex-direction: column;
-      text-align: center;
-    }
-    
-    .summary-stats {
-      justify-content: center;
-    }
-  }
-</style>
 
 <div class="summary-box">
   <div>
@@ -277,6 +48,24 @@
       <span>👤 Created by: <strong>{{ office.created_by }}</strong></span>
       {% endif %}
     </div>
+    {% if staff_members %}
+    <div class="office-meta" style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;">
+      <span>📋 Primary Recipient: 
+        <strong id="recipient-{{ office.office_slug }}">
+          {% if office.primary_recipient %}
+            {% for staff in staff_members %}
+              {% if staff.username == office.primary_recipient %}
+                {{ staff.full_name or staff.username }}
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            <span style="color:var(--muted);">Auto-assign (first staff)</span>
+          {% endif %}
+        </strong>
+        <button type="button" onclick="openRecipientModal('{{ office.office_slug }}', '{{ office.office_name }}', '{{ office.primary_recipient }}')" style="margin-left:8px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;background:#E0E7FF;color:#3730A3;border:1px solid #818CF8;cursor:pointer;">✏️ Edit</button>
+      </span>
+    </div>
+    {% endif %}
   </div>
   {% endfor %}
 {% else %}
@@ -300,23 +89,32 @@
   </div>
 </div>
 
-<script>
-function confirmDeleteOffice(slug, name) {
-  document.getElementById('deleteOfficeName').textContent = name;
-  document.getElementById('deleteForm').action = '/delete-office/' + encodeURIComponent(slug);
-  document.getElementById('deleteModal').classList.add('active');
-}
+<!-- Primary Recipient Modal -->
+<div class="modal-overlay" id="recipientModal">
+  <div class="modal">
+    <h3>📋 Set Primary Recipient</h3>
+    <p>Choose which staff member will receive documents submitted to <strong id="recipientOfficeName"></strong></p>
+    <form id="recipientForm" method="POST" action="/update-office-recipient">
+      <input type="hidden" name="office_slug" id="recipientOfficeSlug">
+      <div class="form-group">
+        <label for="primary_recipient">Primary Recipient</label>
+        <select name="primary_recipient" id="primaryRecipientSelect" style="font-size:15px;padding:10px;">
+          <option value="">— Auto-assign to first staff —</option>
+          {% if staff_members %}
+            {% for staff in staff_members %}
+            <option value="{{ staff.username }}">{{ staff.full_name or staff.username }} ({{ staff.username }})</option>
+            {% endfor %}
+          {% endif %}
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeRecipientModal()">Cancel</button>
+        <button type="submit" class="btn-confirm" style="background:#059669;border-color:#059669;">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-function closeDeleteModal() {
-  document.getElementById('deleteModal').classList.remove('active');
-}
-
-// Close modal when clicking outside
-document.getElementById('deleteModal').addEventListener('click', function(e) {
-  if (e.target === this) {
-    closeDeleteModal();
-  }
-});
-</script>
+<script src="{{ url_for('static', filename='js/office_staff.js') }}"></script>
 
 {% endblock %}

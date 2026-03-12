@@ -96,7 +96,8 @@ def _create_tables(cur):
             office_slug TEXT PRIMARY KEY,
             office_name TEXT NOT NULL,
             created_by  TEXT,
-            created_at  TIMESTAMP DEFAULT NOW()
+            created_at  TIMESTAMP DEFAULT NOW(),
+            primary_recipient TEXT
         )
     """)
     cur.execute("""
@@ -212,6 +213,10 @@ def _run_migrations(cur):
         "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS original_slip_no TEXT",
         "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS rerouted_from     TEXT",
     ]
+    # Migration for saved_offices primary_recipient
+    migrations.append(
+        "ALTER TABLE saved_offices ADD COLUMN IF NOT EXISTS primary_recipient TEXT"
+    )
     for sql in migrations:
         try:
             cur.execute("SAVEPOINT mig")

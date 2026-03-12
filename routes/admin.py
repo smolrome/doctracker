@@ -58,10 +58,13 @@ def office_staff():
     
     from services.misc import load_saved_offices
     from services.database import USE_DB, get_conn
+    from services.auth import get_all_users
     import os
     import json
     
     offices = load_saved_offices()
+    all_users = get_all_users()
+    staff_members = [u for u in all_users if u.get("role") in ("staff", "admin")]
     
     # Get staff count per office
     office_staff_counts = []
@@ -88,7 +91,7 @@ def office_staff():
                 office = user['office']
                 staff_counts[office] = staff_counts.get(office, 0) + 1
     
-    # Build office list with counts
+    # Build office list with counts and primary recipient
     for office in offices:
         office_slug = office.get('office_slug', '')
         office_name = office.get('office_name', '')
@@ -97,7 +100,8 @@ def office_staff():
             'office_name': office_name,
             'office_slug': office_slug,
             'staff_count': staff_count,
-            'created_by': office.get('created_by', '')
+            'created_by': office.get('created_by', ''),
+            'primary_recipient': office.get('primary_recipient', '')
         })
     
     # Also include any offices that have users but aren't in saved_offices
@@ -107,10 +111,11 @@ def office_staff():
                 'office_name': office_key,
                 'office_slug': office_key,
                 'staff_count': count,
-                'created_by': ''
+                'created_by': '',
+                'primary_recipient': ''
             })
     
-    return render_template("office_staff.html", office_staff=office_staff_counts)
+    return render_template("office_staff.html", office_staff=office_staff_counts, staff_members=staff_members)
 
 
 @admin_bp.route("/delete-office/<office_slug>", methods=["POST"])
@@ -128,6 +133,32 @@ def delete_office(office_slug):
     audit_log("office_deleted", f"deleted_office={office_slug_decoded}",
               username=session.get("username", "admin"), ip=get_client_ip())
     flash(f"Office '{office_slug_decoded}' has been deleted.", "success")
+    return redirect(url_for("admin.office_staff"))
+
+
+@admin_bp.route("/update-office-recipient", methods=["POST"])
+@admin_required
+def update_office_recipient():
+    """Update the primary recipient for an office."""
+    from services.misc import update_office_primary_recipient, audit_log
+    from utils import get_client_ip
+    from urllib.parse import unquote
+    
+    office_slug = request.form.get("office_slug", "").strip()
+    office_slug = unquote(office_slug)
+    primary_recipient = request.form.get("primary_recipient", "").strip()
+    
+    update_office_primary_recipient(office_slug, primary_recipient)
+    
+    if primary_recipient:
+        audit_log("office_recipient_updated", f"office={office_slug} recipient={primary_recipient}",
+                  username=session.get("username", "admin"), ip=get_client_ip())
+        flash(f"Primary recipient updated for office.", "success")
+    else:
+        audit_log("office_recipient_cleared", f"office={office_slug}",
+                  username=session.get("username", "admin"), ip=get_client_ip())
+        flash(f"Primary recipient cleared for office.", "success")
+    
     return redirect(url_for("admin.office_staff"))
 
 
