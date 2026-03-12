@@ -124,12 +124,14 @@ def register():
                     
                     # Check if office already exists - only create QR if new
                     office_exists = False
+                    matched_office_name = None
                     try:
                         saved_offices = load_saved_offices()
                         office_slug = re.sub(r'\s+', '-', office.strip().lower())
                         for saved in saved_offices:
                             if saved.get('office_slug') == office_slug:
                                 office_exists = True
+                                matched_office_name = saved.get('office_name', office)
                                 break
                     except:
                         pass
@@ -142,7 +144,7 @@ def register():
                         )
                     else:
                         flash(
-                            f"Account created! You've been assigned to the existing office '{office}'.",
+                            f"Account created! You've been assigned to the existing office '{matched_office_name or office}'.",
                             "success"
                         )
                     return redirect(url_for("auth.login"))

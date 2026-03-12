@@ -66,13 +66,6 @@
     .form-group input.office-input{border-color:#BFDBFE;background:#EFF6FF;}
     .form-group input.office-input:focus{border-color:#1D4ED8;background:#fff;
       box-shadow:0 0 0 4px rgba(29,78,216,.12);}
-    .office-select{width:100%;padding:12px 14px;border:2px solid #BFDBFE;
-      border-radius:10px;font-family:inherit;font-size:17px;color:#0A2540;
-      background:#EFF6FF;outline:none;min-height:50px;
-      transition:border .15s,box-shadow .15s;-webkit-appearance:none;
-      cursor:pointer;}
-    .office-select:focus{border-color:#1D4ED8;background:#fff;
-      box-shadow:0 0 0 4px rgba(29,78,216,.12);}
     .hint{font-size:13px;color:#8BA5B5;margin-top:5px;}
 
     .pw-rules{background:#F0F7FA;border-radius:8px;padding:10px 14px;
@@ -155,37 +148,21 @@
       <div class="office-section">
         <div class="office-section-title">🏢 Your Office / Unit</div>
         
-        {% if existing_offices %}
-        <div class="form-group" style="margin-bottom:12px;">
-          <label>Select Existing Office</label>
-          <select name="office_select" id="office_select" class="office-select" onchange="toggleOfficeInput()">
-            <option value="">-- Select your office --</option>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Office / Section / Unit Name <span class="req">*</span></label>
+          <input type="text" name="office" id="office_input"
+                 class="office-input" 
+                 placeholder="Type to search or enter a new office..."
+                 autocomplete="organization" 
+                 list="office_datalist"
+                 required autofocus/>
+          <datalist id="office_datalist">
             {% for off in existing_offices %}
             <option value="{{ off.office_name }}">{{ off.office_name }}</option>
             {% endfor %}
-            <option value="__new__">+ Add New Office</option>
-          </select>
-        </div>
-        
-        <div class="form-group" id="new_office_group" style="display:none; margin-bottom:0;">
-          <label>New Office Name <span class="req">*</span></label>
-          <input type="text" name="office" id="office_input"
-                 class="office-input" placeholder="e.g. Budget Section, HR Unit"
-                 autocomplete="organization"/>
-        </div>
-        {% else %}
-        <div class="form-group" style="margin-bottom:0;">
-          <label>Office / Section / Unit Name <span class="req">*</span></label>
-          <input type="text" name="office" class="office-input"
-                 placeholder="e.g. Budget Section, HR Unit, Records Section"
-                 autocomplete="organization" required autofocus/>
-        {% endif %}
+          </datalist>
           <div class="office-qr-note">
-            {% if existing_offices %}
-            ✨ Selecting an existing office won't create a new QR code.
-            {% else %}
-            ✨ A submission QR code will be auto-generated for your office.
-            {% endif %}
+            ✨ Type your office name. If it already exists (e.g., "budget section" or "BUDGET SECTION"), you'll be assigned to it. Otherwise, a new office will be created.
           </div>
         </div>
       </div>
@@ -289,54 +266,15 @@ if (form) {
       return;
     }
     
-    // Handle office selection
-    const officeSelect = document.getElementById('office_select');
-    const officeInput = document.getElementById('office_input');
-    if (officeSelect && officeInput) {
-      // If user selected "Add New Office", move value to office input
-      if (officeSelect.value === '__new__') {
-        if (!officeInput.value.trim()) {
-          e.preventDefault();
-          alert('Please enter your office name.');
-          return;
-        }
-      } else if (officeSelect.value) {
-        // User selected an existing office - set it as the office value
-        officeInput.name = ''; // Remove from new office field
-        // Create hidden input for office
-        let hiddenOffice = document.querySelector('input[name="office"]');
-        if (!hiddenOffice || hiddenOffice.id === 'office_input') {
-          hiddenOffice = document.createElement('input');
-          hiddenOffice.type = 'hidden';
-          hiddenOffice.name = 'office';
-          form.appendChild(hiddenOffice);
-        }
-        hiddenOffice.value = officeSelect.value;
-      }
-    }
+    // Handle office input - no special handling needed for datalist
+    // The office value is sent directly as 'office' input
     
     document.getElementById('submit-btn').disabled = true;
     document.getElementById('loading-overlay').classList.add('active');
   });
 }
 
-function toggleOfficeInput() {
-  const select = document.getElementById('office_select');
-  const newGroup = document.getElementById('new_office_group');
-  const newInput = document.getElementById('office_input');
-  
-  if (select && newGroup && newInput) {
-    if (select.value === '__new__') {
-      newGroup.style.display = 'block';
-      newInput.required = true;
-      newInput.focus();
-    } else {
-      newGroup.style.display = 'none';
-      newInput.required = false;
-      newInput.value = '';
-    }
-  }
-}
+// Datalist handles office suggestions automatically - no toggle needed
 window.addEventListener('pageshow', e => {
   if (e.persisted) {
     document.getElementById('loading-overlay').classList.remove('active');
