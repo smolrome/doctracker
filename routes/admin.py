@@ -90,14 +90,18 @@ def office_staff():
         office_name = office.get('office_name', '')
         staff_count = staff_counts.get(office_name, 0) + staff_counts.get(office_slug, 0)
         
-        # Match staff by office_name exactly (case-insensitive)
-        office_name_lower = office_name.strip().lower()
+        # Match staff by office - case insensitive, flexible matching
+        office_name_lower = office_name.strip().lower() if office_name else ''
         
-        office_staff_list = [
-            u for u in all_users
-            if u.get("role") in ("staff", "admin")
-            and u.get("office", "").strip().lower() == office_name_lower
-        ]
+        office_staff_list = []
+        for u in all_users:
+            if u.get("role") in ("staff", "admin"):
+                user_office = u.get("office", "") or ""
+                user_office_lower = user_office.strip().lower()
+                
+                # Match if office name is same or if user's office contains the office name
+                if user_office_lower == office_name_lower or office_name_lower in user_office_lower:
+                    office_staff_list.append(u)
         
         office_staff_counts.append({
             'office_name': office_name,
