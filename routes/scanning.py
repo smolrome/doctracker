@@ -266,9 +266,9 @@ def upload_qr():
                              "timestamp": now_str(), "remarks": remarks, "via": "QR Upload"}
                     doc.setdefault("travel_log", []).append(entry)
                     doc["status"] = {
-                        "Received": "In Transit", "Released": "Released",
-                        "On Hold": "On Hold", "Returned": "In Transit", "Completed": "Released",
-                    }.get(action, "In Transit")
+                        "Received": "Routed", "Released": "Released",
+                        "On Hold": "On Hold", "Returned": "Routed", "Completed": "Released",
+                    }.get(action, "Routed")
                     if action in ("Released", "Completed") and not doc.get("date_released"):
                         from datetime import datetime
                         doc["date_released"] = datetime.now().strftime("%Y-%m-%d")

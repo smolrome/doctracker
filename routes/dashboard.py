@@ -606,12 +606,12 @@ def transfer_doc(doc_id):
             # ── RE-ROUTING BACK TO ORIGINAL STAFF ──
             new_cycle = cycle + 1
             action_label = f"Re-routed back to Originating Staff (Cycle {new_cycle})"
-            new_status   = "In Transit"
+            new_status   = "Routed"
             doc["routing_cycle"] = new_cycle
         else:
             # ── ROUTING FORWARD TO ANOTHER OFFICE ──
-            action_label = f"Routed — In Transit {status_note} (Cycle {cycle + 1})"
-            new_status   = "In Transit"
+            action_label = f"Routed — {status_note} (Cycle {cycle + 1})"
+            new_status   = "Routed"
 
         doc["status"]                = new_status
         doc["logged_by"]             = new_staff
@@ -820,9 +820,9 @@ def transfer_batch():
             doc["routing_cycle"] = cycle + 1
             action_label = f"Batch Re-routed to Originating Staff (Cycle {doc['routing_cycle']})"
         else:
-            action_label = f"Batch Routed — In Transit {status_note} (Cycle {cycle + 1})"
+            action_label = f"Batch Routed — {status_note} (Cycle {cycle + 1})"
 
-        doc["status"]                = "In Transit"
+        doc["status"]                = "Routed"
         doc["logged_by"]             = new_staff
         doc["transferred_to"]        = new_staff
         doc["transferred_to_office"] = new_staff_office
@@ -851,7 +851,7 @@ def transfer_batch():
     audit_log("doc_batch_transferred",
               f"count={transferred_count} to={new_staff} type={transfer_type}",
               username=session.get("username","?"), ip=get_client_ip())
-    flash(f"{transferred_count} document(s) transferred to {new_staff_full_name} at {new_staff_office or 'N/A'}. Status changed to In Transit", "success")
+    flash(f"{transferred_count} document(s) transferred to {new_staff_full_name} at {new_staff_office or 'N/A'}. Status changed to Routed", "success")
     return redirect(url_for("dashboard.index"))
 
 

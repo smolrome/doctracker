@@ -125,7 +125,7 @@ def _create_tables(cur):
             rel_token   TEXT,
             type        TEXT DEFAULT 'routing',
             logged_at   TEXT,
-            status      TEXT DEFAULT 'In Transit',
+            status      TEXT DEFAULT 'Routed',
             created_at  TIMESTAMP DEFAULT NOW()
         )
     """)
@@ -202,7 +202,7 @@ def _run_migrations(cur):
         "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS from_office TEXT",
         "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS type        TEXT DEFAULT 'routing'",
         "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS logged_at   TEXT",
-        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS status      TEXT DEFAULT 'In Transit'",
+        "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS status      TEXT DEFAULT 'Routed'",
         # New reroute fields
         "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS is_rerouted         BOOLEAN DEFAULT FALSE",
         "ALTER TABLE routing_slips ADD COLUMN IF NOT EXISTS archived_at       TEXT",

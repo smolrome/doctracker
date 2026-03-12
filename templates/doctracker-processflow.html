@@ -96,12 +96,12 @@
     <div class="pipe-node p-pending"><span class="pipe-ico">📤</span><div class="pipe-name">Pending</div><div class="pipe-how">Client submits document via portal</div></div>
     <div class="pipe-node p-received"><span class="pipe-ico">📥</span><div class="pipe-name">Received</div><div class="pipe-how">Client scans doc QR at office entrance</div></div>
     <div class="pipe-node p-review"><span class="pipe-ico">🔍</span><div class="pipe-name">In Review</div><div class="pipe-how">Staff manually updates via dropdown</div></div>
-    <div class="pipe-node p-transit"><span class="pipe-ico">🚚</span><div class="pipe-name">In Transit</div><div class="pipe-how">Staff manually updates via dropdown</div></div>
+    <div class="pipe-node p-transit"><span class="pipe-ico">🚚</span><div class="pipe-name">Routed</div><div class="pipe-how">Staff manually updates via dropdown</div></div>
     <div class="pipe-node p-released"><span class="pipe-ico">✅</span><div class="pipe-name">Released</div><div class="pipe-how">Client scans doc QR at office exit</div></div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px" class="stagger">
     <div class="info-box reveal" style="border-color:rgba(200,146,42,.3)"><div class="info-box-title" style="color:var(--gold)">⚡ QR-Triggered Updates</div>Pending → <strong>Received</strong> — Client scans doc QR, taps Mark Received<br/><br/>Received → <strong>Released</strong> — Client scans doc QR, taps Mark Released</div>
-    <div class="info-box reveal" style="border-color:rgba(45,106,53,.3)"><div class="info-box-title" style="color:var(--green)">✋ Manual Staff Updates</div>Any → <strong>In Review</strong>, <strong>In Transit</strong><br/><br/>Any → <strong>On Hold</strong>, <strong>Archived</strong><br/>Any → <strong>Received</strong> or <strong>Released</strong> manually</div>
+    <div class="info-box reveal" style="border-color:rgba(45,106,53,.3)"><div class="info-box-title" style="color:var(--green)">✋ Manual Staff Updates</div>Any → <strong>In Review</strong>, <strong>Routed</strong><br/><br/>Any → <strong>On Hold</strong>, <strong>Archived</strong><br/>Any → <strong>Received</strong> or <strong>Released</strong> manually</div>
     <div class="info-box reveal" style="border-color:rgba(26,74,122,.3)"><div class="info-box-title" style="color:var(--blue)">📋 Travel Log</div>Every status change creates a travel log entry with: office name, action, officer name, timestamp, and remarks. Full history visible to staff and client.</div>
   </div>
 </div>

@@ -151,15 +151,15 @@ def create_routing_slip():
         "created_at":   now_str(),
         "recv_token":   recv_token,
         "rel_token":    rel_token,
-        "status":       "In Transit",
+        "status":       "Routed",
     }
     save_routing_slip(slip)
 
-    # Update every document: In Transit + store from/to office
+    # Update every document: Routed + store from/to office
     for doc_id in doc_ids:
         doc = get_doc(doc_id)
         if doc:
-            doc["status"]          = "In Transit"
+            doc["status"]          = "Routed"
             doc["forwarded_to"]    = destination
             doc["from_office"]     = from_office
             doc["routing_slip_id"] = slip_id
@@ -168,7 +168,7 @@ def create_routing_slip():
             # Create the travel log entry
             new_entry = {
                 "office":    from_office,
-                "action":    f"Released — In Transit to {destination}",
+                "action":    f"Released — Routed to {destination}",
                 "officer":   actor,
                 "timestamp": now_str(),
                 "remarks":   f"Routing slip {slip_no}. Forwarded from {from_office} → {destination}.",
@@ -366,7 +366,7 @@ def reroute_slip():
         "created_at": ts,
         "recv_token": recv_token,
         "rel_token": rel_token,
-        "status": new_status if new_status else "In Transit",
+        "status": new_status if new_status else "Routed",
         "original_slip_id": slip_id,
         "original_slip_no": old_slip_no,
         "rerouted_from": old_destination,

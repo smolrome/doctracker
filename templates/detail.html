@@ -37,7 +37,7 @@
       {% endif %}
     {% elif s=='Received' %}<span class="badge badge-received" style="font-size:15px;padding:8px 18px;">📥 {{ s }}</span>
     {% elif s=='In Review'%}<span class="badge badge-review"   style="font-size:15px;padding:8px 18px;">🔍 {{ s }}</span>
-    {% elif s=='In Transit'%}<span class="badge badge-transit" style="font-size:15px;padding:8px 18px;">🚌 {{ s }}</span>
+    {% elif s=='Routed'%}<span class="badge badge-transit" style="font-size:15px;padding:8px 18px;">🚚 {{ s }}</span>
     {% elif s=='Released' %}<span class="badge badge-released" style="font-size:15px;padding:8px 18px;">✅ {{ s }}</span>
     {% elif s=='On Hold'  %}<span class="badge badge-hold"     style="font-size:15px;padding:8px 18px;">⏸️ {{ s }}</span>
     {% else %}<span class="badge badge-archived"               style="font-size:15px;padding:8px 18px;">📦 {{ s }}</span>{% endif %}
@@ -93,7 +93,7 @@
     <select name="status" style="flex:1;min-width:160px;padding:10px 12px;
         border:2px solid var(--border);border-radius:10px;font-family:inherit;
         font-size:15px;background:var(--surface);outline:none;min-height:44px;">
-      {% for s in ['Logged','Pending','Received','In Review','In Transit','Released','On Hold','Archived'] %}
+      {% for s in ['Logged','Pending','Received','In Review','Routed','Released','On Hold','Archived'] %}
       <option value="{{ s }}" {% if doc.status==s %}selected{% endif %}>{{ s }}</option>
       {% endfor %}
     </select>
@@ -127,9 +127,9 @@
         doc.created_at[:10] if doc.created_at else '',
         doc.created_at[11:16] if doc.created_at else '')] %}
 
-    {# 2. In Transit — show if transferred_at exists or current status is In Transit #}
-    {% if doc.transferred_at or doc.status == 'In Transit' %}
-      {% set ns_tl.steps = ns_tl.steps + [('In Transit', '🚚',
+    {# 2. Routed — show if transferred_at exists or current status is Routed #}
+    {% if doc.transferred_at or doc.status == 'Routed' %}
+      {% set ns_tl.steps = ns_tl.steps + [('Routed', '🚚',
           doc.transferred_at[:10] if doc.transferred_at else '',
           doc.transferred_at[11:16] if doc.transferred_at else '')] %}
     {% endif %}
@@ -417,8 +417,8 @@
     {% set s = doc.status %}
     {% if s == 'Logged' %}
     <span class="status-pill pill-logged">🖊️ Logged</span>
-    {% elif s == 'In Transit' or s == 'Pending' %}
-    <span class="status-pill pill-transit">🚚 In Transit</span>
+    {% elif s == 'Routed' or s == 'Pending' %}
+    <span class="status-pill pill-transit">🚚 Routed</span>
     {% elif s == 'Received' %}
     <span class="status-pill pill-received">📥 Received</span>
     {% elif s == 'In Review' %}
@@ -496,7 +496,7 @@
           {% if 'logged' in entry_action %}
             <span class="action-pill ap-logged">✏️ {{ entry.action or 'Document Logged' }}</span>
           {% elif 'transit' in entry_action or 'routed' in entry_action %}
-            <span class="action-pill ap-transit">🚚 {{ entry.action or 'In Transit' }}</span>
+            <span class="action-pill ap-transit">🚚 {{ entry.action or 'Routed' }}</span>
           {% elif 'received' in entry_action %}
             <span class="action-pill ap-received">📥 {{ entry.action or 'Received' }}</span>
           {% elif 'review' in entry_action %}

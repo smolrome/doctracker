@@ -58,10 +58,10 @@ var serverSessionData = {
         <div class="stat-clear">● Filtered</div>
       </div>
     </a>
-    <a class="stat-card blue {% if filter_status=='In Transit' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('In Transit')">
+    <a class="stat-card blue {% if filter_status=='Routed' %}active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Routed')">
       <div class="stat-card-inner">
-        <div class="stat-label">In Transit</div>
-        <div class="stat-num">{{ stats.in_transit }}</div>
+        <div class="stat-label">Routed</div>
+        <div class="stat-num">{{ stats.routed }}</div>
         <div class="stat-clear">● Filtered</div>
       </div>
     </a>
@@ -455,8 +455,8 @@ var serverSessionData = {
               {% if doc.transfer_status == 'accepted' %}<div class="status-sub">✓ Accepted</div>{% endif %}
             {% elif s == 'In Review' %}
               <span class="status-pill status-review">{{ s }}</span>
-            {% elif s == 'In Transit' %}
-              <span class="status-pill status-transit">{{ s }}</span>
+            {% elif s == 'Routed' %}
+              <span class="status-pill status-transit">Routed</span>
               {% if doc.pending_at_staff %}
               <div class="status-sub">→ {{ doc.pending_at_staff }}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</div>
               {% elif doc.forwarded_to %}

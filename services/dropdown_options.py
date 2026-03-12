@@ -14,7 +14,7 @@ DEFAULT_CATEGORY_OPTIONS = [
 ]
 
 DEFAULT_STATUS_OPTIONS = [
-    "Pending", "Received", "In Review", "In Transit", "Released", "On Hold", "Archived"
+    "Pending", "Received", "In Review", "Routed", "Released", "On Hold", "Archived"
 ]
 
 # Fields that can have customizable dropdowns

@@ -115,7 +115,7 @@ def create_excel_backup() -> bytes:
         ("Document Status", ""),
         ("  Pending",    sum(1 for d in docs if d.get("status") == "Pending")),
         ("  Received",   sum(1 for d in docs if d.get("status") == "Received")),
-        ("  In Transit", sum(1 for d in docs if d.get("status") == "In Transit")),
+        ("  Routed", sum(1 for d in docs if d.get("status") == "Routed")),
         ("  In Review",  sum(1 for d in docs if d.get("status") == "In Review")),
         ("  Released",   sum(1 for d in docs if d.get("status") == "Released")),
         ("  On Hold",    sum(1 for d in docs if d.get("status") == "On Hold")),
@@ -188,7 +188,7 @@ def create_excel_backup() -> bytes:
         # Color-code status
         status_colors = {
             "Released":   ("D1FAE5", "065F46"),
-            "In Transit": ("DBEAFE", "1D4ED8"),
+            "Routed": ("DBEAFE", "1D4ED8"),
             "Received":   ("E0F2FE", "0369A1"),
             "Pending":    ("FEF3C7", "92400E"),
             "On Hold":    ("FEE2E2", "991B1B"),

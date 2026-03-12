@@ -274,7 +274,7 @@ def save_routing_slip(slip: dict):
                             slip.get("from_office", ""),
                             slip.get("type", "routing"),
                             slip.get("logged_at", ""),
-                            slip.get("status", "In Transit"),
+                            slip.get("status", "Routed"),
                             slip.get("is_rerouted", False),
                             slip.get("archived_at", ""),
                             slip.get("archived_by", ""),
