@@ -192,8 +192,7 @@ def index():
         offices_dict=offices_dict,
         sorted_offices=sorted_offices,
         current_user_name=session.get('full_name', ''),
-        current_user_role=session.get('role', ''),
-        csrf_token=session.get("csrf_token", ""))
+        current_user_role=session.get('role', ''))
 
 
 @dashboard_bp.route("/dashboard")
@@ -400,7 +399,7 @@ def view_doc(doc_id):
     if not doc:
         flash("Document not found.", "error")
         return redirect(url_for("dashboard.index"))
-    return render_template("detail.html", doc=doc, qr_b64=generate_qr_b64(doc, request.host_url), csrf_token=session.get("csrf_token", ""))
+    return render_template("detail.html", doc=doc, qr_b64=generate_qr_b64(doc, request.host_url))
 
 
 @dashboard_bp.route("/edit/<doc_id>", methods=["GET", "POST"])

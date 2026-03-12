@@ -75,6 +75,7 @@
   {% if current_role == 'admin' %}
   <form method="post" action="/delete/{{ doc.id }}"
         onsubmit="return confirm('Move this document to Trash?')" style="margin:0;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <button type="submit" class="btn btn-danger">🗑️ Delete</button>
   </form>
   {% endif %}

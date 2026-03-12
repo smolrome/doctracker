@@ -90,9 +90,11 @@
     </div>
     <div class="doc-right">
       <form method="POST" action="/client/trash/restore/{{ doc.id }}" style="margin:0;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit" class="btn-restore">↩️ Restore</button>
       </form>
       <form method="POST" action="/client/trash/permanent-delete/{{ doc.id }}" onsubmit="return confirm('Permanently delete this document?');" style="margin:0;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit" class="btn-perm-delete">🗑️</button>
       </form>
     </div>

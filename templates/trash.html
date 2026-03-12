@@ -45,9 +45,11 @@
       <td>
         <div class="action-buttons">
           <form method="post" action="/restore/{{ doc.id }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="btn-restore">↩️ Restore</button>
           </form>
           <form method="post" action="/trash/permanent-delete/{{ doc.id }}" onsubmit="return confirm('⚠️ Permanently delete this document? This cannot be undone!')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="btn-perm-delete">🗑️ Delete</button>
           </form>
         </div>

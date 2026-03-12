@@ -39,6 +39,7 @@
     <div style="text-align:center;">
       <p style="color:#991B1B;margin-bottom:12px;font-weight:600;">This document was rejected. Would you like to delete it?</p>
       <form method="POST" action="/client/delete/{{ doc.id }}" onsubmit="return confirm('Move this document to trash?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit" style="background:#DC2626;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-weight:700;cursor:pointer;font-size:15px;">🗑️ Move to Trash</button>
       </form>
     </div>
