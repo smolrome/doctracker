@@ -42,15 +42,37 @@ if (form) {
       return;
     }
     
-    // Handle office input - no special handling needed for datalist
-    // The office value is sent directly as 'office' input
+    // Handle office selection: dropdown + input
+    const officeSelect = document.getElementById('office_select');
+    const officeInput = document.getElementById('office_input');
+    
+    if (officeSelect && officeInput) {
+      // If user selected an office from dropdown, use that value
+      if (officeSelect.value) {
+        officeInput.name = ''; // Don't use the input value
+        // Create hidden input with selected office
+        let hiddenOffice = document.querySelector('input[name="office"]');
+        if (!hiddenOffice || hiddenOffice.id === 'office_input') {
+          hiddenOffice = document.createElement('input');
+          hiddenOffice.type = 'hidden';
+          hiddenOffice.name = 'office';
+          form.appendChild(hiddenOffice);
+        }
+        hiddenOffice.value = officeSelect.value;
+      } else if (!officeInput.value.trim()) {
+        // Neither dropdown nor input has value
+        e.preventDefault();
+        alert('Please select or enter your office name.');
+        return;
+      }
+      // If dropdown is empty but input has value, use input (backend handles case-insensitive match)
+    }
     
     document.getElementById('submit-btn').disabled = true;
     document.getElementById('loading-overlay').classList.add('active');
   });
 }
 
-// Datalist handles office suggestions automatically - no toggle needed
 window.addEventListener('pageshow', e => {
   if (e.persisted) {
     document.getElementById('loading-overlay').classList.remove('active');
@@ -58,3 +80,21 @@ window.addEventListener('pageshow', e => {
     if (sb) sb.disabled = false;
   }
 });
+
+// Update office input required state based on dropdown selection
+function updateOfficeRequired() {
+  const officeSelect = document.getElementById('office_select');
+  const officeInput = document.getElementById('office_input');
+  
+  if (officeSelect && officeInput) {
+    if (officeSelect.value) {
+      // An office is selected from dropdown - input is optional
+      officeInput.required = false;
+      officeInput.placeholder = 'Or type to override with a different name...';
+    } else {
+      // No office selected - input is required
+      officeInput.required = true;
+      officeInput.placeholder = 'Type new office name if not in list...';
+    }
+  }
+}

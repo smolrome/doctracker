@@ -58,6 +58,16 @@
     .form-group input.office-input{border-color:#BFDBFE;background:#EFF6FF;}
     .form-group input.office-input:focus{border-color:#1D4ED8;background:#fff;
       box-shadow:0 0 0 4px rgba(29,78,216,.12);}
+    .office-select{width:100%;padding:12px 14px;border:2px solid #BFDBFE;
+      border-radius:10px;font-family:inherit;font-size:17px;color:#0A2540;
+      background:#EFF6FF;outline:none;min-height:50px;
+      transition:border .15s,box-shadow .15s;-webkit-appearance:none;
+      cursor:pointer;}
+    .office-select:focus{border-color:#1D4ED8;background:#fff;
+      box-shadow:0 0 0 4px rgba(29,78,216,.12);}
+    .office-divider{text-align:center;margin:12px 0;position:relative;}
+    .office-divider::before{content:'';position:absolute;left:0;top:50%;width:100%;height:1px;background:#BFDBFE;}
+    .office-divider span{background:#EFF6FF;padding:0 12px;position:relative;color:#5A7A91;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
     .hint{font-size:13px;color:#8BA5B5;margin-top:5px;}
 
     .pw-rules{background:#F0F7FA;border-radius:8px;padding:10px 14px;

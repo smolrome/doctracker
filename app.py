@@ -259,14 +259,6 @@ def create_app() -> Flask:
         flash("You do not have permission to access that page.", "error")
         return redirect(url_for("dashboard.index"))
 
-    # Logo route
-    @app.route("/logo.png")
-    def serve_logo():
-        import os
-        logo = os.path.join(os.path.dirname(__file__), "templates", "logo", "doctrackerLOGO.png")
-        from flask import send_file
-        return send_file(logo, mimetype="image/png")
-
     # API endpoints — require staff/admin login
     @app.route("/api/gen-ref")
     def api_gen_ref():

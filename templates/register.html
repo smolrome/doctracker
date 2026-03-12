@@ -11,7 +11,7 @@
 <div class="wrap">
 
   <div class="header">
-    <img src="/logo.png" alt="DepEd Leyte" class="logo"/>
+    <img src="/static/logo.png" alt="DepEd Leyte" class="logo"/>
     <div class="header-title">Staff Registration</div>
     <div class="header-sub">DepEd Leyte Division — Document Tracker</div>
   </div>
@@ -52,21 +52,37 @@
       <div class="office-section">
         <div class="office-section-title">🏢 Your Office / Unit</div>
         
+        {% if existing_offices %}
+        <div class="form-group">
+          <label>Select Existing Office</label>
+          <select name="office_select" id="office_select" class="office-select" onchange="updateOfficeRequired()">
+            <option value="">-- Select your office --</option>
+            {% for off in existing_offices %}
+            <option value="{{ off.office_name }}">{{ off.office_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="office-divider">
+          <span>or enter a new office</span>
+        </div>
+        
+        <div class="form-group" style="margin-bottom:0;">
+          <label>New Office Name</label>
+          <input type="text" name="office" id="office_input"
+                 class="office-input" 
+                 placeholder="Type new office name if not in list..."
+                 autocomplete="organization"/>
+        {% else %}
         <div class="form-group" style="margin-bottom:0;">
           <label>Office / Section / Unit Name <span class="req">*</span></label>
           <input type="text" name="office" id="office_input"
                  class="office-input" 
-                 placeholder="Type to search or enter a new office..."
-                 autocomplete="organization" 
-                 list="office_datalist"
-                 required autofocus/>
-          <datalist id="office_datalist">
-            {% for off in existing_offices %}
-            <option value="{{ off.office_name }}">{{ off.office_name }}</option>
-            {% endfor %}
-          </datalist>
+                 placeholder="e.g. Budget Section, HR Unit, Records Section"
+                 autocomplete="organization" required autofocus/>
+        {% endif %}
           <div class="office-qr-note">
-            ✨ Type your office name. If it already exists (e.g., "budget section" or "BUDGET SECTION"), you'll be assigned to it. Otherwise, a new office will be created.
+            ✨ If the office already exists (e.g., "budget section" or "BUDGET SECTION"), you'll be assigned to it. Otherwise, a new office will be created.
           </div>
         </div>
       </div>
