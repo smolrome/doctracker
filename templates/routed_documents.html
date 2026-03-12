@@ -161,8 +161,13 @@
     <div class="rd-title">🚌 Routed Documents</div>
     <div class="rd-subtitle">All routing slips — view documents and update statuses in bulk</div>
   </div>
+  {% if session.get('last_rerouted_slip_id') %}
+  <a href="/routing-slip/{{ session.get('last_rerouted_slip_id') }}" class="btn" style="background:#F59E0B;color:#fff;">🖨️ Print Updated Slip</a>
+  {% endif %}
   <a href="/" class="btn" style="font-size:.92rem;padding:10px 22px;">← Back to Dashboard</a>
 </div>
+
+{% set _ = session.pop('last_rerouted_slip_id', None) %}
 
 {% if not slips and page == 1 %}
 <div class="empty-state">
@@ -208,6 +213,7 @@
       <span>👤 {{ slip.prepared_by }}</span>
     </div>
     <a href="/routing-slip/{{ slip.id }}" class="slip-view-link">View Slip →</a>
+    <button type="button" class="slip-view-link" onclick="openRerouteModal('{{ slip.id }}', '{{ slip.destination }}')" style="background:#fff;border-color:#F59E0B;color:#B45309;">🔄 Re-route</button>
   </div>
 
   <!-- Table header: title + doc count -->
@@ -333,6 +339,71 @@
 function changeRdPerPage(val) {
   window.location.href = '/routed-documents?page=1&per_page=' + val;
 }
+
+/* Re-route Modal */
+var rerouteModal = null;
+var currentSlipId = null;
+
+function openRerouteModal(slipId, currentDest) {
+  currentSlipId = slipId;
+  document.getElementById('reroute-dest').value = currentDest;
+  document.getElementById('reroute-slip-id').value = slipId;
+  document.getElementById('reroute-modal').style.display = 'flex';
+}
+
+function closeRerouteModal() {
+  document.getElementById('reroute-modal').style.display = 'none';
+  currentSlipId = null;
+}
+
+function submitReroute() {
+  const dest = document.getElementById('reroute-dest').value.trim();
+  if (!dest) {
+    alert('Please enter a destination office.');
+    return;
+  }
+  document.getElementById('reroute-form').submit();
+}
 </script>
+
+<!-- Re-route Modal -->
+<div id="reroute-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-content" style="max-width:480px;padding:24px;">
+    <h3 style="margin-top:0;color:var(--navy);">🔄 Re-route Documents</h3>
+    <p style="color:var(--muted);margin-bottom:20px;">Update the destination office for this routing slip.</p>
+    
+    <form method="POST" action="/routing-slip/reroute" id="reroute-form">
+      <input type="hidden" name="slip_id" id="reroute-slip-id" value=""/>
+      
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-weight:700;color:var(--navy);margin-bottom:6px;">New Destination Office</label>
+        <input type="text" name="destination" id="reroute-dest" required
+               style="width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:1rem;"
+               placeholder="e.g., Budget Section, HR Unit"/>
+      </div>
+      
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-weight:700;color:var(--navy);margin-bottom:6px;">New Status</label>
+        <select name="status" required
+                style="width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:1rem;">
+          <option value="In Transit">🚌 In Transit</option>
+          <option value="Pending">⏳ Pending</option>
+          <option value="Received">✅ Received</option>
+        </select>
+      </div>
+      
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-weight:700;color:var(--navy);margin-bottom:6px;">Notes (optional)</label>
+        <textarea name="notes" rows="2" style="width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:1rem;"
+                  placeholder="Reason for re-routing..."></textarea>
+      </div>
+      
+      <div style="display:flex;gap:12px;justify-content:flex-end;">
+        <button type="button" onclick="closeRerouteModal()" class="btn" style="background:#E2E8F0;color:var(--navy);">Cancel</button>
+        <button type="button" onclick="submitReroute()" class="btn" style="background:var(--teal);color:#fff;">✔ Re-route</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 {% endblock %}

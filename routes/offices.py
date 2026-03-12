@@ -293,3 +293,98 @@ def batch_update_slip_status(slip_id):
 
     flash(f"✅ {updated} document{'s' if updated != 1 else ''} updated to \"{new_status}\".", "success")
     return redirect(url_for("offices.routed_documents"))
+
+
+@offices_bp.route("/routing-slip/reroute", methods=["POST"])
+@login_required
+def reroute_slip():
+    """Re-route documents to a new destination office."""
+    from services.misc import get_routing_slip, save_routing_slip
+    from services.misc import audit_log as _audit
+    from services.documents import get_docs_by_ids, batch_save_docs, save_doc
+    from utils import get_client_ip
+    from services.misc import now_str
+
+    slip_id = request.form.get("slip_id", "").strip()
+    new_destination = request.form.get("destination", "").strip()
+    new_status = request.form.get("status", "").strip()
+    notes = request.form.get("notes", "").strip()
+
+    if not slip_id or not new_destination:
+        flash("Routing slip ID and destination are required.", "error")
+        return redirect(url_for("offices.routed_documents"))
+
+    slip = get_routing_slip(slip_id)
+    if not slip:
+        flash("Routing slip not found.", "error")
+        return redirect(url_for("offices.routed_documents"))
+
+    old_destination = slip.get("destination", "")
+    actor = session.get("full_name") or session.get("username", "Staff")
+    ts = now_str()
+
+    # Update routing slip
+    slip["destination"] = new_destination
+    slip["rerouted_at"] = ts
+    slip["rerouted_by"] = actor
+    slip["reroute_notes"] = notes
+    save_routing_slip(slip)
+
+    # Update documents
+    doc_ids = slip.get("doc_ids", [])
+    docs_map = get_docs_by_ids(doc_ids)
+
+    # Update routing array in each doc (replace last destination or add new)
+    to_save = []
+    for doc_id in doc_ids:
+        doc = docs_map.get(doc_id)
+        if not doc:
+            continue
+
+        # Update destination
+        doc["forwarded_to"] = new_destination
+
+        # Update status if provided
+        if new_status:
+            doc["status"] = new_status
+
+        # Update routing array - replace last destination or append new
+        routing = doc.get("routing", [])
+        if routing and routing[-1] == old_destination:
+            routing[-1] = new_destination
+        elif new_destination not in routing:
+            routing.append(new_destination)
+        doc["routing"] = routing
+
+        # Add travel log entry
+        log_entry = f"Re-routed from {old_destination} to {new_destination}"
+        if new_status:
+            log_entry += f" | Status: {new_status}"
+        if notes:
+            log_entry += f" | Note: {notes}"
+        log_entry += f" by {actor}"
+
+        tl = doc.get("travel_log") or []
+        tl.append({
+            "office": new_destination,
+            "action": "Re-routed",
+            "officer": actor,
+            "timestamp": ts,
+            "remarks": log_entry,
+        })
+        doc["travel_log"] = tl
+        to_save.append(doc)
+
+    if to_save:
+        batch_save_docs(to_save)
+
+    _audit("reroute_slip",
+           f"slip_id={slip_id} slip_no={slip.get('slip_no','?')} "
+           f"old_dest={old_destination} new_dest={new_destination} "
+           f"new_status={new_status} docs_updated={len(to_save)}",
+           username=session.get("username"), ip=get_client_ip())
+
+    flash(f"✅ Documents re-routed to \"{new_destination}\".", "success")
+    # Store slip_id in session for the template to show a reprint link
+    session["last_rerouted_slip_id"] = slip_id
+    return redirect(url_for("offices.routed_documents"))
