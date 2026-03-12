@@ -1,55 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trash.css') }}">
+
 <div class="page-header">
   <a href="/" class="page-back">← Dashboard</a>
   <div class="page-title">🗑️ Document Trash</div>
 </div>
 
-<style>
-  .trash-info{background:#FEF3C7;border:2px solid #D97706;border-radius:14px;
-    padding:16px 18px;margin-bottom:20px;font-size:16px;color:#92400E;
-    display:flex;align-items:flex-start;gap:12px;}
-  .trash-info .icon{font-size:24px;flex-shrink:0;}
-  .trash-table{width:100%;border-collapse:collapse;background:#fff;
-    border-radius:14px;overflow:hidden;border:2px solid var(--border);}
-  .trash-table th{background:var(--surface);padding:14px 16px;text-align:left;
-    font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
-    color:var(--muted);border-bottom:2px solid var(--border);}
-  .trash-table td{padding:14px 16px;font-size:16px;border-bottom:1.5px solid var(--border);
-    vertical-align:middle;}
-  .trash-table tr:last-child td{border-bottom:none;}
-  .trash-table tr:hover td{background:#FFF9F0;}
-  .doc-name{font-weight:700;color:var(--navy);}
-  .del-meta{font-size:14px;color:var(--muted);margin-top:3px;}
-  .del-by{font-size:14px;color:#DC2626;}
-  .btn-restore{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;
-    border-radius:9px;background:#D1FAE5;color:#065F46;border:2px solid #059669;
-    font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
-  .btn-restore:hover{background:#059669;color:#fff;}
-  .btn-perm-delete{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;
-    border-radius:9px;background:#FEE2E2;color:#991B1B;border:2px solid #DC2626;
-    font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
-  .btn-perm-delete:hover{background:#DC2626;color:#fff;}
-  .btn-delete-all{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;
-    border-radius:9px;background:#991B1B;color:#fff;border:2px solid #7F1D1D;
-    font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
-  .btn-delete-all:hover{background:#7F1D1D;}
-  .action-buttons{display:flex;gap:8px;flex-wrap:wrap;}
-  .trash-actions{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;}
-  .trash-count{font-size:15px;color:var(--muted);font-weight:600;}
-  .empty-trash{text-align:center;padding:48px 20px;background:#fff;
-    border:2px solid var(--border);border-radius:16px;}
-  .empty-trash .ei{font-size:56px;margin-bottom:12px;}
-  .empty-trash p{font-size:17px;color:var(--muted);}
-  @media(max-width:600px){
-    .trash-table{display:block;overflow-x:auto;}
-    .trash-table th,.trash-table td{font-size:14px;padding:12px;}
-    .trash-actions{flex-direction:column;align-items:stretch;}
-    .trash-actions>*{width:100%;text-align:center;}
-  }
-</style>
-
-<div class="trash-info">
+{% endblock %}
   <div class="icon">⚠️</div>
   <div>
     <strong>Trash — Deleted Documents</strong><br/>

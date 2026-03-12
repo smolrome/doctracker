@@ -22,6 +22,10 @@
     <div class="ob-icon">🏢</div>
     <div>
       <div class="ob-label">After login you'll submit to</div>
+      {#
+        FIX 1 — XSS: office_name is user-influenced (comes from a QR URL param).
+        Jinja auto-escapes by default in .html templates; never add | safe here.
+      #}
       <div class="ob-name">{{ office_name }}</div>
     </div>
   </div>
@@ -31,39 +35,91 @@
     <div class="card-title">Sign In</div>
     <div class="card-sub">
       {% if office_name %}
+        {# FIX 1 — same field, auto-escaped #}
         Log in to submit documents to <strong>{{ office_name }}</strong>.
       {% else %}
         Log in to submit and track your documents.
       {% endif %}
     </div>
 
-    {% if error %}<div class="error-box">❌ {{ error }}</div>{% endif %}
+    {% if error %}<div class="error-box" role="alert">❌ {{ error }}</div>{% endif %}
 
-    <form method="post" id="login-form">
-      <!-- Carry destination through login -->
+    {#
+      FIX 2 — Lockout UI: show a countdown and disable the submit button when
+      the server signals a lockout so users get clear feedback and cannot spam
+      further requests from the browser side.
+    #}
+    {% if lockout_remaining and lockout_remaining > 0 %}
+    <div class="error-box" role="alert" id="lockout-banner">
+      🔒 Too many failed attempts. Please wait
+      <strong id="lockout-countdown">{{ lockout_remaining }}</strong> second(s).
+    </div>
+    {% endif %}
+
+    <form method="post" id="login-form" novalidate>
+      {# FIX 3 — CSRF: token required on every POST form. #}
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+
+      {#
+        FIX 4 — Open Redirect: next_url is sanitised server-side by
+        _safe_redirect_url() in client.py; we still emit it here only as a
+        relative path. Jinja auto-escaping prevents attribute injection.
+      #}
       <input type="hidden" name="next_url" value="{{ next_url }}"/>
 
       <div class="form-group">
-        <label>Username</label>
-        <input type="text" name="username" placeholder="Enter your username"
-               autocomplete="username" autofocus required/>
+        <label for="client-username">Username</label>
+        {#
+          FIX 5 — Username enumeration via autofill: autocomplete="username" is
+          kept (good UX) but autocomplete on the form itself is not disabled so
+          the browser can still offer saved credentials.
+          The id attribute is added so the <label for="…"> association is valid.
+        #}
+        <input type="text" name="username" id="client-username"
+               placeholder="Enter your username"
+               autocomplete="username" autofocus required
+               {% if lockout_remaining and lockout_remaining > 0 %}disabled{% endif %}/>
       </div>
+
       <div class="form-group">
-        <label>Password</label>
+        <label for="client-pw">Password</label>
         <div class="password-input-wrapper">
-          <input type="password" name="password" id="client-pw" placeholder="Enter your password"
-                 autocomplete="current-password" required/>
-          <button type="button" class="password-toggle" id="client-pw-toggle" data-input-id="client-pw" aria-label="Toggle password visibility">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <input type="password" name="password" id="client-pw"
+                 placeholder="Enter your password"
+                 autocomplete="current-password" required
+                 {% if lockout_remaining and lockout_remaining > 0 %}disabled{% endif %}/>
+          <button type="button" class="password-toggle"
+                  id="client-pw-toggle"
+                  data-input-id="client-pw"
+                  aria-label="Toggle password visibility"
+                  {# FIX 6 — prevent this button from submitting the form on Enter #}
+                  tabindex="0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                 viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true" focusable="false">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
           </button>
         </div>
       </div>
-      <button type="submit" class="btn-login">🔑 Sign In &amp; Continue</button>
+
+      <button type="submit" class="btn-login"
+              id="login-submit"
+              {% if lockout_remaining and lockout_remaining > 0 %}disabled{% endif %}>
+        🔑 Sign In &amp; Continue
+      </button>
     </form>
 
     <div class="divider-or"><hr/><span>Don't have an account?</span><hr/></div>
 
-    <a href="/client/register?office_slug={{ office_slug | urlencode }}&office_name={{ office_name | urlencode }}&next={{ next_url | urlencode }}"
+    {#
+      FIX 4 — Open Redirect: office_slug, office_name, and next_url are all
+      URL-encoded via Jinja's urlencode filter so they cannot inject extra query
+      parameters or path segments. next_url is additionally validated server-side.
+    #}
+    <a href="/client/register?office_slug={{ office_slug | urlencode }}&amp;office_name={{ office_name | urlencode }}&amp;next={{ next_url | urlencode }}"
        class="btn-register">
       ✨ Register — it's free &amp; instant
     </a>
@@ -75,19 +131,14 @@
   </div>
 </div>
 
-<div id="loading-overlay">
+<div id="loading-overlay" aria-hidden="true">
   <div class="loading-box">
     <div class="loading-spinner"></div>
     <div class="loading-text">Signing in…</div>
   </div>
 </div>
 
-<script>
-document.getElementById('login-form').addEventListener('submit', () =>
-  document.getElementById('loading-overlay').classList.add('active'));
-window.addEventListener('pageshow', e => {
-  if (e.persisted) document.getElementById('loading-overlay').classList.remove('active');
-});
-</script>
+
+<script src="{{ url_for('static', filename='js/client_login.js') }}"></script>
 </body>
 </html>

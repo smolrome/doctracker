@@ -16,48 +16,8 @@
   <div style="display:flex;gap:8px;align-items:center;">
     <a href="/client" class="topbar-back">← My Docs</a>
     {% if saved_offices %}
-    <button type="button" class="btn-qr-offices" onclick="toggleOfficeQR()">
-      🏢 Office QR Codes
-    </button>
-    {% endif %}
   </div>
 </div>
-
-<!-- Office QR Modal -->
-{% if saved_offices %}
-<div id="office-qr-modal" class="office-qr-modal" style="display:none;">
-  <div class="office-qr-overlay" onclick="toggleOfficeQR()"></div>
-  <div class="office-qr-content">
-    <div class="office-qr-header">
-      <h2>🏢 Select Office</h2>
-      <button type="button" class="office-qr-close" onclick="toggleOfficeQR()">✕</button>
-    </div>
-    <p class="office-qr-desc">Choose an office to submit your documents to. Scan the QR code or click "Select This Office".</p>
-    <div class="office-qr-search">
-      <input type="text" id="office-search" placeholder="🔍 Search offices..." oninput="filterOffices(this.value)">
-    </div>
-    <div class="office-qr-grid" id="office-qr-grid">
-      {% for office in saved_offices %}
-      {% set sub_slug = office.office_slug + '-sub' %}
-      <div class="office-qr-card" data-name="{{ office.office_name | lower }}">
-        <div class="office-qr-name">{{ office.office_name }}</div>
-        <img src="/office-qr/{{ sub_slug }}.png" class="office-qr-img" alt="Submit QR — {{ office.office_name }}">
-        {#
-          FIX 1 — Open Redirect: office_slug and office_name are URL-encoded by Jinja's
-          urlencode filter; these are relative paths so they are safe for our
-          _safe_redirect_url() check on the server side.
-        #}
-        <a href="/client/submit?office_slug={{ office.office_slug | urlencode }}&office_name={{ office.office_name | urlencode }}"
-           class="office-qr-select">✓ Select This Office</a>
-        <a href="/office-qr/{{ sub_slug }}.png" download="{{ sub_slug }}.png"
-           class="office-qr-download">⬇️ Download QR</a>
-      </div>
-      {% endfor %}
-    </div>
-    <div class="office-qr-none" id="office-qr-none" style="display:none;">No offices match your search.</div>
-  </div>
-</div>
-{% endif %}
 
 <div class="page">
 

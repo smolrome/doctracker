@@ -1,39 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
 
+<link rel="stylesheet" href="{{url_for('static', filename='css/send_invite.css') }}">
+
 <div class="page-header">
   <a href="/manage-users" class="page-back">← Manage Users</a>
   <div class="page-title">📧 Send Staff Invitation</div>
 </div>
-
-<style>
-  .invite-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
-  .inv-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:24px;}
-  .inv-card h3{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:16px;padding-bottom:10px;border-bottom:1.5px solid var(--border);}
-  .result-box{border-radius:10px;padding:14px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;font-size:14px;font-weight:500;}
-  .result-ok{background:#D1FAE5;border:1.5px solid var(--success);color:#065F46;}
-  .result-err{background:#FEE2E2;border:1.5px solid var(--danger);color:#7F1D1D;}
-  .warn-box{background:#FFFBEB;border:1.5px solid var(--warning);border-radius:10px;padding:14px 16px;font-size:13px;color:#92400E;margin-bottom:20px;display:flex;gap:10px;}
-  .generated-link-box{background:#EFF6FF;border:2px solid var(--accent);border-radius:10px;padding:16px;margin-top:16px;}
-  .generated-link-box label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px;}
-  .link-text{font-size:12px;font-family:monospace;color:var(--text);word-break:break-all;background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px;line-height:1.5;}
-  .setup-steps{list-style:none;counter-reset:step;}
-  .setup-steps li{counter-increment:step;display:flex;gap:12px;margin-bottom:14px;align-items:flex-start;}
-  .setup-steps li::before{content:counter(step);min-width:26px;height:26px;background:var(--accent);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;margin-top:1px;}
-  .setup-steps li p{font-size:13px;color:var(--text);line-height:1.5;margin:0;}
-  /* Tokens table */
-  .tokens-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;}
-  .tokens-head{padding:14px 18px;border-bottom:1.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
-  .tokens-head h3{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--navy);}
-  .token-row{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;font-size:13px;}
-  .token-row:last-child{border-bottom:none;}
-  .token-email{font-weight:600;color:var(--navy);}
-  .token-name{font-size:12px;color:var(--muted);}
-  .tok-used{background:#E2E3E5;color:#383D41;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
-  .tok-valid{background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
-  .tok-expired{background:#FEE2E2;color:#7F1D1D;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
-  @media(max-width:700px){.invite-grid{grid-template-columns:1fr;}}
-</style>
 
 {% if not mail_enabled %}
 <div class="warn-box">
