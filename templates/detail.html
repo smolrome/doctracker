@@ -59,6 +59,18 @@
   {% if logging_slip_id %}
   <a href="/logging-slip/{{ logging_slip_id }}" target="_blank" class="btn btn-secondary" style="background:#059669;color:#fff;">🖨️ Logging Slip</a>
   {% endif %}
+  {% set orig = doc.original_logged_by or doc.logged_by %}
+  {% if logged_in and current_user == orig and doc.logged_by == current_user
+        and doc.status not in ['Released', 'Archived']
+        and doc.routing_cycle is defined and doc.routing_cycle > 0 %}
+  <form method="post" action="/release/{{ doc.id }}"
+        onsubmit="return confirm('Release this document? This will close the workflow.')"
+        style="margin:0;">
+    <button type="submit" class="btn btn-primary" style="background:#059669;">
+      ✅ Release Document
+    </button>
+  </form>
+  {% endif %}
   {% endif %}
   {% if current_role == 'admin' %}
   <form method="post" action="/delete/{{ doc.id }}"
@@ -92,27 +104,38 @@
 </div>
 {% endif %}
 
-<!-- ── STATUS TIMELINE ── -->
-<div class="info-card full" style="margin-bottom:20px;">
-  <div class="info-card-title">📅 Status Timeline</div>
+<!-- ═══ STATUS TIMELINE ═══ -->
+<div class="card">
+  <div class="card-title"><span class="icon">🗓️</span> Status Timeline</div>
+  <hr class="card-divider">
   <div class="timeline">
-    {% set cur = doc.status %}
-    {% set pending_ts = doc.transferred_at or doc.created_at %}
-    {% set steps = [
-      ('Logged',     '🖊️', doc.created_at[:10] if doc.created_at else '', doc.created_at | time12 if doc.created_at else ''),
-      ('Pending',   '⏳', pending_ts[:10] if pending_ts else '', pending_ts | time12 if pending_ts else ''),
-      ('Received',  '📥', doc.date_received[:10] if doc.date_received else '', doc.date_received | time12 if doc.date_received else ''),
+    {% set status_order = ['Logged', 'In Transit', 'Received', 'In Review', 'Rerouted', 'Released'] %}
+    {% set current_status = doc.status %}
+    {% set current_idx = status_order.index(current_status) if current_status in status_order else 0 %}
+
+    {% set timeline_data = [
+      ('Logged', '✏️', doc.created_at[:10] if doc.created_at else '', doc.created_at[11:16] if doc.created_at else ''),
+      ('In Transit', '🚚', doc.transferred_at[:10] if doc.transferred_at else '', doc.transferred_at[11:16] if doc.transferred_at else ''),
+      ('Received', '📥', doc.date_received[:10] if doc.date_received else '', doc.date_received[11:16] if doc.date_received else ''),
       ('In Review', '🔍', '', ''),
-      ('Released',  '✅', doc.date_released[:10] if doc.date_released else '', doc.date_released | time12 if doc.date_released else ''),
+      ('Rerouted', '🔁', '', ''),
+      ('Released', '✅', doc.date_released[:10] if doc.date_released else '', doc.date_released[11:16] if doc.date_released else '')
     ] %}
-    {% set order = ['Logged','Pending','Received','In Review','In Transit','Released'] %}
-    {% set cur_idx = order.index(cur) if cur in order else 0 %}
-    {% for label, icon, date, time in steps %}
-      {% set step_idx = order.index(label) if label in order else 0 %}
-      <div class="tl-step {% if step_idx < cur_idx %}done{% elif step_idx == cur_idx %}current{% endif %}">
-        <div class="tl-dot">{{ icon }}</div>
+
+    {# FIX: use doc.routing_cycle, not doc.reroute_count / doc.reroute_cycle #}
+    {% set reroute_count = doc.routing_cycle if doc.routing_cycle else 0 %}
+
+    {% for label, icon, date, time in timeline_data %}
+      {% set step_idx = status_order.index(label) if label in status_order else 0 %}
+      <div class="tl-item {% if step_idx < current_idx %}done{% elif step_idx == current_idx %}active{% else %}pending{% endif %}">
+        <div class="tl-icon-wrap">{{ icon }}</div>
         <div class="tl-label">{{ label }}</div>
-        {% if date %}<div class="tl-date">{{ date }}<br/><span style="color:var(--teal);font-weight:600;">{{ time }}</span></div>{% endif %}
+        {% if date %}
+        <div class="tl-date">{{ date }}<strong>{{ time }}</strong></div>
+        {% endif %}
+        {% if label == 'Rerouted' and reroute_count > 0 %}
+        <div class="tl-cycle-badge">×{{ reroute_count }} cycles</div>
+        {% endif %}
       </div>
     {% endfor %}
   </div>
@@ -303,125 +326,185 @@
     {% endif %}
   </div>
 
-  <!-- Routing / Destination -->
-  <div class="info-card">
-    <div class="info-card-title">📍 Routing &amp; Destination</div>
-    {% if doc.target_office_name %}
-    <div class="field">
-      <div class="field-label">Target Office (from QR Scan)</div>
-      <div class="field-val" style="color:#5B21B6;font-weight:700;">
-        🏢 {{ doc.target_office_name }}
-      </div>
-    </div>
-    {% endif %}
-    <div class="field">
-      <div class="field-label">Referred To</div>
-      <div class="field-val {% if not doc.referred_to %}empty{% endif %}">
-        {{ doc.referred_to or '—' }}
-      </div>
-    </div>
-    <div class="field">
-      <div class="field-label">Forwarded To</div>
-      <div class="field-val {% if not doc.forwarded_to %}empty{% endif %}">
-        {{ doc.forwarded_to or '—' }}
-      </div>
-    </div>
-    {% if doc.recipient_name %}
-    <div class="field">
-      <div class="field-label">Recipient / Addressee</div>
-      <div class="field-val">
-        {{ doc.recipient_name }}
-        {% if doc.recipient_org %}
-        <br/><span style="font-size:13px;color:var(--muted);">{{ doc.recipient_org }}</span>
-        {% endif %}
-      </div>
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- Travel Log — full width -->
-  <div class="info-card full">
-    <div class="info-card-title">
-      🗺️ Travel Log
-      <span style="font-size:13px;font-weight:600;color:var(--muted);margin-left:auto;">
-        {{ doc.travel_log|length }} entr{{ 'y' if doc.travel_log|length==1 else 'ies' }}
-      </span>
-    </div>
-    {% if doc.travel_log %}
-    <div style="overflow-x:auto;">
-      <table class="tlog-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Office / Unit</th>
-            <th>Action</th>
-            <th>Officer / Staff</th>
-            <th>Date &amp; Time</th>
-            <th>Remarks</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for entry in doc.travel_log %}
-          <tr {% if 'rerouted' in (entry.action|lower) %}style="background:#FEF3C7;"{% endif %}>
-            <td class="tlog-num">{{ loop.index }}</td>
-            <td class="tlog-office">{{ entry.office }}
-              {% if entry.original_slip_no %}
-              <div style="font-size:10px;color:#92400E;">From: {{ entry.original_slip_no }}</div>
-              {% endif %}
-              {% if entry.new_slip_no %}
-              <div style="font-size:10px;color:#0369A1;">New: {{ entry.new_slip_no }}</div>
-              {% endif %}
-            </td>
-            <td>
-              {% set act = entry.action | lower %}
-              {% if 'rerouted' in act %}
-                <span class="tlog-action-badge" style="background:#FEF3C7;color:#92400E;border-color:#F59E0B;">🔄 {{ entry.action }}</span>
-              {% elif 'received' in act %}
-                <span class="tlog-action-badge received">📥 {{ entry.action }}</span>
-              {% elif 'released' in act or 'picked up' in act %}
-                <span class="tlog-action-badge released">✅ {{ entry.action }}</span>
-              {% elif 'submitted' in act %}
-                <span class="tlog-action-badge submitted">📱 {{ entry.action }}</span>
-              {% elif 'logged' in act %}
-                <span class="tlog-action-badge logged">🖊️ {{ entry.action }}</span>
-              {% else %}
-                <span class="tlog-action-badge">{{ entry.action }}</span>
-              {% endif %}
-            </td>
-            <td style="color:var(--text);">{{ entry.officer or '—' }}</td>
-            <td class="tlog-ts">{{ entry.timestamp[:10] if entry.timestamp else "—" }}<br/><span style="color:var(--teal);font-weight:600;">{{ entry.timestamp[11:19] if entry.timestamp and entry.timestamp|length > 10 else '' }}</span></td>
-            <td style="font-size:13px;color:var(--muted);">{{ entry.remarks or '—' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <p style="color:var(--muted);font-size:15px;padding:8px 0;">
-      No travel log entries yet. Attach the QR code to the document and scan at each office.
-    </p>
-    {% endif %}
-  </div>
-
-  <!-- QR Code — full width -->
-  <div class="info-card full">
-    <div class="info-card-title">📱 QR Code</div>
-    <div class="qr-section">
-      <img src="data:image/png;base64,{{ qr_b64 }}"
-           alt="Document QR Code" class="qr-img"/>
-      <div class="qr-info">
-        <p>
-          Print and attach this QR code to the physical document.
-          Each office that handles it scans this code — instantly adding an entry
-          to the travel log above with the officer's name and timestamp.
-        </p>
-        <div class="qr-btns">
-          <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ Download QR PNG</a>
-          <a href="/receive/{{ doc.id }}" class="btn btn-primary" target="_blank">🔗 Open Scan Page</a>
-        </div>
-      </div>
-    </div>
-  </div>
-
 </div>
+<!-- ── END INFO GRID ── -->
+
+<!-- ═══ ROUTING & DESTINATION ═══ -->
+{# FIX: derive last_rerouted_from from travel log — backend never sets this field directly #}
+{% set ns_rr = namespace(last_rerouted_from='—') %}
+{% for entry in doc.travel_log %}
+  {% if 're-routed' in (entry.action|lower) or 'rerouted' in (entry.action|lower) %}
+    {% set ns_rr.last_rerouted_from = entry.office %}
+  {% endif %}
+{% endfor %}
+
+<div class="card">
+  <div class="card-title"><span class="icon">📍</span> Routing &amp; Destination</div>
+  <hr class="card-divider">
+
+  <div class="routing-grid">
+    <div class="routing-block highlight">
+      <div class="r-label">📤 Originated From</div>
+      <div class="r-value">{{ doc.sender_org or '—' }}</div>
+      <div class="r-sub">{{ doc.sender_name or '' }}</div>
+    </div>
+    <div class="routing-block active-route">
+      <div class="r-label">📬 Current / Final Destination</div>
+      <div class="r-value">{{ doc.target_office_name or doc.forwarded_to or '—' }}</div>
+      <div class="r-sub">{{ doc.target_office_name if doc.target_office_name else '' }}</div>
+    </div>
+    <div class="routing-block">
+      <div class="r-label">👤 Referred To</div>
+      <div class="r-value">{{ doc.referred_to or '—' }}</div>
+      <div class="r-sub">Last reviewing officer</div>
+    </div>
+    <div class="routing-block">
+      <div class="r-label">🔀 Last Re-routed From</div>
+      {# FIX: use ns_rr.last_rerouted_from derived above #}
+      <div class="r-value">{{ ns_rr.last_rerouted_from }}</div>
+      <div class="r-sub">Returned to originating staff</div>
+    </div>
+  </div>
+
+  <div class="routing-status-row">
+    <span class="rs-label">Current Status</span>
+    {% set s = doc.status %}
+    {% if s == 'Logged' %}
+    <span class="status-pill pill-logged">🖊️ Logged</span>
+    {% elif s == 'In Transit' or s == 'Pending' %}
+    <span class="status-pill pill-transit">🚚 In Transit</span>
+    {% elif s == 'Received' %}
+    <span class="status-pill pill-received">📥 Received</span>
+    {% elif s == 'In Review' %}
+    <span class="status-pill pill-review">🔍 In Review</span>
+    {% elif s == 'Rerouted' %}
+    <span class="status-pill pill-rerouted">🔁 Re-routed</span>
+    {% elif s == 'Released' %}
+    <span class="status-pill pill-released">✅ Released</span>
+    {% else %}
+    <span class="status-pill">{{ s }}</span>
+    {% endif %}
+    <span style="font-size:11px; color:#9ab0c4; margin-left:4px;">{{ doc.status_description or 'Document in workflow' }}</span>
+  </div>
+</div>
+
+<!-- ═══ TRAVEL LOG ═══ -->
+<div class="card">
+  <div class="log-header-row">
+    <div class="card-title"><span class="icon">🗺️</span> Travel Log</div>
+    <div class="log-count">{{ doc.travel_log|length }} ENTRIES</div>
+  </div>
+  <hr class="card-divider">
+
+  {% if doc.travel_log %}
+  {% set cycle_num = namespace(value=0) %}
+  {% set in_cycle = namespace(value=false) %}
+  {% set final_action = namespace(value=false) %}
+
+  <table class="log-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Office / Unit</th>
+        <th>Action</th>
+        <th>Officer / Staff</th>
+        <th>Date &amp; Time</th>
+        <th>Remarks</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in doc.travel_log %}
+      {% set entry_action = (entry.action or '')|lower %}
+
+      {# FIX: detect both 'rerouted' and 're-routed' (hyphenated) throughout #}
+      {% set is_rerouted = 'rerouted' in entry_action or 're-routed' in entry_action %}
+      {% set is_released = 'released' in entry_action %}
+      {% set is_returned = 'returned' in entry_action %}
+
+      {# Track cycle and final state #}
+      {% if is_rerouted or is_released or is_returned %}
+        {% set in_cycle.value = true %}
+        {% if is_released %}
+          {% set final_action.value = true %}
+        {% endif %}
+      {% endif %}
+
+      {# Insert cycle separator row before each reroute entry (after the first) #}
+      {% if is_rerouted and loop.index > 1 %}
+        {% set cycle_num.value = cycle_num.value + 1 %}
+        <tr class="cycle-row"><td colspan="6">⟳ &nbsp; Routing Cycle {{ cycle_num.value + 1 }}</td></tr>
+      {% endif %}
+
+      <tr {% if final_action.value and loop.last %}class="final-row"{% endif %}
+          {% if is_rerouted %}style="background:#FFF3E0;"{% endif %}>
+        <td class="td-num">{{ loop.index }}</td>
+        <td class="td-office">{{ entry.office or '—' }}
+          {% if entry.original_slip_no %}
+          <div style="font-size:10px;color:#92400E;">From: {{ entry.original_slip_no }}</div>
+          {% endif %}
+          {% if entry.new_slip_no %}
+          <div style="font-size:10px;color:#0369A1;">New: {{ entry.new_slip_no }}</div>
+          {% endif %}
+        </td>
+        <td>
+          {% if 'logged' in entry_action %}
+            <span class="action-pill ap-logged">✏️ {{ entry.action or 'Document Logged' }}</span>
+          {% elif 'transit' in entry_action or 'routed' in entry_action %}
+            <span class="action-pill ap-transit">🚚 {{ entry.action or 'In Transit' }}</span>
+          {% elif 'received' in entry_action %}
+            <span class="action-pill ap-received">📥 {{ entry.action or 'Received' }}</span>
+          {% elif 'review' in entry_action %}
+            <span class="action-pill ap-review">🔍 {{ entry.action or 'In Review' }}</span>
+          {% elif is_rerouted or is_returned %}
+            {# FIX: use is_rerouted variable which already checks both spellings #}
+            <span class="action-pill ap-rerouted">🔁 {{ entry.action or 'Re-routed' }}</span>
+          {% elif is_released %}
+            <span class="action-pill ap-released">✅ {{ entry.action or 'Released' }}</span>
+          {% else %}
+            <span class="action-pill">{{ entry.action or '—' }}</span>
+          {% endif %}
+        </td>
+        <td class="td-staff">{{ entry.officer or entry.actor or '—' }}
+          {% if entry.officer %}
+          <span>{{ entry.office or '' }}</span>
+          {% endif %}
+        </td>
+        <td class="td-datetime">{{ entry.timestamp[:10] if entry.timestamp else '—' }}<strong>{{ entry.timestamp[11:16] if entry.timestamp and entry.timestamp|length > 10 else '' }}</strong></td>
+        <td class="td-remarks">{{ entry.remarks or entry.entry or '—' }}</td>
+      </tr>
+
+      {# Insert final separator after last released entry #}
+      {% if final_action.value and loop.last %}
+      <tr class="cycle-row"><td colspan="6">✅ &nbsp; Final Action — Document Released</td></tr>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:#7a94ae;font-size:15px;padding:20px;text-align:center;background:#f5f8fb;border-radius:10px;">
+    No travel log entries yet. Attach the QR code to the document and scan at each office.
+  </p>
+  {% endif %}
+</div>
+
+<!-- ── QR Code — full width ── -->
+<div class="info-card full">
+  <div class="info-card-title">📱 QR Code</div>
+  <div class="qr-section">
+    <img src="data:image/png;base64,{{ qr_b64 }}"
+         alt="Document QR Code" class="qr-img"/>
+    <div class="qr-info">
+      <p>
+        Print and attach this QR code to the physical document.
+        Each office that handles it scans this code — instantly adding an entry
+        to the travel log above with the officer's name and timestamp.
+      </p>
+      <div class="qr-btns">
+        <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ Download QR PNG</a>
+        <a href="/receive/{{ doc.id }}" class="btn btn-primary" target="_blank">🔗 Open Scan Page</a>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}

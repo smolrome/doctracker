@@ -81,10 +81,17 @@ def index():
 
     docs = load_docs()
     if user_role != "admin":
-        # Exclude documents that are pending acceptance for this user
-        # (they should only appear in "Documents to Receive" modal until accepted)
-        docs = [d for d in docs if d.get("logged_by") == current_username 
-                and not (d.get("transfer_status") == "pending" and d.get("pending_at_staff") == current_username)]
+        docs = [
+            d for d in docs
+            if (
+                d.get("logged_by") == current_username
+                or d.get("original_logged_by") == current_username
+            )
+            and not (
+                d.get("transfer_status") == "pending"
+                and d.get("pending_at_staff") == current_username
+            )
+        ]
 
     search           = request.args.get("search", "").lower()
     filter_status    = request.args.get("status", "All")
@@ -296,6 +303,8 @@ def add():
                         "routing":        [],
                         "travel_log":     [],
                         "logged_by":      session.get("username"),
+                        "original_logged_by": session.get("username"),
+                        "routing_cycle": 0,
                     }
                     doc["travel_log"].append({
                         "office":    item["sender_org"] or "Division Office",
@@ -541,7 +550,6 @@ def update_status(doc_id):
 @dashboard_bp.route("/transfer/<doc_id>", methods=["GET", "POST"])
 @login_required
 def transfer_doc(doc_id):
-    """Transfer/route a document to another staff member."""
     doc = get_doc(doc_id)
     if not doc:
         flash("Document not found.", "error")
@@ -550,8 +558,12 @@ def transfer_doc(doc_id):
     current_user = session.get("username", "")
     user_role    = session.get("role", "")
 
-    if user_role != "admin" and doc.get("logged_by") != current_user:
-        flash("You can only transfer documents you logged.", "error")
+    # Both the original logger AND any currently assigned staff can route
+    is_original  = doc.get("original_logged_by") == current_user
+    is_current   = doc.get("logged_by") == current_user
+
+    if user_role != "admin" and not is_original and not is_current:
+        flash("You are not authorized to route this document.", "error")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
 
     if request.method == "POST":
@@ -563,34 +575,45 @@ def transfer_doc(doc_id):
             return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
 
         if new_staff == current_user:
-            flash("You cannot transfer to yourself.", "error")
+            flash("You cannot route to yourself.", "error")
             return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
 
         all_users   = get_all_users()
         valid_staff = [u["username"] for u in all_users if u.get("role") != "client"]
 
-        new_staff_office = ""
-        for u in all_users:
-            if u.get("username") == new_staff:
-                new_staff_office = u.get("office", "")
-                break
-
         if new_staff not in valid_staff:
             flash("Invalid staff member selected.", "error")
             return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
 
-        old_staff   = doc.get("logged_by", "unknown")
-        old_status  = doc.get("status", "")
-        status_note = "(Inside Office)" if transfer_type == "inside_office" else "(Outside Office)"
-
-        # Get the full name of the new staff member for display
+        new_staff_office    = ""
         new_staff_full_name = ""
         for u in all_users:
             if u.get("username") == new_staff:
+                new_staff_office    = u.get("office", "")
                 new_staff_full_name = u.get("full_name", "") or new_staff
                 break
 
-        doc["status"]                = "Pending"
+        original_logger = doc.get("original_logged_by", doc.get("logged_by", ""))
+        old_status      = doc.get("status", "")
+        cycle           = doc.get("routing_cycle", 0)
+        status_note     = "(Inside Office)" if transfer_type == "inside_office" else "(Outside Office)"
+
+        # Determine if this is a forward route (original → another office)
+        # or a re-route back (another office → original logger)
+        routing_back_to_origin = (new_staff == original_logger)
+
+        if routing_back_to_origin:
+            # ── RE-ROUTING BACK TO ORIGINAL STAFF ──
+            new_cycle = cycle + 1
+            action_label = f"Re-routed back to Originating Staff (Cycle {new_cycle})"
+            new_status   = "In Transit"
+            doc["routing_cycle"] = new_cycle
+        else:
+            # ── ROUTING FORWARD TO ANOTHER OFFICE ──
+            action_label = f"Routed — In Transit {status_note} (Cycle {cycle + 1})"
+            new_status   = "In Transit"
+
+        doc["status"]                = new_status
         doc["logged_by"]             = new_staff
         doc["transferred_to"]        = new_staff
         doc["transferred_to_office"] = new_staff_office
@@ -599,45 +622,133 @@ def transfer_doc(doc_id):
         doc["transfer_type"]         = transfer_type
         doc["pending_at_staff"]      = new_staff
         doc["pending_at_office"]     = new_staff_office
-        doc["pending_at_staff_name"]  = new_staff_full_name
-        doc["transfer_status"]       = "pending"  # Track accept/reject status
+        doc["pending_at_staff_name"] = new_staff_full_name
+        doc["transfer_status"]       = "pending"
+
+        current_full_name = session.get("full_name") or session.get("username")
+        current_office    = session.get("office") or "DepEd Leyte Division"
 
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
-            "action":    f"Document Pending {status_note}",
-            "officer":   session.get("full_name") or session.get("username"),
+            "action":    action_label,
+            "officer":   current_full_name,
             "timestamp": now_str(),
-            "remarks":   f"Transferred from {old_staff} ({old_status}) to {new_staff} at {new_staff_office or 'N/A'} {status_note}.",
+            "remarks":   (
+                f"Re-routed from {new_staff_office or 'receiving office'} back to "
+                f"originating staff. Cycle {doc['routing_cycle']} completed."
+                if routing_back_to_origin else
+                f"Routed from {current_office} → {new_staff_office or 'N/A'} "
+                f"{status_note}. Previous status: {old_status}."
+            ),
         })
+
         save_doc(doc)
-        audit_log("doc_transferred",
-                  f"doc_id={doc_id} from={old_staff} to={new_staff} type={transfer_type} doc_name={doc.get('doc_name','')[:60]}",
-                  username=session.get("username","?"), ip=get_client_ip())
-        flash(f"Document transferred to {new_staff_full_name} at {new_staff_office or 'N/A'} {status_note}. Status changed to Pending.", "success")
+        audit_log(
+            "doc_rerouted" if routing_back_to_origin else "doc_transferred",
+            f"doc_id={doc_id} from={current_user} to={new_staff} "
+            f"cycle={doc.get('routing_cycle',0)} doc_name={doc.get('doc_name','')[:60]}",
+            username=current_user, ip=get_client_ip()
+        )
+
+        if routing_back_to_origin:
+            flash(
+                f"Document re-routed back to {new_staff_full_name}. "
+                f"Routing cycle {doc['routing_cycle']} recorded.", "success"
+            )
+        else:
+            flash(
+                f"Document routed to {new_staff_full_name} at "
+                f"{new_staff_office or 'N/A'} {status_note}.", "success"
+            )
+
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
-    
-    # GET — resolve office of currently logged-in user (for internal transfers)
-    # Normalize empty office to "No Office" to match _get_staff_by_office logic
+
+    # ── GET ──
     all_users      = get_all_users()
     logged_in_user = session.get("username", "")
-    raw_office = ""
+    raw_office     = ""
     for u in all_users:
         if u.get("username") == logged_in_user:
             raw_office = u.get("office", "") or ""
             break
     current_user_office = raw_office if raw_office else "No Office"
 
-    offices_dict, sorted_offices = _build_offices_dict_and_sorted(current_user, current_user_office)
+    offices_dict, sorted_offices = _build_offices_dict_and_sorted(
+        current_user, current_user_office
+    )
 
-    staff_in_office = offices_dict.get(current_user_office, [])
+    original_logger = doc.get("original_logged_by", "")
 
-    return render_template("transfer.html", doc=doc,
-                           offices_dict=offices_dict,
-                           sorted_offices=sorted_offices,
-                           current_office=current_user_office,
-                           current_user_name=session.get('full_name', ''),
-                           current_user_role=session.get('role', ''))
+    return render_template(
+        "transfer.html", doc=doc,
+        offices_dict=offices_dict,
+        sorted_offices=sorted_offices,
+        current_office=current_user_office,
+        current_user_name=session.get("full_name", ""),
+        current_user_role=session.get("role", ""),
+        original_logger=original_logger,          # ← pass to template
+        routing_cycle=doc.get("routing_cycle", 0) # ← pass to template
+    )
+    
+    
+@dashboard_bp.route("/release/<doc_id>", methods=["POST"])
+@login_required
+def release_doc(doc_id):
+    """
+    Final release — only callable by the original logging staff,
+    after all routing cycles are done and the document is back with them.
+    """
+    doc = get_doc(doc_id)
+    if not doc:
+        flash("Document not found.", "error")
+        return redirect(url_for("dashboard.index"))
 
+    current_user    = session.get("username", "")
+    original_logger = doc.get("original_logged_by", doc.get("logged_by", ""))
+
+    # Only the original logger (or admin) can release
+    if session.get("role") != "admin" and current_user != original_logger:
+        flash("Only the staff who originally logged this document can release it.", "error")
+        return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
+
+    # Document must be back in the original logger's hands
+    if doc.get("logged_by") != current_user and session.get("role") != "admin":
+        flash("Document must be returned to you before you can release it.", "error")
+        return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
+
+    current_full_name = session.get("full_name") or session.get("username")
+    current_office    = session.get("office") or "DepEd Leyte Division"
+    total_cycles      = doc.get("routing_cycle", 0)
+
+    doc["status"]        = "Released"
+    doc["date_released"] = now_str()[:16].replace("T", " ")
+    doc["released_by"]   = current_user
+    doc["transfer_status"] = "released"
+
+    doc.setdefault("travel_log", []).append({
+        "office":    current_office,
+        "action":    "Released by Originating Staff",
+        "officer":   current_full_name,
+        "timestamp": now_str(),
+        "remarks":   (
+            f"All routing cycles completed ({total_cycles} cycle"
+            f"{'s' if total_cycles != 1 else ''}). "
+            f"Document officially released by {current_full_name}. Workflow closed."
+        ),
+    })
+
+    save_doc(doc)
+    audit_log(
+        "doc_released",
+        f"doc_id={doc_id} released_by={current_user} cycles={total_cycles} "
+        f"doc_name={doc.get('doc_name','')[:60]}",
+        username=current_user, ip=get_client_ip()
+    )
+    flash(
+        f"Document released successfully after {total_cycles} routing "
+        f"cycle{'s' if total_cycles != 1 else ''}. Workflow is now closed.", "success"
+    )
+    return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
 
 # ── Batch Transfer ─────────────────────────────────────────────────────────────
 
@@ -693,13 +804,25 @@ def transfer_batch():
             continue
         if user_role != "admin" \
         and doc.get("logged_by") != current_user \
-        and doc.get("transferred_by") != current_user:
+        and doc.get("original_logged_by") != current_user:
             continue
 
-        old_staff  = doc.get("logged_by", "unknown")
-        old_status = doc.get("status", "")
+        old_status      = doc.get("status", "")
+        original_logger = doc.get("original_logged_by", doc.get("logged_by", ""))
+        cycle           = doc.get("routing_cycle", 0)
 
-        doc["status"]                = "Pending"
+        # Preserve original_logged_by — never overwrite it
+        if not doc.get("original_logged_by"):
+            doc["original_logged_by"] = doc.get("logged_by", current_user)
+
+        routing_back = (new_staff == original_logger)
+        if routing_back:
+            doc["routing_cycle"] = cycle + 1
+            action_label = f"Batch Re-routed to Originating Staff (Cycle {doc['routing_cycle']})"
+        else:
+            action_label = f"Batch Routed — In Transit {status_note} (Cycle {cycle + 1})"
+
+        doc["status"]                = "In Transit"
         doc["logged_by"]             = new_staff
         doc["transferred_to"]        = new_staff
         doc["transferred_to_office"] = new_staff_office
@@ -713,10 +836,14 @@ def transfer_batch():
 
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
-            "action":    f"Batch Transfer {status_note}",
+            "action":    action_label,
             "officer":   session.get("full_name") or session.get("username"),
             "timestamp": now_str(),
-            "remarks":   f"Transferred from {old_staff} ({old_status}) to {new_staff} at {new_staff_office or 'N/A'} {status_note}.",
+            "remarks":   (
+                f"Batch re-routed back to originating staff. Cycle {doc['routing_cycle']} completed."
+                if routing_back else
+                f"Batch routed from {current_user} → {new_staff} at {new_staff_office or 'N/A'} {status_note}."
+            ),
         })
         save_doc(doc)
         transferred_count += 1
@@ -724,7 +851,7 @@ def transfer_batch():
     audit_log("doc_batch_transferred",
               f"count={transferred_count} to={new_staff} type={transfer_type}",
               username=session.get("username","?"), ip=get_client_ip())
-    flash(f"{transferred_count} document(s) transferred to {new_staff_full_name} at {new_staff_office or 'N/A'}. Status changed to Pending.", "success")
+    flash(f"{transferred_count} document(s) transferred to {new_staff_full_name} at {new_staff_office or 'N/A'}. Status changed to In Transit", "success")
     return redirect(url_for("dashboard.index"))
 
 
@@ -849,26 +976,28 @@ def accept_document(doc_id):
         return redirect(url_for("dashboard.index"))
     
     try:
-        # Update document status
+        receiving_office = doc.get("pending_at_office", "") or doc.get("transferred_to_office", "")
+        # Replace this block inside accept_document:
         doc["transfer_status"] = "accepted"
-        doc["accepted_by"] = current_user
+        doc["accepted_by"]     = current_user
         doc["accepted_by_name"] = current_full_name or current_user
-        doc["accepted_at"] = now_str()
-        doc["status"] = "Received"  # Update main status to Received
-        # Set date_received when accepting
+        doc["accepted_at"]     = now_str()
+        doc["status"]          = "Received"
         if not doc.get("date_received"):
-            doc["date_received"] = now_str()[:16].replace('T', ' ')
-        # Clear pending_at_staff since it's now accepted
-        doc["pending_at_staff"] = ""
+            doc["date_received"] = now_str()[:16].replace("T", " ")
+        doc["pending_at_staff"]  = ""
         doc["pending_at_office"] = ""
-        
-        # Add to travel log
+        # original_logged_by is intentionally NOT touched here
+
         doc.setdefault("travel_log", []).append({
-            "office":    doc.get("pending_at_office", ""),
-            "action":    "Document Accepted",
+            "office":    receiving_office,
+            "action":    "Document Received",
             "officer":   current_full_name or current_user,
             "timestamp": now_str(),
-            "remarks":   f"Document accepted by {current_full_name or current_user}.",
+            "remarks":   (
+                f"Document received and accepted by {current_full_name or current_user}. "
+                f"Routing cycle {doc.get('routing_cycle', 0) + 1} in progress."
+            ),
         })
         
         save_doc(doc)
@@ -911,7 +1040,9 @@ def reject_document(doc_id):
         return redirect(url_for("dashboard.index"))
     
     # Store sender info before updating
-    original_sender = doc.get("transferred_by", "")
+    original_sender = doc.get("original_logged_by") or doc.get("transferred_by", "")
+    
+    rejecting_office = doc.get("pending_at_office", "")
     
     # Update document status
     doc["transfer_status"] = "rejected"
@@ -923,11 +1054,12 @@ def reject_document(doc_id):
     
     # Return document to the sender
     doc["logged_by"] = original_sender
+    doc["pending_at_office"] = ""  # Clear pending office since it's going back to sender
     doc["pending_at_staff"] = original_sender
     
     # Add to travel log
     doc.setdefault("travel_log", []).append({
-        "office":    doc.get("pending_at_office", ""),
+        "office":    rejecting_office,
         "action":    "Document Rejected",
         "officer":   current_full_name or current_user,
         "timestamp": now_str(),
