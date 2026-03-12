@@ -135,11 +135,17 @@ function rowClick(e, docId) {
 
 // ── Routing Modal ─────────────────────────────────────────────────────────
 function openRoutingModal() {
-  // Use base.css openModal() helper — adds .open class
   openModal('routing-modal');
   updateSelectedPreview();
   const sd = document.getElementById('slip-date');
   if (sd && !sd.value) sd.value = new Date().toISOString().slice(0, 10);
+
+  // Reset submit button in case it was disabled from a previous attempt
+  const btn = document.querySelector('.btn-route');
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = '🚀 Create Routing Slip';
+  }
 }
 
 function closeRoutingModal() { closeModal('routing-modal'); }
@@ -162,7 +168,13 @@ function openTransferModal() {
   document.getElementById('transfer-office-info').textContent = '';
   document.getElementById('transfer-staff').innerHTML = '<option value="">— Select Staff —</option>';
   document.getElementById('transfer-staff').disabled  = true;
-  if (document.getElementById('btn-do-transfer')) document.getElementById('btn-do-transfer').disabled = true;
+
+  // Reset transfer button
+  const btn = document.getElementById('btn-do-transfer');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '🔄 Transfer Documents';
+  }
 
   _hideTransferBlock('transfer-office-block');
   _hideTransferBlock('transfer-staff-block');
@@ -257,11 +269,11 @@ function onTransferStaffChangeIndex() {
 }
 
 function submitTransfer() {
-  const csrfToken   = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  const csrfToken    = document.querySelector('meta[name="csrf-token"]')?.content || '';
   const transferType = document.getElementById('transfer-type').value;
-  const office      = document.getElementById('transfer-office').value || modalCurrentOffice;
-  const staff       = document.getElementById('transfer-staff').value;
-  const selectedIds = Array.from(document.querySelectorAll('.doc-checkbox:checked')).map(function (c) { return c.value; });
+  const office       = document.getElementById('transfer-office').value || modalCurrentOffice;
+  const staff        = document.getElementById('transfer-staff').value;
+  const selectedIds  = Array.from(document.querySelectorAll('.doc-checkbox:checked')).map(function (c) { return c.value; });
 
   if (!transferType || !staff) {
     alert('Please complete all steps before transferring.');
@@ -271,6 +283,14 @@ function submitTransfer() {
   if (!transferSingleDocId && !selectedIds.length) {
     alert('Please select at least one document to transfer.');
     return;
+  }
+
+  // ── GUARD: prevent double-submit ──
+  const btn = document.getElementById('btn-do-transfer');
+  if (btn) {
+    if (btn.disabled) return;   // already submitted
+    btn.disabled = true;
+    btn.textContent = '⏳ Transferring…';
   }
 
   const form = document.createElement('form');
@@ -331,7 +351,6 @@ function updateSelection() {
     cb.closest('tr').classList.toggle('row-selected', cb.checked);
   });
 
-  // CHANGED: toggle .selection-active instead of display:none/flex
   const slipBtn     = document.getElementById('btn-create-slip');
   const transferBtn = document.getElementById('btn-transfer');
 
@@ -428,22 +447,286 @@ function submitRouting() {
   const ids = Array.from(document.querySelectorAll('.doc-checkbox:checked')).map(function (cb) { return cb.value; });
   if (!ids.length) { alert('No documents selected.'); return; }
 
-  document.getElementById('routing-doc-ids').value    = ids.join(',');
-  document.getElementById('routing-dest-field').value = dest;
-  document.getElementById('routing-notes').value      = document.getElementById('route-notes').value;
-  document.getElementById('routing-slip-date').value  = document.getElementById('slip-date').value;
-  document.getElementById('routing-time-from').value  = document.getElementById('time-from').value;
-  document.getElementById('routing-time-to').value    = document.getElementById('time-to').value;
-  document.getElementById('routing-form').submit();
+  // ── GUARD: prevent double-submit ──
+  const btn = document.querySelector('.btn-route');
+  if (btn) {
+    if (btn.disabled) return;   // already submitted
+    btn.disabled = true;
+    btn.textContent = '⏳ Creating slip…';
+  }
+
+  // Prepare form data
+  const formData = new FormData();
+  formData.append('doc_ids', ids.join(','));
+  formData.append('destination', dest);
+  formData.append('notes', document.getElementById('route-notes').value || '');
+  formData.append('slip_date', document.getElementById('slip-date').value || '');
+  formData.append('time_from', document.getElementById('time-from').value || '');
+  formData.append('time_to', document.getElementById('time-to').value || '');
+  
+  // Get CSRF token
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  if (csrfToken) {
+    formData.append('_csrf_token', csrfToken);
+  }
+
+  // Use fetch API for AJAX request
+  fetch('/routing-slip/create', {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest'
+    }
+  })
+  .then(function (response) { return response.json(); })
+  .then(function (data) {
+    if (data.success) {
+      // Close the routing modal
+      closeRoutingModal();
+      
+      // Display the routing slip result in modal
+      displayRoutingSlipModal(data);
+      
+      // Clear selections
+      document.querySelectorAll('.doc-checkbox:checked').forEach(function (cb) {
+        cb.checked = false;
+        cb.closest('tr').classList.remove('row-selected');
+      });
+      updateSelection();
+      
+      // Reset the form
+      document.getElementById('route-dest').value = '';
+      document.getElementById('route-notes').value = '';
+      document.getElementById('modal-dest-preview').textContent = '(enter destination below)';
+    } else {
+      alert(data.error || 'Failed to create routing slip.');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '🚀 Create Routing Slip';
+      }
+    }
+  })
+  .catch(function (err) {
+    console.error('Error creating routing slip:', err);
+    alert('An error occurred while creating the routing slip.');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🚀 Create Routing Slip';
+    }
+  });
+}
+
+// Display routing slip in modal
+function displayRoutingSlipModal(data) {
+  const content = document.getElementById('routing-slip-content');
+  
+  // Format date
+  const slipDate = data.slip_date || data.created_at.slice(0, 10);
+  const slipTime = data.created_at.slice(11, 19);
+  const timeCovered = (data.time_from || data.time_to) ? 
+    `<div class="meta-cell">
+      <div class="meta-label">Time Covered</div>
+      <div class="meta-val">${data.time_from || '—'} – ${data.time_to || '—'}</div>
+    </div>` : '';
+  
+  // Build documents table
+  let docsHtml = '';
+  data.docs.forEach(function (doc, index) {
+    docsHtml += `
+      <tr>
+        <td class="num-cell">${index + 1}</td>
+        <td>
+          <div class="doc-name">${doc.doc_name || '—'}</div>
+          ${doc.doc_id ? `<div class="doc-ref">${doc.doc_id}</div>` : ''}
+          ${doc.category ? `<div class="doc-cat">${doc.category}</div>` : ''}
+        </td>
+        <td style="font-size:13px">${doc.sender_org || '—'}</td>
+        <td style="font-size:13px">${doc.sender_name || '—'}</td>
+        <td style="font-size:13px">${doc.referred_to || '—'}</td>
+        <td class="sig-cell">
+          <div class="sig-line"></div>
+          <div class="sig-sub">Date</div>
+        </td>
+      </tr>
+    `;
+  });
+  
+  // Build notes section if present
+  const notesHtml = data.notes ? `
+    <div class="notes-strip">
+      <div class="notes-lbl">📝 Notes / Instructions</div>
+      <div class="notes-text">${data.notes}</div>
+    </div>
+  ` : '';
+  
+  // Build the full modal content
+  content.innerHTML = `
+    <div class="slip-card" style="box-shadow:none;border:1px solid #e2e8f0;">
+      <!-- Meta strip -->
+      <div class="meta-strip" style="background:#f8fafc;">
+        <div class="meta-cell highlight">
+          <div class="meta-label">Slip No.</div>
+          <div class="meta-val">${data.slip_no}</div>
+        </div>
+        <div class="meta-cell">
+          <div class="meta-label">Date</div>
+          <div class="meta-val">${slipDate}</div>
+        </div>
+        <div class="meta-cell">
+          <div class="meta-label">Time Routed</div>
+          <div class="meta-val">${slipTime}</div>
+        </div>
+        ${timeCovered}
+        <div class="meta-cell">
+          <div class="meta-label">No. of Documents</div>
+          <div class="meta-val">${data.doc_count}</div>
+        </div>
+        <div class="meta-cell">
+          <div class="meta-label">Prepared By</div>
+          <div class="meta-val">${data.prepared_by}</div>
+        </div>
+      </div>
+      
+      <!-- Body -->
+      <div class="slip-body">
+        <!-- From → To route indicator -->
+        <div style="display:flex;align-items:center;gap:0;margin-bottom:16px;
+                    border:1.5px solid #cbd5e1;border-radius:12px;overflow:hidden;">
+          <div style="flex:1;padding:12px 18px;background:#f8fafc;">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;
+                        letter-spacing:.1em;color:#64748b;margin-bottom:2px;">From Office</div>
+            <div style="font-weight:800;color:#0a2540;font-size:.95rem;">
+              ${data.from_office}
+            </div>
+          </div>
+          <div style="padding:0 14px;font-size:1.4rem;color:#0e7490;font-weight:900;">→</div>
+          <div style="flex:1;padding:12px 18px;background:#eff6ff;border-left:1.5px solid #cbd5e1;">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;
+                        letter-spacing:.1em;color:#64748b;margin-bottom:2px;">To Office</div>
+            <div style="font-weight:800;color:#1d4ed8;font-size:.95rem;">${data.destination}</div>
+          </div>
+        </div>
+        
+        ${notesHtml}
+        
+        <!-- Documents table -->
+        <div class="docs-header">
+          <div class="docs-header-title">Documents Included</div>
+          <div class="docs-count-pill">${data.doc_count}</div>
+        </div>
+        
+        <div class="tbl-wrap">
+          <table class="slip-table">
+            <thead>
+              <tr>
+                <th style="width:38px;text-align:center">#</th>
+                <th>Document / Content</th>
+                <th>Unit / Office / School</th>
+                <th>Sender</th>
+                <th>Referred To</th>
+                <th class="sig-cell" style="width:120px">Date Received</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${docsHtml}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Update the print and view buttons
+  document.getElementById('routing-slip-print-btn').onclick = function() {
+    printRoutingSlipContent(content);
+  };
+  document.getElementById('routing-slip-view-btn').href = '/routing-slip/' + data.slip_id;
+  
+  // Store slip data for printing
+  window.currentRoutingSlipData = data;
+  
+  // Open the modal
+  openModal('routing-slip-result-modal');
+}
+
+// Close the routing slip result modal
+function closeRoutingSlipResultModal() {
+  closeModal('routing-slip-result-modal');
+}
+
+// Print routing slip content
+function printRoutingSlipContent(content) {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Please allow popups to print.');
+    return;
+  }
+  
+  const data = window.currentRoutingSlipData;
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Routing Slip ${data.slip_no}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
+      <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Outfit',sans-serif;background:#fff;color:#0A2540;padding:20px;}
+        .slip-card{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;}
+        .meta-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));border-bottom:2px solid #cbd5e1;}
+        .meta-cell{padding:12px 16px;border-right:1.5px solid #cbd5e1;}
+        .meta-cell:last-child{border-right:none}
+        .meta-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin-bottom:4px}
+        .meta-val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:#0A2540}
+        .meta-cell.highlight{background:#fef9ec}
+        .meta-cell.highlight .meta-val{color:#c8922a}
+        .slip-body{padding:20px}
+        .route-indicator{display:flex;align-items:center;gap:0;margin-bottom:16px;border:1.5px solid #cbd5e1;border-radius:12px;overflow:hidden;}
+        .route-from{flex:1;padding:12px 18px;background:#f8fafc;}
+        .route-to{flex:1;padding:12px 18px;background:#eff6ff;border-left:1.5px solid #cbd5e1;}
+        .route-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin-bottom:2px}
+        .route-office{font-weight:800;font-size:14px}
+        .route-arrow{padding:0 14px;font-size:1.4rem;color:#0e7490;font-weight:900}
+        .notes-strip{background:#fffaeb;border:1.5px solid #fcd34d;border-radius:12px;padding:14px 18px;margin-bottom:16px}
+        .notes-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#92400e;margin-bottom:6px}
+        .notes-text{font-size:14px;color:#78350f}
+        .docs-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+        .docs-header-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#0A2540}
+        .docs-count-pill{background:#0A2540;color:#fff;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700}
+        .slip-table{width:100%;border-collapse:collapse;font-size:12px}
+        .slip-table thead tr{background:#0A2540}
+        .slip-table th{padding:10px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.85);border-right:1px solid rgba(255,255,255,.15)}
+        .slip-table th:last-child{border-right:none}
+        .slip-table td{padding:10px 12px;border-bottom:1.5px solid #e2eaf1;border-right:1.5px solid #e2eaf1;vertical-align:middle}
+        .slip-table td:last-child{border-right:none}
+        .slip-table tr:last-child td{border-bottom:none}
+        .slip-table tbody tr:nth-child(even) td{background:#f8fafb}
+        .doc-name{font-weight:700;font-size:13px}
+        .doc-ref{font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b;margin-top:2px}
+        .doc-cat{display:inline-block;margin-top:4px;padding:2px 8px;border-radius:6px;background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700}
+        .num-cell{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#64748b;text-align:center}
+        .sig-cell{text-align:center;min-width:80px}
+        .sig-line{border-bottom:1.5px solid #0A2540;margin:20px 6px 5px;height:1px}
+        .sig-sub{font-size:9px;color:#64748b}
+      </style>
+    </head>
+    <body>
+      ${content.innerHTML}
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(function() { printWindow.print(); }, 500);
+}
+
+// Legacy function for print button
+function printRoutingSlip() {
+  const content = document.getElementById('routing-slip-content');
+  printRoutingSlipContent(content);
 }
 
 // ── Pending banner ─────────────────────────────────────────────────────────
-/*
-  CHANGED: banner visibility now controlled with .visible class
-  instead of inline style. The base.js checkPendingDocuments()
-  still updates #pending-banner-count and controls banner
-  visibility — but we patch it here so it uses the CSS class.
-*/
 document.addEventListener('DOMContentLoaded', function () {
   const origCheck = window.checkPendingDocuments;
   if (typeof origCheck === 'function') {
@@ -461,46 +744,33 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .catch(function (err) { console.error('pending-count error:', err); });
     };
-    // Run immediately after patching
     window.checkPendingDocuments();
   }
 });
 
 /* ── Sticky offset calculator ──────────────────────────────────────────────
-   Measures the real nav height (works with base.html's plain <nav> tag)
-   and cascades every sticky layer below it.
+   Measures the real nav height and cascades every sticky layer below it.
 ────────────────────────────────────────────────────────────────────────── */
 function recalcStickyOffsets() {
   const root = document.documentElement;
-
-  /* Use offsetHeight — this is the CSS layout height, independent of
-     scroll position (unlike getBoundingClientRect which shifts as you scroll).
-     Each sticky layer's top = sum of all layers above it. */
 
   const navbar  = document.querySelector('nav');
   const navH    = navbar ? navbar.offsetHeight : 0;
   root.style.setProperty('--navbar-h', navH + 'px');
 
-  /* Stats bar → sticks at navH */
   const statsBar = document.getElementById('stats-sticky-bar');
   const statsH   = statsBar ? statsBar.offsetHeight : 0;
   root.style.setProperty('--filter-top', navH + 'px');
 
-  /* Filter bar → sticks at navH + statsH */
   const filterBar = document.getElementById('filter-sticky-bar');
   const filterH   = filterBar ? filterBar.offsetHeight : 0;
   root.style.setProperty('--thead-top', (navH + statsH) + 'px');
 
-  /* Table action bar → sticks at navH + statsH + filterH */
   const tableHead  = document.getElementById('table-action-bar');
   const tableHeadH = tableHead ? tableHead.offsetHeight : 0;
   const colHeadTop = navH + statsH + filterH;
   root.style.setProperty('--col-head-top', colHeadTop + 'px');
 
-  /* Note: #table-action-bar itself sticks at --thead-top = navH + statsH.
-     Then <thead> sticks at --col-head-top = navH + statsH + filterH.
-     That means there's a gap of filterH between them — filterH includes
-     the filter bar's padding, so this is correct. */
   root.style.setProperty('--tbody-top', (colHeadTop + tableHeadH) + 'px');
 }
 

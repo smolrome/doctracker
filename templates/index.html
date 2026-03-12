@@ -342,6 +342,30 @@ var serverSessionData = {
 </form>
 
 {# ══════════════════════════════════
+   ROUTING SLIP RESULT MODAL
+   Displays the created routing slip in a modal
+══════════════════════════════════ #}
+<div id="routing-slip-result-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="routing-slip-modal-title">
+  <div class="route-panel" style="max-width:700px;max-height:90vh;overflow-y:auto;">
+    <div class="rp-header" style="background:linear-gradient(135deg,var(--navy,#0A2540),#0E4D72);">
+      <div class="rp-title" id="routing-slip-modal-title" style="color:#fff;">
+        ✅ Routing Slip Created
+      </div>
+      <button class="rp-close" onclick="closeRoutingSlipResultModal()" aria-label="Close" style="color:#fff;background:rgba(255,255,255,0.15);">✕ Close</button>
+    </div>
+    
+    <div id="routing-slip-content" style="padding:20px;">
+      <!-- Routing slip content will be inserted here by JavaScript -->
+    </div>
+    
+    <div class="rp-bottom" style="padding:16px 20px;border-top:2px solid var(--border);background:#f8fafc;">
+      <a id="routing-slip-print-btn" href="#" onclick="printRoutingSlip();return false;" class="btn-route" style="background:var(--gold);color:var(--navy);">🖨️ Print Slip</a>
+      <a id="routing-slip-view-btn" href="#" class="btn-route" style="background:var(--navy);color:#fff;margin-left:10px;">📄 View Full Page</a>
+    </div>
+  </div>
+</div>
+
+{# ══════════════════════════════════
    PENDING BANNER
 ══════════════════════════════════ #}
 {% if logged_in and session.get('role') in ('staff', 'admin') %}
