@@ -123,8 +123,14 @@
           {% endif %}
         </div>
         <div class="tl-body">
-          <div class="tl-action">{{ log.action }}</div>
-          <div class="tl-meta">{{ log.office }} · {{ log.timestamp[:16].replace('T',' ') if log.timestamp else '' }}</div>
+          <div class="tl-action">
+            {% if ('route' in action_lower or 'reroute' in action_lower) and log.office %}
+              {{ log.action }} to {{ log.office }}
+            {% else %}
+              {{ log.action }}
+            {% endif %}
+          </div>
+          <div class="tl-meta">{{ log.office if 'route' not in action_lower and 'reroute' not in action_lower else '' }} {% if log.office and log.timestamp %}·{% endif %} {{ log.timestamp[:16].replace('T',' ') if log.timestamp else '' }}</div>
           {% if log.remarks %}<div class="tl-remark">{{ log.remarks }}</div>{% endif %}
         </div>
       </li>

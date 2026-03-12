@@ -173,6 +173,14 @@
           {% set icon = info[0].strip() %}
           {% set label = info[1].strip() %}
           {% set ts = log_entry.get('timestamp', '') %}
+          {% set office = log_entry.get('office', '') %}
+          
+          {# For routed/rerouted, append the destination office to the label #}
+          {% set action_lower = action|lower %}
+          {% if ('routed' in action_lower or 'rerouted' in action_lower) and office %}
+            {% set label = label ~ ' to ' ~ office %}
+          {% endif %}
+          
           {% set ns_tl.steps = ns_tl.steps + [(label, icon,
               ts[:10] if ts else '',
               ts[11:16] if ts else '')] %}
