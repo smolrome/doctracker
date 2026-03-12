@@ -59,21 +59,15 @@ def office_staff():
     from services.misc import load_saved_offices
     from services.database import USE_DB, get_conn
     from services.auth import get_all_users
-    import os
-    import json
     
     offices = load_saved_offices()
     all_users = get_all_users()
     staff_members = [u for u in all_users if u.get("role") in ("staff", "admin")]
     
-    # Get staff count per office
-    office_staff_counts = []
-    
     if USE_DB:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
-                    # Get all users with their offices (excluding clients)
                     cur.execute(
                         """SELECT office, COUNT(*) as count FROM users 
                            WHERE role IN ('staff', 'admin') AND office != '' 
@@ -83,28 +77,34 @@ def office_staff():
         except Exception:
             staff_counts = {}
     else:
-        # JSON fallback
         staff_counts = {}
-        users = get_all_users()
-        for user in users:
+        for user in all_users:
             if user.get('role') in ('staff', 'admin') and user.get('office'):
                 office = user['office']
                 staff_counts[office] = staff_counts.get(office, 0) + 1
     
-    # Build office list with counts and primary recipient
+    office_staff_counts = []
+    
     for office in offices:
         office_slug = office.get('office_slug', '')
         office_name = office.get('office_name', '')
         staff_count = staff_counts.get(office_name, 0) + staff_counts.get(office_slug, 0)
+        
+        office_staff_list = [
+            u for u in all_users
+            if u.get("role") in ("staff", "admin")
+            and u.get("office", "").strip().lower() == office_name.strip().lower()
+        ]
+        
         office_staff_counts.append({
             'office_name': office_name,
             'office_slug': office_slug,
             'staff_count': staff_count,
             'created_by': office.get('created_by', ''),
-            'primary_recipient': office.get('primary_recipient', '')
+            'primary_recipient': office.get('primary_recipient', ''),
+            'staff': office_staff_list
         })
     
-    # Also include any offices that have users but aren't in saved_offices
     for office_key, count in staff_counts.items():
         if not any(o['office_name'] == office_key or o['office_slug'] == office_key for o in office_staff_counts):
             office_staff_counts.append({
@@ -112,11 +112,22 @@ def office_staff():
                 'office_slug': office_key,
                 'staff_count': count,
                 'created_by': '',
-                'primary_recipient': ''
+                'primary_recipient': '',
+                'staff': []
             })
     
-    return render_template("office_staff.html", office_staff=office_staff_counts, staff_members=staff_members)
-
+    office_staff_json = {
+        o['office_slug']: [
+            {'username': s['username'], 'full_name': s.get('full_name') or s['username']}
+            for s in (o.get('staff') or [])
+        ]
+        for o in office_staff_counts
+    }
+    
+    return render_template("office_staff.html",
+                           office_staff=office_staff_counts,
+                           staff_members=staff_members,
+                           office_staff_json=office_staff_json)
 
 @admin_bp.route("/delete-office/<office_slug>", methods=["POST"])
 @admin_required
