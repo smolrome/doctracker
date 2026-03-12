@@ -119,6 +119,7 @@
 .stat-card.green    { --stat-accent: #16A34A; }
 .stat-card.red      { --stat-accent: #DC2626; }
 .stat-card.archived { --stat-accent: #64748B; }
+.stat-card.source { --stat-accent: #475569; }
 
 .stat-card.yellow::before   { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
 .stat-card.olive::before    { background: linear-gradient(90deg, #4F46E5, #818CF8); }
@@ -128,6 +129,7 @@
 .stat-card.green::before    { background: linear-gradient(90deg, #16A34A, #22C55E); }
 .stat-card.red::before      { background: linear-gradient(90deg, #DC2626, #EF4444); }
 .stat-card.archived::before { background: linear-gradient(90deg, #64748B, #94A3B8); }
+.stat-card.source::before   { background: linear-gradient(90deg, #475569, #64748b); }
 
 
 /* ── Filter sticky bar ── */
@@ -267,6 +269,21 @@
 
 .type-btn:hover  { border-color: var(--teal, #0E7490); color: var(--teal, #0E7490); background: #F0FDFF; }
 .type-btn.active { background: var(--teal, #0E7490); border-color: var(--teal, #0E7490); color: #fff; }
+
+.filter-divider {
+  color: #ccc;
+  margin: 0 8px;
+  font-size: 14px;
+}
+
+.source-btn {
+  background: #f0f4f8 !important;
+}
+
+.source-btn.active {
+  background: #2c3e50 !important;
+  color: #fff !important;
+}
 
 .filter-active-pills {
   display: flex;

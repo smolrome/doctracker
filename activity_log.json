@@ -131,5 +131,26 @@
     "ip": "100.117.50.126",
     "detail": "path=/favicon.ico",
     "ts": "2026-03-11T13:30:38.914497"
+  },
+  {
+    "username": "anonymous",
+    "action": "404_not_found",
+    "ip": "100.117.50.126",
+    "detail": "path=/favicon.ico",
+    "ts": "2026-03-12T07:58:18.577299"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "100.117.50.126",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-12T07:58:22.130083"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_ok",
+    "ip": "100.117.50.126",
+    "detail": "role=admin",
+    "ts": "2026-03-12T07:58:22.136172"
   }
 ]

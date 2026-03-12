@@ -60,6 +60,13 @@ function setType(val) {
   document.getElementById('filter-form').submit();
 }
 
+function setSource(val) {
+  const params = new URLSearchParams(window.location.search);
+  params.set('source', val);
+  params.delete('page');
+  window.location.href = '/?' + params.toString();
+}
+
 function clearField(name, val) {
   if (val === undefined) val = '';
   const el = document.querySelector('[name="' + name + '"]');

@@ -89,6 +89,7 @@ def index():
     search           = request.args.get("search", "").lower()
     filter_status    = request.args.get("status", "All")
     filter_type      = request.args.get("type", "All")
+    filter_source    = request.args.get("source", "All")  # Staff/Client/All
     filter_date      = request.args.get("date", "").strip()
     filter_time_from = request.args.get("time_from", "").strip()
     filter_time_to   = request.args.get("time_to", "").strip()
@@ -112,6 +113,12 @@ def index():
 
     if filter_status != "All":
         filtered = [d for d in filtered if d.get("status") == filter_status]
+
+    # Source filter: Staff vs Client submissions
+    if filter_source == "Staff":
+        filtered = [d for d in filtered if d.get("logged_by") and not d.get("submitted_by")]
+    elif filter_source == "Client":
+        filtered = [d for d in filtered if d.get("submitted_by")]
 
     if filter_type == "Received":
         filtered = [d for d in filtered if d.get("date_received") and not d.get("date_released")]
@@ -166,7 +173,8 @@ def index():
     return render_template("index.html",
         docs=paginated, stats=get_stats(docs),
         search=search, filter_status=filter_status,
-        filter_type=filter_type, filter_date=filter_date,
+        filter_type=filter_type, filter_source=filter_source,
+        filter_date=filter_date,
         filter_time_from=filter_time_from, filter_time_to=filter_time_to,
         status_options=["All"] + get_dropdown_options("status"),
         saved_offices=load_saved_offices(),
