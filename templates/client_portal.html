@@ -21,7 +21,7 @@
     <span class="tb-user">👤 {{ current_full_name or current_user }}</span>
     <a href="/client/scan"   class="tb-btn tb-scan">📷 Scan</a>
     {% if saved_offices %}
-    <button type="button" class="tb-btn tb-primary" onclick="toggleOfficeQR()">＋ Submit</button>
+    <button type="button" class="tb-btn tb-primary" onclick="toggleOfficeModal()">＋ Submit</button>
     {% else %}
     <a href="/client/submit" class="tb-btn tb-primary">＋ Submit</a>
     {% endif %}

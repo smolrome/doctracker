@@ -348,7 +348,7 @@ var serverSessionData = {
     <div class="rp-fields rp-fields-single">
       <div class="rp-field">
         <label>Select New Status *</label>
-        <select class="rp-input" id="new-status">
+        <select class="rp-input" id="new-status" onchange="onStatusChange()">
           <option value="">— Select Status —</option>
           {% for status_opt in status_options %}
             {% if status_opt != 'All' %}

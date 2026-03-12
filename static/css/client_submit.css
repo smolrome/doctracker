@@ -193,6 +193,11 @@
   font-size: 18px;
   font-weight: 800;
 }
+.soab-staff {
+  font-size: 13px;
+  opacity: 0.9;
+  margin-top: 4px;
+}
 .soab-change {
   background: rgba(255,255,255,0.2);
   border: 1px solid rgba(255,255,255,0.4);

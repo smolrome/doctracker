@@ -84,6 +84,9 @@
     <div class="soab-content">
       <div class="soab-label">Submitting documents to:</div>
       <div class="soab-office">{{ office_name }}</div>
+      {% if assigned_staff_name %}
+      <div class="soab-staff">👤 Receiving Staff: {{ assigned_staff_name }}</div>
+      {% endif %}
     </div>
     <a href="/client" class="soab-change">Change Office</a>
   </div>

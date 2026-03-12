@@ -199,7 +199,7 @@ function openStatusModal() {
   document.getElementById('new-status').value = '';
   document.getElementById('status-remarks').value = '';
   
-  // Reset button
+  // Reset button - keep disabled until status is selected
   const btn = document.getElementById('btn-do-status-update');
   if (btn) {
     btn.disabled = true;
@@ -209,6 +209,15 @@ function openStatusModal() {
 }
 
 function closeStatusModal() { closeModal('status-modal'); }
+
+// Enable status update button when status is selected
+function onStatusChange() {
+  const statusSelect = document.getElementById('new-status');
+  const btn = document.getElementById('btn-do-status-update');
+  if (btn && statusSelect) {
+    btn.disabled = !statusSelect.value;
+  }
+}
 
 function submitBulkStatusUpdate() {
   const checked = document.querySelectorAll('.doc-checkbox:checked');
@@ -254,14 +263,6 @@ function submitBulkStatusUpdate() {
   document.body.appendChild(form);
   form.submit();
 }
-
-// Enable/disable status update button based on selection
-document.getElementById('new-status').addEventListener('change', function() {
-  const btn = document.getElementById('btn-do-status-update');
-  if (btn) {
-    btn.disabled = !this.value;
-  }
-});
 
 // Internal helpers
 function _showTransferBlock(id) { const el = document.getElementById(id); if (el) el.style.display = 'block'; }

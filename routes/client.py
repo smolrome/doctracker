@@ -284,6 +284,20 @@ def submit():
         session["submit_office_slug"] = request.args["office_slug"]
         session["submit_office_name"] = request.args["office_name"]
         session.modified = True
+    
+    # Get assigned staff for the selected office
+    office_name = session.get("submit_office_name", "")
+    assigned_staff = ""
+    assigned_staff_name = ""
+    if office_name:
+        from services.auth import get_all_users
+        all_users = get_all_users()
+        office_staff = [u for u in all_users if u.get("office", "").strip().lower() == office_name.strip().lower() and u.get("role") in ("staff", "admin")]
+        if not office_staff:
+            office_staff = [u for u in all_users if u.get("role") in ("staff", "admin")]
+        if office_staff:
+            assigned_staff = office_staff[0].get("username", "")
+            assigned_staff_name = office_staff[0].get("full_name", "")
 
     return render_template("client_submit.html",
                            cart=cart, error=error, doc={},
@@ -291,7 +305,9 @@ def submit():
                            office_name=session.get("submit_office_name", ""),
                            unit_office_default=_get_client_org(session.get("username", "")),
                            category_options=get_dropdown_options("category"),
-                           saved_offices=load_saved_offices())
+                           saved_offices=load_saved_offices(),
+                           assigned_staff=assigned_staff,
+                           assigned_staff_name=assigned_staff_name)
 
 
 # ── Submission confirmation ────────────────────────────────────────────────────
