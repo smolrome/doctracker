@@ -478,26 +478,28 @@ function updateSelectAllLabel() {
   const checkedCheckboxes = document.querySelectorAll('.doc-checkbox:checked').length;
   
   if (checkedCheckboxes === 0) {
-    label.textContent = 'All';
+    label.textContent = 'Select';
   } else if (checkedCheckboxes === totalCheckboxes) {
-    label.textContent = 'All';
+    label.textContent = 'Select';
   } else {
     label.textContent = checkedCheckboxes;
   }
 }
 
-// Select-all checkbox
-const selAll = document.getElementById('select-all');
-if (selAll) {
-  selAll.addEventListener('change', function () {
-    document.querySelectorAll('.doc-checkbox').forEach(function (cb) {
-      cb.checked = selAll.checked;
-      cb.closest('tr').classList.toggle('row-selected', selAll.checked);
+// Select-all checkbox - wrapped in DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
+  const selAll = document.getElementById('select-all');
+  if (selAll) {
+    selAll.addEventListener('change', function () {
+      document.querySelectorAll('.doc-checkbox').forEach(function (cb) {
+        cb.checked = selAll.checked;
+        cb.closest('tr').classList.toggle('row-selected', selAll.checked);
+      });
+      updateSelection();
+      updateSelectAllLabel();
     });
-    updateSelection();
-    updateSelectAllLabel();
-  });
-}
+  }
+});
 
 
 // ── Routing modal — time range ─────────────────────────────────────────────
