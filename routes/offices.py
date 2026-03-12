@@ -4,7 +4,7 @@ routes/offices.py — Office QR page, routing slips, welcome page.
 import re
 import uuid
 
-from flask import (Blueprint, flash, redirect, render_template,
+from flask import (Blueprint, flash, jsonify, redirect, render_template,
                    request, send_file, session, url_for)
 from io import BytesIO
 
