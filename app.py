@@ -166,7 +166,7 @@ def create_app() -> Flask:
     # ── Before-request hooks ───────────────────────────────────────────────────
 
     @app.before_request
-    def ensure_csrf_token():
+    def ensurecsrf_token():
         """Ensure every session has a CSRF token before any handler runs."""
         if CSRF_SESSION_KEY not in session:
             session[CSRF_SESSION_KEY] = secrets.token_hex(32)
@@ -199,7 +199,7 @@ def create_app() -> Flask:
             if request.form:
                 # FIX 3: redact passwords, hashes AND the csrf token from logs
                 _REDACT = {"password", "confirm_password", "password_hash",
-                           CSRF_FORM_FIELD, "_csrf_token"}
+                           CSRF_FORM_FIELD, "csrf_token"}
                 safe_fields = {
                     k: v[:120]
                     for k, v in request.form.items()

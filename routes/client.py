@@ -62,7 +62,7 @@ def _safe_redirect_url(url: str, fallback: str) -> str:
     return url
 
 
-def _generate_csrf_token() -> str:
+def _generatecsrf_token() -> str:
     """
     FIX 2 – CSRF token generation.
     Creates a cryptographically random token stored in the session.
@@ -72,10 +72,10 @@ def _generate_csrf_token() -> str:
     return token
 
 
-def _get_csrf_token() -> str:
+def _getcsrf_token() -> str:
     """Return existing CSRF token or create a new one."""
     if "csrf_token" not in session:
-        return _generate_csrf_token()
+        return _generatecsrf_token()
     return session["csrf_token"]
 
 
@@ -115,7 +115,7 @@ def _regenerate_session(keep: dict) -> None:
     """
     session.clear()
     session.update(keep)
-    _generate_csrf_token()   # rotate CSRF after login
+    _generatecsrf_token()   # rotate CSRF after login
 
 
 def _require_client(fn):
@@ -166,7 +166,7 @@ def login():
         return redirect(url_for("client.portal") if role == "client"
                         else url_for("dashboard.index"))
 
-    csrf_token = _get_csrf_token()
+    csrf_token = _getcsrf_token()
     error = None
     lockout_remaining = 0
 
@@ -239,7 +239,7 @@ def register():
             return redirect(_safe_redirect_url(raw_next, url_for("client.portal")))
         return redirect(url_for("dashboard.index"))
 
-    csrf_token = _get_csrf_token()
+    csrf_token = _getcsrf_token()
 
     office_slug = request.args.get("office_slug",
                   request.form.get("office_slug", "")).strip()
@@ -305,7 +305,7 @@ def portal():
     my_docs  = [d for d in docs if d.get("submitted_by") == username]
     return render_template("client_portal.html", docs=my_docs,
                            saved_offices=_get_saved_offices(),
-                           csrf_token=_get_csrf_token())
+                           csrf_token=_getcsrf_token())
 
 
 @client_bp.route("/track/<doc_id>")
@@ -318,7 +318,7 @@ def track(doc_id):
         return redirect(url_for("client.portal"))
     return render_template("client_track.html", doc=doc,
                            qr_b64=generate_qr_b64(doc, request.host_url),
-                           csrf_token=_get_csrf_token())
+                           csrf_token=_getcsrf_token())
 
 
 @client_bp.route("/delete/<doc_id>", methods=["POST"])
@@ -377,7 +377,7 @@ def trash():
             remaining_docs.append(doc)
 
     return render_template("client_trash.html", docs=remaining_docs,
-                           csrf_token=_get_csrf_token())
+                           csrf_token=_getcsrf_token())
 
 
 @client_bp.route("/trash/permanent-delete/<doc_id>", methods=["POST"])
@@ -683,7 +683,7 @@ def submit():
                            saved_offices=_get_saved_offices(),
                            office_staff_list=office_staff_list,
                            selected_staff=selected_staff,
-                           csrf_token=_get_csrf_token())
+                           csrf_token=_getcsrf_token())
 
 
 # ── Submission confirmation ────────────────────────────────────────────────────

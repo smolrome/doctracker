@@ -33,10 +33,10 @@ document.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('form').forEach(function (form) {
       if ((form.method || '').toLowerCase() === 'post') {
-        if (!form.querySelector('[name="_csrf_token"]')) {
+        if (!form.querySelector('[name="csrf_token"]')) {
           const inp = document.createElement('input');
           inp.type  = 'hidden';
-          inp.name  = '_csrf_token';
+          inp.name  = 'csrf_token';
           inp.value = TOKEN;
           form.appendChild(inp);
         }
@@ -433,7 +433,7 @@ function submitAccept() {
       'Content-Type': 'application/x-www-form-urlencoded',
       'X-CSRF-Token': csrfToken,
     },
-    body: '_csrf_token=' + encodeURIComponent(csrfToken),
+    body: 'csrf_token=' + encodeURIComponent(csrfToken),
   })
   .then(function (r) {
     if (r.ok) {
@@ -472,7 +472,7 @@ function submitRejection() {
 
   const body = new URLSearchParams();
   body.append('rejection_reason', reason);
-  body.append('_csrf_token', csrfToken);
+  body.append('csrf_token', csrfToken);
 
   fetch('/reject-document/' + docId, {
     method: 'POST',
