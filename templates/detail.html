@@ -109,31 +109,77 @@
   <div class="card-title"><span class="icon">🗓️</span> Status Timeline</div>
   <hr class="card-divider">
   <div class="timeline">
-    {% set status_order = ['Logged', 'In Transit', 'Received', 'In Review', 'Rerouted', 'Released'] %}
-    {% set current_status = doc.status %}
-    {% set current_idx = status_order.index(current_status) if current_status in status_order else 0 %}
+    {#
+      Progressive timeline — only steps that have actually happened are shown.
+      "Logged" is always first (always happened).
+      Each subsequent step only appears when its data exists on the doc
+      or when the current status matches.
+      The last shown step is always "active"; all before it are "done".
+    #}
 
-    {% set timeline_data = [
-      ('Logged', '✏️', doc.created_at[:10] if doc.created_at else '', doc.created_at[11:16] if doc.created_at else ''),
-      ('In Transit', '🚚', doc.transferred_at[:10] if doc.transferred_at else '', doc.transferred_at[11:16] if doc.transferred_at else ''),
-      ('Received', '📥', doc.date_received[:10] if doc.date_received else '', doc.date_received[11:16] if doc.date_received else ''),
-      ('In Review', '🔍', '', ''),
-      ('Rerouted', '🔁', '', ''),
-      ('Released', '✅', doc.date_released[:10] if doc.date_released else '', doc.date_released[11:16] if doc.date_released else '')
-    ] %}
-
-    {# FIX: use doc.routing_cycle, not doc.reroute_count / doc.reroute_cycle #}
     {% set reroute_count = doc.routing_cycle if doc.routing_cycle else 0 %}
 
-    {% for label, icon, date, time in timeline_data %}
-      {% set step_idx = status_order.index(label) if label in status_order else 0 %}
-      <div class="tl-item {% if step_idx < current_idx %}done{% elif step_idx == current_idx %}active{% else %}pending{% endif %}">
+    {# Build the list of steps that have actually occurred #}
+    {% set ns_tl = namespace(steps=[]) %}
+
+    {# 1. Logged — always present #}
+    {% set ns_tl.steps = ns_tl.steps + [('Logged', '✏️',
+        doc.created_at[:10] if doc.created_at else '',
+        doc.created_at[11:16] if doc.created_at else '')] %}
+
+    {# 2. In Transit — show if transferred_at exists or current status is In Transit #}
+    {% if doc.transferred_at or doc.status == 'In Transit' %}
+      {% set ns_tl.steps = ns_tl.steps + [('In Transit', '🚚',
+          doc.transferred_at[:10] if doc.transferred_at else '',
+          doc.transferred_at[11:16] if doc.transferred_at else '')] %}
+    {% endif %}
+
+    {# 3. Received — show if date_received exists or current status is Received #}
+    {% if doc.date_received or doc.status == 'Received' %}
+      {% set ns_tl.steps = ns_tl.steps + [('Received', '📥',
+          doc.date_received[:10] if doc.date_received else '',
+          doc.date_received[11:16] if doc.date_received else '')] %}
+    {% endif %}
+
+    {# 4. In Review — show only if current/past status is In Review #}
+    {% if doc.status == 'In Review' or 'in review' in (doc.travel_log | map(attribute='action') | join(' ') | lower) %}
+      {% set ns_tl.steps = ns_tl.steps + [('In Review', '🔍', '', '')] %}
+    {% endif %}
+
+    {# 5. Re-routed — show only if routing cycles have occurred #}
+    {% if reroute_count > 0 %}
+      {% set ns_tl.steps = ns_tl.steps + [('Re-routed', '🔁', '', '')] %}
+    {% endif %}
+
+    {# 6. Released — show only if actually released #}
+    {% if doc.date_released or doc.status == 'Released' %}
+      {% set ns_tl.steps = ns_tl.steps + [('Released', '✅',
+          doc.date_released[:10] if doc.date_released else '',
+          doc.date_released[11:16] if doc.date_released else '')] %}
+    {% endif %}
+
+    {# 7. On Hold / Rejected / Archived — show if current status is one of these #}
+    {% if doc.status == 'On Hold' %}
+      {% set ns_tl.steps = ns_tl.steps + [('On Hold', '⏸️', '', '')] %}
+    {% endif %}
+    {% if doc.status == 'Rejected' %}
+      {% set ns_tl.steps = ns_tl.steps + [('Rejected', '❌', '', '')] %}
+    {% endif %}
+    {% if doc.status == 'Archived' %}
+      {% set ns_tl.steps = ns_tl.steps + [('Archived', '📦', '', '')] %}
+    {% endif %}
+
+    {# Render — last step is active, all before it are done #}
+    {% set total_steps = ns_tl.steps | length %}
+    {% for label, icon, date, time in ns_tl.steps %}
+      {% set is_last = loop.index == total_steps %}
+      <div class="tl-item {% if is_last %}active{% else %}done{% endif %}">
         <div class="tl-icon-wrap">{{ icon }}</div>
         <div class="tl-label">{{ label }}</div>
         {% if date %}
         <div class="tl-date">{{ date }}<strong>{{ time }}</strong></div>
         {% endif %}
-        {% if label == 'Rerouted' and reroute_count > 0 %}
+        {% if label == 'Re-routed' and reroute_count > 0 %}
         <div class="tl-cycle-badge">×{{ reroute_count }} cycles</div>
         {% endif %}
       </div>
