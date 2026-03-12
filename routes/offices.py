@@ -4,7 +4,7 @@ routes/offices.py — Office QR page, routing slips, welcome page.
 import re
 import uuid
 
-from flask import (Blueprint, flash, jsonify, redirect, render_template,
+from flask import (Blueprint, flash, redirect, render_template,
                    request, send_file, session, url_for)
 from io import BytesIO
 
@@ -109,24 +109,16 @@ def client_reg_qr():
 @offices_bp.route("/routing-slip/create", methods=["POST"])
 @login_required
 def create_routing_slip():
-    # Check if this is an AJAX request
-    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
-              request.headers.get('Accept') == 'application/json'
-    
     doc_ids_raw = request.form.get("doc_ids", "").strip()
     destination = request.form.get("destination", "").strip()
     notes       = request.form.get("notes", "").strip()
 
     if not doc_ids_raw or not destination:
-        if is_ajax:
-            return jsonify({"success": False, "error": "Please select documents and enter a destination office."}), 400
         flash("Please select documents and enter a destination office.", "error")
         return redirect(url_for("dashboard.index"))
 
     doc_ids = [d.strip() for d in doc_ids_raw.split(",") if d.strip()]
     if not doc_ids:
-        if is_ajax:
-            return jsonify({"success": False, "error": "No valid document IDs selected."}), 400
         flash("No valid document IDs selected.", "error")
         return redirect(url_for("dashboard.index"))
 
@@ -195,39 +187,6 @@ def create_routing_slip():
               f"slip_no={slip_no} from={from_office} dest={destination} "
                   f"docs={len(doc_ids)} ids={','.join(str(x) for x in doc_ids[:5])}",
               username=session.get("username", ""), ip=get_client_ip())
-    
-    # For AJAX requests, return JSON with slip data
-    if is_ajax:
-        from services.documents import get_docs_by_ids
-        docs_map = get_docs_by_ids(doc_ids)
-        docs = [docs_map[did] for did in doc_ids if did in docs_map]
-        
-        return jsonify({
-            "success": True,
-            "slip_id": slip_id,
-            "slip_no": slip_no,
-            "destination": destination,
-            "from_office": from_office,
-            "prepared_by": actor,
-            "slip_date": slip_date,
-            "time_from": slip.get("time_from", ""),
-            "time_to": slip.get("time_to", ""),
-            "notes": notes,
-            "created_at": slip["created_at"],
-            "doc_count": len(doc_ids),
-            "docs": [
-                {
-                    "doc_id": d.get("doc_id", ""),
-                    "doc_name": d.get("doc_name", ""),
-                    "sender_org": d.get("sender_org", ""),
-                    "sender_name": d.get("sender_name", ""),
-                    "referred_to": d.get("referred_to", ""),
-                    "category": d.get("category", "")
-                }
-                for d in docs
-            ]
-        })
-    
     return redirect(url_for("offices.view_routing_slip", slip_id=slip_id))
 
 
