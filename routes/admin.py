@@ -44,6 +44,75 @@ def manage_users():
                            admin_username=ADMIN_USERNAME, offices=offices)
 
 
+@admin_bp.route("/office-staff")
+@admin_required
+def office_staff():
+    """Show list of offices with staff count."""
+    try:
+        from services.misc import audit_log
+        from utils import get_client_ip
+        audit_log("office_staff_viewed", "Admin accessed office staff list",
+                  username=session.get("username","admin"), ip=get_client_ip())
+    except Exception:
+        pass
+    
+    from services.misc import load_saved_offices
+    from services.database import USE_DB, get_conn
+    import os
+    import json
+    
+    offices = load_saved_offices()
+    
+    # Get staff count per office
+    office_staff_counts = []
+    
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    # Get all users with their offices (excluding clients)
+                    cur.execute(
+                        """SELECT office, COUNT(*) as count FROM users 
+                           WHERE role IN ('staff', 'admin') AND office != '' 
+                           GROUP BY office"""
+                    )
+                    staff_counts = {row['office']: row['count'] for row in cur.fetchall()}
+        except Exception:
+            staff_counts = {}
+    else:
+        # JSON fallback
+        staff_counts = {}
+        users = get_all_users()
+        for user in users:
+            if user.get('role') in ('staff', 'admin') and user.get('office'):
+                office = user['office']
+                staff_counts[office] = staff_counts.get(office, 0) + 1
+    
+    # Build office list with counts
+    for office in offices:
+        office_slug = office.get('office_slug', '')
+        office_name = office.get('office_name', '')
+        staff_count = staff_counts.get(office_name, 0) + staff_counts.get(office_slug, 0)
+        office_staff_counts.append({
+            'office_name': office_name,
+            'office_slug': office_slug,
+            'staff_count': staff_count,
+            'created_by': office.get('created_by', '')
+        })
+    
+    # Also include any offices that have users but aren't in saved_offices
+    for office_key, count in staff_counts.items():
+        if not any(o['office_name'] == office_key or o['office_slug'] == office_key for o in office_staff_counts):
+            office_staff_counts.append({
+                'office_name': office_key,
+                'office_slug': office_key,
+                'staff_count': count,
+                'created_by': ''
+            })
+    
+    return render_template("office_staff.html", office_staff=office_staff_counts)
+
+
 @admin_bp.route("/activity-log")
 @admin_required
 def activity_log():

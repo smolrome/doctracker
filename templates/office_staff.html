@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+  <a href="/" class="page-back">← Dashboard</a>
+  <div class="page-title">🏢 Office Staff List</div>
+</div>
+
+<style>
+  .office-card {
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  
+  .office-header {
+    padding: 16px 20px;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .office-header h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--navy);
+    margin: 0;
+  }
+  
+  .staff-count-badge {
+    background: var(--teal);
+    color: #fff;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .office-meta {
+    padding: 12px 20px;
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  
+  .office-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .empty-offices {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  
+  .empty-offices .icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+  
+  .empty-offices p {
+    font-size: 16px;
+    margin: 0;
+  }
+  
+  .summary-box {
+    background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+    color: #fff;
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  
+  .summary-box h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+  }
+  
+  .summary-box p {
+    margin: 4px 0 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+  }
+  
+  .summary-stats {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  
+  .stat-item {
+    text-align: center;
+  }
+  
+  .stat-number {
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1;
+  }
+  
+  .stat-label {
+    font-size: 12px;
+    opacity: 0.85;
+    margin-top: 4px;
+  }
+  
+  @media (max-width: 600px) {
+    .office-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .summary-box {
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    .summary-stats {
+      justify-content: center;
+    }
+  }
+</style>
+
+<div class="summary-box">
+  <div>
+    <h2>📊 Office Overview</h2>
+    <p>Total number of offices and staff members</p>
+  </div>
+  <div class="summary-stats">
+    <div class="stat-item">
+      <div class="stat-number">{{ office_staff|length }}</div>
+      <div class="stat-label">Offices</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">{{ office_staff|sum(attribute='staff_count') }}</div>
+      <div class="stat-label">Total Staff</div>
+    </div>
+  </div>
+</div>
+
+{% if office_staff %}
+  {% for office in office_staff %}
+  <div class="office-card">
+    <div class="office-header">
+      <h3>{{ office.office_name }}</h3>
+      <div class="staff-count-badge">
+        <span>👤</span>
+        {{ office.staff_count }} Staff{{ 's' if office.staff_count != 1 else '' }}
+      </div>
+    </div>
+    <div class="office-meta">
+      <span>📁 Code: <strong>{{ office.office_slug }}</strong></span>
+      {% if office.created_by %}
+      <span>👤 Created by: <strong>{{ office.created_by }}</strong></span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-offices">
+    <div class="icon">🏢</div>
+    <p>No offices found. Offices will appear here once staff accounts are assigned to offices.</p>
+  </div>
+{% endif %}
+
+{% endblock %}

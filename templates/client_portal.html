@@ -20,11 +20,7 @@
   <div class="topbar-actions">
     <span class="tb-user">👤 {{ current_full_name or current_user }}</span>
     <a href="/client/scan"   class="tb-btn tb-scan">📷 Scan</a>
-    {% if saved_offices %}
     <button type="button" class="tb-btn tb-primary" onclick="toggleOfficeModal()">＋ Submit</button>
-    {% else %}
-    <a href="/client/submit" class="tb-btn tb-primary">＋ Submit</a>
-    {% endif %}
     <a href="/logout"        class="tb-btn tb-logout">Exit</a>
   </div>
 </div>
@@ -55,7 +51,6 @@
   <!-- ══════════════════════════════════════
        OFFICE SUBMISSION QR FINDER (Modal)
        ══════════════════════════════════════ -->
-  {% if saved_offices %}
   <div id="office-modal" class="office-modal" style="display:none;">
     <div class="office-modal-overlay" onclick="toggleOfficeModal()"></div>
     <div class="office-modal-content">
@@ -63,6 +58,7 @@
         <h2>🏢 Select Office to Submit To</h2>
         <button type="button" class="office-modal-close" onclick="toggleOfficeModal()">✕</button>
       </div>
+      {% if saved_offices %}
       <p class="office-modal-desc">Choose which office you want to submit your documents to. This will direct your documents to that office's receiving staff.</p>
       <input type="text" class="office-modal-search" id="office-search-input"
              placeholder="🔍 Search offices..."
@@ -81,15 +77,17 @@
         {% endfor %}
       </div>
       <div class="office-modal-none" id="office-modal-none" style="display:none;">No offices match your search.</div>
+      {% else %}
+      <p class="office-modal-desc">No offices are currently available for selection. You can still proceed to submit your documents and specify the office later.</p>
+      <a href="/client/submit" class="office-modal-select" style="display:inline-block;margin-top:10px;">Continue Without Office →</a>
+      {% endif %}
     </div>
   </div>
-  
-  {% endif %}
 
   <div class="section-head">
     <div class="section-title">My Documents</div>
-    <a href="/client/submit" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:linear-gradient(135deg,#0A4D68,#059669);color:#fff;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 4px 14px rgba(10,77,104,.3);" 
-    onclick="toggleOfficeModal()">＋ Submit New</a>
+    <button type="button" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:linear-gradient(135deg,#0A4D68,#059669);color:#fff;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 4px 14px rgba(10,77,104,.3);border:none;cursor:pointer;" 
+    onclick="toggleOfficeModal()">＋ Submit New</button>
   </div>
 
   {% if docs %}
@@ -112,7 +110,7 @@
       <div class="empty-icon">📭</div>
       <div class="empty-title">No documents yet</div>
       <div class="empty-text">Submit your first document to start tracking it here.</div>
-      <a href="/client/submit" class="btn-submit" onclick="toggleOfficeModal">＋ Submit a Document</a>
+      <button type="button" class="btn-submit" onclick="toggleOfficeModal()">＋ Submit a Document</button>
     </div>
   {% endif %}
 </div>
