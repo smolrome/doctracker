@@ -90,6 +90,7 @@
   <div class="status-update-label">⚡ Update Status</div>
   <form method="post" action="/update-status/{{ doc.id }}"
         style="display:flex;gap:10px;flex:1;flex-wrap:wrap;align-items:center;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <select name="status" style="flex:1;min-width:160px;padding:10px 12px;
         border:2px solid var(--border);border-radius:10px;font-family:inherit;
         font-size:15px;background:var(--surface);outline:none;min-height:44px;">

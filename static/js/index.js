@@ -234,6 +234,7 @@ function submitBulkStatusUpdate() {
 
   const remarks = document.getElementById('status-remarks').value;
   const docIds = Array.from(checked).map(cb => cb.value);
+  const csrfToken = document.getElementById('csrf-token-value').value;
 
   // Create form and submit
   const form = document.createElement('form');
@@ -259,6 +260,13 @@ function submitBulkStatusUpdate() {
     remarksInput.value = remarks;
     form.appendChild(remarksInput);
   }
+
+  // Add CSRF token
+  const csrfInput = document.createElement('input');
+  csrfInput.type = 'hidden';
+  csrfInput.name = 'csrf_token';
+  csrfInput.value = csrfToken;
+  form.appendChild(csrfInput);
 
   document.body.appendChild(form);
   form.submit();
@@ -378,10 +386,10 @@ function submitTransfer() {
   let fields;
   if (transferSingleDocId) {
     form.action = '/transfer/' + transferSingleDocId;
-    fields = [['transfer_type', transferType], ['new_office', office], ['new_staff', staff], ['_csrf_token', csrfToken]];
+    fields = [['transfer_type', transferType], ['new_office', office], ['new_staff', staff], ['csrf_token', csrfToken]];
   } else {
     form.action = '/transfer-batch';
-    fields = [['doc_ids', selectedIds.join(',')], ['transfer_type', transferType], ['new_office', office], ['new_staff', staff], ['_csrf_token', csrfToken]];
+    fields = [['doc_ids', selectedIds.join(',')], ['transfer_type', transferType], ['new_office', office], ['new_staff', staff], ['csrf_token', csrfToken]];
   }
 
   fields.forEach(function ([name, value]) {
