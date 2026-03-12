@@ -113,6 +113,24 @@ def office_staff():
     return render_template("office_staff.html", office_staff=office_staff_counts)
 
 
+@admin_bp.route("/delete-office/<office_slug>", methods=["POST"])
+@admin_required
+def delete_office(office_slug):
+    """Delete an office from saved_offices."""
+    from services.misc import delete_saved_office, audit_log
+    from utils import get_client_ip
+    
+    # Decode the office_slug (handle URL encoding)
+    from urllib.parse import unquote
+    office_slug_decoded = unquote(office_slug)
+    
+    delete_saved_office(office_slug_decoded)
+    audit_log("office_deleted", f"deleted_office={office_slug_decoded}",
+              username=session.get("username", "admin"), ip=get_client_ip())
+    flash(f"Office '{office_slug_decoded}' has been deleted.", "success")
+    return redirect(url_for("admin.office_staff"))
+
+
 @admin_bp.route("/activity-log")
 @admin_required
 def activity_log():

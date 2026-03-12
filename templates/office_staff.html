@@ -125,6 +125,101 @@
     margin-top: 4px;
   }
   
+  .office-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+  }
+  
+  .btn-delete {
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    background: #FEE2E2;
+    color: #DC2626;
+    border: 2px solid #FECACA;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  
+  .btn-delete:hover {
+    background: #DC2626;
+    color: #fff;
+  }
+  
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  .modal-overlay.active {
+    display: flex;
+  }
+  
+  .modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  }
+  
+  .modal h3 {
+    margin: 0 0 16px 0;
+    color: var(--navy);
+    font-size: 18px;
+  }
+  
+  .modal p {
+    margin: 0 0 20px 0;
+    color: var(--muted);
+  }
+  
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .modal-actions button {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    border: 2px solid var(--border);
+    background: #fff;
+  }
+  
+  .modal-actions .btn-confirm {
+    background: #DC2626;
+    color: #fff;
+    border-color: #DC2626;
+  }
+  
+  .modal-actions .btn-confirm:hover {
+    background: #B91C1C;
+  }
+  
+  .modal-actions .btn-cancel:hover {
+    background: #F3F4F6;
+  }
+  
   @media (max-width: 600px) {
     .office-header {
       flex-direction: column;
@@ -164,9 +259,16 @@
   <div class="office-card">
     <div class="office-header">
       <h3>{{ office.office_name }}</h3>
-      <div class="staff-count-badge">
-        <span>👤</span>
-        {{ office.staff_count }} Staff{{ 's' if office.staff_count != 1 else '' }}
+      <div class="office-actions">
+        {% if office.created_by %}
+        <button class="btn-delete" onclick="confirmDeleteOffice('{{ office.office_slug }}', '{{ office.office_name }}')">
+          🗑️ Delete
+        </button>
+        {% endif %}
+        <div class="staff-count-badge">
+          <span>👤</span>
+          {{ office.staff_count }} Staff{{ 's' if office.staff_count != 1 else '' }}
+        </div>
       </div>
     </div>
     <div class="office-meta">
@@ -183,5 +285,38 @@
     <p>No offices found. Offices will appear here once staff accounts are assigned to offices.</p>
   </div>
 {% endif %}
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <h3>🗑️ Delete Office</h3>
+    <p>Are you sure you want to delete <strong id="deleteOfficeName"></strong>? This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+      <form id="deleteForm" method="POST" style="flex:1;">
+        <button type="submit" class="btn-confirm" style="width:100%;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;background:#DC2626;color:#fff;border:2px solid #DC2626;">Delete</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function confirmDeleteOffice(slug, name) {
+  document.getElementById('deleteOfficeName').textContent = name;
+  document.getElementById('deleteForm').action = '/delete-office/' + encodeURIComponent(slug);
+  document.getElementById('deleteModal').classList.add('active');
+}
+
+function closeDeleteModal() {
+  document.getElementById('deleteModal').classList.remove('active');
+}
+
+// Close modal when clicking outside
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeDeleteModal();
+  }
+});
+</script>
 
 {% endblock %}
