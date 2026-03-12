@@ -86,20 +86,18 @@ var serverSessionData = {
         <div class="stat-clear">● Filtered</div>
       </div>
     </a>
-    <a class="stat-card source {% if filter_source=='Staff' %}active{% endif %}" href="#" onclick="event.preventDefault();setSource('Staff')">
-      <div class="stat-card-inner">
-        <div class="stat-label">Staff</div>
-        <div class="stat-num">{{ stats.staff or 0 }}</div>
-        <div class="stat-clear">● Source</div>
-      </div>
-    </a>
-    <a class="stat-card source {% if filter_source=='Client' %}active{% endif %}" href="#" onclick="event.preventDefault();setSource('Client')">
-      <div class="stat-card-inner">
-        <div class="stat-label">Client</div>
-        <div class="stat-num">{{ stats.client or 0 }}</div>
-        <div class="stat-clear">● Source</div>
-      </div>
-    </a>
+    {# Tab pill for Staff/Client source filter #}
+    <div class="source-pill">
+      <button type="button" class="pill-btn {% if not filter_source or filter_source=='All' %}active{% endif %}" onclick="setSource('All')">
+        All
+      </button>
+      <button type="button" class="pill-btn {% if filter_source=='Staff' %}active{% endif %}" onclick="setSource('Staff')">
+        Staff <span class="pill-count">{{ stats.staff or 0 }}</span>
+      </button>
+      <button type="button" class="pill-btn {% if filter_source=='Client' %}active{% endif %}" onclick="setSource('Client')">
+        Client <span class="pill-count">{{ stats.client or 0 }}</span>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -444,7 +442,7 @@ var serverSessionData = {
     <table id="docs-table">
       <thead>
         <tr>
-          {% if logged_in %}<th class="cb-cell"><input type="checkbox" id="select-all" title="Select all"/></th>{% endif %}
+          {% if logged_in %}<th class="cb-cell"><input type="checkbox" id="select-all" title="Select all documents"/><label for="select-all" class="select-all-label">All</label></th>{% endif %}
           <th>Document / Content</th>
           <th>Unit / Office / School</th>
           <th>Source / Sender</th>

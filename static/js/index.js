@@ -62,7 +62,11 @@ function setType(val) {
 
 function setSource(val) {
   const params = new URLSearchParams(window.location.search);
-  params.set('source', val);
+  if (val === 'All' || val === '' || !val) {
+    params.delete('source');
+  } else {
+    params.set('source', val);
+  }
   params.delete('page');
   window.location.href = '/?' + params.toString();
 }
@@ -461,6 +465,25 @@ function updateSelection() {
   }
 
   updateSelectedPreview();
+  updateSelectAllLabel();
+}
+
+// Select-all label update function
+function updateSelectAllLabel() {
+  const selAll = document.getElementById('select-all');
+  const label = selAll ? selAll.nextElementSibling : null;
+  if (!label || !label.classList.contains('select-all-label')) return;
+  
+  const totalCheckboxes = document.querySelectorAll('.doc-checkbox').length;
+  const checkedCheckboxes = document.querySelectorAll('.doc-checkbox:checked').length;
+  
+  if (checkedCheckboxes === 0) {
+    label.textContent = 'All';
+  } else if (checkedCheckboxes === totalCheckboxes) {
+    label.textContent = 'All';
+  } else {
+    label.textContent = checkedCheckboxes;
+  }
 }
 
 // Select-all checkbox
@@ -472,6 +495,7 @@ if (selAll) {
       cb.closest('tr').classList.toggle('row-selected', selAll.checked);
     });
     updateSelection();
+    updateSelectAllLabel();
   });
 }
 
