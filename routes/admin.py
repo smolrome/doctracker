@@ -7,7 +7,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 
 from services.auth import (
     create_user, delete_user, get_all_users, set_user_active,
-    update_user_password, update_user,
+    update_user_password, update_user, approve_user, get_pending_clients,
 )
 from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
@@ -351,3 +351,36 @@ def reset_dropdown_options(field_name):
         flash(message, "error")
     
     return redirect(url_for("admin.manage_dropdown_options"))
+
+
+# ── Client Approval Management ───────────────────────────────────────────────
+
+@admin_bp.route("/pending-clients")
+@admin_required
+def pending_clients():
+    """Admin page to view and approve pending client registrations."""
+    try:
+        audit_log("pending_clients_viewed", "Admin accessed pending clients list",
+                  username=session.get("username", "admin"), ip=get_client_ip())
+    except Exception:
+        pass
+    
+    pending = get_pending_clients()
+    return render_template("pending_clients.html", pending_clients=pending)
+
+
+@admin_bp.route("/approve-client/<username>", methods=["POST"])
+@admin_required
+def approve_client_route(username):
+    """Approve a pending client account."""
+    success, error = approve_user(username)
+    
+    if success:
+        audit_log("client_approved", f"approved_client={username}",
+                  username=session.get("username", "admin"),
+                  ip=get_client_ip())
+        flash(f"Client '{username}' has been approved. They can now login.", "success")
+    else:
+        flash(f"Error: {error}", "error")
+    
+    return redirect(url_for("admin.pending_clients"))

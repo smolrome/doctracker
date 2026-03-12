@@ -75,14 +75,18 @@ def create_user(username: str, password: str, full_name: str = "",
                 role: str = "staff", office: str = "") -> tuple[bool, str | None]:
     """Create a new user. Returns (success, error_message)."""
     uname = username.lower().strip()
+    # Clients are not approved by default - admin must approve them first
+    is_client = (role == "client")
+    approved = not is_client  # Staff/admin are auto-approved, clients need approval
+    
     if USE_DB:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
-                        """INSERT INTO users (username, password_hash, full_name, role, office)
-                           VALUES (%s, %s, %s, %s, %s)""",
-                        (uname, hash_password(password), full_name.strip(), role, office.strip())
+                        """INSERT INTO users (username, password_hash, full_name, role, office, approved)
+                           VALUES (%s, %s, %s, %s, %s, %s)""",
+                        (uname, hash_password(password), full_name.strip(), role, office.strip(), approved)
                     )
             return True, None
         except Exception as e:
@@ -99,6 +103,7 @@ def create_user(username: str, password: str, full_name: str = "",
             "full_name": full_name.strip(),
             "role": role,
             "office": office.strip(),
+            "approved": approved,
         })
         _save_users_json(users)
         return True, None
@@ -119,7 +124,7 @@ def verify_user(username: str, password: str) -> tuple[str | None, str | None, s
                 with conn.cursor() as cur:
                     cur.execute(
                         """SELECT full_name, role, password_hash, COALESCE(office,'') AS office,
-                                  active
+                                  active, COALESCE(approved, TRUE) AS approved
                            FROM users WHERE username=%s""",
                         (uname,)
                     )
@@ -127,6 +132,9 @@ def verify_user(username: str, password: str) -> tuple[str | None, str | None, s
                     if row is None:
                         return None, None, ""
                     if not row["active"]:
+                        return None, None, ""
+                    # Check if client is approved
+                    if row["role"] == "client" and not row["approved"]:
                         return None, None, ""
                     pw_ok = verify_password(password, row["password_hash"])
                     if pw_ok:
@@ -137,6 +145,9 @@ def verify_user(username: str, password: str) -> tuple[str | None, str | None, s
     else:
         for u in _load_users_json():
             if u["username"] == uname and verify_password(password, u.get("password_hash", "")):
+                # Check if client is approved
+                if u.get("role") == "client" and not u.get("approved", True):
+                    return None, None, ""
                 return u.get("full_name") or uname, u.get("role", "staff"), u.get("office", "")
 
     return None, None, ""
@@ -164,13 +175,77 @@ def get_all_users() -> list[dict]:
                 with conn.cursor() as cur:
                     cur.execute(
                         """SELECT username, full_name, role, active, last_login,
-                                  created_at, COALESCE(office,'') AS office
+                                  created_at, COALESCE(office,'') AS office,
+                                  COALESCE(approved, TRUE) AS approved
                            FROM users ORDER BY created_at DESC"""
                     )
                     return [dict(r) for r in cur.fetchall()]
         except Exception as e:
             return []
     return _load_users_json()
+
+
+def approve_user(username: str) -> tuple[bool, str | None]:
+    """Approve a client user. Returns (success, error_message)."""
+    uname = username.lower().strip()
+    
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    # Check if user exists and is a client
+                    cur.execute(
+                        """SELECT role FROM users WHERE username=%s""",
+                        (uname,)
+                    )
+                    row = cur.fetchone()
+                    if row is None:
+                        return False, "User not found."
+                    if row["role"] != "client":
+                        return False, "Only client accounts need approval."
+                    
+                    # Approve the user
+                    cur.execute(
+                        "UPDATE users SET approved=TRUE WHERE username=%s",
+                        (uname,)
+                    )
+            return True, None
+        except Exception as e:
+            return False, f"Database error: {e}"
+    else:
+        users = _load_users_json()
+        found = False
+        for u in users:
+            if u["username"] == uname:
+                if u.get("role") != "client":
+                    return False, "Only client accounts need approval."
+                u["approved"] = True
+                found = True
+                break
+        if not found:
+            return False, "User not found."
+        _save_users_json(users)
+        return True, None
+
+
+def get_pending_clients() -> list[dict]:
+    """Get list of pending (unapproved) client accounts."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT username, full_name, role, office, created_at
+                           FROM users 
+                           WHERE role='client' AND (approved IS NULL OR approved=FALSE)
+                           ORDER BY created_at DESC"""
+                    )
+                    return [dict(r) for r in cur.fetchall()]
+        except Exception as e:
+            return []
+    else:
+        users = _load_users_json()
+        return [u for u in users if u.get("role") == "client" and not u.get("approved", True)]
 
 
 def set_user_active(username: str, active: bool):

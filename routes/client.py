@@ -126,21 +126,9 @@ def register():
         else:
             ok, err = create_user(username, password, full_name, role="client")
             if ok:
-                full_name_db, _, _office = verify_user(username, password)
-                session.clear()
-                session.update({
-                    "logged_in":  True,
-                    "username":   username.lower().strip(),
-                    "full_name":  full_name_db or full_name,
-                    "role":       "client",
-                    "last_active": time.time(),
-                })
-                session.permanent = True
-                update_last_login(username)
-                audit_log("register_and_login", f"new_client={username}",
-                          username=username, ip=get_client_ip())
-                flash(f"Welcome, {full_name}! Your account is ready.", "success")
-                return redirect(next_url or url_for("client.portal"))
+                # Client registration requires admin approval
+                flash("Registration successful! Your account is pending approval by the administrator. You will be able to login once your account is approved.", "info")
+                return redirect(url_for("client.login"))
             else:
                 error = err
 
