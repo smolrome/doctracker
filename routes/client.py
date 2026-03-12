@@ -15,7 +15,7 @@ from services.auth import (
 from services.documents import (
     get_doc, insert_doc, load_docs, now_str, generate_ref,
 )
-from services.misc import audit_log
+from services.misc import audit_log, load_saved_offices
 from services.qr import create_doc_token, generate_qr_b64, make_doc_status_qr_png
 from services.dropdown_options import get_dropdown_options
 from utils import get_client_ip, is_logged_in
@@ -145,7 +145,8 @@ def portal():
     username = session.get("username")
     docs     = load_docs()
     my_docs  = [d for d in docs if d.get("submitted_by") == username]
-    return render_template("client_portal.html", docs=my_docs)
+    return render_template("client_portal.html", docs=my_docs,
+                          saved_offices=load_saved_offices())
 
 
 @client_bp.route("/track/<doc_id>")
@@ -211,6 +212,20 @@ def submit():
                 receive_tokens = []
                 office_slug    = session.get("submit_office_slug", "")
                 office_name    = session.get("submit_office_name", "")
+                
+                # Find staff assigned to this office
+                from services.auth import get_all_users
+                all_users = get_all_users()
+                office_staff = [u for u in all_users if u.get("office", "").strip().lower() == office_name.strip().lower() and u.get("role") in ("staff", "admin")]
+                
+                # If no specific staff found, try to find any staff
+                if not office_staff:
+                    office_staff = [u for u in all_users if u.get("role") in ("staff", "admin")]
+                
+                # Assign to first available staff or leave unassigned
+                assigned_staff = office_staff[0].get("username") if office_staff else ""
+                assigned_staff_name = office_staff[0].get("full_name", "") if office_staff else ""
+                
                 for item in cart:
                     doc = {
                         "id":                  str(uuid.uuid4())[:8].upper(),
@@ -237,13 +252,18 @@ def submit():
                         "submitted_by_name":   session.get("full_name") or session.get("username"),
                         "target_office_slug":  office_slug,
                         "target_office_name":  office_name,
+                        # Auto-assign to office staff
+                        "pending_at_staff":    assigned_staff,
+                        "pending_at_staff_name": assigned_staff_name,
+                        "pending_at_office":   office_name,
+                        "transfer_status":     "pending" if assigned_staff else "",
                     }
                     doc["travel_log"].append({
                         "office":    office_name or item["unit_office"] or "Client",
-                        "action":    "Document Submitted by Client",
+                        "action":    "Document Submitted by Client - Pending at " + (assigned_staff_name or assigned_staff or "Office"),
                         "officer":   doc["sender_name"],
                         "timestamp": doc["created_at"],
-                        "remarks":   f"Submitted via client portal. Target office: {office_name or 'General'}.",
+                        "remarks":   f"Submitted via client portal. Target office: {office_name or 'General'}. Assigned to: {assigned_staff_name or assigned_staff or 'Any staff'}.",
                     })
                     insert_doc(doc)
                     receive_tokens.append(create_doc_token(doc["id"], "RECEIVE"))
@@ -270,7 +290,8 @@ def submit():
                            office_slug=session.get("submit_office_slug", ""),
                            office_name=session.get("submit_office_name", ""),
                            unit_office_default=_get_client_org(session.get("username", "")),
-                           category_options=get_dropdown_options("category"))
+                           category_options=get_dropdown_options("category"),
+                           saved_offices=load_saved_offices())
 
 
 # ── Submission confirmation ────────────────────────────────────────────────────

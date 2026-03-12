@@ -20,7 +20,11 @@
   <div class="topbar-actions">
     <span class="tb-user">👤 {{ current_full_name or current_user }}</span>
     <a href="/client/scan"   class="tb-btn tb-scan">📷 Scan</a>
+    {% if saved_offices %}
+    <button type="button" class="tb-btn tb-primary" onclick="toggleOfficeQR()">＋ Submit</button>
+    {% else %}
     <a href="/client/submit" class="tb-btn tb-primary">＋ Submit</a>
+    {% endif %}
     <a href="/logout"        class="tb-btn tb-logout">Exit</a>
   </div>
 </div>
@@ -49,44 +53,37 @@
   </div>
 
   <!-- ══════════════════════════════════════
-       OFFICE SUBMISSION QR FINDER
+       OFFICE SUBMISSION QR FINDER (Modal)
        ══════════════════════════════════════ -->
   {% if saved_offices %}
-  <div class="oqs-section">
-    <div class="oqs-head">
-      <div>
-        <div class="oqs-head-title">📋 Submit to an Office</div>
-        <div class="oqs-head-sub">No QR at the office? Search and submit here.</div>
+  <div id="office-modal" class="office-modal" style="display:none;">
+    <div class="office-modal-overlay" onclick="toggleOfficeModal()"></div>
+    <div class="office-modal-content">
+      <div class="office-modal-header">
+        <h2>🏢 Select Office to Submit To</h2>
+        <button type="button" class="office-modal-close" onclick="toggleOfficeModal()">✕</button>
       </div>
-      <input type="text" class="oqs-search-box" id="oqs-search-c"
-             placeholder="🔍 Search office..."
-             oninput="filterOfficesC(this.value)"
-             autocomplete="off"/>
-    </div>
-    <div class="oqs-body">
-      <div class="oqs-count-c" id="oqs-count-c">
-        {{ saved_offices|length }} office{% if saved_offices|length != 1 %}s{% endif %} available
-      </div>
-      <div class="oqs-grid-c" id="oqs-grid-c">
+      <p class="office-modal-desc">Choose which office you want to submit your documents to. This will direct your documents to that office's receiving staff.</p>
+      <input type="text" class="office-modal-search" id="office-search-input"
+             placeholder="🔍 Search offices..."
+             oninput="filterOfficeModal(this.value)"/>
+      <div class="office-modal-grid" id="office-modal-grid">
         {% for office in saved_offices %}
         {% set sub_slug = office.office_slug + '-sub' %}
-        <div class="oqs-card-c" data-name="{{ office.office_name | lower }}">
-          <div class="oqs-card-name-c">{{ office.office_name }}</div>
+        <div class="office-modal-card" data-name="{{ office.office_name | lower }}">
+          <div class="office-modal-name">{{ office.office_name }}</div>
           <img src="/office-qr/{{ sub_slug }}.png"
-               class="oqs-img-c"
-               alt="Submit QR — {{ office.office_name }}"
-               loading="lazy"/>
+               class="office-modal-img"
+               alt="Submit QR — {{ office.office_name }}"/>
           <a href="/client/submit?office_slug={{ office.office_slug | urlencode }}&office_name={{ office.office_name | urlencode }}"
-             class="btn-sub-c">📋 Submit Here</a>
-          <a href="/office-qr/{{ sub_slug }}.png"
-             download="{{ sub_slug }}.png"
-             class="btn-dl-c">⬇️ Download QR</a>
+             class="office-modal-select">✓ Select This Office</a>
         </div>
         {% endfor %}
       </div>
-      <div class="oqs-none-c" id="oqs-none-c">No offices match your search.</div>
+      <div class="office-modal-none" id="office-modal-none" style="display:none;">No offices match your search.</div>
     </div>
   </div>
+  
   {% endif %}
 
   <div class="section-head">

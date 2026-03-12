@@ -136,3 +136,22 @@
       .oqs-grid-c{grid-template-columns:1fr 1fr;}
     }
     @media(max-width:340px){.oqs-grid-c{grid-template-columns:1fr;}}
+
+    .office-modal{position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000;display:flex;align-items:center;justify-content:center;}
+  .office-modal-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);}
+  .office-modal-content{position:relative;background:#fff;border-radius:16px;padding:24px;max-width:90%;max-height:85vh;overflow-y:auto;width:800px;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+  .office-modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .office-modal-header h2{font-family:'Outfit',sans-serif;font-size:22px;font-weight:900;color:#0A2540;margin:0;}
+  .office-modal-close{background:#F0F7FA;border:2px solid #C8DDE8;border-radius:8px;width:36px;height:36px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#5A7A91;}
+  .office-modal-close:hover{background:#E1E8EF;color:#0A2540;}
+  .office-modal-desc{color:#5A7A91;font-size:14px;margin-bottom:16px;}
+  .office-modal-search{width:100%;padding:12px 16px;border:2px solid #C8DDE8;border-radius:10px;font-size:15px;outline:none;margin-bottom:16px;}
+  .office-modal-search:focus{border-color:#7C3AED;}
+  .office-modal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;}
+  .office-modal-card{background:#fff;border:2px solid #E5E7EB;border-radius:12px;padding:16px;text-align:center;transition:all 0.2s;}
+  .office-modal-card:hover{border-color:#7C3AED;box-shadow:0 4px 16px rgba(124,58,237,0.15);}
+  .office-modal-name{font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;color:#0A2540;margin-bottom:10px;}
+  .office-modal-img{width:120px;height:120px;object-fit:contain;border-radius:8px;border:2px solid #E5E7EB;margin-bottom:12px;}
+  .office-modal-select{display:block;background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;text-decoration:none;padding:10px;border-radius:8px;font-weight:700;font-size:13px;}
+  .office-modal-select:hover{background:linear-gradient(135deg,#5B21B6,#4C1D95);}
+  .office-modal-none{text-align:center;padding:30px;color:#5A7A91;}
