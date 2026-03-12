@@ -90,24 +90,14 @@ def office_staff():
         office_name = office.get('office_name', '')
         staff_count = staff_counts.get(office_name, 0) + staff_counts.get(office_slug, 0)
         
-        # Try to find staff by office_name or office_slug (case-insensitive)
+        # Match staff by office_name exactly (case-insensitive)
         office_name_lower = office_name.strip().lower()
-        office_slug_lower = office_slug.strip().lower()
         
         office_staff_list = [
             u for u in all_users
             if u.get("role") in ("staff", "admin")
-            and (
-                u.get("office", "").strip().lower() == office_name_lower or
-                u.get("office", "").strip().lower() == office_slug_lower or
-                office_name_lower in u.get("office", "").strip().lower() or
-                u.get("office", "").strip().lower() in office_name_lower
-            )
+            and u.get("office", "").strip().lower() == office_name_lower
         ]
-        
-        # If still no staff found, use all staff as fallback
-        if not office_staff_list:
-            office_staff_list = staff_members
         
         office_staff_counts.append({
             'office_name': office_name,
@@ -126,7 +116,7 @@ def office_staff():
                 'staff_count': count,
                 'created_by': '',
                 'primary_recipient': '',
-                'staff': staff_members
+                'staff': []
             })
     
     office_staff_json = {
