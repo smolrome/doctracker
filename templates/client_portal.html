@@ -88,7 +88,8 @@
 
   <div class="section-head">
     <div class="section-title">My Documents</div>
-    <a href="/client/submit" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:linear-gradient(135deg,#0A4D68,#059669);color:#fff;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 4px 14px rgba(10,77,104,.3);">＋ Submit New</a>
+    <a href="/client/submit" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:linear-gradient(135deg,#0A4D68,#059669);color:#fff;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 4px 14px rgba(10,77,104,.3);" 
+    onclick="toggleOfficeModal()">＋ Submit New</a>
   </div>
 
   {% if docs %}
@@ -111,7 +112,7 @@
       <div class="empty-icon">📭</div>
       <div class="empty-title">No documents yet</div>
       <div class="empty-text">Submit your first document to start tracking it here.</div>
-      <a href="/client/submit" class="btn-submit">＋ Submit a Document</a>
+      <a href="/client/submit" class="btn-submit" onclick="toggleOfficeModal">＋ Submit a Document</a>
     </div>
   {% endif %}
 </div>
