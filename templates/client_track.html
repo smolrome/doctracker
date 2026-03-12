@@ -89,15 +89,38 @@
   </div>
 
   <!-- Timeline -->
-  {% if doc.travel_log %}
+  {% if doc.travel_log or doc.created_at %}
   <div class="card">
     <div class="card-title">🗺️ Document Timeline</div>
     <ul class="timeline">
+      {# Show initial submission first if not in travel_log #}
+      {% if doc.created_at and (not doc.travel_log or 'Submitted' not in doc.travel_log[0].get('action', '')) %}
+      <li class="tl-item">
+        <div class="tl-dot create">
+          {{ '📱' if doc.submitted_by else '🖊️' }}
+        </div>
+        <div class="tl-body">
+          <div class="tl-action">{{ 'Submitted' if doc.submitted_by else 'Logged' }}</div>
+          <div class="tl-meta">{{ doc.target_office_name or 'DepEd Leyte Division Office' }} · {{ doc.created_at[:16].replace('T',' ') if doc.created_at else '' }}</div>
+        </div>
+      </li>
+      {% endif %}
+      
+      {# Show travel_log entries in reverse (most recent first) #}
       {% for log in doc.travel_log|reverse %}
-      {% set dt = 'receive' if 'Receive' in log.action else ('release' if 'Release' in log.action else 'create') %}
+      {% set action_lower = log.action|lower if log.action else '' %}
+      {% set dt = 'receive' if 'receive' in action_lower else ('release' if 'release' in action_lower else ('reroute' if 'reroute' in action_lower else ('route' if 'route' in action_lower else 'create'))) %}
       <li class="tl-item">
         <div class="tl-dot {{ dt }}">
-          {{ '📥' if 'Receive' in log.action else ('✅' if 'Release' in log.action else '📄') }}
+          {% if 'receive' in action_lower %}📥
+          {% elif 'release' in action_lower or 'picked up' in action_lower %}✅
+          {% elif 'reroute' in action_lower %}🔁
+          {% elif 'route' in action_lower %}🚚
+          {% elif 'reject' in action_lower %}❌
+          {% elif 'on hold' in action_lower or 'hold' in action_lower %}⏸️
+          {% elif 'archived' in action_lower %}📦
+          {% else %}📄
+          {% endif %}
         </div>
         <div class="tl-body">
           <div class="tl-action">{{ log.action }}</div>
