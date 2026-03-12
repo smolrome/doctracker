@@ -174,6 +174,128 @@ def track(doc_id):
                            qr_b64=generate_qr_b64(doc, request.host_url))
 
 
+@client_bp.route("/delete/<doc_id>", methods=["POST"])
+@_require_client
+def delete(doc_id):
+    """Allow clients to soft-delete their rejected documents (moves to trash)."""
+    doc = get_doc(doc_id)
+    if not doc or doc.get("submitted_by") != session.get("username"):
+        flash("Document not found or you don't have permission.", "error")
+        return redirect(url_for("client.portal"))
+    
+    # Only allow deletion if document is rejected
+    if doc.get("status") != "Rejected":
+        flash("You can only delete rejected documents.", "error")
+        return redirect(url_for("client.track", doc_id=doc_id))
+    
+    from services.documents import delete_doc
+    doc_name = doc.get("doc_name", doc_id)
+    delete_doc(doc_id, deleted_by=session.get("username", ""))
+    
+    from services.misc import audit_log
+    audit_log("client_doc_deleted", f"doc_id={doc_id} name={doc_name}",
+              username=session.get("username", ""), ip=get_client_ip())
+    
+    flash(f"Document '{doc_name}' moved to trash. You can restore or permanently delete it from your Trash.", "success")
+    return redirect(url_for("client.portal"))
+
+
+@client_bp.route("/trash")
+@_require_client
+def trash():
+    """Show client's deleted documents (soft-deleted), auto-delete if older than 30 days."""
+    username = session.get("username", "")
+    from services.documents import load_docs, delete_doc_forever
+    from datetime import datetime, timedelta
+    
+    all_docs = load_docs(include_deleted=True)
+    # Filter to only show documents submitted by this client that are deleted
+    my_deleted_docs = [
+        d for d in all_docs 
+        if d.get("deleted") and d.get("submitted_by") == username
+    ]
+    
+    # Auto-delete documents older than 30 days
+    thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+    remaining_docs = []
+    for doc in my_deleted_docs:
+        deleted_at = doc.get("deleted_at", "")[:10] if doc.get("deleted_at") else ""
+        if deleted_at and deleted_at < thirty_days_ago:
+            # Permanently delete documents older than 30 days
+            delete_doc_forever(doc.get("id", ""))
+        else:
+            remaining_docs.append(doc)
+    
+    return render_template("client_trash.html", docs=remaining_docs)
+
+
+@client_bp.route("/trash/permanent-delete/<doc_id>", methods=["POST"])
+@_require_client
+def permanent_delete(doc_id):
+    """Permanently delete a document from trash."""
+    doc = get_doc(doc_id)
+    if not doc or doc.get("submitted_by") != session.get("username"):
+        flash("Document not found or you don't have permission.", "error")
+        return redirect(url_for("client.trash"))
+    
+    from services.documents import delete_doc_forever
+    doc_name = doc.get("doc_name", doc_id)
+    delete_doc_forever(doc_id)
+    
+    from services.misc import audit_log
+    audit_log("client_doc_permanent_delete", f"doc_id={doc_id} name={doc_name}",
+              username=session.get("username", ""), ip=get_client_ip())
+    
+    flash(f"Document '{doc_name}' permanently deleted.", "success")
+    return redirect(url_for("client.trash"))
+
+
+@client_bp.route("/trash/permanent-delete-all", methods=["POST"])
+@_require_client
+def permanent_delete_all():
+    """Permanently delete all documents from client's trash."""
+    username = session.get("username", "")
+    from services.documents import load_docs, delete_doc_forever
+    all_docs = load_docs(include_deleted=True)
+    my_deleted_docs = [
+        d for d in all_docs 
+        if d.get("deleted") and d.get("submitted_by") == username
+    ]
+    
+    count = 0
+    for doc in my_deleted_docs:
+        delete_doc_forever(doc.get("id", ""))
+        count += 1
+    
+    from services.misc import audit_log
+    audit_log("client_doc_permanent_delete_all", f"count={count}",
+              username=username, ip=get_client_ip())
+    
+    flash(f"Permanently deleted {count} document(s) from trash.", "success")
+    return redirect(url_for("client.trash"))
+
+
+@client_bp.route("/trash/restore/<doc_id>", methods=["POST"])
+@_require_client
+def restore(doc_id):
+    """Restore a document from trash."""
+    doc = get_doc(doc_id)
+    if not doc or doc.get("submitted_by") != session.get("username"):
+        flash("Document not found or you don't have permission.", "error")
+        return redirect(url_for("client.trash"))
+    
+    from services.documents import restore_doc
+    doc_name = doc.get("doc_name", doc_id)
+    restore_doc(doc_id)
+    
+    from services.misc import audit_log
+    audit_log("client_doc_restored", f"doc_id={doc_id} name={doc_name}",
+              username=session.get("username", ""), ip=get_client_ip())
+    
+    flash(f"Document '{doc_name}' restored successfully.", "success")
+    return redirect(url_for("client.portal"))
+
+
 @client_bp.route("/scan")
 @_require_client
 def scan():

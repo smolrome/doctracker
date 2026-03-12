@@ -85,8 +85,11 @@
 
   <div class="section-head">
     <div class="section-title">My Documents</div>
-    <button type="button" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:linear-gradient(135deg,#0A4D68,#059669);color:#fff;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 4px 14px rgba(10,77,104,.3);border:none;cursor:pointer;" 
-    onclick="toggleOfficeModal()">＋ Submit New</button>
+    <div style="display:flex;gap:8px;">
+      <a href="/client/trash" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#FEF3C7;color:#92400E;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;border:2px solid #FCD34D;">🗑️ Trash</a>
+      <button type="button" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:linear-gradient(135deg,#0A4D68,#059669);color:#fff;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 4px 14px rgba(10,77,104,.3);border:none;cursor:pointer;" 
+      onclick="toggleOfficeModal()">＋ Submit New</button>
+    </div>
   </div>
 
   {% if docs %}

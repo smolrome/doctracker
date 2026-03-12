@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trash — DocTracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Source Sans 3',sans-serif;background:#F8FAFC;min-height:100vh;}
+    .topbar{background:linear-gradient(135deg,#0A2540,#0E7490);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;color:#fff;}
+    .topbar-brand{display:flex;align-items:center;gap:12px;}
+    .topbar-brand img{width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.4);background:#fff;}
+    .topbar-title{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;}
+    .topbar-back{color:rgba(255,255,255,.8);text-decoration:none;font-weight:600;padding:8px 16px;border-radius:8px;background:rgba(255,255,255,.1);transition:background .2s;}
+    .topbar-back:hover{background:rgba(255,255,255,.2);}
+    
+    .page{padding:24px;max-width:800px;margin:0 auto;}
+    .page-title{font-family:'Outfit',sans-serif;font-size:28px;font-weight:800;color:#0A2540;margin-bottom:8px;}
+    .page-desc{color:#64748B;margin-bottom:24px;}
+    
+    .trash-info{background:#FEF3C7;border:2px solid #FCD34D;border-radius:12px;padding:16px;margin-bottom:24px;color:#92400E;font-weight:600;}
+    
+    .trash-actions{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;}
+    .btn-delete-all{display:inline-flex;align-items:center;gap:6px;padding:12px 20px;background:#DC2626;color:#fff;border-radius:10px;font-weight:700;border:2px solid #DC2626;cursor:pointer;font-family:inherit;font-size:15px;}
+    .btn-delete-all:hover{background:#B91C1C;}
+    .btn-back{display:inline-flex;align-items:center;gap:6px;padding:12px 20px;background:#fff;color:#0A2540;border-radius:10px;font-weight:700;border:2px solid #E2E8F0;cursor:pointer;font-family:inherit;font-size:15px;text-decoration:none;}
+    .btn-back:hover{background:#F1F5F9;}
+    
+    .doc-card{display:flex;align-items:center;justify-content:space-between;background:#fff;border:2px solid #E2E8F0;border-radius:12px;padding:16px;margin-bottom:12px;transition:border-color .2s,box-shadow .2s;}
+    .doc-card:hover{border-color:#0E7490;box-shadow:0 4px 12px rgba(0,0,0,.08);}
+    .doc-left{flex:1;}
+    .doc-name{font-weight:700;font-size:17px;color:#0A2540;margin-bottom:4px;}
+    .doc-meta{font-size:14px;color:#64748B;}
+    .doc-ref{font-size:13px;color:#94A3B8;font-family:monospace;}
+    .doc-right{display:flex;align-items:center;gap:8px;}
+    .btn-restore{display:inline-flex;align-items:center;gap:4px;padding:8px 14px;background:#059669;color:#fff;border-radius:8px;font-weight:600;border:none;cursor:pointer;font-size:14px;}
+    .btn-restore:hover{background:#047857;}
+    .btn-perm-delete{display:inline-flex;align-items:center;gap:4px;padding:8px 14px;background:#FEE2E2;color:#991B1B;border-radius:8px;font-weight:600;border:2px solid #DC2626;cursor:pointer;font-size:14px;}
+    .btn-perm-delete:hover{background:#DC2626;color:#fff;}
+    
+    .empty{text-align:center;padding:48px 24px;color:#64748B;}
+    .empty-icon{font-size:48px;margin-bottom:12px;}
+    .empty-title{font-family:'Outfit',sans-serif;font-size:20px;font-weight:700;color:#0A2540;margin-bottom:8px;}
+    
+    .flash{background:#ECFDF5;border:2px solid #059669;border-radius:10px;padding:12px 16px;color:#065F46;margin-bottom:16px;font-weight:600;}
+    .flash.error{background:#FEE2E2;border-color:#DC2626;color:#7F1D1D;}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-brand">
+    <img src="/static/logo.png" alt="Logo"/>
+    <span class="topbar-title">Trash</span>
+  </div>
+  <a href="/client" class="topbar-back">← My Documents</a>
+</div>
+
+<div class="page">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="flash {{ cat }}">{{ '✅' if cat=='success' else '❌' }} {{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+  
+  <div class="page-title">🗑️ Deleted Documents</div>
+  <div class="page-desc">Documents you deleted will be kept for 30 days before automatic deletion. You can restore them or permanently delete them now.</div>
+  
+  <div class="trash-info">
+    ℹ️ Deleted documents are kept for 30 days. After 30 days, they will be automatically and permanently deleted.
+  </div>
+  
+  {% if docs %}
+  <div class="trash-actions">
+    <form method="POST" action="/client/trash/permanent-delete-all" onsubmit="return confirm('⚠️ Permanently delete ALL items in trash? This cannot be undone!');">
+      <button type="submit" class="btn-delete-all">🗑️ Delete All Permanently</button>
+    </form>
+    <a href="/client" class="btn-back">← Back to My Documents</a>
+  </div>
+  
+  {% for doc in docs %}
+  <div class="doc-card">
+    <div class="doc-left">
+      <div class="doc-name">{{ doc.doc_name or '(No title)' }}</div>
+      <div class="doc-meta">
+        {% if doc.referred_to %}→ {{ doc.referred_to }}{% endif %}
+        {% if doc.sender_org %} · {{ doc.sender_org }}{% endif %}
+      </div>
+      <div class="doc-ref">Ref: {{ doc.doc_id or doc.id }} · Deleted: {{ doc.deleted_at[:10] if doc.deleted_at else '—' }}</div>
+    </div>
+    <div class="doc-right">
+      <form method="POST" action="/client/trash/restore/{{ doc.id }}" style="margin:0;">
+        <button type="submit" class="btn-restore">↩️ Restore</button>
+      </form>
+      <form method="POST" action="/client/trash/permanent-delete/{{ doc.id }}" onsubmit="return confirm('Permanently delete this document?');" style="margin:0;">
+        <button type="submit" class="btn-perm-delete">🗑️</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+  
+  {% else %}
+  <div class="empty">
+    <div class="empty-icon">🗑️</div>
+    <div class="empty-title">Trash is empty</div>
+    <p>Deleted documents will appear here.</p>
+    <br/>
+    <a href="/client" class="btn-back" style="display:inline-block;">← Back to My Documents</a>
+  </div>
+  {% endif %}
+</div>
+</body>
+</html>

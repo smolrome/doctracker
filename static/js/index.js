@@ -562,8 +562,9 @@ document.addEventListener('DOMContentLoaded', function () {
           const banner      = document.getElementById('pending-banner');
           const bannerCount = document.getElementById('pending-banner-count');
 
-          if (badge) badge.textContent = data.count;
-          if (bannerCount) bannerCount.textContent = data.count + ' ›';
+          // Only show badge when count > 0
+          if (badge) badge.textContent = data.count > 0 ? data.count : '';
+          if (bannerCount) bannerCount.textContent = data.count > 0 ? data.count + ' ›' : '';
           if (banner) banner.classList.toggle('visible', data.count > 0);
         })
         .catch(function (err) { console.error('pending-count error:', err); });

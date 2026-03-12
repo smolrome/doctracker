@@ -19,7 +19,7 @@
 <div class="page">
   {% set status = doc.status %}
   {% set sc = 's-' + status if status in ['Pending','Received','Released'] else 's-default' %}
-  {% set icons = {'Pending':'⏳','Received':'📥','Released':'✅'} %}
+  {% set icons = {'Pending':'⏳','Received':'📥','Released':'✅','Rejected':'❌'} %}
 
   <div class="status-hero {{ sc }}">
     <div class="status-icon">{{ icons.get(status,'📄') }}</div>
@@ -28,9 +28,22 @@
       {% if status=='Pending'  %}Submitted — awaiting processing at the office.
       {% elif status=='Received' %}Received at DepEd Leyte Division Office.
       {% elif status=='Released' %}Processed and released from the office.
+      {% elif status=='Rejected' %}Document was not accepted. You may delete this document.
       {% else %}{{ status }}{% endif %}
     </div>
   </div>
+
+  <!-- Delete Button for Rejected Documents -->
+  {% if status == 'Rejected' %}
+  <div class="card" style="background:#FEF2F2;border:2px solid #FECACA;">
+    <div style="text-align:center;">
+      <p style="color:#991B1B;margin-bottom:12px;font-weight:600;">This document was rejected. Would you like to delete it?</p>
+      <form method="POST" action="/client/delete/{{ doc.id }}" onsubmit="return confirm('Move this document to trash?');">
+        <button type="submit" style="background:#DC2626;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-weight:700;cursor:pointer;font-size:15px;">🗑️ Move to Trash</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- QR Code -->
   <div class="card">

@@ -959,6 +959,7 @@ def get_pending_documents():
     current_user = session.get("username", "")
     current_role = session.get("role", "")
     current_office = session.get("office", "")
+    
     if not current_user:
         return jsonify([])
     
@@ -972,13 +973,15 @@ def get_pending_documents():
         ]
     else:
         # Staff can see docs: assigned specifically to them, OR pending at their office (no specific staff assigned)
+        current_office_lower = current_office.strip().lower() if current_office else ""
         pending = [
             d for d in docs
             if d.get("transfer_status") == "pending" 
             and (
                 d.get("pending_at_staff") == current_user
                 or (
-                    d.get("pending_at_office", "").strip().lower() == current_office.strip().lower()
+                    current_office_lower
+                    and d.get("pending_at_office", "").strip().lower() == current_office_lower
                     and not d.get("pending_at_staff", "")
                 )
             )
@@ -992,14 +995,8 @@ def get_pending_count():
     """Get count of documents pending acceptance for the current user."""
     current_user = session.get("username", "")
     current_role = session.get("role", "")
-    
-    # Get user's office
-    all_users = get_all_users()
-    current_office = "Not Found"
-    for u in all_users:
-        if u.get("username") == current_user:
-            current_office = u.get("office", "") or "No Office"
-            break
+    # Get user's office directly from session
+    current_office = session.get("office", "")
     
     if not current_user:
         return jsonify({"count": 0})
@@ -1007,22 +1004,20 @@ def get_pending_count():
     docs = load_docs()
     
     # Filter documents with pending transfer_status
-    pending_docs = []
-    for d in docs:
-        ts = d.get("transfer_status")
-        if ts == "pending":
-            pending_docs.append(d)
+    pending_docs = [d for d in docs if d.get("transfer_status") == "pending"]
     
     # Admin can see all pending transfers
     if current_role == "admin":
         count = len(pending_docs)
     else:
         # Staff can see docs: assigned specifically to them, OR pending at their office (no specific staff assigned)
+        current_office_lower = current_office.strip().lower() if current_office else ""
         count = sum(
             1 for d in pending_docs
             if d.get("pending_at_staff") == current_user
             or (
-                d.get("pending_at_office", "").strip().lower() == current_office.strip().lower()
+                current_office_lower 
+                and d.get("pending_at_office", "").strip().lower() == current_office_lower
                 and not d.get("pending_at_staff", "")
             )
         )
@@ -1036,7 +1031,7 @@ def accept_document(doc_id):
     """Accept a transferred document."""
     current_user = session.get("username", "")
     current_full_name = session.get("full_name", "")
-    current_office = session.get("office", "")
+    current_office = session.get("office", "") or ""
     
     doc = get_doc(doc_id)
     if not doc:
@@ -1050,7 +1045,7 @@ def accept_document(doc_id):
     
     is_authorized = (
         pending_staff == current_user  # Specifically assigned to this staff
-        or (pending_staff == "" and pending_office == current_office_lower)  # Pending at office, any staff can accept
+        or (pending_staff == "" and pending_office == current_office_lower and current_office_lower)  # Pending at office, any staff can accept
     )
     
     if not is_authorized:
@@ -1105,7 +1100,7 @@ def reject_document(doc_id):
     """Reject a transferred document with a reason."""
     current_user = session.get("username", "")
     current_full_name = session.get("full_name", "")
-    current_office = session.get("office", "")
+    current_office = session.get("office", "") or ""
     rejection_reason = request.form.get("rejection_reason", "").strip()
     
     if not rejection_reason:
@@ -1124,7 +1119,7 @@ def reject_document(doc_id):
     
     is_authorized = (
         pending_staff == current_user  # Specifically assigned to this staff
-        or (pending_staff == "" and pending_office == current_office_lower)  # Pending at office, any staff can reject
+        or (pending_staff == "" and pending_office == current_office_lower and current_office_lower)  # Pending at office, any staff can reject
     )
     
     if not is_authorized:

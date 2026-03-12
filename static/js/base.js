@@ -359,7 +359,8 @@ function checkPendingDocuments() {
       const badge       = document.getElementById('pending-badge');
       const banner      = document.getElementById('pending-banner');
       const bannerCount = document.getElementById('pending-banner-count');
-      if (badge) badge.textContent = data.count;
+      // Only show badge when count > 0
+      if (badge) badge.textContent = data.count > 0 ? data.count : '';
       if (banner && bannerCount) {
         bannerCount.textContent = data.count;
         banner.style.display = data.count > 0 ? 'block' : 'none';
@@ -492,3 +493,20 @@ function submitRejection() {
     alert('Network error. Please try again.');
   });
 }
+
+(function() {
+  const img = new Image();
+  img.onload = function() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const ctx = c.getContext('2d');
+    ctx.beginPath();
+    ctx.arc(32, 32, 32, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(img, 0, 0, 64, 64);
+    const link = document.querySelector("link[rel='icon']");
+    link.href = c.toDataURL('image/png');
+  };
+  img.src = '/static/logo.png';
+})();
