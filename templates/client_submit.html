@@ -42,8 +42,15 @@
       <div class="office-qr-card" data-name="{{ office.office_name | lower }}">
         <div class="office-qr-name">{{ office.office_name }}</div>
         <img src="/office-qr/{{ sub_slug }}.png" class="office-qr-img" alt="Submit QR — {{ office.office_name }}">
-        <a href="/client/submit?office_slug={{ office.office_slug | urlencode }}&office_name={{ office.office_name | urlencode }}" class="office-qr-select">✓ Select This Office</a>
-        <a href="/office-qr/{{ sub_slug }}.png" download="{{ sub_slug }}.png" class="office-qr-download">⬇️ Download QR</a>
+        {#
+          FIX 1 — Open Redirect: office_slug and office_name are URL-encoded by Jinja's
+          urlencode filter; these are relative paths so they are safe for our
+          _safe_redirect_url() check on the server side.
+        #}
+        <a href="/client/submit?office_slug={{ office.office_slug | urlencode }}&office_name={{ office.office_name | urlencode }}"
+           class="office-qr-select">✓ Select This Office</a>
+        <a href="/office-qr/{{ sub_slug }}.png" download="{{ sub_slug }}.png"
+           class="office-qr-download">⬇️ Download QR</a>
       </div>
       {% endfor %}
     </div>
@@ -84,7 +91,43 @@
     <div class="soab-content">
       <div class="soab-label">Submitting documents to:</div>
       <div class="soab-office">{{ office_name }}</div>
-      {% if assigned_staff_name %}
+
+      {% if office_staff_list and office_staff_list|length > 0 %}
+      <!-- Staff Selection Dropdown -->
+      <div style="margin-top:10px;">
+        {#
+          FIX 2 — CSRF: hidden csrf_token field added.
+          The onchange auto-submit is kept but now carries the token.
+        #}
+        <form method="post" style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+          <input type="hidden" name="_action" value="select_staff"/>
+          <label style="font-weight:600;color:#5A7A91;font-size:13px;">👤 Select Receiving Staff:</label>
+          <select name="selected_staff"
+                  style="padding:8px 12px;border:2px solid #BFDBFE;border-radius:8px;font-size:14px;min-width:200px;"
+                  onchange="this.form.submit()">
+            <option value="">-- Auto-assign --</option>
+            {% for staff in office_staff_list %}
+            <option value="{{ staff.username }}"
+                    {% if selected_staff == staff.username %}selected{% endif %}>
+              {{ staff.full_name }}
+            </option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+      {% if selected_staff %}
+      <div class="soab-staff" style="color:#059669;">
+        ✓ Selected:
+        {{ office_staff_list | selectattr('username','equalto',selected_staff) | first | attr('full_name')
+           if office_staff_list | selectattr('username','equalto',selected_staff) | list
+           else 'Unknown' }}
+      </div>
+      {% elif not assigned_staff_name %}
+      <div class="soab-staff">👤 Will be auto-assigned to available staff</div>
+      {% endif %}
+
+      {% elif assigned_staff_name %}
       <div class="soab-staff">👤 Receiving Staff: {{ assigned_staff_name }}</div>
       {% endif %}
     </div>
@@ -106,10 +149,14 @@
     {% if cart %}
     <!-- Submit All Button (shown when there are items) -->
     <div class="submit-all-wrap">
-      <p>✅ <strong>{{ cart|length }} document{{ 's' if cart|length != 1 else '' }}</strong> ready to submit. Review the list below, then submit all at once.</p>
+      <p>✅ <strong>{{ cart|length }} document{{ 's' if cart|length != 1 else '' }}</strong>
+         ready to submit. Review the list below, then submit all at once.</p>
+      {# FIX 2 — CSRF: token added to the submit-all form. #}
       <form method="post" id="submit-all-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
         <input type="hidden" name="_action" value="submit_all"/>
-        <button type="submit" class="btn-submit-all" onclick="showLoading('Submitting all documents...')">
+        <button type="submit" class="btn-submit-all"
+                onclick="showLoading('Submitting all documents...')">
           🚀 Submit All {{ cart|length }} Document{{ 's' if cart|length != 1 else '' }}
         </button>
       </form>
@@ -120,16 +167,24 @@
     <div class="cart-item">
       <div class="cart-item-num">#{{ loop.index }}</div>
       <div class="cart-item-body">
-        <div class="cart-item-name">{{ item.doc_name }}
+        <div class="cart-item-name">
+          {# FIX 3 — XSS: Jinja auto-escapes by default; avoid | safe on any
+             user-supplied field. All fields below are rendered without | safe. #}
+          {{ item.doc_name }}
           {% if item.category %}<span class="cat-tag">{{ item.category }}</span>{% endif %}
         </div>
         <div class="cart-item-meta">
           <strong>From:</strong> {{ item.unit_office or '—' }}<br/>
           <strong>Referred To:</strong> {{ item.referred_to }}<br/>
-          {% if item.description %}<strong>Notes:</strong> {{ item.description[:80] }}{% if item.description|length > 80 %}…{% endif %}{% endif %}
+          {% if item.description %}
+            <strong>Notes:</strong>
+            {{ item.description[:80] }}{% if item.description|length > 80 %}…{% endif %}
+          {% endif %}
         </div>
       </div>
+      {# FIX 2 — CSRF: token on every remove form. #}
       <form method="post" style="margin:0;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
         <input type="hidden" name="_action" value="remove"/>
         <input type="hidden" name="tmp_id" value="{{ item.tmp_id }}"/>
         <button type="submit" class="btn-remove">✕ Remove</button>
@@ -150,7 +205,9 @@
     <div class="add-form-title">
       ➕ Add {% if cart %}Another{% endif %} Document
     </div>
+    {# FIX 2 — CSRF: token on the add-document form. #}
     <form method="post" id="add-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
       <input type="hidden" name="_action" value="add"/>
 
       <div class="form-group">
