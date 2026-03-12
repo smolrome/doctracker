@@ -247,8 +247,10 @@ def submit():
                             assigned_staff_name = u.get("full_name", "") or u.get("username", "")
                             break
                 else:
+                    # Try to find staff in the same office
                     office_staff = [u for u in all_users if u.get("office", "").strip().lower() == office_name.strip().lower() and u.get("role") in ("staff", "admin")]
                     if not office_staff:
+                        # If still no staff, get any staff/admin
                         office_staff = [u for u in all_users if u.get("role") in ("staff", "admin")]
                     assigned_staff = office_staff[0].get("username") if office_staff else ""
                     assigned_staff_name = office_staff[0].get("full_name", "") if office_staff else ""
@@ -282,7 +284,8 @@ def submit():
                         "pending_at_staff":    assigned_staff,
                         "pending_at_staff_name": assigned_staff_name,
                         "pending_at_office":   office_name,
-                        "transfer_status":     "pending" if assigned_staff else "",
+                        # Always set to "pending" so any staff in the office can see it
+                        "transfer_status":     "pending" if assigned_staff or office_name else "",
                     }
                     doc["travel_log"].append({
                         "office":    office_name or item["unit_office"] or "Client",
