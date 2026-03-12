@@ -54,7 +54,6 @@ def login():
                 if role == "client":
                     return redirect(url_for("client.portal"))
                 next_raw = request.args.get("next", "")
-                # Open redirect protection: only allow relative paths
                 from urllib.parse import urlparse
                 parsed = urlparse(next_raw)
                 if next_raw and not parsed.scheme and not parsed.netloc and next_raw.startswith("/"):
@@ -82,20 +81,30 @@ def register():
     if token:
         try:
             token_email, token_name = validate_invite_token(token)
-        except Exception as e:
+        except Exception:
             pass
 
     token_valid = bool(token_email)
     error = None
-    
+
     # Load existing offices for dropdown
     existing_offices = []
     if token_valid:
         try:
             existing_offices = load_saved_offices()
-        except Exception as e:
+            # If no saved offices, auto-build from users' office field
+            if not existing_offices:
+                from services.auth import get_all_users
+                all_users = get_all_users()
+                seen = set()
+                for u in all_users:
+                    o = (u.get('office') or '').strip()
+                    if o and o not in seen:
+                        seen.add(o)
+                        existing_offices.append({'office_name': o, 'office_slug': o})
+        except Exception:
             pass
-    
+
     if request.method == "POST":
         if not token_valid:
             error = "Invalid or expired invite link. Please ask the admin for a new one."
@@ -121,7 +130,7 @@ def register():
                                       office=office)
                 if ok:
                     consume_invite_token(token)
-                    
+
                     # Check if office already exists - only create QR if new
                     office_exists = False
                     matched_office_name = None
@@ -133,9 +142,9 @@ def register():
                                 office_exists = True
                                 matched_office_name = saved.get('office_name', office)
                                 break
-                    except:
+                    except Exception:
                         pass
-                    
+
                     if not office_exists:
                         save_office(office, username)
                         flash(
