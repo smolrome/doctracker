@@ -80,6 +80,8 @@ def index():
     user_role = session.get("role", "")
 
     docs = load_docs()
+    print(f"[DEBUG index] Total docs loaded: {len(docs)}, current_username: {current_username}, user_role: {user_role}")
+    
     if user_role != "admin":
         docs = [
             d for d in docs
@@ -94,6 +96,9 @@ def index():
                 )
             )
         ]
+    print(f"[DEBUG index] Docs after filter for {current_username}: {len(docs)}")
+    for d in docs[:3]:
+        print(f"  -> doc: id={d.get('id')}, status={d.get('status')}, pending_at_staff={d.get('pending_at_staff')}, transfer_status={d.get('transfer_status')}")
 
     search           = request.args.get("search", "").lower()
     filter_status    = request.args.get("status", "All")
@@ -656,17 +661,20 @@ def transfer_doc(doc_id):
     current_user = session.get("username", "")
     user_role    = session.get("role", "")
 
-    # Both the original logger AND any currently assigned staff can route
+    # Original logger, current staff, or pending recipient can route
     is_original  = doc.get("original_logged_by") == current_user
     is_current   = doc.get("logged_by") == current_user
+    is_pending   = doc.get("pending_at_staff") == current_user
 
-    if user_role != "admin" and not is_original and not is_current:
+    if user_role != "admin" and not is_original and not is_current and not is_pending:
         flash("You are not authorized to route this document.", "error")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
 
     if request.method == "POST":
         transfer_type = request.form.get("transfer_type", "").strip()
         new_staff     = request.form.get("new_staff", "").strip()
+
+        print(f"[DEBUG transfer_doc] doc_id: {doc_id}, transfer_type: {transfer_type}, new_staff: {new_staff}")
 
         if not new_staff:
             flash("Please select a staff member.", "error")
@@ -722,6 +730,8 @@ def transfer_doc(doc_id):
         doc["pending_at_office"]     = new_staff_office
         doc["pending_at_staff_name"] = new_staff_full_name
         doc["transfer_status"]       = "pending"
+
+        print(f"[DEBUG transfer_doc] Updated doc {doc_id}: status={new_status}, transferred_to={new_staff}, pending_at_staff={new_staff}")
 
         current_full_name = session.get("full_name") or session.get("username")
         current_office    = session.get("office") or "DepEd Leyte Division"
@@ -868,6 +878,9 @@ def transfer_batch():
 
     id_list = [d.strip() for d in doc_ids.split(",") if d.strip()]
 
+    print(f"[DEBUG transfer_batch] doc_ids: {id_list}")
+    print(f"[DEBUG transfer_batch] transfer_type: {transfer_type}, new_staff: {new_staff}, new_office: {new_office}")
+
     if not id_list:
         flash("No valid document IDs.", "error")
         return redirect(url_for("dashboard.index"))
@@ -900,9 +913,11 @@ def transfer_batch():
         doc = get_doc(doc_id)
         if not doc:
             continue
+        # Allow transfer if user is admin, OR the current logged_by, OR original logger, OR pending recipient
         if user_role != "admin" \
         and doc.get("logged_by") != current_user \
-        and doc.get("original_logged_by") != current_user:
+        and doc.get("original_logged_by") != current_user \
+        and doc.get("pending_at_staff") != current_user:
             continue
 
         old_status      = doc.get("status", "")
@@ -931,6 +946,8 @@ def transfer_batch():
         doc["pending_at_office"]     = new_staff_office
         doc["pending_at_staff_name"] = new_staff_full_name
         doc["transfer_status"]       = "pending"
+
+        print(f"[DEBUG transfer_batch] Updated doc {doc_id}: status={doc['status']}, transferred_to={doc['transferred_to']}, pending_at_staff={doc['pending_at_staff']}")
 
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
