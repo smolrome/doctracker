@@ -834,29 +834,30 @@ var serverSessionData = {
 <script>
 (function () {
   function setStickyTops() {
-    const navbar   = document.querySelector('.navbar, nav, header') || { offsetHeight: 0 };
-    const statsBar = document.getElementById('stats-sticky-bar');
+    const navbar    = document.querySelector('.topbar, .navbar, nav, header');
+    const statsBar  = document.getElementById('stats-sticky-bar');
     const filterBar = document.getElementById('filter-sticky-bar');
     const tableHead = document.getElementById('table-action-bar');
-    const tableColHead = document.querySelector('#docs-table thead');
 
-    const navH    = navbar.offsetHeight || 0;
-    const statsH  = statsBar  ? statsBar.offsetHeight  : 0;
-    const filterH = filterBar ? filterBar.offsetHeight : 0;
+    const navH       = navbar    ? navbar.offsetHeight    : 0;
+    const statsH     = statsBar  ? statsBar.offsetHeight  : 0;
+    const filterH    = filterBar ? filterBar.offsetHeight : 0;
     const tableHeadH = tableHead ? tableHead.offsetHeight : 0;
 
     const root = document.documentElement;
-    root.style.setProperty('--navbar-h',   navH + 'px');
-    root.style.setProperty('--filter-top', (navH + statsH) + 'px');
-    root.style.setProperty('--thead-top',  (navH + statsH + filterH) + 'px');
+    root.style.setProperty('--navbar-h',     navH + 'px');
+    root.style.setProperty('--filter-top',   (navH + statsH) + 'px');
+    root.style.setProperty('--thead-top',    (navH + statsH + filterH) + 'px');
     root.style.setProperty('--col-head-top', (navH + statsH + filterH + tableHeadH) + 'px');
   }
 
+  // Run immediately, on load, and on resize
   setStickyTops();
+  window.addEventListener('load', setStickyTops);
   window.addEventListener('resize', setStickyTops);
 
-  // Re-run after fonts/images settle
-  window.addEventListener('load', setStickyTops);
+  // Extra pass after fonts render (they shift layout)
+  document.fonts.ready.then(setStickyTops);
 })();
 </script>
 
