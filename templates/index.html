@@ -357,6 +357,7 @@ var serverSessionData = {
                 <th scope="col">Referred To</th>
                 <th scope="col" class="sortable" data-sort="created_at" aria-sort="descending">Date &amp; Time</th>
                 <th scope="col">Status</th>
+                <th scope="col" class="actions-col">Actions</th>
               </tr>
             </thead>
             <tbody id="docs-tbody">
@@ -429,6 +430,24 @@ var serverSessionData = {
                     {% if doc.rejection_reason %}<div class="status-sub">{{ doc.rejection_reason }}</div>{% endif %}
                   {% else %}<span class="status-pill status-archived">{{ s }}</span>
                   {% endif %}
+                </td>
+                <td class="td-actions" onclick="event.stopPropagation()">
+                  <div class="kebab-menu">
+                    <button class="kebab-btn" aria-label="Document actions" onclick="toggleKebabMenu(this)">
+                      <span>⋮</span>
+                    </button>
+                    <div class="kebab-dropdown">
+                      <a href="/edit/{{ doc.id }}" class="kebab-item">✏️ Edit</a>
+                      <a href="/transfer/{{ doc.id }}" class="kebab-item">🔄 Transfer</a>
+                      <a href="/qr/{{ doc.id }}.png" class="kebab-item" target="_blank">📷 QR Code</a>
+                      {% if session.get('role') == 'admin' %}
+                      <form method="post" action="/delete/{{ doc.id }}" style="margin:0;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="kebab-item kebab-delete" onclick="return confirm('Move this document to Trash?')">🗑️ Delete</button>
+                      </form>
+                      {% endif %}
+                    </div>
+                  </div>
                 </td>
               </tr>
               {% endfor %}

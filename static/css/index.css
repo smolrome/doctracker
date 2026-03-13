@@ -658,6 +658,85 @@ th.cb-cell { background: #F1F7FB; }
   .stat-item-num { font-size: 17px; }
 }
 
+/* ── Kebab Menu ── */
+.kebab-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.kebab-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: 18px;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  transition: background-color 0.2s, color 0.2s;
+  line-height: 1;
+}
+
+.kebab-btn:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.kebab-dropdown {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  min-width: 160px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.kebab-dropdown.show {
+  display: block;
+}
+
+.kebab-item {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  text-align: left;
+  text-decoration: none;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.kebab-item:hover {
+  background-color: var(--hover-bg);
+}
+
+.kebab-delete {
+  color: #dc2626;
+}
+
+.kebab-delete:hover {
+  background-color: #fef2f2;
+}
+
+.td-actions {
+  text-align: center;
+  vertical-align: middle;
+  width: 60px;
+}
+
+.actions-col {
+  width: 60px;
+  text-align: center;
+}
+
 @media (max-width: 600px) {
   .doc-page   { padding: 14px 12px 40px; }
   .page-title { font-size: 18px; }

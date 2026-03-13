@@ -849,3 +849,29 @@ function _hideBlock(id) { var el = document.getElementById(id); if (el) el.style
 // Legacy aliases (kept for any inline HTML still using old names)
 function _showTransferBlock(id) { _showBlock(id); }
 function _hideTransferBlock(id) { _hideBlock(id); }
+
+// ─────────────────────────────────────────────────────────────
+// Kebab Menu Functions
+function toggleKebabMenu(btn) {
+  var dropdown = btn.nextElementSibling;
+  var isShown = dropdown.classList.contains('show');
+  
+  // Close all other dropdowns first
+  document.querySelectorAll('.kebab-dropdown.show').forEach(function(d) {
+    d.classList.remove('show');
+  });
+  
+  // Toggle current dropdown
+  if (!isShown) {
+    dropdown.classList.add('show');
+  }
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.kebab-menu')) {
+    document.querySelectorAll('.kebab-dropdown.show').forEach(function(d) {
+      d.classList.remove('show');
+    });
+  }
+});
