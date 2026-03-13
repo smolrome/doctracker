@@ -87,6 +87,7 @@ def index():
                 d.get("logged_by") == current_username
                 or d.get("original_logged_by") == current_username
                 or d.get("received_by") == current_username
+                or d.get("accepted_by") == current_username
             )
             and not (
                 d.get("transfer_status") == "pending"
