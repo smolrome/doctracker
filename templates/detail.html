@@ -167,18 +167,18 @@
     {% set created_icon = '📱' if doc.submitted_by else '🖊️' %}
     
     {# Check if travel_log already contains the initial logged/submitted action to avoid duplicates #}
-    {% set has_initial_log = false %}
+    {% set ns_il = namespace(has_initial_log=false) %}
     {% if doc.travel_log %}
       {% for log_entry in doc.travel_log %}
         {% set action_lower = (log_entry.get('action', '')|lower) %}
         {% if 'logged' in action_lower or 'submitted' in action_lower %}
-          {% set has_initial_log = true %}
+          {% set ns_il.has_initial_log = true %}
         {% endif %}
       {% endfor %}
     {% endif %}
     
     {# Only add initial step if not already in travel_log #}
-    {% if not has_initial_log %}
+    {% if not ns_il.has_initial_log %}
       {% set ns_tl.steps = ns_tl.steps + [(created_label, created_icon,
           doc.created_at[:10] if doc.created_at else '',
           doc.created_at[11:16] if doc.created_at else '')] %}
