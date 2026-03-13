@@ -408,6 +408,10 @@ var serverSessionData = {
                     <span class="status-pill status-transit">Routed</span>
                     {% if doc.pending_at_staff %}<div class="status-sub">→ {{ doc.pending_at_staff }}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</div>
                     {% elif doc.forwarded_to %}<div class="status-sub">→ {{ doc.forwarded_to }}</div>{% endif %}
+                  {% elif s == 'Transferred' %}
+                    <span class="status-pill status-transit">Transferred</span>
+                    {% if doc.transferred_to %}<div class="status-sub">→ {% if doc.transferred_to_office %}{{ doc.transferred_to_office }} · {% endif %}{{ doc.transferred_to }}</div>{% endif %}
+                    {% if doc.transfer_status == 'pending' %}<div class="status-sub">⏳ Awaiting Accept</div>{% endif %}
                   {% elif s == 'Released' %}<span class="status-pill status-released">{{ s }}</span>
                   {% elif s == 'On Hold' %}<span class="status-pill status-hold">{{ s }}</span>
                   {% elif s == 'Rejected' %}

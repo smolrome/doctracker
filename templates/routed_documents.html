@@ -129,7 +129,7 @@
           <td>
             {% set s = doc.status %}
             {% if   s == 'Pending'    %}<span class="s-badge s-pending">⏳ {{ s }}</span>
-            {% elif s == 'Routed' %}<span class="s-badge s-transit">🚚 {{ s }}</span>
+            {% elif s == 'Routed' or s == 'Transferred' %}<span class="s-badge s-transit">{% if s == 'Transferred' %}🔄{% else %}🚚{% endif %} {{ s }}</span>
             {% elif s == 'Received'   %}<span class="s-badge s-received">✅ {{ s }}</span>
             {% elif s == 'In Review'  %}<span class="s-badge s-review">🔍 {{ s }}</span>
             {% elif s == 'Released'   %}<span class="s-badge s-released">📤 {{ s }}</span>
@@ -157,6 +157,7 @@
         <option value="Received">✅ Received</option>
         <option value="In Review">🔍 In Review</option>
         <option value="Routed">🚚 Routed</option>
+        <option value="Transferred">🔄 Transferred</option>
         <option value="Released">📤 Released</option>
         <option value="On Hold">⏸ On Hold</option>
         <option value="Pending">⏳ Pending</option>
@@ -237,6 +238,7 @@
         <select name="status" required
                 style="width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:1rem;">
           <option value="Routed">🚚 Routed</option>
+          <option value="Transferred">🔄 Transferred</option>
           <option value="Pending">⏳ Pending</option>
           <option value="Received">✅ Received</option>
         </select>

@@ -60,7 +60,7 @@
         {% if doc.doc_id %}<div class="doc-ref">Ref: {{ doc.doc_id }}</div>{% endif %}
       </div>
       {% set s = doc.status %}
-      {% if s=='Routed' %}<span class="badge badge-transit">Routed</span>
+      {% if s=='Routed' or s=='Transferred' %}<span class="badge badge-transit">{% if s == 'Transferred' %}🔄{% else %}🚚{% endif %} {{ s }}</span>
       {% elif s=='Pending' %}<span class="badge badge-pending">{{ s }}</span>
       {% elif s=='Released' %}<span class="badge badge-released">{{ s }}</span>
       {% elif s=='On Hold' %}<span class="badge badge-hold">{{ s }}</span>

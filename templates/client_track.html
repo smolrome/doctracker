@@ -18,7 +18,7 @@
 
 <div class="page">
   {% set status = doc.status %}
-  {% set sc = 's-' + status if status in ['Pending','Received','Released'] else 's-default' %}
+  {% set sc = 's-' + status if status in ['Pending','Received','Released','Transferred','Routed'] else 's-default' %}
   {% set icons = {'Pending':'⏳','Received':'📥','Released':'✅','Rejected':'❌'} %}
 
   <div class="status-hero {{ sc }}">

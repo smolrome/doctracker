@@ -102,7 +102,7 @@
       </div>
       <div class="doc-right">
         {% set s = doc.status %}
-        <span class="badge {{ 's-'+s if s in ['Pending','Received','Released'] else 's-default' }}">{{ s }}</span>
+        <span class="badge {{ 's-'+s if s in ['Pending','Received','Released','Transferred','Routed'] else 's-default' }}">{{ s }}</span>
         <span style="font-size:13px;color:var(--muted);">View →</span>
       </div>
     </a>

@@ -64,6 +64,7 @@
     .s-Pending{background:#FEF3C7;color:#92400E;}
     .s-Received{background:#CFFAFE;color:#155E75;}
     .s-Released{background:#D1FAE5;color:#065F46;}
+    .s-Transferred,.s-Routed{background:#EDE9FE;color:#5B21B6;}
     .s-default{background:#F3F4F6;color:#374151;}
 
     /* Empty */

@@ -33,12 +33,14 @@
     .s-Pending {background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:2px solid #D97706;}
     .s-Received{background:linear-gradient(135deg,#F0F9FF,#CFFAFE);border:2px solid #0E7490;}
     .s-Released{background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border:2px solid #059669;}
+    .s-Transferred,.s-Routed{background:linear-gradient(135deg,#EDE9FE,#DDD6FE);border:2px solid #7C3AED;}
     .s-default {background:var(--surface);border:2px solid var(--border);}
     .status-icon{font-size:50px;margin-bottom:8px;line-height:1;}
     .status-label{font-family:'Outfit',sans-serif;font-size:26px;font-weight:900;margin-bottom:4px;line-height:1.1;}
     .s-Pending  .status-label{color:#92400E;}
     .s-Received .status-label{color:#155E75;}
     .s-Released .status-label{color:#065F46;}
+    .s-Transferred .status-label,.s-Routed .status-label{color:#5B21B6;}
     .s-default  .status-label{color:var(--navy);}
     .status-sub{font-size:16px;color:var(--muted);margin-top:4px;}
 

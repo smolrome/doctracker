@@ -88,10 +88,10 @@ def index():
                 or d.get("original_logged_by") == current_username
                 or d.get("received_by") == current_username
                 or d.get("accepted_by") == current_username
-            )
-            and not (
-                d.get("transfer_status") == "pending"
-                and d.get("pending_at_staff") == current_username
+                or (
+                    d.get("transfer_status") == "pending"
+                    and d.get("pending_at_staff") == current_username
+                )
             )
         ]
 
@@ -704,12 +704,12 @@ def transfer_doc(doc_id):
             # ── RE-ROUTING BACK TO ORIGINAL STAFF ──
             new_cycle = cycle + 1
             action_label = f"Re-routed back to Originating Staff (Cycle {new_cycle})"
-            new_status   = "Routed"
+            new_status   = "Transferred" if transfer_type == "inside_office" else "Routed"
             doc["routing_cycle"] = new_cycle
         else:
             # ── ROUTING FORWARD TO ANOTHER OFFICE ──
-            action_label = f"Routed — {status_note} (Cycle {cycle + 1})"
-            new_status   = "Routed"
+            action_label = f"{'Transferred' if transfer_type == 'inside_office' else 'Routed'} — {status_note} (Cycle {cycle + 1})"
+            new_status   = "Transferred" if transfer_type == "inside_office" else "Routed"
 
         doc["status"]                = new_status
         doc["logged_by"]             = new_staff
@@ -918,9 +918,9 @@ def transfer_batch():
             doc["routing_cycle"] = cycle + 1
             action_label = f"Batch Re-routed to Originating Staff (Cycle {doc['routing_cycle']})"
         else:
-            action_label = f"Batch Routed — {status_note} (Cycle {cycle + 1})"
+            action_label = f"Batch {'Transferred' if transfer_type == 'inside_office' else 'Routed'} — {status_note} (Cycle {cycle + 1})"
 
-        doc["status"]                = "Routed"
+        doc["status"]                = "Transferred" if transfer_type == "inside_office" else "Routed"
         doc["logged_by"]             = new_staff
         doc["transferred_to"]        = new_staff
         doc["transferred_to_office"] = new_staff_office
