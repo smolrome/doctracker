@@ -206,6 +206,7 @@ body {
 .si-received { --si-color: #059669; }
 .si-review   { --si-color: #0891B2; }
 .si-routed   { --si-color: #1D4ED8; }
+.si-transferred { --si-color: #7C3AED; }
 .si-released { --si-color: #16A34A; }
 .si-hold     { --si-color: #DC2626; }
 .si-archived { --si-color: #64748B; }

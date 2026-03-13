@@ -252,6 +252,7 @@ def get_stats(docs: list[dict]) -> dict:
         "received":   sum(1 for d in docs if d.get("status") == "Received"),
         "in_review":  sum(1 for d in docs if d.get("status") == "In Review"),
         "routed": sum(1 for d in docs if d.get("status") == "Routed"),
+        "transferred": sum(1 for d in docs if d.get("status") == "Transferred"),
         "released":   sum(1 for d in docs if d.get("status") == "Released"),
         "on_hold":    sum(1 for d in docs if d.get("status") == "On Hold"),
         "archived":   sum(1 for d in docs if d.get("status") == "Archived"),
