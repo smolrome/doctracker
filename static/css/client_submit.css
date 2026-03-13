@@ -770,3 +770,33 @@ body{font-family:'Source Sans 3',sans-serif;background:var(--surface);min-height
   .cmp-edit-row { grid-template-columns: 1fr; }
   .cmp-item-edit { display: none; } /* show icon only on very small screens */
 }
+
+/* ── NO OFFICE PROMPT ── */
+.no-office-prompt {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  background: #FFF7ED;
+  border: 1.5px solid #FCD34D;
+  border-left: 5px solid #F59E0B;
+  border-radius: 12px;
+  flex-wrap: wrap;
+}
+.nop-icon { font-size: 28px; flex-shrink: 0; }
+.nop-body { flex: 1; min-width: 0; }
+.nop-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px; font-weight: 900; color: #92400E;
+}
+.nop-sub { font-size: 13px; color: #78350F; margin-top: 2px; }
+.nop-btn {
+  background: #F59E0B; color: #fff;
+  border: none; padding: 9px 18px;
+  border-radius: 8px; font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  white-space: nowrap; flex-shrink: 0;
+  transition: filter .15s;
+}
+.nop-btn:hover { filter: brightness(1.08); }

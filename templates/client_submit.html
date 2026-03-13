@@ -80,7 +80,17 @@
       {% endif %}
       {% endif %}
     </div>
-    <a href="/client" class="soab-change">Change Office</a>
+    <button type="button" class="soab-change" onclick="toggleOfficeQR()">Change Office</button>
+  </div>
+  {% else %}
+  <!-- No office selected yet — prompt to pick one -->
+  <div class="no-office-prompt">
+    <div class="nop-icon">🏢</div>
+    <div class="nop-body">
+      <div class="nop-title">No office selected</div>
+      <div class="nop-sub">Choose the office you want to submit documents to.</div>
+    </div>
+    <button type="button" class="nop-btn" onclick="toggleOfficeQR()">Select Office</button>
   </div>
   {% endif %}
 
@@ -139,6 +149,7 @@
 <!-- ══════════════════════════════
      CART FAB
 ══════════════════════════════ -->
+{% if cart %}
 <button class="cart-fab" id="cart-fab-btn"
         onclick="openCartModal()"
         aria-label="View submission list"
@@ -149,8 +160,9 @@
     <line x1="3" y1="6" x2="21" y2="6"/>
     <path d="M16 10a4 4 0 01-8 0"/>
   </svg>
-  <span class="cart-fab-badge" id="cart-fab-badge">{{ cart|length if cart else '' }}</span>
+  <span class="cart-fab-badge visible" id="cart-fab-badge">{{ cart|length }}</span>
 </button>
+{% endif %}
 
 <!-- ══════════════════════════════
      CART MODAL
@@ -182,7 +194,8 @@
 
         <div class="cmp-edit-field">
           <label>Unit / Office / School</label>
-          <input type="text" name="unit_office" id="edit-unit-office" placeholder="e.g. Ormoc City Schools Division"/>
+          <input type="text" name="unit_office" id="edit-unit-office"
+                 placeholder="e.g. Ormoc City Schools Division"/>
         </div>
         <div class="cmp-edit-field">
           <label>Content / Particulars <span class="req">*</span></label>
@@ -274,6 +287,48 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════
+     OFFICE QR MODAL
+══════════════════════════════ -->
+<div class="office-qr-modal" id="office-qr-modal" style="display:none;">
+  <div class="office-qr-overlay" onclick="toggleOfficeQR()"></div>
+  <div class="office-qr-content">
+    <div class="office-qr-header">
+      <h2>📍 Select an Office</h2>
+      <button class="office-qr-close" onclick="toggleOfficeQR()">✕</button>
+    </div>
+    <p class="office-qr-desc">Choose the office you want to submit your documents to.</p>
+    <div class="office-qr-search">
+      <input type="text" placeholder="🔍 Search offices…"
+             oninput="filterOffices(this.value)"
+             autocomplete="off"/>
+    </div>
+    <div class="office-qr-grid" id="office-qr-grid">
+      {% for office in saved_offices %}
+      <div class="office-qr-card" data-name="{{ office.office_name | lower }}">
+        {% if office.qr_code %}
+        <img class="office-qr-img"
+             src="/static/qr_codes/{{ office.qr_code }}"
+             alt="QR for {{ office.office_name }}"
+             onerror="this.style.display='none'"/>
+        {% endif %}
+        <div class="office-qr-name">{{ office.office_name }}</div>
+        <a href="/client/submit?office_id={{ office.id }}"
+           class="office-qr-select"
+           onclick="showLoading('Loading office...')">Select</a>
+        {% if office.qr_code %}
+        <a href="/static/qr_codes/{{ office.qr_code }}"
+           download class="office-qr-download">⬇ Download QR</a>
+        {% endif %}
+      </div>
+      {% endfor %}
+      <div class="office-qr-none" id="office-qr-none" style="display:none;">
+        No offices match your search.
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Loading overlay -->
 <div id="loading-overlay">
   <div class="loading-box">
@@ -289,6 +344,10 @@
   if (docNameInput) docNameInput.focus();
 </script>
 {% endif %}
+
+<script>
+
+</script>
 
 </body>
 </html>
