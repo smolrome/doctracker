@@ -15,9 +15,7 @@
   </div>
   <div style="display:flex;gap:8px;align-items:center;">
     <a href="/client" class="topbar-back">← My Docs</a>
-    {% if saved_offices %}
   </div>
-</div>
 
 <div class="page">
 
@@ -87,6 +85,7 @@
       <div class="soab-staff">👤 Will be auto-assigned to available staff</div>
       {% elif assigned_staff_name %}
       <div class="soab-staff">👤 Receiving Staff: {{ assigned_staff_name }}</div>
+      {% endif %}
       {% endif %}
     </div>
     <a href="/client" class="soab-change">Change Office</a>
