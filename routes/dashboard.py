@@ -664,7 +664,8 @@ def transfer_doc(doc_id):
     # Original logger, current staff, or pending recipient can route
     is_original  = doc.get("original_logged_by") == current_user
     is_current   = doc.get("logged_by") == current_user
-    is_pending   = doc.get("pending_at_staff") == current_user
+    pending_staff = doc.get("pending_at_staff") or ""
+    is_pending   = bool(pending_staff) and pending_staff == current_user
 
     if user_role != "admin" and not is_original and not is_current and not is_pending:
         flash("You are not authorized to route this document.", "error")
@@ -913,11 +914,12 @@ def transfer_batch():
         doc = get_doc(doc_id)
         if not doc:
             continue
-        # Allow transfer if user is admin, OR the current logged_by, OR original logger, OR pending recipient
+        # Allow transfer if user is admin, OR the current logged_by, OR original logger, OR pending recipient (with value)
+        pending_staff = doc.get("pending_at_staff") or ""
         if user_role != "admin" \
         and doc.get("logged_by") != current_user \
         and doc.get("original_logged_by") != current_user \
-        and doc.get("pending_at_staff") != current_user:
+        and (not pending_staff or pending_staff != current_user):
             continue
 
         old_status      = doc.get("status", "")

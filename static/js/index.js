@@ -875,3 +875,23 @@ document.addEventListener('click', function(e) {
     });
   }
 });
+
+// Handle right-click to open kebab menu
+document.addEventListener('contextmenu', function(e) {
+  var row = e.target.closest('.doc-row');
+  if (row) {
+    e.preventDefault();
+    var kebabMenu = row.querySelector('.kebab-menu');
+    if (kebabMenu) {
+      var btn = kebabMenu.querySelector('.kebab-btn');
+      var dropdown = kebabMenu.querySelector('.kebab-dropdown');
+      
+      // Close all other dropdowns first
+      document.querySelectorAll('.kebab-dropdown.show').forEach(function(d) {
+        d.classList.remove('show');
+      });
+      
+      dropdown.classList.add('show');
+    }
+  }
+});
