@@ -218,6 +218,43 @@
   </div>
 </div>
 
+<!-- Cart FAB -->
+<button class="cart-fab" id="cart-fab-btn"
+        onclick="openCartModal()"
+        aria-label="View submission list"
+        title="View submission list">
+  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+    <line x1="3" y1="6" x2="21" y2="6"/>
+    <path d="M16 10a4 4 0 01-8 0"/>
+  </svg>
+  <span class="cart-fab-badge" id="cart-fab-badge"></span>
+</button>
+
+<!-- Cart Modal -->
+<div class="cart-modal-overlay" id="cart-modal-overlay"
+     onclick="onCartOverlayClick(event)"
+     role="dialog" aria-modal="true" aria-labelledby="cmp-title-label">
+  <div class="cart-modal-panel">
+    <div class="cmp-handle" aria-hidden="true"></div>
+    <div class="cmp-header">
+      <div class="cmp-title" id="cmp-title-label">
+        Submission list
+        <span class="cmp-count" id="cmp-count-badge">0</span>
+      </div>
+      <button class="cmp-close" onclick="closeCartModal()" aria-label="Close">✕</button>
+    </div>
+    <div class="cmp-body" id="cmp-body"></div>
+    <div class="cmp-footer">
+      <button class="cmp-submit-btn" id="cmp-submit-btn" disabled
+              onclick="submitAllFromModal()">
+        Submit all documents
+      </button>
+    </div>
+  </div>
+</div>
+
 <script src="{{ url_for('static', filename='js/client_submit.js') }}"></script>
 {% if not error %}
 <script>
