@@ -50,20 +50,14 @@
     <div class="soab-content">
       <div class="soab-label">Submitting documents to:</div>
       <div class="soab-office">{{ office_name }}</div>
-
       {% if office_staff_list and office_staff_list|length > 0 %}
-      <!-- Staff Selection Dropdown -->
       <div style="margin-top:10px;">
-        {#
-          FIX 2 — CSRF: hidden csrf_token field added.
-          The onchange auto-submit is kept but now carries the token.
-        #}
         <form method="post" style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
           <input type="hidden" name="_action" value="select_staff"/>
-          <label style="font-weight:600;color:#5A7A91;font-size:13px;">👤 Select Receiving Staff:</label>
+          <label style="font-weight:600;color:rgba(255,255,255,.6);font-size:13px;">👤 Receiving Staff:</label>
           <select name="selected_staff"
-                  style="padding:8px 12px;border:2px solid #BFDBFE;border-radius:8px;font-size:14px;min-width:200px;"
+                  style="padding:8px 12px;border:1.5px solid rgba(255,255,255,.2);border-radius:8px;font-size:14px;min-width:200px;background:rgba(255,255,255,.1);color:#fff;"
                   onchange="this.form.submit()">
             <option value="">-- Auto-assign --</option>
             {% for staff in office_staff_list %}
@@ -76,11 +70,8 @@
         </form>
       </div>
       {% if selected_staff %}
-      <div class="soab-staff" style="color:#059669;">
-        ✓ Selected:
-        {{ office_staff_list | selectattr('username','equalto',selected_staff) | first | attr('full_name')
-           if office_staff_list | selectattr('username','equalto',selected_staff) | list
-           else 'Unknown' }}
+      <div class="soab-staff" style="color:#6EE7B7;">
+        ✓ Selected: {{ office_staff_list | selectattr('username','equalto',selected_staff) | first | attr('full_name') if office_staff_list | selectattr('username','equalto',selected_staff) | list else 'Unknown' }}
       </div>
       {% elif not assigned_staff_name %}
       <div class="soab-staff">👤 Will be auto-assigned to available staff</div>
@@ -93,77 +84,11 @@
   </div>
   {% endif %}
 
-  <!-- ── CART SECTION ── -->
-  <div class="cart-section">
-    <div class="cart-header">
-      <div class="cart-title">
-        📋 Documents to Submit
-        {% if cart %}
-        <span class="cart-count">{{ cart|length }}</span>
-        {% endif %}
-      </div>
-    </div>
-
-    {% if cart %}
-    <!-- Submit All Button (shown when there are items) -->
-    <div class="submit-all-wrap">
-      <p>✅ <strong>{{ cart|length }} document{{ 's' if cart|length != 1 else '' }}</strong>
-         ready to submit. Review the list below, then submit all at once.</p>
-      {# FIX 2 — CSRF: token added to the submit-all form. #}
-      <form method="post" id="submit-all-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-        <input type="hidden" name="_action" value="submit_all"/>
-        <button type="submit" class="btn-submit-all"
-                onclick="showLoading('Submitting all documents...')">
-          🚀 Submit All {{ cart|length }} Document{{ 's' if cart|length != 1 else '' }}
-        </button>
-      </form>
-    </div>
-
-    <!-- Cart items -->
-    {% for item in cart %}
-    <div class="cart-item">
-      <div class="cart-item-num">#{{ loop.index }}</div>
-      <div class="cart-item-body">
-        <div class="cart-item-name">
-          {# FIX 3 — XSS: Jinja auto-escapes by default; avoid | safe on any
-             user-supplied field. All fields below are rendered without | safe. #}
-          {{ item.doc_name }}
-          {% if item.category %}<span class="cat-tag">{{ item.category }}</span>{% endif %}
-        </div>
-        <div class="cart-item-meta">
-          <strong>From:</strong> {{ item.unit_office or '—' }}<br/>
-          <strong>Referred To:</strong> {{ item.referred_to }}<br/>
-          {% if item.description %}
-            <strong>Notes:</strong>
-            {{ item.description[:80] }}{% if item.description|length > 80 %}…{% endif %}
-          {% endif %}
-        </div>
-      </div>
-      {# FIX 2 — CSRF: token on every remove form. #}
-      <form method="post" style="margin:0;">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-        <input type="hidden" name="_action" value="remove"/>
-        <input type="hidden" name="tmp_id" value="{{ item.tmp_id }}"/>
-        <button type="submit" class="btn-remove">✕ Remove</button>
-      </form>
-    </div>
-    {% endfor %}
-
-    {% else %}
-    <div class="cart-empty">
-      <div class="ce-icon">📄</div>
-      <p>No documents added yet.<br/>Fill in the form below to add your first document.</p>
-    </div>
-    {% endif %}
-  </div>
-
   <!-- ── ADD DOCUMENT FORM ── -->
   <div class="add-form-card">
     <div class="add-form-title">
       ➕ Add {% if cart %}Another{% endif %} Document
     </div>
-    {# FIX 2 — CSRF: token on the add-document form. #}
     <form method="post" id="add-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
       <input type="hidden" name="_action" value="add"/>
@@ -209,49 +134,151 @@
     </form>
   </div>
 
-</div>
+</div><!-- /page -->
 
-<div id="loading-overlay">
-  <div class="loading-box">
-    <div class="loading-spinner"></div>
-    <div class="loading-text" id="loading-text">Processing...</div>
-  </div>
-</div>
-
-<!-- Cart FAB -->
+<!-- ══════════════════════════════
+     CART FAB
+══════════════════════════════ -->
 <button class="cart-fab" id="cart-fab-btn"
         onclick="openCartModal()"
         aria-label="View submission list"
         title="View submission list">
   <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"
-       stroke-linecap="round" stroke-linejoin="round">
+       stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
     <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
     <line x1="3" y1="6" x2="21" y2="6"/>
     <path d="M16 10a4 4 0 01-8 0"/>
   </svg>
-  <span class="cart-fab-badge" id="cart-fab-badge"></span>
+  <span class="cart-fab-badge" id="cart-fab-badge">{{ cart|length if cart else '' }}</span>
 </button>
 
-<!-- Cart Modal -->
+<!-- ══════════════════════════════
+     CART MODAL
+══════════════════════════════ -->
 <div class="cart-modal-overlay" id="cart-modal-overlay"
      onclick="onCartOverlayClick(event)"
      role="dialog" aria-modal="true" aria-labelledby="cmp-title-label">
   <div class="cart-modal-panel">
     <div class="cmp-handle" aria-hidden="true"></div>
+
     <div class="cmp-header">
       <div class="cmp-title" id="cmp-title-label">
         Submission list
-        <span class="cmp-count" id="cmp-count-badge">0</span>
+        <span class="cmp-count" id="cmp-count-badge">{{ cart|length if cart else 0 }}</span>
       </div>
       <button class="cmp-close" onclick="closeCartModal()" aria-label="Close">✕</button>
     </div>
-    <div class="cmp-body" id="cmp-body"></div>
-    <div class="cmp-footer">
-      <button class="cmp-submit-btn" id="cmp-submit-btn" disabled
-              onclick="submitAllFromModal()">
-        Submit all documents
-      </button>
+
+    <!-- Inline edit form (hidden by default) -->
+    <div class="cmp-edit-panel" id="cmp-edit-panel" style="display:none;">
+      <div class="cmp-edit-header">
+        <span class="cmp-edit-title">Edit Document</span>
+        <button class="cmp-edit-cancel" type="button" onclick="cancelEdit()">✕ Cancel</button>
+      </div>
+      <form method="post" id="cmp-edit-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+        <input type="hidden" name="_action" value="edit"/>
+        <input type="hidden" name="tmp_id" id="edit-tmp-id"/>
+
+        <div class="cmp-edit-field">
+          <label>Unit / Office / School</label>
+          <input type="text" name="unit_office" id="edit-unit-office" placeholder="e.g. Ormoc City Schools Division"/>
+        </div>
+        <div class="cmp-edit-field">
+          <label>Content / Particulars <span class="req">*</span></label>
+          <input type="text" name="doc_name" id="edit-doc-name" required/>
+        </div>
+        <div class="cmp-edit-row">
+          <div class="cmp-edit-field">
+            <label>Document Type</label>
+            <select name="category" id="edit-category">
+              <option value="">— Select type —</option>
+              {% for cat in category_options %}
+              <option value="{{ cat }}">{{ cat }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="cmp-edit-field">
+            <label>Referred To <span class="req">*</span></label>
+            <input type="text" name="referred_to" id="edit-referred-to" required/>
+          </div>
+        </div>
+        <div class="cmp-edit-field">
+          <label>Description / Remarks</label>
+          <textarea name="description" id="edit-description" rows="2"></textarea>
+        </div>
+        <button type="submit" class="cmp-edit-save">💾 Save Changes</button>
+      </form>
     </div>
+
+    <!-- Item list -->
+    <div class="cmp-body" id="cmp-body">
+      {% if cart %}
+        {% for item in cart %}
+        <div class="cmp-item" id="cmp-item-{{ item.tmp_id }}"
+             data-tmp-id="{{ item.tmp_id }}"
+             data-doc-name="{{ item.doc_name | e }}"
+             data-unit-office="{{ item.unit_office | e }}"
+             data-category="{{ item.category | e }}"
+             data-referred-to="{{ item.referred_to | e }}"
+             data-description="{{ item.description | e }}">
+          <div class="cmp-item-num">{{ loop.index }}</div>
+          <div class="cmp-item-body">
+            <div class="cmp-item-name">
+              {{ item.doc_name }}
+              {% if item.category %}<span class="cat-tag">{{ item.category }}</span>{% endif %}
+            </div>
+            <div class="cmp-item-meta">
+              <strong>From:</strong> {{ item.unit_office or '—' }}<br/>
+              <strong>Referred To:</strong> {{ item.referred_to }}<br/>
+              {% if item.description %}
+                <strong>Notes:</strong> {{ item.description[:80] }}{% if item.description|length > 80 %}…{% endif %}
+              {% endif %}
+            </div>
+          </div>
+          <div class="cmp-item-actions">
+            <button class="cmp-item-edit"
+                    onclick="openEdit('{{ item.tmp_id }}', this.closest('.cmp-item'))"
+                    title="Edit">✏️ Edit</button>
+            <form method="post" style="margin:0;display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+              <input type="hidden" name="_action" value="remove"/>
+              <input type="hidden" name="tmp_id" value="{{ item.tmp_id }}"/>
+              <button type="submit" class="cmp-item-remove">✕</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="cmp-empty">
+          <div class="cmp-empty-icon">🛒</div>
+          <p>No documents added yet.<br/>Fill in the form below to add your first.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="cmp-footer">
+      {% if cart %}
+      <form method="post" id="cmp-submit-all-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+        <input type="hidden" name="_action" value="submit_all"/>
+        <button type="submit" class="cmp-submit-btn"
+                onclick="showLoading('Submitting all documents...')">
+          🚀 Submit All {{ cart|length }} Document{{ 's' if cart|length != 1 else '' }}
+        </button>
+      </form>
+      {% else %}
+      <button class="cmp-submit-btn" disabled>Submit All Documents</button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="loading-box">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loading-text">Processing...</div>
   </div>
 </div>
 
@@ -262,5 +289,65 @@
   if (docNameInput) docNameInput.focus();
 </script>
 {% endif %}
+
+<script>
+// ── FAB badge init (server-rendered count)
+(function() {
+  const count = {{ cart|length if cart else 0 }};
+  const badge = document.getElementById('cart-fab-badge');
+  if (badge) {
+    badge.textContent = count > 0 ? count : '';
+    badge.classList.toggle('visible', count > 0);
+  }
+  // Auto-open modal if there are items and user just added one
+  {% if cart and cart|length > 0 %}
+  // Uncomment to auto-open on load: openCartModal();
+  {% endif %}
+})();
+
+function openCartModal() {
+  document.getElementById('cart-modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCartModal() {
+  cancelEdit();
+  document.getElementById('cart-modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function onCartOverlayClick(e) {
+  if (e.target === document.getElementById('cart-modal-overlay')) closeCartModal();
+}
+
+// ── Edit
+function openEdit(tmpId, itemEl) {
+  const panel = document.getElementById('cmp-edit-panel');
+  const body  = document.getElementById('cmp-body');
+
+  document.getElementById('edit-tmp-id').value        = itemEl.dataset.tmpId;
+  document.getElementById('edit-doc-name').value      = itemEl.dataset.docName;
+  document.getElementById('edit-unit-office').value   = itemEl.dataset.unitOffice;
+  document.getElementById('edit-referred-to').value   = itemEl.dataset.referredTo;
+  document.getElementById('edit-description').value   = itemEl.dataset.description;
+
+  const catSel = document.getElementById('edit-category');
+  if (catSel) {
+    for (let opt of catSel.options) {
+      opt.selected = (opt.value === itemEl.dataset.category);
+    }
+  }
+
+  panel.style.display = 'block';
+  body.style.display  = 'none';
+  document.getElementById('edit-doc-name').focus();
+}
+
+function cancelEdit() {
+  document.getElementById('cmp-edit-panel').style.display = 'none';
+  document.getElementById('cmp-body').style.display       = 'block';
+}
+</script>
+
 </body>
 </html>
