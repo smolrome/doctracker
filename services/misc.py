@@ -33,7 +33,7 @@ def audit_log(action: str, detail: str = "", username: str = "anonymous",
                     )
                 conn.commit()
         except Exception as e:
-            pass
+            print(f"[services.misc] audit_log DB error for action={action}: {e}")
     else:
         path = "activity_log.json"
         logs = []
@@ -61,6 +61,7 @@ def get_activity_logs(limit: int = 200) -> list[dict]:
                     )
                     return [dict(r) for r in cur.fetchall()]
         except Exception as e:
+            print(f"[services.misc] get_activity_logs DB error: {e}")
             return []
     path = "activity_log.json"
     if not os.path.exists(path):
@@ -90,7 +91,7 @@ def save_office(office_name: str, created_by: str, primary_recipient: str = "") 
                     )
                 conn.commit()
         except Exception as e:
-            pass
+            print(f"[services.misc] save_office DB error for office={office_name}: {e}")
     else:
         path    = "saved_offices.json"
         offices = {}
@@ -115,6 +116,7 @@ def load_saved_offices() -> list[dict]:
                     )
                     return [dict(r) for r in cur.fetchall()]
         except Exception as e:
+            print(f"[services.misc] load_saved_offices DB error: {e}")
             return []
     path = "saved_offices.json"
     if not os.path.exists(path):
@@ -135,7 +137,7 @@ def delete_saved_office(office_slug: str):
                     cur.execute("DELETE FROM saved_offices WHERE office_slug=%s", (office_slug,))
                 conn.commit()
         except Exception as e:
-            pass
+            print(f"[services.misc] delete_saved_office DB error for slug={office_slug}: {e}")
     else:
         path = "saved_offices.json"
         if os.path.exists(path):
@@ -158,7 +160,7 @@ def update_office_primary_recipient(office_slug: str, primary_recipient: str):
                     )
                 conn.commit()
         except Exception as e:
-            pass
+            print(f"[services.misc] update_office_primary_recipient DB error for slug={office_slug}: {e}")
     else:
         path = "saved_offices.json"
         if os.path.exists(path):
@@ -184,7 +186,7 @@ def log_office_traffic(office_slug: str, office_name: str,
                     )
                 conn.commit()
         except Exception as e:
-            pass
+            print(f"[services.misc] log_office_traffic DB error for office={office_slug}: {e}")
     else:
         path = "office_traffic.json"
         logs = []
@@ -221,6 +223,7 @@ def get_office_traffic_today(office_slug: str) -> dict:
                             result["released"] = r["cnt"]
                     return result
         except Exception as e:
+            print(f"[services.misc] get_office_traffic_today DB error for office={office_slug}: {e}")
             return {"received": 0, "released": 0}
     path = "office_traffic.json"
     if not os.path.exists(path):

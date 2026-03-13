@@ -44,6 +44,33 @@
   </div>
 </div>
 
+<!-- ── CURRENT LOCATION SUMMARY ── -->
+<div class="card current-loc-card">
+  <div class="card-title"><span class="icon">📍</span> Current Location</div>
+  <hr class="card-divider">
+  <div class="current-loc-grid">
+    <div class="cl-item">
+      <div class="cl-label">Status</div>
+      <div class="cl-value">{{ doc.status or '—' }}</div>
+    </div>
+    <div class="cl-item">
+      <div class="cl-label">Held By</div>
+      {% set holder = doc.pending_at_staff_name or doc.pending_at_staff
+                     or doc.accepted_by_name or doc.accepted_by
+                     or doc.released_by or doc.received_by
+                     or doc.logged_by or doc.submitted_by %}
+      <div class="cl-value">{{ holder or '—' }}</div>
+    </div>
+    <div class="cl-item">
+      <div class="cl-label">Office</div>
+      {% set office = doc.pending_at_office or doc.transferred_to_office
+                      or doc.target_office_name or doc.sender_org
+                      or session.get('office') %}
+      <div class="cl-value">{{ office or '—' }}</div>
+    </div>
+  </div>
+</div>
+
 <!-- ── ACTIONS ── -->
 <div class="actions-bar">
   {% if logged_in %}
@@ -105,6 +132,34 @@
   </form>
 </div>
 {% endif %}
+
+<!-- ── COPY SHORTCUTS ── -->
+<div class="card copy-card">
+  <div class="card-title"><span class="icon">🔗</span> Quick References</div>
+  <hr class="card-divider">
+  <div class="copy-grid">
+    <div class="copy-item">
+      <div class="copy-label">Document ID</div>
+      <div class="copy-row">
+        <code class="copy-code">{{ doc.id }}</code>
+        <button type="button"
+                class="btn btn-secondary btn-xs copy-btn"
+                data-copy="{{ doc.id }}">Copy</button>
+      </div>
+    </div>
+    {% if doc.doc_id %}
+    <div class="copy-item">
+      <div class="copy-label">Reference No.</div>
+      <div class="copy-row">
+        <code class="copy-code">{{ doc.doc_id }}</code>
+        <button type="button"
+                class="btn btn-secondary btn-xs copy-btn"
+                data-copy="{{ doc.doc_id }}">Copy</button>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
 
 <!-- ═══ STATUS TIMELINE ═══ -->
 <div class="card">
@@ -249,6 +304,33 @@
     {% endfor %}
   </div>
 </div>
+
+<script>
+  (function setupCopyButtons() {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.copy-btn');
+      if (!btn || !btn.dataset.copy) return;
+      var text = btn.dataset.copy;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          btn.textContent = 'Copied';
+          setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+        }).catch(function () {});
+      } else {
+        var tmp = document.createElement('textarea');
+        tmp.value = text;
+        tmp.style.position = 'fixed';
+        tmp.style.opacity = '0';
+        document.body.appendChild(tmp);
+        tmp.select();
+        try { document.execCommand('copy'); } catch (err) {}
+        document.body.removeChild(tmp);
+        btn.textContent = 'Copied';
+        setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+      }
+    });
+  })();
+</script>
 
 <!-- ── ROUTING CHAIN ── -->
 {% if doc.routing %}

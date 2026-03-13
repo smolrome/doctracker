@@ -348,6 +348,28 @@ def create_app() -> Flask:
 
     # ── Internal API endpoints ─────────────────────────────────────────────────
 
+    @app.route("/healthz")
+    def healthz():
+        """
+        Lightweight health check for monitoring.
+        Returns basic storage information and a simple document count probe.
+        """
+        from services.database import USE_DB
+        from services.documents import load_docs
+
+        data = {
+            "ok": True,
+            "storage": "postgresql" if USE_DB else "json",
+        }
+        try:
+            docs = load_docs(include_deleted=True)
+            data["document_count"] = len(docs)
+        except Exception as e:
+            data["ok"] = False
+            data["error"] = str(e)[:200]
+
+        return jsonify(data), (200 if data["ok"] else 500)
+
     @app.route("/api/gen-ref")
     def api_gen_ref():
         if not is_logged_in() or session.get("role") not in ("staff", "admin"):
