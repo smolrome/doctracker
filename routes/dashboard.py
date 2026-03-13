@@ -915,11 +915,15 @@ def transfer_batch():
         if not doc:
             continue
         # Allow transfer if user is admin, OR the current logged_by, OR original logger, OR pending recipient (with value)
-        pending_staff = doc.get("pending_at_staff") or ""
-        if user_role != "admin" \
-        and doc.get("logged_by") != current_user \
-        and doc.get("original_logged_by") != current_user \
-        and (not pending_staff or pending_staff != current_user):
+        pending_staff = doc.get("pending_staff") or doc.get("pending_at_staff") or ""
+        can_transfer = (
+            user_role == "admin" or
+            doc.get("logged_by") == current_user or
+            doc.get("original_logged_by") == current_user or
+            (bool(pending_staff) and pending_staff == current_user)
+        )
+        print(f"[DEBUG transfer_batch] doc_id={doc_id}, current_user={current_user}, logged_by={doc.get('logged_by')}, original_logged_by={doc.get('original_logged_by')}, pending_staff={pending_staff}, can_transfer={can_transfer}")
+        if not can_transfer:
             continue
 
         old_status      = doc.get("status", "")
