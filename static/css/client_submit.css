@@ -50,33 +50,58 @@ body{font-family:'Source Sans 3',sans-serif;background:var(--surface);min-height
 
 .page{max-width:680px;margin:0 auto;padding:24px 16px 80px;}
 
-/* ── STEP INDICATOR ── */
-.steps-indicator{
-  display:flex;align-items:stretch;gap:0;
-  margin-bottom:24px;
-  background:#fff;
-  border:1px solid var(--border);
-  border-radius:12px;
-  overflow:hidden;
+.steps-indicator {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 24px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
 }
-.step-pill{
-  flex:1;padding:14px 10px;text-align:center;
-  font-size:12px;font-weight:700;color:var(--muted);
-  border-right:1px solid var(--border);
-  transition:background .2s,color .2s;
-  cursor:default;
+.step-pill {
+  flex: 1;
+  padding: 14px 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  border-right: 1px solid var(--border);
+  transition: background .2s, color .2s;
+  cursor: default;
+  position: relative;
 }
-.step-pill:last-child{border-right:none;}
-.step-pill.active{
-  background:var(--navy);
-  color:#fff;
+.step-pill:last-child { border-right: none; }
+.step-pill.active {
+  background: linear-gradient(135deg, #0A4D68 0%, #0E7490 55%, #059669 100%);
+  color: #fff;
 }
-.step-pill.done{
-  background:#ECFDF5;color:#065F46;
+.step-pill.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #22D3EE, #34D399, #22D3EE);
 }
-.step-num{
-  font-family:'Outfit',sans-serif;font-size:20px;font-weight:900;
-  display:block;margin-bottom:3px;line-height:1;
+.step-pill.done {
+  background: #ECFDF5;
+  color: #065F46;
+}
+.step-pill.done::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: #34D399;
+}
+.step-num {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  display: block;
+  margin-bottom: 3px;
+  line-height: 1;
 }
 
 /* ── SECTION HEADING ── */
@@ -213,26 +238,45 @@ body{font-family:'Source Sans 3',sans-serif;background:var(--surface);min-height
 }
 .btn-qr-offices:hover{filter:brightness(1.1);transform:translateY(-1px);}
 
-/* ── SELECTED OFFICE BANNER ── */
-.selected-office-banner{
-  background:var(--navy);border-radius:12px;
-  padding:16px 20px;margin-bottom:20px;
-  display:flex;align-items:center;gap:16px;
-  border:1px solid rgba(255,255,255,.06);
+.selected-office-banner {
+  background: linear-gradient(135deg, #0A4D68 0%, #0E7490 55%, #059669 100%);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 4px 16px rgba(10,77,104,.25);
+  position: relative;
+  overflow: hidden;
 }
-.soab-icon{font-size:28px;flex-shrink:0;opacity:.85;}
-.soab-content{flex:1;min-width:0;}
-.soab-label{font-size:11px;color:rgba(255,255,255,.5);margin-bottom:2px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
-.soab-office{font-family:'Outfit',sans-serif;font-size:17px;font-weight:800;color:#fff;}
-.soab-staff{font-size:13px;color:rgba(255,255,255,.65);margin-top:3px;}
-.soab-change{
-  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
-  color:rgba(255,255,255,.85);padding:8px 14px;border-radius:8px;
-  text-decoration:none;font-size:13px;font-weight:600;
-  white-space:nowrap;flex-shrink:0;
-  transition:background .15s,color .15s;
+.selected-office-banner::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #22D3EE, #34D399, #22D3EE);
 }
-.soab-change:hover{background:rgba(255,255,255,.18);color:#fff;}
+.soab-icon { font-size: 28px; flex-shrink: 0; opacity: .9; }
+.soab-content { flex: 1; min-width: 0; }
+.soab-label {
+  font-size: 11px; color: rgba(255,255,255,.6);
+  margin-bottom: 2px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.soab-office { font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 800; color: #fff; }
+.soab-staff { font-size: 13px; color: rgba(255,255,255,.75); margin-top: 3px; }
+.soab-change {
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.3);
+  color: #fff;
+  padding: 8px 14px; border-radius: 8px;
+  text-decoration: none; font-size: 13px; font-weight: 600;
+  white-space: nowrap; flex-shrink: 0;
+  transition: background .15s;
+}
+.soab-change:hover { background: rgba(255,255,255,.25); }
 
 /* ── ERROR / FLASH ── */
 .error-box{
