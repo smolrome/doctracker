@@ -580,6 +580,7 @@
   border-radius: 0 0 14px 14px;
   background: #fff;
   overflow-x: auto;
+  overflow-y: visible; /* was missing — overflow:auto/hidden breaks sticky */
   -webkit-overflow-scrolling: touch;
 }
 
@@ -1131,4 +1132,21 @@ th.cb-cell { background: #F8FAFC; }
 
   .source-pill  { min-width: 90px; }
   .source-pill .pill-btn { padding: 4px 5px; font-size: 9px; }
+}
+
+#docs-table thead {
+  position: sticky;
+  top: var(--col-head-top, 0px);
+  z-index: 10;
+}
+
+#docs-table thead th {
+  position: relative;
+  z-index: 10;
+  background: #F8FAFC;
+}
+
+#docs-table tbody tr {
+  position: relative;
+  z-index: 1;
 }
