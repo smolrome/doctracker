@@ -410,8 +410,13 @@ def edit(doc_id):
         flash("Document not found.", "error")
         return redirect(url_for("dashboard.index"))
 
+    actor = session.get("username", "Unknown")
+    
     if request.method == "POST":
         routing = [r.strip() for r in request.form.get("routing_offices", "").split(",") if r.strip()]
+        old_status = doc.get("status", "")
+        old_doc_name = doc.get("doc_name", "")
+        
         doc.update({
             "doc_id":            request.form.get("doc_id", "").strip(),
             "doc_name":          request.form.get("doc_name", "").strip(),
@@ -438,6 +443,21 @@ def edit(doc_id):
             return render_template("form.html", doc=doc, action="edit", 
                                    status_options=get_dropdown_options("status"),
                                    category_options=get_dropdown_options("category"))
+        
+        # Add edit to travel_log
+        new_status = doc.get("status", "")
+        edit_remarks = f"Document edited by {actor}"
+        if old_status != new_status:
+            edit_remarks = f"Document edited by {actor}. Status changed from {old_status} to {new_status}."
+        
+        doc.setdefault("travel_log", []).append({
+            "office":    "DepEd Leyte Division Office",
+            "action":    "Document Edited",
+            "officer":   actor,
+            "timestamp": now_str(),
+            "remarks":   edit_remarks,
+        })
+        
         save_doc(doc)
         audit_log("doc_edited",
                   f"doc_id={doc_id} doc_name={doc.get('doc_name','')[:80]} status={doc.get('status','')}",

@@ -373,6 +373,7 @@
 }
 
 .ap-logged    { background: #fff8e6; color: #9a6800; border: 1px solid #ffe0a0; }
+.ap-edited   { background: #E0F2FE; color: #0369A1; border: 1px solid #BAE6FD; }
 .ap-transit   { background: #eff5ff; color: #3b7dd8; border: 1px solid #c5d9f5; }
 .ap-received  { background: #edfaf7; color: #1a7a65; border: 1px solid #a8e8d8; }
 .ap-review    { background: #f3efff; color: #6d36d4; border: 1px solid #ccc0f0; }
