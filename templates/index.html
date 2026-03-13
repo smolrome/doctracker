@@ -833,31 +833,44 @@ var serverSessionData = {
 
 <script>
 (function () {
+  /* Measure each sticky zone and store heights as CSS variables.
+     The sticky top values are computed as cumulative sums:
+ 
+       stats  : top = --navbar-h
+       filter : top = --navbar-h + --stats-h
+       tablehead : top = --navbar-h + --stats-h + --filter-h
+       thead th  : top = --navbar-h + --stats-h + --filter-h + --tablehead-h
+ 
+     Each zone uses its OWN CSS variable for `top`, so the browser
+     handles the stacking — no z-index tricks needed.
+  */
   function setStickyTops() {
-    const navbar    = document.querySelector('.topbar, .navbar, nav, header');
+    const root = document.documentElement;
+ 
+    // Find the top navigation bar (adjust selector to match your base.html)
+    const topbar = document.querySelector('.topbar, .navbar, nav > .nav-inner, header');
+    const navH   = topbar ? topbar.getBoundingClientRect().height : 0;
+ 
     const statsBar  = document.getElementById('stats-sticky-bar');
     const filterBar = document.getElementById('filter-sticky-bar');
     const tableHead = document.getElementById('table-action-bar');
-
-    const navH       = navbar    ? navbar.offsetHeight    : 0;
-    const statsH     = statsBar  ? statsBar.offsetHeight  : 0;
-    const filterH    = filterBar ? filterBar.offsetHeight : 0;
-    const tableHeadH = tableHead ? tableHead.offsetHeight : 0;
-
-    const root = document.documentElement;
-    root.style.setProperty('--navbar-h',     navH + 'px');
-    root.style.setProperty('--filter-top',   (navH + statsH) + 'px');
-    root.style.setProperty('--thead-top',    (navH + statsH + filterH) + 'px');
-    root.style.setProperty('--col-head-top', (navH + statsH + filterH + tableHeadH) + 'px');
+ 
+    const statsH     = statsBar  ? statsBar.getBoundingClientRect().height  : 0;
+    const filterH    = filterBar ? filterBar.getBoundingClientRect().height : 0;
+    const tableHeadH = tableHead ? tableHead.getBoundingClientRect().height : 0;
+ 
+    root.style.setProperty('--navbar-h',    navH + 'px');
+    root.style.setProperty('--stats-h',     statsH + 'px');
+    root.style.setProperty('--filter-h',    filterH + 'px');
+    root.style.setProperty('--tablehead-h', tableHeadH + 'px');
   }
-
-  // Run immediately, on load, and on resize
+ 
   setStickyTops();
-  window.addEventListener('load', setStickyTops);
   window.addEventListener('resize', setStickyTops);
-
-  // Extra pass after fonts render (they shift layout)
-  document.fonts.ready.then(setStickyTops);
+  window.addEventListener('load',   setStickyTops);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(setStickyTops);
+  }
 })();
 </script>
 
