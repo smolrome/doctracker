@@ -661,13 +661,12 @@ def transfer_doc(doc_id):
     current_user = session.get("username", "")
     user_role    = session.get("role", "")
 
-    # Original logger, current staff, or pending recipient can route
+    # Original logger, current staff, or accepted by this user can route
     is_original  = doc.get("original_logged_by") == current_user
     is_current   = doc.get("logged_by") == current_user
-    pending_staff = doc.get("pending_at_staff") or ""
-    is_pending   = bool(pending_staff) and pending_staff == current_user
+    is_accepted  = doc.get("accepted_by") == current_user
 
-    if user_role != "admin" and not is_original and not is_current and not is_pending:
+    if user_role != "admin" and not is_original and not is_current and not is_accepted:
         flash("You are not authorized to route this document.", "error")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
 
@@ -914,15 +913,14 @@ def transfer_batch():
         doc = get_doc(doc_id)
         if not doc:
             continue
-        # Allow transfer if user is admin, OR the current logged_by, OR original logger, OR pending recipient (with value)
-        pending_staff = doc.get("pending_staff") or doc.get("pending_at_staff") or ""
+        # Allow transfer if user is admin, OR the current logged_by, OR original logger, OR accepted by this user
         can_transfer = (
             user_role == "admin" or
             doc.get("logged_by") == current_user or
             doc.get("original_logged_by") == current_user or
-            (bool(pending_staff) and pending_staff == current_user)
+            doc.get("accepted_by") == current_user
         )
-        print(f"[DEBUG transfer_batch] doc_id={doc_id}, current_user={current_user}, logged_by={doc.get('logged_by')}, original_logged_by={doc.get('original_logged_by')}, pending_staff={pending_staff}, can_transfer={can_transfer}")
+        print(f"[DEBUG transfer_batch] doc_id={doc_id}, current_user={current_user}, logged_by={doc.get('logged_by')}, original_logged_by={doc.get('original_logged_by')}, accepted_by={doc.get('accepted_by')}, can_transfer={can_transfer}")
         if not can_transfer:
             continue
 
