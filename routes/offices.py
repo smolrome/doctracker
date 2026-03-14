@@ -348,7 +348,26 @@ def routed_documents():
     # Get filter parameter (active, archived, or None for all)
     filter_type = request.args.get('filter', 'active')
     
+    # Get search parameter
+    search = request.args.get('search', '').strip()
+    
     slips = get_all_routing_slips(filter_type)
+    
+    # Apply search filter
+    if search:
+        search_lower = search.lower()
+        filtered_slips = []
+        for slip in slips:
+            # Search in slip number, destination, prepared_by
+            if (search_lower in slip.get('slip_no', '').lower() or
+                search_lower in slip.get('destination', '').lower() or
+                search_lower in slip.get('prepared_by', '').lower() or
+                search_lower in slip.get('from_office', '').lower() or
+                search_lower in slip.get('rerouted_to', '').lower() or
+                search_lower in slip.get('rerouted_from', '').lower()):
+                filtered_slips.append(slip)
+        slips = filtered_slips
+    
     # Collect every doc_id needed across all slips, fetch in ONE query
     all_ids = [did for slip in slips for did in slip.get("doc_ids", [])]
     docs_map = get_docs_by_ids(all_ids)
@@ -376,7 +395,7 @@ def routed_documents():
     return render_template("routed_documents.html",
                            slips=paginated, total=total,
                            page=page, total_pages=total_pages, per_page=per_page,
-                           filter=filter_type)
+                           filter=filter_type, search=search)
 
 
 @offices_bp.route("/routing-slip/<slip_id>/batch-status", methods=["POST"])
@@ -596,6 +615,44 @@ def delete_routing_slip(slip_id):
         return jsonify({"success": True, "message": "Routing slip deleted successfully."})
     else:
         return jsonify({"success": False, "message": "Failed to delete routing slip."}), 500
+
+
+@offices_bp.route("/routing-slip/<slip_id>/archive", methods=["POST"])
+@login_required
+def archive_routing_slip(slip_id):
+    """Archive a routing slip by ID."""
+    from flask import jsonify
+    from services.database import get_db
+    from services.misc import get_routing_slip, audit_log as _audit
+    from utils import get_client_ip
+    
+    try:
+        db = get_db()
+        slip = get_routing_slip(slip_id)
+        if not slip:
+            return jsonify({"success": False, "message": "Routing slip not found."}), 404
+        
+        slip_ids = slip.get("doc_ids", [])
+        
+        # Archive the routing slip
+        db.routing_slips.update_one(
+            {"_id": slip_id},
+            {"$set": {"status": "Archived"}}
+        )
+        
+        # Archive all documents in the slip
+        if slip_ids:
+            db.documents.update_many(
+                {"_id": {"$in": slip_ids}},
+                {"$set": {"status": "Archived"}}
+            )
+        
+        _audit("archive_routing_slip",
+               f"slip_id={slip_id} slip_no={slip.get('slip_no', '?')}",
+               username=session.get("username"), ip=get_client_ip())
+        return jsonify({"success": True, "message": "Routing slip archived successfully."})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
 
 @offices_bp.route("/routing-slip/delete-all", methods=["POST"])

@@ -10,15 +10,33 @@ document.addEventListener('click', function(e) {
 });
 
 /* Toggle kebab menu */
-function toggleKebab(btn) {
+function toggleKebab(btn, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
   const menu = btn.nextElementSibling;
   // Close other menus first
   document.querySelectorAll('.kebab-menu.show').forEach(m => {
     if (m !== menu) m.classList.remove('show');
   });
   menu.classList.toggle('show');
-  event.stopPropagation();
 }
+
+/* Right-click to open kebab menu */
+document.addEventListener('contextmenu', function(e) {
+  const cell = e.target.closest('.kebab-cell');
+  if (cell) {
+    e.preventDefault();
+    const btn = cell.querySelector('.kebab-btn');
+    const menu = cell.querySelector('.kebab-menu');
+    // Close other menus first
+    document.querySelectorAll('.kebab-menu.show').forEach(m => {
+      if (m !== menu) m.classList.remove('show');
+    });
+    menu.classList.toggle('show');
+  }
+});
 
 /* Edit document */
 function editDocument(docId) {
@@ -116,6 +134,32 @@ function deleteRoutingSlip(slipId, slipNo) {
       window.location.reload();
     } else {
       alert('Error: ' + (data.message || 'Failed to delete routing slip.'));
+    }
+  })
+  .catch(error => {
+    alert('Error: ' + error.message);
+  });
+}
+
+/* Archive Routing Slip */
+function archiveRoutingSlip(slipId, slipNo) {
+  if (!confirm('Are you sure you want to archive routing slip ' + slipNo + '?')) {
+    return;
+  }
+  
+  fetch('/routing-slip/' + slipId + '/archive', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert('Routing slip ' + slipNo + ' has been archived.');
+      window.location.reload();
+    } else {
+      alert('Error: ' + (data.message || 'Failed to archive routing slip.'));
     }
   })
   .catch(error => {

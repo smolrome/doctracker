@@ -7,13 +7,26 @@
 <!-- PAGE HEADER -->
 <div class="rd-header">
   <div>
+    <a href="/" class="btn" style="font-size:.92rem;padding:10px 22px;">← Back to Dashboard</a>
     <div class="rd-title">🚌 Routed Documents</div>
     <div class="rd-subtitle">All routing slips — view documents and update statuses in bulk</div>
   </div>
+  
+  <!-- Search form -->
+  <form method="GET" action="/routed-documents" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <input type="text" name="search" value="{{ search or '' }}" placeholder="Search slip no, destination, prepared by..." 
+           style="padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:.9rem;min-width:220px;"/>
+    <input type="hidden" name="filter" value="{{ filter }}"/>
+    <input type="hidden" name="per_page" value="{{ per_page }}"/>
+    <button type="submit" class="btn" style="background:var(--teal);color:#fff;padding:10px 18px;">🔍 Search</button>
+    {% if search %}
+    <a href="/routed-documents?filter={{ filter }}&per_page={{ per_page }}" class="btn" style="background:#E2E8F0;color:var(--navy);padding:10px 14px;">✕ Clear</a>
+    {% endif %}
+  </form>
+  
   {% if session.get('last_rerouted_slip_id') %}
   <a href="/routing-slip/{{ session.get('last_rerouted_slip_id') }}" class="btn" style="background:#F59E0B;color:#fff;">🖨️ Print Updated Slip</a>
   {% endif %}
-  <a href="/" class="btn" style="font-size:.92rem;padding:10px 22px;">← Back to Dashboard</a>
 </div>
 
 {% set _ = session.pop('last_rerouted_slip_id', None) %}
@@ -77,12 +90,20 @@
       <span>📄 {{ slip.docs|length }} doc{{ 's' if slip.docs|length != 1 else '' }}</span>
       <span>👤 {{ slip.prepared_by }}</span>
     </div>
-    <a href="/routing-slip/{{ slip.id }}" class="slip-view-link">View Slip →</a>
-    {% if slip.status != 'Archived' %}
-    <button type="button" class="slip-view-link" onclick="openRerouteModal('{{ slip.id }}', '{{ slip.destination }}')" style="background:#fff;border-color:#F59E0B;color:#B45309;">🔄 Re-route</button>
-    {% else %}
-    <button type="button" class="slip-view-link" onclick="deleteRoutingSlip('{{ slip.id }}', '{{ slip.slip_no }}')" style="background:#fff;border-color:#DC2626;color:#DC2626;margin-left:8px;">🗑️ Delete</button>
-    {% endif %}
+    
+    <!-- Kebab menu for slip actions -->
+    <div class="kebab-cell" style="position:relative;margin-left:auto;" oncontextmenu="event.preventDefault(); toggleKebab(this.querySelector('.kebab-btn'), event)">
+      <button type="button" class="kebab-btn" onclick="toggleKebab(this, event)" style="font-size:1.4rem;">⋮</button>
+      <div class="kebab-menu" style="right:0;left:auto;">
+        <a href="/routing-slip/{{ slip.id }}" class="kebab-edit" style="display:block;text-decoration:none;padding:10px 14px;">👁️ View Slip</a>
+        {% if slip.status != 'Archived' %}
+        <button type="button" onclick="archiveRoutingSlip('{{ slip.id }}', '{{ slip.slip_no }}')" class="kebab-archive" style="width:100%;text-align:left;">📦 Archive</button>
+        <button type="button" onclick="openRerouteModal('{{ slip.id }}', '{{ slip.destination }}')" class="kebab-edit" style="width:100%;text-align:left;">🔄 Re-route</button>
+        {% else %}
+        <button type="button" onclick="deleteRoutingSlip('{{ slip.id }}', '{{ slip.slip_no }}')" class="kebab-delete" style="width:100%;text-align:left;">🗑️ Delete</button>
+        {% endif %}
+      </div>
+    </div>
   </div>
 
   <!-- Table header: title + doc count -->
@@ -107,7 +128,7 @@
       </thead>
       <tbody>
         {% for doc in slip.docs %}
-        <tr onclick="window.location='/doc/{{ doc.id }}'" title="View document" onclick="event.stopPropagation()">
+        <tr onclick="window.location='/dashboard/view/{{ doc.id }}'" title="View document" onclick="event.stopPropagation()">
           <td style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.8rem;text-align:center;">
             {{ loop.index }}
           </td>
@@ -128,8 +149,8 @@
             {% else %}                  <span class="s-badge s-archived">🗄️ {{ s }}</span>
             {% endif %}
           </td>
-          <td class="kebab-cell" onclick="event.stopPropagation()">
-            <button type="button" class="kebab-btn" onclick="toggleKebab(this)">⋮</button>
+          <td class="kebab-cell" onclick="event.stopPropagation()" oncontextmenu="event.preventDefault(); toggleKebab(this, event)">
+            <button type="button" class="kebab-btn" onclick="toggleKebab(this, event)">⋮</button>
             <div class="kebab-menu">
               <button type="button" class="kebab-edit" onclick="editDocument('{{ doc.id }}')">✏️ Edit</button>
               <button type="button" class="kebab-archive" onclick="archiveDocument('{{ doc.id }}', '{{ doc.doc_name|replace("'", "\\'") }}')">📦 Archive</button>
