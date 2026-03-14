@@ -152,5 +152,40 @@
     "ip": "100.117.50.126",
     "detail": "role=admin",
     "ts": "2026-03-12T07:58:22.136172"
+  },
+  {
+    "username": "anonymous",
+    "action": "404_not_found",
+    "ip": "192.168.100.79",
+    "detail": "path=/favicon.ico",
+    "ts": "2026-03-15T04:57:48.338193"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.100.79",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-15T04:58:07.437898"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_fail",
+    "ip": "192.168.100.79",
+    "detail": "username=admin",
+    "ts": "2026-03-15T04:58:07.725547"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.100.79",
+    "detail": "method=POST path=/login fields={'username': 'admin'}",
+    "ts": "2026-03-15T04:58:37.989455"
+  },
+  {
+    "username": "admin",
+    "action": "login_fail",
+    "ip": "192.168.100.79",
+    "detail": "username=admin",
+    "ts": "2026-03-15T04:58:38.363857"
   }
 ]

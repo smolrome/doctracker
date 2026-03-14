@@ -851,16 +851,17 @@ td { padding: 14px 16px; font-size: var(--fs-base); vertical-align: middle; }
 }
 .fab-notify-circle {
   width: 56px; height: 56px;
-  background: linear-gradient(135deg, #5B21B6, #7C3AED);
+  background: linear-gradient(135deg, #D97706, #FBBF24);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 6px 24px rgba(124,58,237,.45);
+  box-shadow: 0 6px 24px rgba(217,119,6,.4);
   position: relative; font-size: 26px;
   transition: transform .18s, box-shadow .18s;
+  overflow: visible;
 }
 .fab-notify:hover .fab-notify-circle {
   transform: scale(1.1);
-  box-shadow: 0 10px 32px rgba(124,58,237,.65);
+  box-shadow: 0 10px 32px rgba(217,119,6,.65);
 }
 .fab-notify-badge {
   position: absolute; top: -4px; right: -4px;
@@ -869,6 +870,7 @@ td { padding: 14px 16px; font-size: var(--fs-base); vertical-align: middle; }
   padding: 2px 6px; border-radius: 20px;
   border: 2px solid white;
   min-width: 20px; text-align: center; line-height: 1.4;
+  z-index: 7001;
 }
 .fab-notify::after {
   content: 'Documents to Receive';
@@ -881,6 +883,7 @@ td { padding: 14px 16px; font-size: var(--fs-base); vertical-align: middle; }
   pointer-events: none; transition: opacity .15s;
   font-family: 'Source Sans 3', sans-serif;
   box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  z-index: 7001;
 }
 .fab-notify:hover::after { opacity: 1; }
 
