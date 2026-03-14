@@ -6,7 +6,8 @@ from datetime import datetime
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from services.auth import (
-    create_user, delete_user, get_all_users, set_user_active, change_password,
+    create_user, delete_user, get_all_users, set_user_active,
+    update_user_password, update_user, approve_user, get_pending_clients,
 )
 from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
@@ -192,7 +193,7 @@ def change_password_route(username):
     if new_password != confirm:
         flash("Passwords do not match.", "error")
         return redirect(url_for("admin.manage_users"))
-    ok, err = change_password(username, new_password)
+    ok, err = update_user_password(username, new_password)
     if ok:
         audit_log("password_changed",
                   f"admin changed password for user={username}",
