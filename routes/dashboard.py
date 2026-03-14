@@ -86,10 +86,13 @@ def index():
         docs = [
             d for d in docs
             if (
-                d.get("logged_by") == current_username
-                or d.get("original_logged_by") == current_username
+                # Staff can see documents they originally logged
+                d.get("original_logged_by") == current_username
+                # OR documents they received
                 or d.get("received_by") == current_username
+                # OR documents they have accepted
                 or d.get("accepted_by") == current_username
+                # OR documents pending at them (need to accept first)
                 or (
                     d.get("transfer_status") == "pending"
                     and d.get("pending_at_staff") == current_username
