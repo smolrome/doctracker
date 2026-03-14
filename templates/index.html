@@ -239,7 +239,7 @@ var serverSessionData = {
 
             <div class="fc-btns">
               <button type="submit" class="btn btn-primary btn-sm">Search</button>
-              <a href="/" class="btn btn-secondary btn-sm">Clear</a>
+              <a href="#" class="btn btn-secondary btn-sm" onclick="clearAllFilters(event)">Clear</a>
             </div>
           </div>
 
@@ -490,7 +490,7 @@ var serverSessionData = {
             <h3 class="empty-title">No documents found</h3>
             <p class="empty-sub">
               {% if search or filter_status != 'All' or filter_date %}
-                Try adjusting your filters or <a href="/" class="empty-link">clear all filters</a>.
+                Try adjusting your filters or <a href="#" class="empty-link" onclick="clearAllFilters(event)">clear all filters</a>.
               {% else %}
                 No documents yet. Add your first one to get started.
               {% endif %}
@@ -498,7 +498,7 @@ var serverSessionData = {
             <div class="empty-actions">
               <a href="/add" class="empty-btn empty-btn-primary">➕ Add Document</a>
               {% if search or filter_status != 'All' or filter_date %}
-              <a href="/" class="empty-btn empty-btn-ghost">✕ Clear Filters</a>
+              <a href="#" class="empty-btn empty-btn-ghost" onclick="clearAllFilters(event)">✕ Clear Filters</a>
               {% endif %}
             </div>
           </div>

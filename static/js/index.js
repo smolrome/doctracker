@@ -36,6 +36,7 @@ function onReady() {
   recalcStickyOffsets();
   initSlipDate();
   checkPendingDocuments();
+  restoreSelectionsFromUrl();
 
   // Slip date default
   var sd = document.getElementById('slip-date');
@@ -103,12 +104,142 @@ setTimeout(recalcStickyOffsets, 600);
 
 
 // ─────────────────────────────────────────────────────────────
+//  SELECTION PERSISTENCE — saves/restores selections across page reloads
+// ─────────────────────────────────────────────────────────────
+function restoreSelectionsFromUrl() {
+  var params = new URLSearchParams(window.location.search);
+  var selectedIds = params.get('selected_docs');
+  if (!selectedIds) return;
+  
+  var ids = selectedIds.split(',');
+  ids.forEach(function(id) {
+    var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
+    if (cb) {
+      cb.checked = true;
+      cb.closest('tr').classList.add('row-selected');
+    }
+  });
+  
+  // Clear the URL parameter after restoring (optional - keeps URL clean)
+  if (ids.length > 0) {
+    params.delete('selected_docs');
+    var newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+    window.history.replaceState({}, '', newUrl);
+  }
+  
+  updateSelection();
+  showToast(ids.length + ' document' + (ids.length > 1 ? 's' : '') + ' restored from previous selection', 'info');
+}
+
+function setupFilterFormWithSelection() {
+  var form = document.getElementById('filter-form');
+  if (!form) return;
+  
+  // Override form submission to include selected IDs
+  var originalSubmit = form.submit;
+  form.submit = function() {
+    var selectedIds = getSelectedIds();
+    if (selectedIds.length > 0) {
+      // Add selected IDs to form as hidden field
+      var existing = form.querySelector('input[name="selected_docs"]');
+      if (existing) existing.remove();
+      
+      var hiddenInput = document.createElement('input');
+      hiddenInput.type = 'hidden';
+      hiddenInput.name = 'selected_docs';
+      hiddenInput.value = selectedIds.join(',');
+      form.appendChild(hiddenInput);
+    }
+    originalSubmit.call(form);
+  };
+  
+  // Also handle regular submit button
+  form.addEventListener('submit', function(e) {
+    var selectedIds = getSelectedIds();
+    if (selectedIds.length > 0) {
+      // Add to URL params before submit
+      var params = new URLSearchParams(new FormData(form));
+      params.set('selected_docs', selectedIds.join(','));
+      form.action = '/?' + params.toString();
+    }
+  });
+}
+
+// Initialize on page load
+(function() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFilterFormWithSelection);
+  } else {
+    setupFilterFormWithSelection();
+  }
+})();
+
+// Hook into all filter functions to preserve selection
+var originalSetType = setType;
+setType = function(val) {
+  var ids = getSelectedIds();
+  var el = document.getElementById('type-hidden');
+  if (el) el.value = val;
+  var params = new URLSearchParams(window.location.search);
+  if (ids.length > 0) params.set('selected_docs', ids.join(','));
+  params.delete('page');
+  window.location.href = '/?' + params.toString();
+};
+
+var originalSetSource = setSource;
+setSource = function(val) {
+  var params = new URLSearchParams(window.location.search);
+  var ids = getSelectedIds();
+  if (ids.length > 0) params.set('selected_docs', ids.join(','));
+  if (!val || val === 'All') {
+    params.delete('source');
+  } else {
+    params.set('source', val);
+  }
+  params.delete('page');
+  window.location.href = '/?' + params.toString();
+};
+
+var originalClearField = clearField;
+clearField = function(name, val) {
+  if (val === undefined) val = '';
+  var el = document.querySelector('[name="' + name + '"]');
+  if (el) el.value = val;
+  
+  var params = new URLSearchParams(window.location.search);
+  var ids = getSelectedIds();
+  if (ids.length > 0) params.set('selected_docs', ids.join(','));
+  params.delete('page');
+  window.location.href = '/?' + params.toString();
+};
+
+// Also preserve selection when clicking filter form submit
+document.addEventListener('DOMContentLoaded', function() {
+  var form = document.getElementById('filter-form');
+  if (!form) return;
+  
+  var submitBtn = form.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var params = new URLSearchParams(new FormData(form));
+      var ids = getSelectedIds();
+      if (ids.length > 0) params.set('selected_docs', ids.join(','));
+      window.location.href = '/?' + params.toString();
+    });
+  }
+});
+
+
+// ─────────────────────────────────────────────────────────────
 //  STAT FILTER
 // ─────────────────────────────────────────────────────────────
 function statFilter(status) {
   var params = new URLSearchParams(window.location.search);
   params.set('status', status);
   params.delete('page');
+  var ids = getSelectedIds();
+  if (ids.length > 0) params.set('selected_docs', ids.join(','));
   window.location.href = '/?' + params.toString();
 }
 
@@ -125,7 +256,12 @@ function toggleTimeRange(on) {
     var tt = document.querySelector('[name="time_to"]');
     if (tf) tf.value = '';
     if (tt) tt.value = '';
-    document.getElementById('filter-form').submit();
+    var params = new URLSearchParams(window.location.search);
+    params.delete('time_from');
+    params.delete('time_to');
+    var ids = getSelectedIds();
+    if (ids.length > 0) params.set('selected_docs', ids.join(','));
+    window.location.href = '/?' + params.toString();
   }
 }
 
@@ -133,14 +269,23 @@ function setToday() {
   var el = document.querySelector('[name="date"]');
   if (el) {
     el.value = new Date().toISOString().slice(0, 10);
-    document.getElementById('filter-form').submit();
+    var params = new URLSearchParams(window.location.search);
+    params.set('date', el.value);
+    var ids = getSelectedIds();
+    if (ids.length > 0) params.set('selected_docs', ids.join(','));
+    window.location.href = '/?' + params.toString();
   }
 }
 
 function setType(val) {
   var el = document.getElementById('type-hidden');
   if (el) el.value = val;
-  document.getElementById('filter-form').submit();
+  var params = new URLSearchParams(window.location.search);
+  params.set('type', val);
+  var ids = getSelectedIds();
+  if (ids.length > 0) params.set('selected_docs', ids.join(','));
+  params.delete('page');
+  window.location.href = '/?' + params.toString();
 }
 
 function setSource(val) {
@@ -158,7 +303,12 @@ function clearField(name, val) {
   if (val === undefined) val = '';
   var el = document.querySelector('[name="' + name + '"]');
   if (el) el.value = val;
-  document.getElementById('filter-form').submit();
+  var params = new URLSearchParams(window.location.search);
+  if (name) params.delete(name);
+  var ids = getSelectedIds();
+  if (ids.length > 0) params.set('selected_docs', ids.join(','));
+  params.delete('page');
+  window.location.href = '/?' + params.toString();
 }
 
 // Inline search clear button (NEW)
@@ -181,6 +331,8 @@ function changePerPage(val) {
   var url = new URL(window.location.href);
   url.searchParams.set('per_page', val);
   url.searchParams.set('page', 1);
+  var ids = getSelectedIds();
+  if (ids.length > 0) url.searchParams.set('selected_docs', ids.join(','));
   window.location = url.toString();
 }
 
@@ -188,8 +340,20 @@ function changePerPage(val) {
 function jumpToPage(val, qs) {
   var num = parseInt(val, 10);
   if (!isNaN(num) && num > 0) {
-    window.location.href = '/?' + qs + '&page=' + num;
+    var params = new URLSearchParams(qs);
+    params.set('page', num);
+    var ids = getSelectedIds();
+    if (ids.length > 0) params.set('selected_docs', ids.join(','));
+    window.location.href = '/?' + params.toString();
   }
+}
+
+function clearAllFilters(e) {
+  if (e) e.preventDefault();
+  var params = new URLSearchParams();
+  var ids = getSelectedIds();
+  if (ids.length > 0) params.set('selected_docs', ids.join(','));
+  window.location.href = '/?' + params.toString();
 }
 
 function rowClick(e, docId) {
