@@ -187,5 +187,33 @@
     "ip": "192.168.100.79",
     "detail": "username=admin",
     "ts": "2026-03-15T04:58:38.363857"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.100.79",
+    "detail": "method=POST path=/login fields={'username': 'smolrome'}",
+    "ts": "2026-03-15T05:37:46.801732"
+  },
+  {
+    "username": "smolrome",
+    "action": "login_fail",
+    "ip": "192.168.100.79",
+    "detail": "username=smolrome",
+    "ts": "2026-03-15T05:37:47.191628"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.100.79",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-15T05:38:04.793357"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_fail",
+    "ip": "192.168.100.79",
+    "detail": "username=admin",
+    "ts": "2026-03-15T05:38:05.184619"
   }
 ]

@@ -33,26 +33,112 @@
 </div>
 {% endif %}
 
+{% if batch_results %}
+<div style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px;">
+  <div style="padding:14px 18px;border-bottom:1.5px solid var(--border);background:linear-gradient(135deg,rgba(10,77,104,.04),rgba(5,150,105,.04));display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+    <span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:17px;color:var(--navy);">📬 Batch Invite Results</span>
+    <div style="display:flex;gap:14px;font-size:13px;font-weight:700;">
+      <span style="color:#065F46;">✅ {{ batch_results|selectattr('ok')|list|length }} sent</span>
+      {% set fail_count = batch_results|rejectattr('ok')|list|length %}
+      {% if fail_count %}<span style="color:#991B1B;">❌ {{ fail_count }} failed</span>{% endif %}
+    </div>
+  </div>
+  {% for r in batch_results %}
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;font-size:14px;">
+    <div style="flex:1;min-width:0;">
+      <span style="font-weight:600;color:var(--navy);">{{ r.email }}</span>
+      {% if r.link %}
+      <div style="font-size:11px;font-family:monospace;color:var(--muted);margin-top:3px;word-break:break-all;">{{ r.link }}</div>
+      {% endif %}
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+      {% if r.ok %}
+        <span style="background:#D1FAE5;color:#065F46;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">✓ OK</span>
+        {% if r.link %}
+        <button onclick="copyText('{{ r.link }}', this)"
+                style="padding:4px 10px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:var(--text-md);">
+          📋 Copy
+        </button>
+        {% endif %}
+      {% else %}
+        <span style="background:#FEE2E2;color:#991B1B;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">✗ Failed</span>
+        <span style="font-size:11px;color:var(--muted);">{{ r.msg }}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  {% if batch_results|selectattr('link')|list %}
+  <div style="padding:12px 18px;">
+    <button onclick="copyAllLinks()" class="btn btn-secondary btn-sm">📋 Copy All Links</button>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 <div class="invite-grid">
   <!-- Send Form -->
   <div class="inv-card">
-    <h3>📨 Send or Generate Invite</h3>
-    <form method="post">
-      <div class="form-group">
-        <label>Recipient Email <span style="color:var(--danger)">*</span></label>
-        <input type="email" name="email" placeholder="e.g. staff@deped.gov.ph" required style="font-size:16px;min-height:48px;" />
-      </div>
-      <div class="form-group">
-        <label>Recipient Name (optional)</label>
-        <input type="text" name="name" placeholder="e.g. Maria Santos" style="font-size:16px;min-height:48px;" />
-      </div>
-      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;min-height:48px;">
-        {% if mail_enabled %}📧 Send Invite Email{% else %}🔗 Generate Invite Link{% endif %}
+
+    <!-- Tab switcher -->
+    <div style="display:flex;gap:0;margin-bottom:18px;border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;">
+      <button type="button" onclick="switchTab('single')" id="tab-single"
+              style="flex:1;padding:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;
+                     background:var(--teal);color:#fff;transition:all .15s;">
+        👤 Single
       </button>
-      {% if not mail_enabled %}
-      <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px;">Will generate a link you can copy and share manually.</p>
-      {% endif %}
-    </form>
+      <button type="button" onclick="switchTab('batch')" id="tab-batch"
+              style="flex:1;padding:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;
+                     background:var(--surface);color:var(--muted);transition:all .15s;">
+        👥 Batch
+      </button>
+    </div>
+
+    <!-- Single invite -->
+    <div id="panel-single">
+      <h3>📨 Send or Generate Invite</h3>
+      <form method="post">
+        <input type="hidden" name="mode" value="single"/>
+        <div class="form-group">
+          <label>Recipient Email <span style="color:var(--danger)">*</span></label>
+          <input type="email" name="email" placeholder="e.g. staff@deped.gov.ph" required style="font-size:16px;min-height:48px;" />
+        </div>
+        <div class="form-group">
+          <label>Recipient Name (optional)</label>
+          <input type="text" name="name" placeholder="e.g. Maria Santos" style="font-size:16px;min-height:48px;" />
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;min-height:48px;">
+          {% if mail_enabled %}📧 Send Invite Email{% else %}🔗 Generate Invite Link{% endif %}
+        </button>
+        {% if not mail_enabled %}
+        <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px;">Will generate a link you can copy and share manually.</p>
+        {% endif %}
+      </form>
+    </div>
+
+    <!-- Batch invite -->
+    <div id="panel-batch" style="display:none;">
+      <h3>👥 Batch Invite</h3>
+      <form method="post">
+        <input type="hidden" name="mode" value="batch"/>
+        <div class="form-group">
+          <label>Email Addresses <span style="color:var(--danger)">*</span></label>
+          <textarea name="batch_emails" rows="6"
+                    placeholder="One email per line, or comma-separated:&#10;juan@deped.gov.ph&#10;maria@deped.gov.ph&#10;pedro@deped.gov.ph"
+                    style="font-size:14px;font-family:monospace;min-height:140px;resize:vertical;"
+                    oninput="updateBatchCount(this)"></textarea>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+            <span id="batch-count">0</span> email(s) detected
+          </div>
+        </div>
+        <button type="submit" class="btn btn-success" style="width:100%;justify-content:center;min-height:48px;">
+          {% if mail_enabled %}📧 Send All Invites{% else %}🔗 Generate All Links{% endif %}
+        </button>
+        <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px;">
+          Each email gets its own unique one-time invite link.
+        </p>
+      </form>
+    </div>
+
   </div>
 
   <!-- Setup Guide -->
@@ -102,14 +188,6 @@
 </div>
 {% endif %}
 
-<script>
-function copyGenLink() {
-  const link = document.getElementById('gen-link-text').textContent.trim();
-  navigator.clipboard.writeText(link).then(() => {
-    event.target.textContent = '✅ Copied!';
-    setTimeout(() => event.target.textContent = '📋 Copy Invite Link', 2000);
-  });
-}
-</script>
+<script src="{{url_for('static', filename='js/send_invite.js') }}"></script>
 
 {% endblock %}
