@@ -33,13 +33,23 @@ function copyAllLinks() {
 
 /* ── Tab switcher ── */
 function switchTab(tab) {
+  console.log('switchTab called with:', tab);
   const isSingle = tab === 'single';
-  document.getElementById('panel-single').style.display = isSingle ? '' : 'none';
-  document.getElementById('panel-batch').style.display  = isSingle ? 'none' : '';
-  document.getElementById('tab-single').style.background = isSingle ? 'var(--teal)' : 'var(--surface)';
-  document.getElementById('tab-single').style.color      = isSingle ? '#fff' : 'var(--muted)';
-  document.getElementById('tab-batch').style.background  = isSingle ? 'var(--surface)' : 'var(--teal)';
-  document.getElementById('tab-batch').style.color       = isSingle ? 'var(--muted)' : '#fff';
+  var panelSingle = document.getElementById('panel-single');
+  var panelBatch = document.getElementById('panel-batch');
+  var tabSingle = document.getElementById('tab-single');
+  var tabBatch = document.getElementById('tab-batch');
+  
+  if (panelSingle) panelSingle.style.display = isSingle ? '' : 'none';
+  if (panelBatch) panelBatch.style.display  = isSingle ? 'none' : '';
+  if (tabSingle) {
+    tabSingle.style.background = isSingle ? 'var(--teal)' : 'var(--surface)';
+    tabSingle.style.color      = isSingle ? '#fff' : 'var(--muted)';
+  }
+  if (tabBatch) {
+    tabBatch.style.background  = isSingle ? 'var(--surface)' : 'var(--teal)';
+    tabBatch.style.color       = isSingle ? 'var(--muted)' : '#fff';
+  }
 }
 
 /* ── Live email counter ── */

@@ -81,12 +81,12 @@
 
     <!-- Tab switcher -->
     <div style="display:flex;gap:0;margin-bottom:18px;border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;">
-      <button type="button" onclick="switchTab('single')" id="tab-single"
+      <button type="button" onclick="switchTab('single'); return false;" id="tab-single"
               style="flex:1;padding:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;
                      background:var(--teal);color:#fff;transition:all .15s;">
         👤 Single
       </button>
-      <button type="button" onclick="switchTab('batch')" id="tab-batch"
+      <button type="button" onclick="switchTab('batch'); return false;" id="tab-batch"
               style="flex:1;padding:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;
                      background:var(--surface);color:var(--muted);transition:all .15s;">
         👥 Batch
@@ -188,6 +188,6 @@
 </div>
 {% endif %}
 
-<script src="{{url_for('static', filename='js/send_invite.js') }}"></script>
+<script src="{{ url_for('static', filename='js/send_invite.js') }}"></script>
 
 {% endblock %}
