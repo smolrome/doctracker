@@ -28,8 +28,11 @@ import os
 import secrets
 import time
 from datetime import timedelta
-from dotenv import load_dotenv
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 from flask import (Flask, flash, jsonify, redirect,
                    render_template, request, session, url_for)
