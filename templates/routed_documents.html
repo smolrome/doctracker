@@ -32,6 +32,10 @@
   <div class="pager-info">
     Showing <strong>{{ ((page-1)*per_page)+1 }}–{{ [page*per_page, total]|min }}</strong>
     of <strong>{{ total }}</strong> routing slip{{ 's' if total != 1 else '' }}
+    {% if filter == 'active' and total > 0 %}
+    <button type="button" class="archive-all-btn" onclick="archiveAllSlips()" style="margin-left:16px;">📦 Archive All</button>
+    <button type="button" class="delete-all-btn" onclick="deleteAllSlips()" style="margin-left:8px;">🗑️ Delete All</button>
+    {% endif %}
   </div>
   <div class="pager-perpage" style="display:flex;gap:12px;align-items:center;">
     <a href="/routed-documents?page=1&per_page={{ per_page }}&filter=active" class="btn {% if filter != 'archived' %}btn-primary{% else %}{% endif %}" style="padding:8px 16px;font-size:.85rem;{% if filter != 'archived' %}background:var(--navy);color:#fff;{% else %}background:#E2E8F0;color:var(--navy);{% endif %}">📂 Active</a>
@@ -98,11 +102,12 @@
           <th>Unit / Office / School</th>
           <th>Sender</th>
           <th>Status</th>
+          <th style="width:50px;text-align:center;">⋮</th>
         </tr>
       </thead>
       <tbody>
         {% for doc in slip.docs %}
-        <tr onclick="window.location='/doc/{{ doc.id }}'" title="View document">
+        <tr onclick="window.location='/doc/{{ doc.id }}'" title="View document" onclick="event.stopPropagation()">
           <td style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.8rem;text-align:center;">
             {{ loop.index }}
           </td>
@@ -122,6 +127,14 @@
             {% elif s == 'On Hold'    %}<span class="s-badge s-hold">⏸ {{ s }}</span>
             {% else %}                  <span class="s-badge s-archived">🗄️ {{ s }}</span>
             {% endif %}
+          </td>
+          <td class="kebab-cell" onclick="event.stopPropagation()">
+            <button type="button" class="kebab-btn" onclick="toggleKebab(this)">⋮</button>
+            <div class="kebab-menu">
+              <button type="button" class="kebab-edit" onclick="editDocument('{{ doc.id }}')">✏️ Edit</button>
+              <button type="button" class="kebab-archive" onclick="archiveDocument('{{ doc.id }}', '{{ doc.doc_name|replace("'", "\\'") }}')">📦 Archive</button>
+              <button type="button" class="kebab-delete" onclick="deleteDocument('{{ doc.id }}', '{{ doc.doc_name|replace("'", "\\'") }}')">🗑️ Delete</button>
+            </div>
           </td>
         </tr>
         {% endfor %}

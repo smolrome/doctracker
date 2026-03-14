@@ -596,3 +596,142 @@ def delete_routing_slip(slip_id):
         return jsonify({"success": True, "message": "Routing slip deleted successfully."})
     else:
         return jsonify({"success": False, "message": "Failed to delete routing slip."}), 500
+
+
+@offices_bp.route("/routing-slip/delete-all", methods=["POST"])
+@login_required
+def delete_all_routing_slips():
+    """Delete all routing slips."""
+    from flask import jsonify
+    from services.database import get_db
+    from services.misc import audit_log as _audit
+    from utils import get_client_ip
+    
+    try:
+        db = get_db()
+        # Get all slip IDs before deletion
+        all_slips = list(db.routing_slips.find({}, {"_id": 1}))
+        slip_ids = [s["_id"] for s in all_slips]
+        
+        if not slip_ids:
+            return jsonify({"success": True, "message": "No routing slips to delete."})
+        
+        # Delete all routing slips and their documents
+        db.routing_slips.delete_many({})
+        db.documents.delete_many({"slip_id": {"$in": slip_ids}})
+        
+        _audit("delete_all_routing_slips",
+               f"deleted {len(slip_ids)} slips",
+               username=session.get("username"), ip=get_client_ip())
+        return jsonify({"success": True, "message": f"Deleted {len(slip_ids)} routing slips."})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@offices_bp.route("/routing-slip/<slip_id>/delete-all-docs", methods=["POST"])
+@login_required
+def delete_all_docs_in_slip(slip_id):
+    """Delete all documents in a routing slip."""
+    from flask import jsonify
+    from services.database import get_db
+    from services.misc import get_routing_slip, audit_log as _audit
+    from utils import get_client_ip
+    
+    try:
+        db = get_db()
+        slip = get_routing_slip(slip_id)
+        if not slip:
+            return jsonify({"success": False, "message": "Routing slip not found."}), 404
+        
+        # Delete all documents in this slip
+        result = db.documents.delete_many({"slip_id": slip_id})
+        
+        _audit("delete_all_docs_in_slip",
+               f"slip_id={slip_id} deleted {result.deleted_count} docs",
+               username=session.get("username"), ip=get_client_ip())
+        return jsonify({"success": True, "message": f"Deleted {result.deleted_count} documents."})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@offices_bp.route("/document/<doc_id>/delete", methods=["POST"])
+@login_required
+def delete_document(doc_id):
+    """Delete a single document."""
+    from flask import jsonify
+    from services.database import get_db
+    from services.misc import audit_log as _audit
+    from utils import get_client_ip
+    
+    try:
+        db = get_db()
+        doc = db.documents.find_one({"_id": doc_id})
+        if not doc:
+            return jsonify({"success": False, "message": "Document not found."}), 404
+        
+        db.documents.delete_one({"_id": doc_id})
+        
+        _audit("delete_document",
+               f"doc_id={doc_id} doc_name={doc.get('doc_name', '?')}",
+               username=session.get("username"), ip=get_client_ip())
+        return jsonify({"success": True, "message": "Document deleted successfully."})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@offices_bp.route("/document/<doc_id>/archive", methods=["POST"])
+@login_required
+def archive_document(doc_id):
+    """Archive a single document."""
+    from flask import jsonify
+    from services.database import get_db
+    from services.misc import audit_log as _audit
+    from utils import get_client_ip
+    
+    try:
+        db = get_db()
+        doc = db.documents.find_one({"_id": doc_id})
+        if not doc:
+            return jsonify({"success": False, "message": "Document not found."}), 404
+        
+        db.documents.update_one(
+            {"_id": doc_id},
+            {"$set": {"status": "Archived"}}
+        )
+        
+        _audit("archive_document",
+               f"doc_id={doc_id} doc_name={doc.get('doc_name', '?')}",
+               username=session.get("username"), ip=get_client_ip())
+        return jsonify({"success": True, "message": "Document archived successfully."})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@offices_bp.route("/routing-slip/archive-all", methods=["POST"])
+@login_required
+def archive_all_routing_slips():
+    """Archive all routing slips."""
+    from flask import jsonify
+    from services.database import get_db
+    from services.misc import audit_log as _audit
+    from utils import get_client_ip
+    
+    try:
+        db = get_db()
+        # Get all slip IDs before update
+        all_slips = list(db.routing_slips.find({}, {"_id": 1}))
+        slip_ids = [s["_id"] for s in all_slips]
+        
+        if not slip_ids:
+            return jsonify({"success": True, "message": "No routing slips to archive."})
+        
+        # Archive all routing slips and their documents
+        db.routing_slips.update_many({}, {"$set": {"status": "Archived"}})
+        db.documents.update_many({"slip_id": {"$in": slip_ids}}, {"$set": {"status": "Archived"}})
+        
+        _audit("archive_all_routing_slips",
+               f"archived {len(slip_ids)} slips",
+               username=session.get("username"), ip=get_client_ip())
+        return jsonify({"success": True, "message": f"Archived {len(slip_ids)} routing slips."})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500

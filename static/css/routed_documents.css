@@ -139,9 +139,53 @@
   }
   .pager-perpage select:focus { outline: none; border-color: var(--teal); }
 
-  .empty-state { text-align: center; padding: 70px 20px; color: var(--muted); }
   .empty-state .icon { font-size: 3.5rem; margin-bottom: 14px; }
   .empty-state .etitle { font-weight: 800; color: var(--navy); font-size: 1.15rem; margin-bottom: 8px; }
+
+  /* Kebab menu */
+  .kebab-cell { position: relative; text-align: center; }
+  .kebab-btn {
+    background: none; border: none; cursor: pointer;
+    padding: 6px 10px; border-radius: 6px; font-size: 1.1rem;
+    color: var(--muted); transition: all .15s;
+  }
+  .kebab-btn:hover { background: #E2E8F0; color: var(--navy); }
+  .kebab-menu {
+    position: absolute; right: 0; top: 100%;
+    background: #fff; border: 2px solid #E2E8F0;
+    border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    z-index: 100; min-width: 140px; display: none;
+    overflow: hidden;
+  }
+  .kebab-menu.show { display: block; }
+  .kebab-menu button {
+    display: block; width: 100%; padding: 10px 14px;
+    text-align: left; background: none; border: none;
+    font-size: .88rem; font-weight: 600; cursor: pointer;
+    color: var(--navy); transition: background .15s;
+  }
+  .kebab-menu button:hover { background: #F1F5F9; }
+  .kebab-menu .kebab-edit { color: var(--teal); }
+  .kebab-menu .kebab-delete { color: #DC2626; }
+
+  /* Delete All button */
+  .delete-all-btn {
+    background: #FEE2E2; border: 2px solid #DC2626; color: #DC2626;
+    padding: 8px 16px; border-radius: 8px; font-size: .85rem;
+    font-weight: 700; cursor: pointer; transition: all .15s;
+  }
+  .delete-all-btn:hover { background: #DC2626; color: #fff; }
+
+  /* Archive All button */
+  .archive-all-btn {
+    background: #FEF3C7; border: 2px solid #F59E0B; color: #92400E;
+    padding: 8px 16px; border-radius: 8px; font-size: .85rem;
+    font-weight: 700; cursor: pointer; transition: all .15s;
+  }
+  .archive-all-btn:hover { background: #F59E0B; color: #fff; }
+
+  /* Kebab menu archive option */
+  .kebab-menu .kebab-archive { color: #F59E0B; }
 
   @media(max-width:700px){
     .slip-head, .doc-table-head, .batch-bar { padding: 14px 16px; }

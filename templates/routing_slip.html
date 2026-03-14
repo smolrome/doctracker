@@ -129,23 +129,6 @@
       </div>
       {% endif %}
 
-      <!-- Routing History -->
-      {% set travel_log = docs[0].get('travel_log', []) if docs else [] %}
-      {% if travel_log %}
-      <div style="background:linear-gradient(135deg,#F0F9FF,#E0F2FE);border:2px solid #7DD3FC;border-radius:14px;padding:16px 20px;margin-bottom:22px;">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#0369A1;margin-bottom:12px;">📜 Routing History</div>
-        <div style="display:flex;flex-wrap:wrap;gap:10px;">
-          {% for entry in travel_log %}
-          <div style="background:#fff;border:1.5px solid #7DD3FC;border-radius:10px;padding:10px 14px;font-size:13px;box-shadow:0 1px 4px rgba(0,0,0,.08);flex:1 1 250px;max-width:350px;">
-            <div style="font-weight:800;color:#0369A1;font-size:13px;">{{ entry.office or entry.get('action', 'Unknown')[:35] }}</div>
-            <div style="color:#64748B;font-size:11px;margin-top:4px;">{{ entry.timestamp[:19] if entry.timestamp else '—' }} {% if entry.officer %}<span style="color:#0369A1;">· {{ entry.officer }}</span>{% endif %}</div>
-            {% if entry.remarks %}<div style="color:#475569;font-size:11px;margin-top:5px;line-height:1.4;">{{ entry.remarks[:80] }}</div>{% endif %}
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-
       <!-- Documents table -->
       <div class="docs-header">
         <div class="docs-header-title">Documents Included</div>
