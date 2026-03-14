@@ -225,7 +225,11 @@ def routed_documents():
     """Staff view — all routing slips with their documents and batch status update."""
     from services.misc import get_all_routing_slips
     from services.documents import get_docs_by_ids
-    slips = get_all_routing_slips()
+    
+    # Get filter parameter (active, archived, or None for all)
+    filter_type = request.args.get('filter', 'active')
+    
+    slips = get_all_routing_slips(filter_type)
     # Collect every doc_id needed across all slips, fetch in ONE query
     all_ids = [did for slip in slips for did in slip.get("doc_ids", [])]
     docs_map = get_docs_by_ids(all_ids)
@@ -252,7 +256,8 @@ def routed_documents():
 
     return render_template("routed_documents.html",
                            slips=paginated, total=total,
-                           page=page, total_pages=total_pages, per_page=per_page)
+                           page=page, total_pages=total_pages, per_page=per_page,
+                           filter=filter_type)
 
 
 @offices_bp.route("/routing-slip/<slip_id>/batch-status", methods=["POST"])
@@ -445,3 +450,30 @@ def reroute_slip():
     # Store new slip_id in session for the template to show a reprint link
     session["last_rerouted_slip_id"] = new_slip_id
     return redirect(url_for("offices.routed_documents"))
+
+
+@offices_bp.route("/routing-slip/<slip_id>/delete", methods=["POST"])
+@login_required
+def delete_routing_slip(slip_id):
+    """Delete a routing slip by ID."""
+    from flask import jsonify
+    from services.misc import delete_routing_slip, get_routing_slip
+    from services.misc import audit_log as _audit
+    from utils import get_client_ip
+    
+    slip = get_routing_slip(slip_id)
+    if not slip:
+        return jsonify({"success": False, "message": "Routing slip not found."}), 404
+    
+    # Only allow deleting archived slips
+    if slip.get('status') != 'Archived':
+        return jsonify({"success": False, "message": "Only archived routing slips can be deleted."}), 403
+    
+    result = delete_routing_slip(slip_id)
+    if result:
+        _audit("delete_routing_slip",
+               f"slip_id={slip_id} slip_no={slip.get('slip_no', '?')}",
+               username=session.get("username"), ip=get_client_ip())
+        return jsonify({"success": True, "message": "Routing slip deleted successfully."})
+    else:
+        return jsonify({"success": False, "message": "Failed to delete routing slip."}), 500

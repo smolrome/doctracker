@@ -33,7 +33,9 @@
     Showing <strong>{{ ((page-1)*per_page)+1 }}–{{ [page*per_page, total]|min }}</strong>
     of <strong>{{ total }}</strong> routing slip{{ 's' if total != 1 else '' }}
   </div>
-  <div class="pager-perpage">
+  <div class="pager-perpage" style="display:flex;gap:12px;align-items:center;">
+    <a href="/routed-documents?page=1&per_page={{ per_page }}&filter=active" class="btn {% if filter != 'archived' %}btn-primary{% else %}{% endif %}" style="padding:8px 16px;font-size:.85rem;{% if filter != 'archived' %}background:var(--navy);color:#fff;{% else %}background:#E2E8F0;color:var(--navy);{% endif %}">📂 Active</a>
+    <a href="/routed-documents?page=1&per_page={{ per_page }}&filter=archived" class="btn" style="padding:8px 16px;font-size:.85rem;{% if filter == 'archived' %}background:var(--navy);color:#fff;{% else %}background:#E2E8F0;color:var(--navy);{% endif %}">🗄️ Archived</a>
     Show
     <select onchange="changeRdPerPage(this.value)">
       {% for n in [5, 10, 20, 50] %}
@@ -74,26 +76,10 @@
     <a href="/routing-slip/{{ slip.id }}" class="slip-view-link">View Slip →</a>
     {% if slip.status != 'Archived' %}
     <button type="button" class="slip-view-link" onclick="openRerouteModal('{{ slip.id }}', '{{ slip.destination }}')" style="background:#fff;border-color:#F59E0B;color:#B45309;">🔄 Re-route</button>
+    {% else %}
+    <button type="button" class="slip-view-link" onclick="deleteRoutingSlip('{{ slip.id }}', '{{ slip.slip_no }}')" style="background:#fff;border-color:#DC2626;color:#DC2626;margin-left:8px;">🗑️ Delete</button>
     {% endif %}
   </div>
-
-  <!-- Routing History -->
-  {% set doc_first = slip.docs[0] if slip.docs else {} %}
-  {% set travel_log = doc_first.get('travel_log', []) %}
-  {% if travel_log %}
-  <div style="background:linear-gradient(135deg,#F0F9FF,#E0F2FE);border-bottom:2px solid #BAE6FD;padding:14px 24px;">
-    <div style="font-size:.82rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#0369A1;margin-bottom:10px;">📜 Routing History</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;">
-      {% for entry in travel_log %}
-      <div style="background:#fff;border:1.5px solid #7DD3FC;border-radius:8px;padding:8px 12px;font-size:.85rem;box-shadow:0 1px 3px rgba(0,0,0,.08);">
-        <div style="font-weight:700;color:#0369A1;">{{ entry.office or entry.get('action', 'Unknown')[:30] }}</div>
-        <div style="color:#64748B;font-size:.78rem;">{{ entry.timestamp[:19] if entry.timestamp else '' }} {% if entry.officer %}<span style="color:#0369A1;">· {{ entry.officer }}</span>{% endif %}</div>
-        {% if entry.remarks %}<div style="color:#475569;font-size:.76rem;margin-top:3px;">{{ entry.remarks[:60] }}</div>{% endif %}
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
 
   <!-- Table header: title + doc count -->
   <div class="doc-table-head">
@@ -181,7 +167,7 @@
   </div>
   <div class="pager-controls">
     {% if page > 1 %}
-      <a href="/routed-documents?page={{ page-1 }}&per_page={{ per_page }}" class="pager-btn">‹ Prev</a>
+      <a href="/routed-documents?page={{ page-1 }}&per_page={{ per_page }}&filter={{ filter }}" class="pager-btn">‹ Prev</a>
     {% else %}
       <span class="pager-btn disabled">‹ Prev</span>
     {% endif %}
@@ -189,23 +175,23 @@
     {% set sp = [1, page-2]|max %}
     {% set ep = [total_pages, page+2]|min %}
     {% if sp > 1 %}
-      <a href="/routed-documents?page=1&per_page={{ per_page }}" class="pager-btn">1</a>
+      <a href="/routed-documents?page=1&per_page={{ per_page }}&filter={{ filter }}" class="pager-btn">1</a>
       {% if sp > 2 %}<span style="color:var(--muted);padding:0 6px;font-size:1.1rem;">…</span>{% endif %}
     {% endif %}
     {% for p in range(sp, ep+1) %}
       {% if p == page %}
         <span class="pager-btn active">{{ p }}</span>
       {% else %}
-        <a href="/routed-documents?page={{ p }}&per_page={{ per_page }}" class="pager-btn">{{ p }}</a>
+        <a href="/routed-documents?page={{ p }}&per_page={{ per_page }}&filter={{ filter }}" class="pager-btn">{{ p }}</a>
       {% endif %}
     {% endfor %}
     {% if ep < total_pages %}
       {% if ep < total_pages-1 %}<span style="color:var(--muted);padding:0 6px;font-size:1.1rem;">…</span>{% endif %}
-      <a href="/routed-documents?page={{ total_pages }}&per_page={{ per_page }}" class="pager-btn">{{ total_pages }}</a>
+      <a href="/routed-documents?page={{ total_pages }}&per_page={{ per_page }}&filter={{ filter }}" class="pager-btn">{{ total_pages }}</a>
     {% endif %}
 
     {% if page < total_pages %}
-      <a href="/routed-documents?page={{ page+1 }}&per_page={{ per_page }}" class="pager-btn">Next ›</a>
+      <a href="/routed-documents?page={{ page+1 }}&per_page={{ per_page }}&filter={{ filter }}" class="pager-btn">Next ›</a>
     {% else %}
       <span class="pager-btn disabled">Next ›</span>
     {% endif %}

@@ -872,6 +872,12 @@ document.addEventListener('click', function(e) {
   if (!e.target.closest('.kebab-menu')) {
     document.querySelectorAll('.kebab-dropdown.show').forEach(function(d) {
       d.classList.remove('show');
+      // Reset position to default
+      d.style.position = '';
+      d.style.left = '';
+      d.style.top = '';
+      d.style.right = '';
+      d.style.margin = '';
     });
   }
 });
@@ -890,6 +896,13 @@ document.addEventListener('contextmenu', function(e) {
       document.querySelectorAll('.kebab-dropdown.show').forEach(function(d) {
         d.classList.remove('show');
       });
+      
+      // Position dropdown at cursor location
+      dropdown.style.position = 'fixed';
+      dropdown.style.left = e.clientX + 'px';
+      dropdown.style.top = e.clientY + 'px';
+      dropdown.style.right = 'auto';
+      dropdown.style.margin = '0';
       
       dropdown.classList.add('show');
     }

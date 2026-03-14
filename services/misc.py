@@ -357,13 +357,22 @@ def get_routing_slip(slip_id: str) -> dict | None:
         return json.load(f).get(slip_id)
 
 
-def get_all_routing_slips() -> list[dict]:
-    """Return all routing slips, newest first."""
+def get_all_routing_slips(filter_type=None) -> list[dict]:
+    """Return all routing slips, newest first.
+    
+    Args:
+        filter_type: 'active' for non-archived, 'archived' for archived, None for all
+    """
     if USE_DB:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT * FROM routing_slips ORDER BY created_at DESC")
+                    if filter_type == 'active':
+                        cur.execute("SELECT * FROM routing_slips WHERE status != 'Archived' ORDER BY created_at DESC")
+                    elif filter_type == 'archived':
+                        cur.execute("SELECT * FROM routing_slips WHERE status = 'Archived' ORDER BY created_at DESC")
+                    else:
+                        cur.execute("SELECT * FROM routing_slips ORDER BY created_at DESC")
                     rows = cur.fetchall()
                     slips = []
                     for row in rows:
@@ -376,12 +385,16 @@ def get_all_routing_slips() -> list[dict]:
         except Exception as e:
             pass
             # Fallback to JSON
-            return get_all_routing_slips_json()
+            return get_all_routing_slips_json(filter_type)
     else:
-        return get_all_routing_slips_json()
+        return get_all_routing_slips_json(filter_type)
 
-def get_all_routing_slips_json() -> list[dict]:
-    """Get all routing slips from JSON file (fallback)."""
+def get_all_routing_slips_json(filter_type=None) -> list[dict]:
+    """Get all routing slips from JSON file (fallback).
+    
+    Args:
+        filter_type: 'active' for non-archived, 'archived' for archived, None for all
+    """
     import os
     path = "routing_slips.json"
     if not os.path.exists(path):
@@ -389,5 +402,47 @@ def get_all_routing_slips_json() -> list[dict]:
     with open(path) as f:
         data = json.load(f)
     slips = list(data.values())
+    
+    # Filter by type
+    if filter_type == 'active':
+        slips = [s for s in slips if s.get('status') != 'Archived']
+    elif filter_type == 'archived':
+        slips = [s for s in slips if s.get('status') == 'Archived']
+    
     slips.sort(key=lambda s: s.get("created_at", ""), reverse=True)
     return slips
+
+
+def delete_routing_slip(slip_id: str) -> bool:
+    """Delete a routing slip by ID. Returns True if successful."""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM routing_slips WHERE id = %s", (slip_id,))
+                    conn.commit()
+                    return True
+        except Exception as e:
+            return False
+    else:
+        # JSON fallback
+        return delete_routing_slip_json(slip_id)
+
+
+def delete_routing_slip_json(slip_id: str) -> bool:
+    """Delete a routing slip from JSON file (fallback)."""
+    import os
+    path = "routing_slips.json"
+    if not os.path.exists(path):
+        return False
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        if slip_id in data:
+            del data[slip_id]
+            with open(path, 'w') as f:
+                json.dump(data, f, indent=2)
+            return True
+        return False
+    except Exception:
+        return False
