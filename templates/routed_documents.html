@@ -128,7 +128,7 @@
       </thead>
       <tbody>
         {% for doc in slip.docs %}
-        <tr onclick="window.location='/dashboard/view/{{ doc.id }}'" title="View document" onclick="event.stopPropagation()">
+        <tr onclick="window.location='/dashboard/view/{{ doc.id }}'; event.stopPropagation()" title="View document" style="cursor:pointer;">
           <td style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.8rem;text-align:center;">
             {{ loop.index }}
           </td>
