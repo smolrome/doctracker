@@ -379,10 +379,94 @@ document.addEventListener('keydown', function (e) {
 // ─────────────────────────────────────────────────────────────
 function openRoutingModal() {
   openModal('routing-modal');
-  updateSelectedPreview();
   initSlipDate();
+  
+  // Analyze selected documents for referred_to grouping
+  var groupingInfo = analyzeReferredToGrouping();
+  
+  // Update the preview with grouping info
+  updateSelectedPreview();
+  
+  // Update the hint text based on grouping
+  var hintEl = document.getElementById('routing-hint');
+  if (hintEl) {
+    if (groupingInfo.groupCount > 1) {
+      hintEl.innerHTML = '📋 Documents will be grouped by "Referred To" — ' + groupingInfo.groupCount + ' routing slips will be created.';
+    } else if (groupingInfo.totalDocs > 0 && groupingInfo.referredTo) {
+      hintEl.innerHTML = '✅ All selected documents have the same "Referred To" — 1 routing slip will be created.';
+    } else {
+      hintEl.innerHTML = '💡 Enter a destination office above, or select documents with "Referred To" values.';
+    }
+  }
+  
+  // Pre-fill destination if all documents have the same referred_to
+  var destInput = document.getElementById('route-dest');
+  if (destInput) {
+    if (groupingInfo.allSame && groupingInfo.referredTo) {
+      destInput.value = groupingInfo.referredTo;
+      document.getElementById('modal-dest-preview').textContent = groupingInfo.referredTo;
+    } else {
+      destInput.value = '';
+      document.getElementById('modal-dest-preview').textContent = '(enter below)';
+    }
+  }
+  
+  // Show grouping info in modal title if there are multiple groups
+  var titleEl = document.getElementById('routing-modal-title');
+  if (titleEl) {
+    if (groupingInfo.groupCount > 1) {
+      titleEl.innerHTML = '📤 Create Routing Slip <span class="rp-count" id="sel-count">' + groupingInfo.totalDocs + ' selected (' + groupingInfo.groupCount + ' groups)</span>';
+    } else {
+      titleEl.innerHTML = '📤 Create Routing Slip <span class="rp-count" id="sel-count">' + groupingInfo.totalDocs + ' selected</span>';
+    }
+  }
+  
   var btn = document.querySelector('#routing-modal .btn-route');
-  if (btn) { btn.disabled = false; btn.textContent = '🚀 Create Routing Slip'; }
+  if (btn) { btn.disabled = false; btn.textContent = '🚀 Create Routing Slip' + (groupingInfo.groupCount > 1 ? 's' : ''); }
+}
+
+// Analyze selected documents and group by referred_to
+function analyzeReferredToGrouping() {
+  var checked = document.querySelectorAll('.doc-checkbox:checked');
+  var totalDocs = checked.length;
+  
+  if (totalDocs === 0) {
+    return { totalDocs: 0, groupCount: 0, allSame: false, referredTo: '', groups: {} };
+  }
+  
+  var groups = {};
+  var referredTos = [];
+  
+  checked.forEach(function(cb) {
+    var row = cb.closest('tr');
+    var referredTo = row ? row.getAttribute('data-referred-to') || '' : '';
+    
+    if (!referredTo) referredTo = '(No Referred To)';
+    
+    if (!groups[referredTo]) {
+      groups[referredTo] = [];
+    }
+    groups[referredTo].push(cb.value);
+    referredTos.push(referredTo);
+  });
+  
+  // Check if all have the same referred_to
+  var uniqueReferredTos = [...new Set(referredTos.filter(function(r) { return r !== '(No Referred To)'; }))];
+  var allSame = uniqueReferredTos.length <= 1 && Object.keys(groups).length <= 1;
+  
+  // If all are empty/blank referred_to, treat as one group
+  var hasOnlyEmptyGroups = Object.keys(groups).every(function(k) { return k === '(No Referred To)'; });
+  if (hasOnlyEmptyGroups) {
+    allSame = true;
+  }
+  
+  return {
+    totalDocs: totalDocs,
+    groupCount: Object.keys(groups).length,
+    allSame: allSame,
+    referredTo: uniqueReferredTos[0] || '',
+    groups: groups
+  };
 }
 
 function closeRoutingModal() { closeModal('routing-modal'); }
@@ -451,34 +535,144 @@ function autoSelectByTime() {
 }
 
 function submitRouting() {
-  var dest = document.getElementById('route-dest').value.trim();
-  if (!dest) {
-    var el = document.getElementById('route-dest');
-    el.focus();
-    el.style.borderColor = '#FCA5A5';
-    el.style.background  = 'rgba(220,38,38,.15)';
-    setTimeout(function () { el.style.borderColor = ''; el.style.background = ''; }, 2500);
-    showToast('Please enter a destination office.', 'warning');
+  var groupingInfo = analyzeReferredToGrouping();
+  var groups = groupingInfo.groups;
+  var groupKeys = Object.keys(groups);
+  
+  // Determine if we need to use grouped routing or single destination
+  var useGroupedRouting = groupKeys.length > 1;
+  var manualDest = document.getElementById('route-dest').value.trim();
+  
+  // If there's a manual destination but multiple groups, ask user what to do
+  if (manualDest && useGroupedRouting) {
+    // Show confirmation - will route all to the manual destination
+    if (!confirm('You have selected documents with different "Referred To" values.\n\nDo you want to route ALL documents to "' + manualDest + '"?\n\nClick OK to route all to the manual destination.\nClick Cancel to create separate routing slips for each "Referred To" group.')) {
+      return;
+    }
+    useGroupedRouting = false;
+  }
+  
+  // If no manual destination and multiple groups, use grouped routing
+  if (!manualDest && useGroupedRouting) {
+    // Check if all groups have valid referred_to (not empty)
+    var hasEmptyGroup = groupKeys.some(function(k) { return k === '(No Referred To)'; });
+    if (hasEmptyGroup) {
+      showToast('Some documents have no "Referred To". Please enter a destination office manually.', 'warning');
+      var el = document.getElementById('route-dest');
+      el.focus();
+      el.style.borderColor = '#FCA5A5';
+      el.style.background  = 'rgba(220,38,38,.15)';
+      setTimeout(function () { el.style.borderColor = ''; el.style.background = ''; }, 2500);
+      return;
+    }
+  }
+  
+  // Single destination mode
+  if (!useGroupedRouting) {
+    var dest = manualDest || (groupingInfo.referredTo || '');
+    if (!dest) {
+      var el = document.getElementById('route-dest');
+      el.focus();
+      el.style.borderColor = '#FCA5A5';
+      el.style.background  = 'rgba(220,38,38,.15)';
+      setTimeout(function () { el.style.borderColor = ''; el.style.background = ''; }, 2500);
+      showToast('Please enter a destination office.', 'warning');
+      return;
+    }
+
+    var ids = getSelectedIds();
+    if (!ids.length) { showToast('No documents selected.', 'warning'); return; }
+
+    var btn = document.querySelector('#routing-modal .btn-route');
+    if (btn) {
+      if (btn.disabled) return;
+      btn.disabled    = true;
+      btn.textContent = '⏳ Creating slip…';
+    }
+
+    document.getElementById('routing-doc-ids').value    = ids.join(',');
+    document.getElementById('routing-dest-field').value = dest;
+    document.getElementById('routing-notes').value      = document.getElementById('route-notes').value;
+    document.getElementById('routing-slip-date').value  = document.getElementById('slip-date').value;
+    document.getElementById('routing-time-from').value  = document.getElementById('time-from').value;
+    document.getElementById('routing-time-to').value    = document.getElementById('time-to').value;
+    document.getElementById('routing-form').submit();
     return;
   }
-
-  var ids = getSelectedIds();
-  if (!ids.length) { showToast('No documents selected.', 'warning'); return; }
-
+  
+  // Grouped routing mode - create multiple routing slips
   var btn = document.querySelector('#routing-modal .btn-route');
   if (btn) {
     if (btn.disabled) return;
     btn.disabled    = true;
-    btn.textContent = '⏳ Creating slip…';
+    btn.textContent = '⏳ Creating ' + groupKeys.length + ' slips…';
   }
-
-  document.getElementById('routing-doc-ids').value    = ids.join(',');
-  document.getElementById('routing-dest-field').value = dest;
-  document.getElementById('routing-notes').value      = document.getElementById('route-notes').value;
-  document.getElementById('routing-slip-date').value  = document.getElementById('slip-date').value;
-  document.getElementById('routing-time-from').value  = document.getElementById('time-from').value;
-  document.getElementById('routing-time-to').value    = document.getElementById('time-to').value;
-  document.getElementById('routing-form').submit();
+  
+  // Prepare grouped data
+  var groupedData = JSON.stringify(groups);
+  var notes = document.getElementById('route-notes').value || '';
+  var slipDate = document.getElementById('slip-date').value;
+  var timeFrom = document.getElementById('time-from').value;
+  var timeTo = document.getElementById('time-to').value;
+  
+  // Create hidden form fields for grouped data
+  var form = document.getElementById('routing-form');
+  
+  // Remove any existing grouped data fields
+  var existingGrouped = form.querySelector('.grouped-data');
+  if (existingGrouped) existingGrouped.remove();
+  
+  // Add grouped data field
+  var groupedInput = document.createElement('input');
+  groupedInput.type = 'hidden';
+  groupedInput.name = 'grouped_routing';
+  groupedInput.className = 'grouped-data';
+  groupedInput.value = groupedData;
+  form.appendChild(groupedInput);
+  
+  // Add notes field
+  var existingNotes = form.querySelector('[name="grouped_notes"]');
+  if (existingNotes) existingNotes.remove();
+  var notesInput = document.createElement('input');
+  notesInput.type = 'hidden';
+  notesInput.name = 'grouped_notes';
+  notesInput.className = 'grouped-data';
+  notesInput.value = notes;
+  form.appendChild(notesInput);
+  
+  // Add slip date
+  var existingDate = form.querySelector('[name="grouped_slip_date"]');
+  if (existingDate) existingDate.remove();
+  var dateInput = document.createElement('input');
+  dateInput.type = 'hidden';
+  dateInput.name = 'grouped_slip_date';
+  dateInput.className = 'grouped-data';
+  dateInput.value = slipDate;
+  form.appendChild(dateInput);
+  
+  // Add time range
+  var existingTimeFrom = form.querySelector('[name="grouped_time_from"]');
+  if (existingTimeFrom) existingTimeFrom.remove();
+  var timeFromInput = document.createElement('input');
+  timeFromInput.type = 'hidden';
+  timeFromInput.name = 'grouped_time_from';
+  timeFromInput.className = 'grouped-data';
+  timeFromInput.value = timeFrom;
+  form.appendChild(timeFromInput);
+  
+  var existingTimeTo = form.querySelector('[name="grouped_time_to"]');
+  if (existingTimeTo) existingTimeTo.remove();
+  var timeToInput = document.createElement('input');
+  timeToInput.type = 'hidden';
+  timeToInput.name = 'grouped_time_to';
+  timeToInput.className = 'grouped-data';
+  timeToInput.value = timeTo;
+  form.appendChild(timeToInput);
+  
+  // Update form action to use grouped routing endpoint
+  form.action = '/routing-slip/create-grouped';
+  
+  form.submit();
 }
 
 
@@ -706,14 +900,21 @@ function submitBulkStatusUpdate() {
 
 
 // ─────────────────────────────────────────────────────────────
-//  SELECTED DOCUMENT PREVIEW (routing modal)
+//  SELECTED DOCUMENT PREVIEW (routing modal) - WITH GROUPING
 // ─────────────────────────────────────────────────────────────
 function updateSelectedPreview() {
   var checked = document.querySelectorAll('.doc-checkbox:checked');
   var n       = checked.length;
 
   var countEl = document.getElementById('sel-count');
-  if (countEl) countEl.textContent = n + ' selected';
+  if (countEl) {
+    var groupingInfo = analyzeReferredToGrouping();
+    if (groupingInfo.groupCount > 1) {
+      countEl.textContent = n + ' selected (' + groupingInfo.groupCount + ' groups)';
+    } else {
+      countEl.textContent = n + ' selected';
+    }
+  }
 
   var preview = document.getElementById('selected-preview');
   var list    = document.getElementById('selected-list');
@@ -724,12 +925,42 @@ function updateSelectedPreview() {
     list.innerHTML = '';
   } else {
     preview.style.display = 'block';
-    list.innerHTML = Array.from(checked).map(function (cb, i) {
-      var row  = cb.closest('tr');
-      var name = row ? row.querySelector('.doc-name') : null;
-      return '<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.1)">' +
-             (i + 1) + '. ' + (name ? name.textContent.trim() : cb.value) + '</div>';
-    }).join('');
+    
+    // Get grouping info
+    var groupingInfo = analyzeReferredToGrouping();
+    var groups = groupingInfo.groups;
+    var groupKeys = Object.keys(groups);
+    
+    // If there are multiple groups, show them grouped
+    if (groupKeys.length > 1 || (groupKeys.length === 1 && groupKeys[0] === '(No Referred To)')) {
+      var html = '';
+      var docCounter = 1;
+      groupKeys.forEach(function(key) {
+        var docsInGroup = groups[key];
+        var groupLabel = key === '(No Referred To)' ? '📭 Documents without Referred To' : '📋 Referred To: ' + key;
+        html += '<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.2);margin-top:8px;">';
+        html += '<div style="font-weight:600;color:#FCD34D;font-size:11px;text-transform:uppercase;margin-bottom:4px;">' + groupLabel + ' (' + docsInGroup.length + ' docs)</div>';
+        
+        docsInGroup.forEach(function(docId) {
+          var cb = document.querySelector('.doc-checkbox[value="' + docId + '"]');
+          var row = cb ? cb.closest('tr') : null;
+          var name = row ? row.querySelector('.doc-name') : null;
+          html += '<div style="padding:2px 0;padding-left:12px;font-size:12px;">' +
+                 docCounter + '. ' + (name ? name.textContent.trim() : docId) + '</div>';
+          docCounter++;
+        });
+        html += '</div>';
+      });
+      list.innerHTML = html;
+    } else {
+      // Single group - show simple list
+      list.innerHTML = Array.from(checked).map(function (cb, i) {
+        var row  = cb.closest('tr');
+        var name = row ? row.querySelector('.doc-name') : null;
+        return '<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.1)">' +
+               (i + 1) + '. ' + (name ? name.textContent.trim() : cb.value) + '</div>';
+      }).join('');
+    }
   }
 }
 

@@ -367,6 +367,7 @@ var serverSessionData = {
                   onkeydown="if(event.key==='Enter')rowClick(event,'{{ doc.id }}')"
                   data-created-at="{{ doc.created_at or '' }}"
                   data-doc-id="{{ doc.id }}"
+                  data-referred-to="{{ doc.referred_to or '' }}"
                   tabindex="0"
                   aria-label="Document: {{ doc.doc_name }}">
 
@@ -583,7 +584,7 @@ var serverSessionData = {
     </div>
     <div class="rp-bottom">
       <button class="btn-time-filter" id="btn-auto-select" onclick="autoSelectByTime()" style="display:none;">⏱️ Auto-select by Time</button>
-      <p class="rp-hint">💡 Check rows first, or use Auto-select by Time.</p>
+      <p class="rp-hint" id="routing-hint">💡 Documents will be grouped by "Referred To" to create multiple routing slips.</p>
       <button class="btn-route" onclick="submitRouting()">🚀 Create Routing Slip</button>
     </div>
   </div>

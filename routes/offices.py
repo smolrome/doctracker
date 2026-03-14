@@ -197,6 +197,125 @@ def create_routing_slip():
     return redirect(url_for("offices.view_routing_slip", slip_id=slip_id))
 
 
+@offices_bp.route("/routing-slip/create-grouped", methods=["POST"])
+@login_required
+def create_grouped_routing_slip():
+    """Create multiple routing slips based on referred_to grouping."""
+    import json
+    
+    grouped_routing_raw = request.form.get("grouped_routing", "").strip()
+    notes = request.form.get("grouped_notes", "").strip()
+    slip_date = request.form.get("grouped_slip_date", "").strip() or now_str()[:10]
+    time_from = request.form.get("grouped_time_from", "").strip()
+    time_to = request.form.get("grouped_time_to", "").strip()
+    
+    if not grouped_routing_raw:
+        flash("No grouped routing data provided.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    try:
+        groups = json.loads(grouped_routing_raw)
+    except json.JSONDecodeError:
+        flash("Invalid grouping data.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    if not groups:
+        flash("No document groups to route.", "error")
+        return redirect(url_for("dashboard.index"))
+    
+    actor = session.get("full_name") or session.get("username") or "Staff"
+    from_office = session.get("office") or "DepEd Leyte Division"
+    
+    from services.documents import save_doc
+    from services.qr import create_slip_token, make_slip_qr_png, APP_URL
+    import base64
+    
+    created_slips = []
+    
+    for destination, doc_ids in groups.items():
+        # Skip empty/no referred to groups
+        if destination == "(No Referred To)" or not destination:
+            continue
+            
+        if not doc_ids:
+            continue
+        
+        slip_id = str(uuid.uuid4())[:8].upper()
+        slip_no = generate_slip_no()
+        
+        # Generate SLIP-level QR tokens
+        recv_token = create_slip_token(slip_id, "SLIP_RECEIVE")
+        rel_token = create_slip_token(slip_id, "SLIP_RELEASE")
+        
+        slip = {
+            "id": slip_id,
+            "slip_no": slip_no,
+            "destination": destination,
+            "from_office": from_office,
+            "prepared_by": actor,
+            "doc_ids": doc_ids,
+            "notes": notes,
+            "slip_date": slip_date,
+            "time_from": time_from,
+            "time_to": time_to,
+            "created_at": now_str(),
+            "recv_token": recv_token,
+            "rel_token": rel_token,
+            "status": "Routed",
+            "is_grouped": True,
+        }
+        save_routing_slip(slip)
+        
+        # Update every document in this group
+        for doc_id in doc_ids:
+            doc = get_doc(doc_id)
+            if doc:
+                doc["status"] = "Routed"
+                doc["forwarded_to"] = destination
+                doc["from_office"] = from_office
+                doc["routing_slip_id"] = slip_id
+                doc["routing_slip_no"] = slip_no
+                
+                # Create the travel log entry
+                new_entry = {
+                    "office": from_office,
+                    "action": f"Released — Routed to {destination}",
+                    "officer": actor,
+                    "timestamp": now_str(),
+                    "remarks": f"Routing slip {slip_no}. Forwarded from {from_office} → {destination}.",
+                    "slip_no": slip_no,
+                }
+                
+                travel_log = doc.get("travel_log", [])
+                if not travel_log or travel_log[-1].get("slip_no") != slip_no:
+                    travel_log.append(new_entry)
+                    doc["travel_log"] = travel_log
+                
+                save_doc(doc)
+        
+        created_slips.append(slip_id)
+        
+        audit_log("grouped_routing_slip_created",
+                  f"slip_no={slip_no} from={from_office} dest={destination} "
+                      f"docs={len(doc_ids)} ids={','.join(str(x) for x in doc_ids[:5])}",
+                  username=session.get("username", ""), ip=get_client_ip())
+    
+    if not created_slips:
+        flash("No routing slips were created. Please ensure documents have valid 'Referred To' values.", "warning")
+        return redirect(url_for("dashboard.index"))
+    
+    # Store the last slip ID for display
+    if created_slips:
+        session["last_rerouted_slip_id"] = created_slips[-1]
+    
+    if len(created_slips) == 1:
+        flash(f"✅ 1 routing slip created successfully!", "success")
+        return redirect(url_for("offices.view_routing_slip", slip_id=created_slips[0]))
+    else:
+        flash(f"✅ {len(created_slips)} routing slips created successfully!", "success")
+        return redirect(url_for("offices.routed_documents"))
+
+
 @offices_bp.route("/routing-slip/<slip_id>")
 @login_required
 def view_routing_slip(slip_id):
