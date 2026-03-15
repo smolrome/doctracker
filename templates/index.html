@@ -11,6 +11,7 @@ var serverSessionData = {
 </script>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
 <meta name="csrf-token" content="{{ csrf_token }}">
 <script src="{{ url_for('static', filename='js/index.js') }}" defer></script>
 
@@ -655,15 +656,78 @@ var serverSessionData = {
 </div>
 
 {# Add Document Modal #}
+{% if cart %}
+<div class="floating-cart" onclick="openAddDocumentModal()">
+  <span class="floating-cart-icon">🛒</span>
+  <span class="floating-cart-badge">{{ cart|length }}</span>
+  <span class="floating-cart-tooltip">View Documents ({{ cart|length }})</span>
+</div>
+{% endif %}
+
 <div id="add-doc-modal" class="add-doc-modal" onclick="closeAddDocumentModal(event)">
   <div class="add-doc-modal-content" onclick="event.stopPropagation()">
     <div class="add-doc-modal-header">
       <h2>📋 Add New Document</h2>
       <button type="button" class="add-doc-modal-close" onclick="closeAddDocumentModal(null)">&times;</button>
     </div>
+    
+    {# Cart Display #}
+    {% if cart %}
+    <div class="add-doc-cart-section">
+      <div class="add-doc-cart-header">
+        <span>🛒 Documents in Cart ({{ cart|length }})</span>
+      </div>
+      <div class="add-doc-cart-list">
+        {% for item in cart %}
+        <div class="add-doc-cart-item">
+          <div class="add-doc-cart-item-num">#{{ loop.index }}</div>
+          <div class="add-doc-cart-item-body">
+            <div class="add-doc-cart-item-name">{{ item.doc_name }}
+              {% if item.category %}<span class="cat-tag">{{ item.category }}</span>{% endif %}
+            </div>
+            <div class="add-doc-cart-item-meta">
+              {% if item.sender_org %}<strong>From:</strong> {{ item.sender_org }}<br/>{% endif %}
+              {% if item.sender_name %}<strong>Sender:</strong> {{ item.sender_name }}<br/>{% endif %}
+              {% if item.referred_to %}<strong>Referred To:</strong> {{ item.referred_to }}{% endif %}
+            </div>
+          </div>
+          <div class="add-doc-cart-item-actions">
+            <form method="post" style="margin:0;">
+              <input type="hidden" name="_action" value="edit"/>
+              <input type="hidden" name="tmp_id" value="{{ item.tmp_id }}"/>
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+              <button type="submit" class="btn-edit">✏️ Edit</button>
+            </form>
+            <form method="post" style="margin:0;" onsubmit="return confirm('Remove this document from the log list?');">
+              <input type="hidden" name="_action" value="remove"/>
+              <input type="hidden" name="tmp_id" value="{{ item.tmp_id }}"/>
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+              <button type="submit" class="btn-remove">✕</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="add-doc-cart-footer">
+        <form method="post">
+          <input type="hidden" name="_action" value="submit_all"/>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+          <button type="submit" class="btn-submit-all" onclick="showLoading('Logging all documents...')">
+            💾 Log All {{ cart|length }} Document{{ 's' if cart|length != 1 else '' }}
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+    
+    {# Add Document Form #}
     <form method="post" action="/add" class="add-doc-form">
       <input type="hidden" name="_action" value="add"/>
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+      
+      <div class="add-doc-form-title">
+        ➕ Add {% if cart %}Another{% endif %} Document
+      </div>
       
       <div class="form-row">
         <div class="form-group">
@@ -705,7 +769,7 @@ var serverSessionData = {
       </div>
       <div class="add-doc-modal-actions">
         <button type="button" class="btn-cancel-add" onclick="closeAddDocumentModal(null)">Cancel</button>
-        <button type="submit" class="btn-save-add">💾 Save Document</button>
+        <button type="submit" class="btn-save-add">➕ Add to Cart</button>
       </div>
     </form>
   </div>

@@ -202,7 +202,9 @@ def index():
         offices_dict=offices_dict,
         sorted_offices=sorted_offices,
         current_user_name=session.get('full_name', ''),
-        current_user_role=session.get('role', ''))
+        current_user_role=session.get('role', ''),
+        cart=session.get('staff_cart', []),
+        category_options=get_dropdown_options('category'))
 
 
 @dashboard_bp.route("/dashboard")
