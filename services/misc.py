@@ -130,11 +130,36 @@ def load_saved_offices() -> list[dict]:
 
 
 def delete_saved_office(office_slug: str):
+    """Delete an office from saved_offices and clear office assignment from all users."""
+    # First get the office name before deleting
+    office_name = ""
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT office_name FROM saved_offices WHERE office_slug=%s", (office_slug,))
+                    row = cur.fetchone()
+                    if row:
+                        office_name = row['office_name']
+        except Exception as e:
+            print(f"[services.misc] delete_saved_office DB error for slug={office_slug}: {e}")
+    else:
+        path = "saved_offices.json"
+        if os.path.exists(path):
+            with open(path) as f:
+                offices = json.load(f)
+            if office_slug in offices:
+                office_name = offices[office_slug].get('office_name', '')
+    
+    # Delete the office from saved_offices
     if USE_DB:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute("DELETE FROM saved_offices WHERE office_slug=%s", (office_slug,))
+                    # Also clear office field from users assigned to this office
+                    if office_name:
+                        cur.execute("UPDATE users SET office='' WHERE office=%s", (office_name,))
                 conn.commit()
         except Exception as e:
             print(f"[services.misc] delete_saved_office DB error for slug={office_slug}: {e}")
@@ -146,6 +171,18 @@ def delete_saved_office(office_slug: str):
             offices.pop(office_slug, None)
             with open(path, "w") as f:
                 json.dump(offices, f, indent=2)
+        
+        # Also clear office field from users in JSON
+        if office_name:
+            users_path = "users.json"
+            if os.path.exists(users_path):
+                with open(users_path) as f:
+                    users = json.load(f)
+                for user in users:
+                    if user.get('office', '') == office_name:
+                        user['office'] = ''
+                with open(users_path, "w") as f:
+                    json.dump(users, f, indent=2)
 
 
 def update_office_primary_recipient(office_slug: str, primary_recipient: str):

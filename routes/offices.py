@@ -76,6 +76,71 @@ def office_qr_page():
                            staff_members=staff_members)
 
 
+# ── Office Staff List page ───────────────────────────────────────────────────
+
+@offices_bp.route("/office-staff")
+@admin_required
+def office_staff():
+    """Display list of offices with their staff members."""
+    from services.auth import get_all_users
+    from services.misc import load_saved_offices
+    
+    # Get all users with office assignments
+    all_users = get_all_users()
+    saved_offices = load_saved_offices()
+    
+    # Build office_staff list from saved_offices
+    office_staff_list = []
+    for office in saved_offices:
+        office_slug = office.get('office_slug', '')
+        office_name = office.get('office_name', '')
+        
+        # Get staff assigned to this office
+        staff = [u for u in all_users if u.get('office', '').strip().lower() == office_name.strip().lower()]
+        
+        office_staff_list.append({
+            'office_name': office_name,
+            'office_slug': office_slug,
+            'created_by': office.get('created_by', ''),
+            'primary_recipient': office.get('primary_recipient', ''),
+            'staff_count': len(staff),
+            'staff': staff
+        })
+    
+    return render_template("office_staff.html",
+                           office_staff=office_staff_list,
+                           office_staff_json={office['office_slug']: office['staff'] for office in office_staff_list})
+
+
+@offices_bp.route("/update-office-recipient", methods=["POST"])
+@admin_required
+def update_office_recipient():
+    """Update the primary recipient for an office."""
+    from services.misc import update_office_primary_recipient
+    
+    office_slug = request.form.get("office_slug", "").strip()
+    primary_recipient = request.form.get("primary_recipient", "").strip()
+    
+    if office_slug:
+        update_office_primary_recipient(office_slug, primary_recipient)
+        flash("Primary recipient updated successfully.", "success")
+    
+    return redirect(url_for("offices.office_staff"))
+
+
+@offices_bp.route("/delete-office/<slug>", methods=["POST"])
+@admin_required
+def delete_office(slug):
+    """Delete an office and clear office assignments from all staff."""
+    from services.misc import delete_saved_office
+    
+    if slug:
+        delete_saved_office(slug)
+        flash("Office removed successfully.", "success")
+    
+    return redirect(url_for("offices.office_staff"))
+
+
 # ── Welcome / public page ─────────────────────────────────────────────────────
 
 @offices_bp.route("/welcome")
