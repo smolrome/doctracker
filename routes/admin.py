@@ -205,6 +205,47 @@ def change_password_route(username):
     return redirect(url_for("admin.manage_users"))
 
 
+@admin_bp.route("/edit-user/<username>", methods=["POST"])
+@admin_required
+def edit_user_route(username):
+    """Edit user details: full_name, role, and office."""
+    from services.auth import update_user
+    
+    full_name = request.form.get("full_name", "").strip()
+    role = request.form.get("role", "").strip()
+    office = request.form.get("office", "").strip()
+    
+    # Get the original user data for audit
+    from services.auth import get_all_users
+    all_users = get_all_users()
+    original_user = next((u for u in all_users if u.get("username") == username), None)
+    
+    ok, err = update_user(username, full_name=full_name if full_name else None, 
+                          role=role if role else None, 
+                          office=office if office else None)
+    
+    if ok:
+        # Create audit log details
+        changes = []
+        if original_user:
+            if original_user.get('full_name') != full_name:
+                changes.append(f"name: {original_user.get('full_name')} -> {full_name}")
+            if original_user.get('role') != role:
+                changes.append(f"role: {original_user.get('role')} -> {role}")
+            if original_user.get('office') != office:
+                changes.append(f"office: {original_user.get('office')} -> {office}")
+        
+        audit_log("user_edited",
+                  f"admin edited user={username}: {'; '.join(changes) if changes else 'no changes'}",
+                  username=session.get("username", "admin"),
+                  ip=get_client_ip())
+        flash(f"✅ User '{username}' updated successfully.", "success")
+    else:
+        flash(f"Failed to update user: {err}", "error")
+    
+    return redirect(url_for("admin.manage_users"))
+
+
 @admin_bp.route("/clear-database", methods=["POST"])
 @admin_required
 def clear_database():
