@@ -249,6 +249,79 @@ def _make_office_reg_code(office_slug: str) -> str:
     return f"reg-{raw}"
 
 
+def get_existing_offices_without_qr() -> list[dict]:
+    """
+    Get all unique offices from users that don't have QR codes yet.
+    These are offices that have staff assigned but no saved_offices entry.
+    Returns list of dicts with 'office_slug' and 'office_name'.
+    """
+    from services.database import USE_DB, get_conn
+    
+    # First get all saved office slugs (those that already have QR codes)
+    saved_slugs = set()
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT office_slug FROM saved_offices")
+                    for row in cur.fetchall():
+                        saved_slugs.add(row['office_slug'])
+        except Exception as e:
+            print(f"[services.misc] get_existing_offices_without_qr DB error: {e}")
+    else:
+        import os
+        path = "saved_offices.json"
+        if os.path.exists(path):
+            with open(path) as f:
+                offices = json.load(f)
+                saved_slugs = set(offices.keys())
+    
+    # Now get unique offices from users that aren't in saved_slugs
+    result = []
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    # Get distinct offices from users
+                    cur.execute(
+                        """SELECT DISTINCT office FROM users 
+                           WHERE office IS NOT NULL AND office != '' 
+                           ORDER BY office"""
+                    )
+                    for row in cur.fetchall():
+                        office = row['office'].strip()
+                        if office:
+                            slug = re.sub(r'\s+', '-', office.lower())
+                            if slug not in saved_slugs:
+                                result.append({
+                                    'office_slug': slug,
+                                    'office_name': office
+                                })
+        except Exception as e:
+            print(f"[services.misc] get_existing_offices_without_qr DB error: {e}")
+    else:
+        # JSON fallback - read users
+        import os
+        path = "users.json"
+        if os.path.exists(path):
+            with open(path) as f:
+                users = json.load(f)
+            offices = set()
+            for user in users:
+                office = user.get('office', '').strip()
+                if office:
+                    offices.add(office)
+            for office in sorted(offices):
+                slug = re.sub(r'\s+', '-', office.lower())
+                if slug not in saved_slugs:
+                    result.append({
+                        'office_slug': slug,
+                        'office_name': office
+                    })
+    
+    return result
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  ROUTING SLIPS
 # ═══════════════════════════════════════════════════════════════════

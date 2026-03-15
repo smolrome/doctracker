@@ -12,7 +12,7 @@ from services.auth import get_all_users
 from services.documents import get_doc, now_str
 from services.misc import (
     audit_log, delete_saved_office, get_office_traffic_today,
-    generate_slip_no, get_routing_slip, load_saved_offices,
+    generate_slip_no, get_existing_offices_without_qr, get_routing_slip, load_saved_offices,
     save_office, save_routing_slip,
 )
 from services.qr import make_office_qr_png, get_base_url
@@ -62,12 +62,16 @@ def office_qr_page():
     all_users = get_all_users()
     staff_members = [u for u in all_users if u.get("role") in ("staff", "admin")]
 
+    # Get existing offices that don't have QR codes yet
+    existing_offices = get_existing_offices_without_qr()
+
     return render_template("office_qr_page.html",
                            base=base,
                            office_name=office_name,
                            qr_data=qr_data,
                            office_traffic=office_traffic,
                            saved_offices=load_saved_offices(),
+                           existing_offices=existing_offices,
                            client_reg_code=CLIENT_REG_CODE,
                            staff_members=staff_members)
 

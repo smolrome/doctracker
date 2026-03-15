@@ -61,15 +61,47 @@
   </div>
 </div>
 
+<!-- ── EXISTING OFFICES WITHOUT QR ── -->
+{% if existing_offices %}
+<div class="existing-offices-card" style="background:linear-gradient(135deg,#FEF3C7 0%,#FDE68A 100%);border:2px solid #F59E0B;border-radius:12px;padding:20px;margin:20px 0;">
+  <div class="gen-title" style="color:#92400E;">⚠️ Existing Offices Without QR Codes</div>
+  <p style="color:#78350F;font-size:14px;margin-bottom:16px;">
+    The following offices have staff assigned but no QR codes yet. Click to generate QR codes for them.
+  </p>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;">
+    {% for office in existing_offices %}
+    <a href="/office-qr-page?office={{ office.office_name | urlencode }}" 
+       class="btn"
+       style="background:#F59E0B;color:white;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:6px;">
+      🏢 {{ office.office_name }}
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <!-- ── GENERATOR FORM ── -->
 <div class="gen-card">
   <div class="gen-title">⚙️ Generate QR Codes for Your Office</div>
   <form method="get" action="/office-qr-page" class="gen-form">
+    {% if existing_offices %}
     <div class="form-group">
+      <label style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:8px;display:block;">
+        Select Existing Office (Staff-Assigned)
+      </label>
+      <select name="office" id="officeSelect" style="font-size:15px;min-height:44px;" onchange="toggleOfficeInput(this.value)">
+        <option value="">— Type new office name —</option>
+        {% for office in existing_offices %}
+        <option value="{{ office.office_name }}" {% if office_name == office.office_name %}selected{% endif %}>{{ office.office_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="form-group" id="officeInputGroup">
       <label style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:8px;display:block;">
         Office / School / Unit Name
       </label>
-      <input type="text" name="office" value="{{ office_name }}"
+      <input type="text" name="office" id="officeInput" value="{{ office_name }}"
              placeholder="e.g. Ormoc City, Budget Section, Leyte NHS"
              style="font-size:17px;min-height:52px;" required/>
     </div>
@@ -205,5 +237,29 @@
   </div>
   {% endif %}
 </div>
+
+<script>
+function toggleOfficeInput(selectedValue) {
+  var inputGroup = document.getElementById('officeInputGroup');
+  var input = document.getElementById('officeInput');
+  if (selectedValue) {
+    // Hide the text input, use the selected value
+    inputGroup.style.display = 'none';
+    input.required = false;
+  } else {
+    // Show the text input
+    inputGroup.style.display = 'block';
+    input.required = true;
+  }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  var select = document.getElementById('officeSelect');
+  if (select) {
+    toggleOfficeInput(select.value);
+  }
+});
+</script>
 
 {% endblock %}
