@@ -26,12 +26,12 @@
     <div class="form-row">
       <div class="form-group">
         <label>Document Type</label>
-        <select name="category">
-          <option value="">— Select type —</option>
+        <input type="text" name="category" list="categoryOptions" value="{{ doc.get('category','') }}" placeholder="Select or type document type"/>
+        <datalist id="categoryOptions">
           {% for c in category_options %}
-            <option value="{{ c }}" {% if doc.get('category')==c %}selected{% endif %}>{{ c }}</option>
+            <option value="{{ c }}">
           {% endfor %}
-        </select>
+        </datalist>
       </div>
       <div class="form-group">
         <label>Document Date</label>
@@ -171,12 +171,12 @@
       <div class="form-row">
         <div class="form-group">
           <label>Document Type</label>
-          <select name="category">
-            <option value="">— Select type —</option>
+          <input type="text" name="category" list="categoryOptions2" value="{{ edit_item.category or '' }}" placeholder="Select or type document type"/>
+          <datalist id="categoryOptions2">
             {% for cat in category_options %}
-            <option value="{{ cat }}" {% if edit_item.category == cat %}selected{% endif %}>{{ cat }}</option>
+            <option value="{{ cat }}">
             {% endfor %}
-          </select>
+          </datalist>
         </div>
         <div class="form-group">
           <label>Referred To</label>
@@ -426,12 +426,12 @@ document.addEventListener('keydown', function(e) {
     <div class="form-row">
       <div class="form-group">
         <label>Document Type</label>
-        <select name="category">
-          <option value="">— Select type —</option>
+        <input type="text" name="category" list="categoryOptions3" placeholder="Select or type document type"/>
+        <datalist id="categoryOptions3">
           {% for cat in category_options %}
-          <option value="{{ cat }}">{{ cat }}</option>
+          <option value="{{ cat }}">
           {% endfor %}
-        </select>
+        </datalist>
       </div>
       <div class="form-group">
         <label>Referred To</label>

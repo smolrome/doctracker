@@ -87,14 +87,18 @@
     {% if existing_offices %}
     <div class="form-group">
       <label style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:8px;display:block;">
-        Select Existing Office (Staff-Assigned)
+        Select Existing Office (Staff-Assigned) or Type New
       </label>
-      <select name="office" id="officeSelect" style="font-size:15px;min-height:44px;" onchange="toggleOfficeInput(this.value)">
-        <option value="">— Type new office name —</option>
+      <input type="text" name="office" id="officeSelect" list="existingOfficesList" 
+             value="{{ office_name }}"
+             placeholder="Select or type office name..."
+             style="font-size:15px;min-height:44px;"
+             oninput="toggleOfficeInput(this.value)"/>
+      <datalist id="existingOfficesList">
         {% for office in existing_offices %}
-        <option value="{{ office.office_name }}" {% if office_name == office.office_name %}selected{% endif %}>{{ office.office_name }}</option>
+        <option value="{{ office.office_name }}">
         {% endfor %}
-      </select>
+      </datalist>
     </div>
     {% endif %}
     <div class="form-group" id="officeInputGroup">
@@ -240,24 +244,19 @@
 
 <script>
 function toggleOfficeInput(selectedValue) {
-  var inputGroup = document.getElementById('officeInputGroup');
-  var input = document.getElementById('officeInput');
-  if (selectedValue) {
-    // Hide the text input, use the selected value
-    inputGroup.style.display = 'none';
-    input.required = false;
-  } else {
-    // Show the text input
-    inputGroup.style.display = 'block';
-    input.required = true;
-  }
+  // With datalist, users can type or select - no need to hide anything
+  // This function is kept for compatibility but doesn't need to do anything
 }
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-  var select = document.getElementById('officeSelect');
-  if (select) {
-    toggleOfficeInput(select.value);
+  var input = document.getElementById('officeSelect');
+  if (input) {
+    // Pre-fill the input if office_name is set
+    var officeName = '{{ office_name }}';
+    if (officeName) {
+      input.value = officeName;
+    }
   }
 });
 </script>
