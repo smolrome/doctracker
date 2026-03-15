@@ -749,3 +749,187 @@ th.cb-cell { background: #F1F7FB; }
   .pagination-wrap { flex-direction: column; align-items: flex-start; }
   .ib-cta { display: none; }
 }
+
+/* Add Document Modal */
+.add-doc-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 37, 64, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.add-doc-modal.active {
+  display: flex;
+}
+
+.add-doc-modal-content {
+  background: #fff;
+  border-radius: 20px;
+  max-width: 550px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalIn 0.2s ease-out;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+}
+
+.add-doc-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 2px solid var(--border);
+}
+
+.add-doc-modal-header h2 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--navy);
+  margin: 0;
+}
+
+.add-doc-modal-close {
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: var(--muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.add-doc-modal-close:hover {
+  color: var(--danger);
+}
+
+.add-doc-form {
+  padding: 24px;
+}
+
+.add-doc-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.add-doc-form .form-group {
+  margin-bottom: 16px;
+}
+
+.add-doc-form .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.add-doc-form label {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--navy);
+  margin-bottom: 6px;
+}
+
+.add-doc-form label .req {
+  color: #dc2626;
+}
+
+.add-doc-form input[type="text"],
+.add-doc-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+
+.add-doc-form input[type="text"]:focus,
+.add-doc-form textarea:focus {
+  outline: none;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+}
+
+.add-doc-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.add-doc-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.btn-cancel-add {
+  padding: 12px 20px;
+  border-radius: 10px;
+  background: #F1F5F9;
+  color: var(--navy);
+  border: 2px solid #CBD5E1;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.btn-cancel-add:hover {
+  background: #E2E8F0;
+}
+
+.btn-save-add {
+  padding: 12px 20px;
+  border-radius: 10px;
+  background: #1D4ED8;
+  color: #fff;
+  border: 2px solid #1D4ED8;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.btn-save-add:hover {
+  background: #1E40AF;
+}
+
+@media (max-width: 600px) {
+  .add-doc-modal-content {
+    max-width: 100%;
+    margin: 10px;
+  }
+  
+  .add-doc-form .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .add-doc-modal-actions {
+    flex-direction: column;
+  }
+  
+  .btn-cancel-add,
+  .btn-save-add {
+    width: 100%;
+  }
+}

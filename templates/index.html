@@ -49,7 +49,7 @@ var serverSessionData = {
     {% if logged_in %}
     <div class="page-header-actions">
       <a href="/routed-documents" class="hdr-btn hdr-btn-ghost">🚌 Routed Docs</a>
-      <a href="/add"              class="hdr-btn hdr-btn-primary">+ Add Document</a>
+      <button type="button" class="hdr-btn hdr-btn-primary" onclick="openAddDocumentModal()">+ Add Document</button>
     </div>
     {% endif %}
   </div>
@@ -496,7 +496,7 @@ var serverSessionData = {
               {% endif %}
             </p>
             <div class="empty-actions">
-              <a href="/add" class="empty-btn empty-btn-primary">➕ Add Document</a>
+              <button type="button" class="empty-btn empty-btn-primary" onclick="openAddDocumentModal()">➕ Add Document</button>
               {% if search or filter_status != 'All' or filter_date %}
               <a href="#" class="empty-btn empty-btn-ghost" onclick="clearAllFilters(event)">✕ Clear Filters</a>
               {% endif %}
@@ -651,6 +651,63 @@ var serverSessionData = {
       <p class="rp-hint">💡 Updates status for all selected documents.</p>
       <button class="btn-route btn-route-teal" onclick="submitBulkStatusUpdate()" id="btn-do-status-update" disabled>📋 Update Status</button>
     </div>
+  </div>
+</div>
+
+{# Add Document Modal #}
+<div id="add-doc-modal" class="add-doc-modal" onclick="closeAddDocumentModal(event)">
+  <div class="add-doc-modal-content" onclick="event.stopPropagation()">
+    <div class="add-doc-modal-header">
+      <h2>📋 Add New Document</h2>
+      <button type="button" class="add-doc-modal-close" onclick="closeAddDocumentModal(null)">&times;</button>
+    </div>
+    <form method="post" action="/add" class="add-doc-form">
+      <input type="hidden" name="_action" value="add"/>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Unit / Office / School <span class="req">*</span></label>
+          <input type="text" name="sender_org"
+                 placeholder="e.g. Palo Central School, Leyte District I" required/>
+        </div>
+        <div class="form-group">
+          <label>Sender Name &amp; Designation</label>
+          <input type="text" name="sender_name"
+                 placeholder="e.g. Juan dela Cruz, Principal II"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Content / Particulars <span class="req">*</span></label>
+        <input type="text" name="doc_name"
+               placeholder="e.g. Plantilla of Personnel, Leave Application, Memo No. 001" required/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Document Type</label>
+          <input type="text" name="category" list="categoryOptionsModal" placeholder="Select or type document type"/>
+          <datalist id="categoryOptionsModal">
+            {% for cat in category_options %}
+            <option value="{{ cat }}">
+            {% endfor %}
+          </datalist>
+        </div>
+        <div class="form-group">
+          <label>Referred To</label>
+          <input type="text" name="referred_to"
+                 placeholder="e.g. SDS, Budget Officer"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description / Remarks</label>
+        <textarea name="description"
+                  placeholder="Additional details, purpose, or instructions..."></textarea>
+      </div>
+      <div class="add-doc-modal-actions">
+        <button type="button" class="btn-cancel-add" onclick="closeAddDocumentModal(null)">Cancel</button>
+        <button type="submit" class="btn-save-add">💾 Save Document</button>
+      </div>
+    </form>
   </div>
 </div>
 
