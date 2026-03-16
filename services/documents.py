@@ -257,8 +257,9 @@ def get_stats(docs: list[dict]) -> dict:
         "released":   sum(1 for d in docs if d.get("status") == "Released"),
         "on_hold":    sum(1 for d in docs if d.get("status") == "On Hold"),
         "archived":   sum(1 for d in docs if d.get("status") == "Archived"),
-        # Source-based stats
-        "staff":      sum(1 for d in docs if d.get("logged_by") and not d.get("submitted_by")),
+        # Source-based stats - use original_logged_by to track who originally added the document
+        # (logged_by changes when documents are transferred to other staff)
+        "staff":      sum(1 for d in docs if (d.get("original_logged_by") or d.get("logged_by")) and not d.get("submitted_by")),
         "client":     sum(1 for d in docs if d.get("submitted_by")),
     }
 

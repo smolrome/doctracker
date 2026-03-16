@@ -86,8 +86,10 @@ def index():
         docs = [
             d for d in docs
             if (
-                # Staff can see documents they originally logged
+                # Staff can see documents they originally logged (for transferred docs)
                 d.get("original_logged_by") == current_username
+                # OR documents they logged but were never transferred (no original_logged_by)
+                or d.get("logged_by") == current_username
                 # OR documents they received
                 or d.get("received_by") == current_username
                 # OR documents they have accepted
