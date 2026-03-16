@@ -16,7 +16,6 @@ function toggleKebab(btn, event) {
     event.preventDefault();
   }
   const menu = btn.nextElementSibling;
-  // Close other menus first
   document.querySelectorAll('.kebab-menu.show').forEach(m => {
     if (m !== menu) m.classList.remove('show');
   });
@@ -28,9 +27,7 @@ document.addEventListener('contextmenu', function(e) {
   const cell = e.target.closest('.kebab-cell');
   if (cell) {
     e.preventDefault();
-    const btn = cell.querySelector('.kebab-btn');
     const menu = cell.querySelector('.kebab-menu');
-    // Close other menus first
     document.querySelectorAll('.kebab-menu.show').forEach(m => {
       if (m !== menu) m.classList.remove('show');
     });
@@ -45,210 +42,148 @@ function editDocument(docId) {
 
 /* Delete single document */
 function deleteDocument(docId, docName) {
-  if (!confirm('Are you sure you want to delete "' + docName + '"? This action cannot be undone.')) {
-    return;
-  }
-
+  if (!confirm('Are you sure you want to delete "' + docName + '"? This action cannot be undone.')) return;
   fetch('/document/' + docId + '/delete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
   })
-  .then(response => response.json())
+  .then(r => r.json())
   .then(data => {
-    if (data.success) {
-      alert('Document "' + docName + '" has been deleted.');
-      window.location.reload();
-    } else {
-      alert('Error: ' + (data.message || 'Failed to delete document.'));
-    }
+    if (data.success) { alert('Document "' + docName + '" has been deleted.'); window.location.reload(); }
+    else { alert('Error: ' + (data.message || 'Failed to delete document.')); }
   })
-  .catch(error => {
-    alert('Error: ' + error.message);
-  });
+  .catch(err => alert('Error: ' + err.message));
 }
 
 /* Delete all documents in a slip */
 function deleteAllDocs(slipId, slipNo, docCount) {
-  if (!confirm('Are you sure you want to delete all ' + docCount + ' documents in slip ' + slipNo + '? This action cannot be undone.')) {
-    return;
-  }
-
+  if (!confirm('Are you sure you want to delete all ' + docCount + ' documents in slip ' + slipNo + '? This action cannot be undone.')) return;
   fetch('/routing-slip/' + slipId + '/delete-all-docs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
   })
-  .then(response => response.json())
+  .then(r => r.json())
   .then(data => {
-    if (data.success) {
-      alert('All documents in slip ' + slipNo + ' have been deleted.');
-      window.location.reload();
-    } else {
-      alert('Error: ' + (data.message || 'Failed to delete documents.'));
-    }
+    if (data.success) { alert('All documents in slip ' + slipNo + ' have been deleted.'); window.location.reload(); }
+    else { alert('Error: ' + (data.message || 'Failed to delete documents.')); }
   })
-  .catch(error => {
-    alert('Error: ' + error.message);
-  });
+  .catch(err => alert('Error: ' + err.message));
 }
 
 /* Archive single document */
 function archiveDocument(docId, docName) {
-  if (!confirm('Are you sure you want to archive "' + docName + '"?')) {
-    return;
-  }
-
+  if (!confirm('Are you sure you want to archive "' + docName + '"?')) return;
   fetch('/document/' + docId + '/archive', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
   })
-  .then(response => response.json())
+  .then(r => r.json())
   .then(data => {
-    if (data.success) {
-      alert('Document "' + docName + '" has been archived.');
-      window.location.reload();
-    } else {
-      alert('Error: ' + (data.message || 'Failed to archive document.'));
-    }
+    if (data.success) { alert('Document "' + docName + '" has been archived.'); window.location.reload(); }
+    else { alert('Error: ' + (data.message || 'Failed to archive document.')); }
   })
-  .catch(error => {
-    alert('Error: ' + error.message);
-  });
+  .catch(err => alert('Error: ' + err.message));
 }
 
 /* Delete Routing Slip */
 function deleteRoutingSlip(slipId, slipNo) {
-  if (!confirm('Are you sure you want to delete routing slip ' + slipNo + '? This action cannot be undone.')) {
-    return;
-  }
-
+  if (!confirm('Are you sure you want to delete routing slip ' + slipNo + '? This action cannot be undone.')) return;
   fetch('/routing-slip/' + slipId + '/delete', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    }
+    headers: { 'Content-Type': 'application/json' }
   })
-  .then(response => response.json())
+  .then(r => r.json())
   .then(data => {
-    if (data.success) {
-      alert('Routing slip ' + slipNo + ' has been deleted.');
-      window.location.reload();
-    } else {
-      alert('Error: ' + (data.message || 'Failed to delete routing slip.'));
-    }
+    if (data.success) { alert('Routing slip ' + slipNo + ' has been deleted.'); window.location.reload(); }
+    else { alert('Error: ' + (data.message || 'Failed to delete routing slip.')); }
   })
-  .catch(error => {
-    alert('Error: ' + error.message);
-  });
+  .catch(err => alert('Error: ' + err.message));
 }
 
 /* Archive Routing Slip */
 function archiveRoutingSlip(slipId, slipNo) {
-  if (!confirm('Are you sure you want to archive routing slip ' + slipNo + '?')) {
-    return;
-  }
-
+  if (!confirm('Are you sure you want to archive routing slip ' + slipNo + '?')) return;
   fetch('/routing-slip/' + slipId + '/archive', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    }
+    headers: { 'Content-Type': 'application/json' }
   })
-  .then(response => response.json())
+  .then(r => r.json())
   .then(data => {
-    if (data.success) {
-      alert('Routing slip ' + slipNo + ' has been archived.');
-      window.location.reload();
-    } else {
-      alert('Error: ' + (data.message || 'Failed to archive routing slip.'));
-    }
+    if (data.success) { alert('Routing slip ' + slipNo + ' has been archived.'); window.location.reload(); }
+    else { alert('Error: ' + (data.message || 'Failed to archive routing slip.')); }
   })
-  .catch(error => {
-    alert('Error: ' + error.message);
-  });
+  .catch(err => alert('Error: ' + err.message));
 }
 
-/* Re-route Modal */
-var currentSlipId = null;
+/* ── Re-route Modal ───────────────────────────────────────────────────────── */
+var _currentRerouteSlipId = null;
 
 function openRerouteModal(slipId, currentDest) {
-  currentSlipId = slipId;
-  document.getElementById('reroute-dest').value = currentDest;
-  document.getElementById('reroute-slip-id').value = slipId;
-  const modal = document.getElementById('reroute-modal');
-  modal.classList.add('open');
+  _currentRerouteSlipId = slipId;
+  var destEl = document.getElementById('reroute-dest');
+  var slipEl = document.getElementById('reroute-slip-id');
+  var modal  = document.getElementById('reroute-modal');
+  if (!destEl || !slipEl || !modal) {
+    console.error('Re-route modal elements not found in DOM');
+    return;
+  }
+  destEl.value = currentDest || '';
+  slipEl.value = slipId;
   modal.style.display = 'flex';
 }
 
 function closeRerouteModal() {
-  const modal = document.getElementById('reroute-modal');
-  modal.classList.remove('open');
-  modal.style.display = 'none';
-  currentSlipId = null;
+  var modal = document.getElementById('reroute-modal');
+  if (modal) modal.style.display = 'none';
+  _currentRerouteSlipId = null;
 }
 
 function submitReroute() {
-  const dest = document.getElementById('reroute-dest').value.trim();
-  if (!dest) {
+  var destEl = document.getElementById('reroute-dest');
+  if (!destEl || !destEl.value.trim()) {
     alert('Please enter a destination office.');
     return;
   }
-  document.getElementById('reroute-form').submit();
+  var form = document.getElementById('reroute-form');
+  if (form) form.submit();
 }
 
-/* Click outside modal to close */
-document.addEventListener('DOMContentLoaded', function () {
-  const rerouteModal = document.getElementById('reroute-modal');
-  if (rerouteModal) {
-    rerouteModal.addEventListener('click', function (e) {
-      if (e.target === this) closeRerouteModal();
+/* Click outside modal overlay to close — uses window.load so modal exists */
+window.addEventListener('load', function () {
+  var modal = document.getElementById('reroute-modal');
+  if (modal) {
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closeRerouteModal();
     });
   }
 });
 
 /* Delete all routing slips */
 function deleteAllSlips() {
-  if (!confirm('Are you sure you want to delete ALL routing slips? This action cannot be undone and will remove all documents.')) {
-    return;
-  }
-
+  if (!confirm('Are you sure you want to delete ALL routing slips? This action cannot be undone and will remove all documents.')) return;
   fetch('/routing-slip/delete-all', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
   })
-  .then(response => response.json())
+  .then(r => r.json())
   .then(data => {
-    if (data.success) {
-      alert('All routing slips have been deleted.');
-      window.location.reload();
-    } else {
-      alert('Error: ' + (data.message || 'Failed to delete routing slips.'));
-    }
+    if (data.success) { alert('All routing slips have been deleted.'); window.location.reload(); }
+    else { alert('Error: ' + (data.message || 'Failed to delete routing slips.')); }
   })
-  .catch(error => {
-    alert('Error: ' + error.message);
-  });
+  .catch(err => alert('Error: ' + err.message));
 }
 
 /* Archive all routing slips */
 function archiveAllSlips() {
-  if (!confirm('Are you sure you want to archive ALL routing slips?')) {
-    return;
-  }
-
+  if (!confirm('Are you sure you want to archive ALL routing slips?')) return;
   fetch('/routing-slip/archive-all', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
   })
-  .then(response => response.json())
+  .then(r => r.json())
   .then(data => {
-    if (data.success) {
-      alert('All routing slips have been archived.');
-      window.location.reload();
-    } else {
-      alert('Error: ' + (data.message || 'Failed to archive routing slips.'));
-    }
+    if (data.success) { alert('All routing slips have been archived.'); window.location.reload(); }
+    else { alert('Error: ' + (data.message || 'Failed to archive routing slips.')); }
   })
-  .catch(error => {
-    alert('Error: ' + error.message);
-  });
+  .catch(err => alert('Error: ' + err.message));
 }
