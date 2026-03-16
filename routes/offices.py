@@ -660,7 +660,7 @@ def reroute_slip():
 
 
 @offices_bp.route("/routing-slip/<slip_id>/delete", methods=["POST"])
-@login_required
+@admin_required
 def delete_routing_slip(slip_id):
     """Delete a routing slip by ID."""
     from flask import jsonify
@@ -725,7 +725,7 @@ def archive_routing_slip(slip_id):
 
 
 @offices_bp.route("/routing-slip/delete-all", methods=["POST"])
-@login_required
+@admin_required
 def delete_all_routing_slips():
     """Delete all routing slips."""
     from flask import jsonify
@@ -755,7 +755,7 @@ def delete_all_routing_slips():
 
 
 @offices_bp.route("/routing-slip/<slip_id>/delete-all-docs", methods=["POST"])
-@login_required
+@admin_required
 def delete_all_docs_in_slip(slip_id):
     """Delete all documents in a routing slip."""
     from flask import jsonify
@@ -781,7 +781,7 @@ def delete_all_docs_in_slip(slip_id):
 
 
 @offices_bp.route("/document/<doc_id>/delete", methods=["POST"])
-@login_required
+@admin_required
 def delete_document(doc_id):
     """Delete a single document."""
     from flask import jsonify

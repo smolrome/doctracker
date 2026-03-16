@@ -47,7 +47,9 @@
     of <strong>{{ total }}</strong> routing slip{{ 's' if total != 1 else '' }}
     {% if filter == 'active' and total > 0 %}
     <button type="button" class="archive-all-btn" onclick="archiveAllSlips()" style="margin-left:16px;">📦 Archive All</button>
+    {% if session.get('role') == 'admin' %}
     <button type="button" class="delete-all-btn" onclick="deleteAllSlips()" style="margin-left:8px;">🗑️ Delete All</button>
+    {% endif %}
     {% endif %}
   </div>
   <div class="pager-perpage" style="display:flex;gap:12px;align-items:center;">
@@ -100,7 +102,9 @@
         <button type="button" onclick="archiveRoutingSlip('{{ slip.id }}', '{{ slip.slip_no }}')" class="kebab-archive" style="width:100%;text-align:left;">📦 Archive</button>
         <button type="button" onclick="openRerouteModal('{{ slip.id }}', '{{ slip.destination }}')" class="kebab-edit" style="width:100%;text-align:left;">🔄 Re-route</button>
         {% else %}
+        {% if session.get('role') == 'admin' %}
         <button type="button" onclick="deleteRoutingSlip('{{ slip.id }}', '{{ slip.slip_no }}')" class="kebab-delete" style="width:100%;text-align:left;">🗑️ Delete</button>
+        {% endif %}
         {% endif %}
       </div>
     </div>
@@ -154,7 +158,9 @@
             <div class="kebab-menu">
               <button type="button" class="kebab-edit" onclick="editDocument('{{ doc.id }}')">✏️ Edit</button>
               <button type="button" class="kebab-archive" onclick="archiveDocument('{{ doc.id }}', '{{ doc.doc_name|replace("'", "\\'") }}')">📦 Archive</button>
+              {% if session.get('role') == 'admin' %}
               <button type="button" class="kebab-delete" onclick="deleteDocument('{{ doc.id }}', '{{ doc.doc_name|replace("'", "\\'") }}')">🗑️ Delete</button>
+              {% endif %}
             </div>
           </td>
         </tr>
@@ -235,7 +241,7 @@
 
 {% endif %}
 
-<script src="{{ url_for('static', filename='js/manage_users.js') }}"></script>
+<script src="{{ url_for('static', filename='js/routed_documents.js') }}"></script>
 
 <!-- Re-route Modal -->
 <div id="reroute-modal" class="modal-overlay" style="display:none;">
