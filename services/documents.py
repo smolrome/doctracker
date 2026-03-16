@@ -246,17 +246,33 @@ def delete_doc_forever(doc_id: str):
 # ── Statistics ────────────────────────────────────────────────────────────────
 
 def get_stats(docs: list[dict]) -> dict:
+    # Define all known statuses
+    known_statuses = {"Logged", "Pending", "Received", "In Review", "Routed", "Transferred", "Released", "On Hold", "Archived"}
+    
+    # Count documents by status
+    status_counts = {}
+    unknown_count = 0
+    
+    for d in docs:
+        status = (d.get("status") or "").strip()
+        if status in known_statuses:
+            status_counts[status] = status_counts.get(status, 0) + 1
+        else:
+            # Count as unknown/empty status
+            unknown_count += 1
+    
     return {
         "total":      len(docs),
-        "logged":     sum(1 for d in docs if d.get("status") == "Logged"),
-        "pending":    sum(1 for d in docs if d.get("status") == "Pending"),
-        "received":   sum(1 for d in docs if d.get("status") == "Received"),
-        "in_review":  sum(1 for d in docs if d.get("status") == "In Review"),
-        "routed": sum(1 for d in docs if d.get("status") == "Routed"),
-        "transferred": sum(1 for d in docs if d.get("status") == "Transferred"),
-        "released":   sum(1 for d in docs if d.get("status") == "Released"),
-        "on_hold":    sum(1 for d in docs if d.get("status") == "On Hold"),
-        "archived":   sum(1 for d in docs if d.get("status") == "Archived"),
+        "logged":     status_counts.get("Logged", 0),
+        "pending":    status_counts.get("Pending", 0),
+        "received":   status_counts.get("Received", 0),
+        "in_review":  status_counts.get("In Review", 0),
+        "routed":     status_counts.get("Routed", 0),
+        "transferred": status_counts.get("Transferred", 0),
+        "released":   status_counts.get("Released", 0),
+        "on_hold":    status_counts.get("On Hold", 0),
+        "archived":   status_counts.get("Archived", 0),
+        "unknown":    unknown_count,  # Documents with unknown/empty status
         # Source-based stats - use original_logged_by to track who originally added the document
         # (logged_by changes when documents are transferred to other staff)
         "staff":      sum(1 for d in docs if (d.get("original_logged_by") or d.get("logged_by")) and not d.get("submitted_by")),

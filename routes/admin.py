@@ -49,16 +49,28 @@ def staff_document_stats():
     except Exception:
         pass
     
-    # Get all users with staff role
+    # Get all users with staff or admin role (include admins in stats)
     all_users = get_all_users()
     staff_users = [u for u in all_users if u.get("role") in ("staff", "admin") and u.get("username") != ADMIN_USERNAME]
+    
+    # Pagination for staff table
+    try:
+        staff_page = max(1, int(request.args.get("staff_page", 1)))
+    except ValueError:
+        staff_page = 1
+    staff_per_page = 10
+    staff_total = len(staff_users)
+    staff_total_pages = max(1, (staff_total + staff_per_page - 1) // staff_per_page)
+    staff_page = min(staff_page, staff_total_pages)
+    staff_start = (staff_page - 1) * staff_per_page
+    staff_paginated = staff_users[staff_start:staff_start + staff_per_page]
     
     # Load all documents
     docs = load_docs()
     
     # Calculate stats per staff
     staff_stats = {}
-    for staff in staff_users:
+    for staff in staff_paginated:
         username = staff.get("username")
         full_name = staff.get("full_name") or username
         
@@ -78,6 +90,7 @@ def staff_document_stats():
         staff_stats[username] = {
             "full_name": full_name,
             "office": staff.get("office", ""),
+            "role": staff.get("role", "staff"),
             "total": len(staff_docs),
             "status_counts": status_counts,
             "docs": staff_docs  # Include actual docs for display
@@ -89,16 +102,34 @@ def staff_document_stats():
         if not d.get("logged_by") and not d.get("original_logged_by") and not d.get("submitted_by")
     ]
     
+    # Pagination for unassigned docs
+    try:
+        unassigned_page = max(1, int(request.args.get("unassigned_page", 1)))
+    except ValueError:
+        unassigned_page = 1
+    unassigned_per_page = 50
+    unassigned_total = len(unassigned_docs)
+    unassigned_total_pages = max(1, (unassigned_total + unassigned_per_page - 1) // unassigned_per_page)
+    unassigned_page = min(unassigned_page, unassigned_total_pages)
+    unassigned_start = (unassigned_page - 1) * unassigned_per_page
+    unassigned_paginated = unassigned_docs[unassigned_start:unassigned_start + unassigned_per_page]
+    
     # Client-submitted documents (for reference)
     client_docs = [d for d in docs if d.get("submitted_by")]
     
     return render_template("staff_document_stats.html",
                            staff_stats=staff_stats,
                            unassigned_count=len(unassigned_docs),
-                           unassigned_docs=unassigned_docs[:50],  # Show first 50
+                           unassigned_docs=unassigned_paginated,
                            client_count=len(client_docs),
                            total_docs=len(docs),
-                           admin_username=ADMIN_USERNAME)
+                           admin_username=ADMIN_USERNAME,
+                           staff_page=staff_page,
+                           staff_total_pages=staff_total_pages,
+                           unassigned_page=unassigned_page,
+                           unassigned_total_pages=unassigned_total_pages,
+                           staff_list=staff_users  # Pass full list for batch operations
+    )
 
 
 @admin_bp.route("/assign-doc/<doc_id>", methods=["POST"])
@@ -168,6 +199,62 @@ def unassign_doc(doc_id):
               ip=get_client_ip())
     
     flash(f"✅ Document unassigned.", "success")
+    return redirect(url_for("admin.staff_document_stats"))
+
+
+@admin_bp.route("/assign-doc-batch", methods=["POST"])
+@admin_required
+def assign_doc_batch():
+    """Admin can assign multiple documents to a staff member at once."""
+    doc_ids = request.form.get("doc_ids", "").strip()
+    staff_username = request.form.get("staff_username", "").strip()
+    
+    if not doc_ids:
+        flash("No documents selected.", "error")
+        return redirect(url_for("admin.staff_document_stats"))
+    
+    if not staff_username:
+        flash("Please select a staff member.", "error")
+        return redirect(url_for("admin.staff_document_stats"))
+    
+    # Parse document IDs
+    id_list = [d.strip() for d in doc_ids.split(",") if d.strip()]
+    
+    if not id_list:
+        flash("No valid document IDs.", "error")
+        return redirect(url_for("admin.staff_document_stats"))
+    
+    # Get staff details
+    from services.auth import get_all_users
+    all_users = get_all_users()
+    staff_user = next((u for u in all_users if u.get("username") == staff_username), None)
+    
+    if not staff_user:
+        flash("Staff member not found.", "error")
+        return redirect(url_for("admin.staff_document_stats"))
+    
+    staff_full_name = staff_user.get("full_name") or staff_username
+    
+    # Assign each document
+    assigned_count = 0
+    for doc_id in id_list:
+        doc = get_doc(doc_id)
+        if not doc:
+            continue
+        
+        old_logged_by = doc.get("logged_by", "")
+        doc["logged_by"] = staff_username
+        doc["original_logged_by"] = staff_username
+        
+        save_doc(doc)
+        assigned_count += 1
+    
+    audit_log("doc_batch_assigned",
+              f"count={assigned_count} assigned to={staff_username}",
+              username=session.get("username", "admin"),
+              ip=get_client_ip())
+    
+    flash(f"✅ {assigned_count} document(s) assigned to {staff_full_name}.", "success")
     return redirect(url_for("admin.staff_document_stats"))
 
 

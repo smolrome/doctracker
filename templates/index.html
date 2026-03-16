@@ -185,6 +185,18 @@ var serverSessionData = {
         </div>
       </a>
 
+      {% if stats.unknown > 0 %}
+      <a class="stat-item si-default"
+         href="#" onclick="event.preventDefault();statFilter('Unknown')"
+         aria-pressed="false">
+        <span class="stat-item-icon">❓</span>
+        <div class="stat-item-body">
+          <div class="stat-item-label">Unknown</div>
+          <div class="stat-item-num">{{ stats.unknown }}</div>
+        </div>
+      </a>
+      {% endif %}
+
     </aside>
 
 

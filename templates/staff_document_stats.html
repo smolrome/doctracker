@@ -38,9 +38,27 @@
   </div>
   
   {% if staff_stats %}
+  <div style="margin-bottom:16px;padding:12px;background:#f8f9fa;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <button type="button" class="btn btn-primary" onclick="toggleBatchAssign()" id="btn-batch-assign">📋 Batch Assign</button>
+      <span id="selected-count" style="margin-left:12px;color:#666;">0 selected</span>
+    </div>
+    <div>
+      <select id="batch-staff-select" style="padding:8px;border-radius:4px;margin-right:8px;display:none;">
+        <option value="">-- Select Staff --</option>
+        {% for staff in staff_list %}
+        <option value="{{ staff.username }}">{{ staff.full_name or staff.username }} ({{ staff.role }})</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-success" onclick="submitBatchAssign()" id="btn-confirm-assign" style="display:none;">✅ Assign</button>
+    </div>
+  </div>
   <table style="width:100%;border-collapse:collapse;">
     <thead>
       <tr style="background:#f8f9fa;border-bottom:2px solid #dee2e6;">
+        <th style="padding:12px;text-align:center;width:40px;">
+          <input type="checkbox" id="select-all-staff" onchange="toggleSelectAllStaff(this)">
+        </th>
         <th style="padding:12px;text-align:left;">Staff Member</th>
         <th style="padding:12px;text-align:left;">Office</th>
         <th style="padding:12px;text-align:center;">Total Docs</th>
@@ -54,9 +72,16 @@
     <tbody>
       {% for username, stats in staff_stats.items()|sort(attribute='1.total', reverse=True) %}
       <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:12px;text-align:center;">
+          <input type="checkbox" class="staff-doc-checkbox" value="{{ username }}" onchange="updateStaffSelection()">
+        </td>
         <td style="padding:12px;">
           <div style="font-weight:600;">{{ stats.full_name }}</div>
-          <div style="font-size:12px;color:#666;">@{{ username }}</div>
+          <div style="font-size:12px;color:#666;">@{{ username }}
+            {% if stats.role == 'admin' %}
+            <span style="background:#dc3545;color:white;padding:1px 6px;border-radius:3px;font-size:10px;">ADMIN</span>
+            {% endif %}
+          </div>
         </td>
         <td style="padding:12px;">{{ stats.office or '—' }}</td>
         <td style="padding:12px;text-align:center;">
@@ -74,6 +99,19 @@
       {% endfor %}
     </tbody>
   </table>
+  
+  <!-- Staff Pagination -->
+  {% if staff_total_pages > 1 %}
+  <div style="padding:16px;text-align:center;">
+    {% if staff_page > 1 %}
+    <a href="?staff_page={{ staff_page - 1 }}{% if unassigned_page > 1 %}&unassigned_page={{ unassigned_page }}{% endif %}" class="btn btn-secondary">← Previous</a>
+    {% endif %}
+    <span style="margin:0 12px;">Page {{ staff_page }} of {{ staff_total_pages }}</span>
+    {% if staff_page < staff_total_pages %}
+    <a href="?staff_page={{ staff_page + 1 }}{% if unassigned_page > 1 %}&unassigned_page={{ unassigned_page }}{% endif %}" class="btn btn-secondary">Next →</a>
+    {% endif %}
+  </div>
+  {% endif %}
   {% else %}
   <div style="padding:40px;text-align:center;color:#666;">
     No staff members found.
@@ -89,11 +127,27 @@
     <p style="margin:0;color:#856404;font-size:14px;">
       These documents have no staff or client assigned. Use the form below to assign them.
     </p>
+    <div style="margin-top:8px;">
+      <input type="checkbox" id="select-all-unassigned" onchange="toggleSelectAllUnassigned(this)">
+      <label for="select-all-unassigned" style="color:#856404;">Select All</label>
+      <span style="margin-left:16px;">
+        <select id="bulk-assign-staff" style="padding:6px;border-radius:4px;">
+          <option value="">-- Select Staff --</option>
+          {% for staff in staff_list %}
+          <option value="{{ staff.username }}">{{ staff.full_name or staff.username }}</option>
+          {% endfor %}
+        </select>
+        <button type="button" class="btn btn-primary btn-sm" onclick="bulkAssignUnassigned()">Assign Selected</button>
+      </span>
+    </div>
   </div>
   
   <table style="width:100%;border-collapse:collapse;">
     <thead>
       <tr style="background:#fff3cd;border-bottom:2px solid #ffeeba;">
+        <th style="padding:10px;text-align:center;width:40px;">
+          <input type="checkbox" class="unassigned-checkbox" onchange="updateUnassignedSelection()">
+        </th>
         <th style="padding:10px;text-align:left;">Document ID</th>
         <th style="padding:10px;text-align:left;">Document Name</th>
         <th style="padding:10px;text-align:center;">Status</th>
@@ -104,6 +158,9 @@
     <tbody>
       {% for doc in unassigned_docs %}
       <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:10px;text-align:center;">
+          <input type="checkbox" class="unassigned-checkbox" value="{{ doc.get('id') }}" onchange="updateUnassignedSelection()">
+        </td>
         <td style="padding:10px;font-family:monospace;font-size:12px;">{{ doc.get('id', '')[:20] }}...</td>
         <td style="padding:10px;">{{ doc.get('doc_name', 'Untitled')[:50] }}</td>
         <td style="padding:10px;text-align:center;">
@@ -128,9 +185,15 @@
     </tbody>
   </table>
   
-  {% if unassigned_count > 50 %}
+  {% if unassigned_total_pages > 1 %}
   <div style="padding:12px;text-align:center;color:#666;">
-    Showing first 50 of {{ unassigned_count }} unassigned documents.
+    {% if unassigned_page > 1 %}
+    <a href="?unassigned_page={{ unassigned_page - 1 }}{% if staff_page > 1 %}&staff_page={{ staff_page }}{% endif %}" class="btn btn-secondary btn-sm">← Previous</a>
+    {% endif %}
+    <span style="margin:0 12px;">Page {{ unassigned_page }} of {{ unassigned_total_pages }}</span>
+    {% if unassigned_page < unassigned_total_pages %}
+    <a href="?unassigned_page={{ unassigned_page + 1 }}{% if staff_page > 1 %}&staff_page={{ staff_page }}{% endif %}" class="btn btn-secondary btn-sm">Next →</a>
+    {% endif %}
   </div>
   {% endif %}
 </div>
@@ -186,5 +249,123 @@
 .stat-card { box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
 .btn-sm { padding: 6px 12px; font-size: 13px; }
 </style>
+
+<script>
+// Batch assign for staff selection
+function toggleBatchAssign() {
+  var checkboxes = document.querySelectorAll('.staff-doc-checkbox');
+  var anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+  
+  checkboxes.forEach(function(cb) {
+    cb.style.display = anyChecked ? 'none' : '';
+  });
+  
+  document.getElementById('select-all-staff').style.display = anyChecked ? 'none' : '';
+  document.getElementById('btn-batch-assign').textContent = anyChecked ? '📋 Batch Assign' : '✓ Done';
+  
+  if (!anyChecked) {
+    document.getElementById('batch-staff-select').style.display = 'none';
+    document.getElementById('btn-confirm-assign').style.display = 'none';
+  }
+}
+
+function toggleSelectAllStaff(source) {
+  var checkboxes = document.querySelectorAll('.staff-doc-checkbox');
+  checkboxes.forEach(function(cb) {
+    cb.checked = source.checked;
+  });
+  updateStaffSelection();
+}
+
+function updateStaffSelection() {
+  var checkboxes = document.querySelectorAll('.staff-doc-checkbox:checked');
+  var count = checkboxes.length;
+  document.getElementById('selected-count').textContent = count + ' selected';
+  
+  if (count > 0) {
+    document.getElementById('batch-staff-select').style.display = 'inline-block';
+  }
+}
+
+function submitBatchAssign() {
+  var checkboxes = document.querySelectorAll('.staff-doc-checkbox:checked');
+  var staffSelect = document.getElementById('batch-staff-select');
+  var staffUsername = staffSelect.value;
+  
+  if (!staffUsername) {
+    alert('Please select a staff member');
+    return;
+  }
+  
+  var usernames = Array.from(checkboxes).map(cb => cb.value);
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/assign-doc-batch';
+  
+  var docIdsInput = document.createElement('input');
+  docIdsInput.type = 'hidden';
+  docIdsInput.name = 'doc_ids';
+  docIdsInput.value = usernames.join(',');
+  form.appendChild(docIdsInput);
+  
+  var staffInput = document.createElement('input');
+  staffInput.type = 'hidden';
+  staffInput.name = 'staff_username';
+  staffInput.value = staffUsername;
+  form.appendChild(staffInput);
+  
+  document.body.appendChild(form);
+  form.submit();
+}
+
+// Unassigned documents batch operations
+function toggleSelectAllUnassigned(source) {
+  var checkboxes = document.querySelectorAll('.unassigned-checkbox');
+  checkboxes.forEach(function(cb) {
+    cb.checked = source.checked;
+  });
+  updateUnassignedSelection();
+}
+
+function updateUnassignedSelection() {
+  // Just for potential future use
+}
+
+function bulkAssignUnassigned() {
+  var checkboxes = document.querySelectorAll('.unassigned-checkbox:checked');
+  var staffSelect = document.getElementById('bulk-assign-staff');
+  var staffUsername = staffSelect.value;
+  
+  if (checkboxes.length === 0) {
+    alert('Please select at least one document');
+    return;
+  }
+  
+  if (!staffUsername) {
+    alert('Please select a staff member');
+    return;
+  }
+  
+  var docIds = Array.from(checkboxes).map(cb => cb.value);
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/assign-doc-batch';
+  
+  var docIdsInput = document.createElement('input');
+  docIdsInput.type = 'hidden';
+  docIdsInput.name = 'doc_ids';
+  docIdsInput.value = docIds.join(',');
+  form.appendChild(docIdsInput);
+  
+  var staffInput = document.createElement('input');
+  staffInput.type = 'hidden';
+  staffInput.name = 'staff_username';
+  staffInput.value = staffUsername;
+  form.appendChild(staffInput);
+  
+  document.body.appendChild(form);
+  form.submit();
+}
+</script>
 
 {% endblock %}

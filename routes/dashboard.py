@@ -133,7 +133,12 @@ def index():
         filtered = [d for d in filtered if _matches(d, search)]
 
     if filter_status != "All":
-        filtered = [d for d in filtered if d.get("status") == filter_status]
+        if filter_status == "Unknown":
+            # Filter for documents with empty or unknown status
+            known_statuses = {"Logged", "Pending", "Received", "In Review", "Routed", "Transferred", "Released", "On Hold", "Archived"}
+            filtered = [d for d in filtered if (d.get("status") or "").strip() not in known_statuses]
+        else:
+            filtered = [d for d in filtered if d.get("status") == filter_status]
 
     # Source filter: Staff vs Client submissions
     if filter_source == "Staff":
