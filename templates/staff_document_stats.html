@@ -81,13 +81,13 @@
   {% endif %}
 </div>
 
-<!-- Unassigned Documents -->
+<!-- Unassigned Documents with Assign -->
 {% if unassigned_docs %}
 <div class="users-card" style="border:2px solid #fee140;">
   <div class="users-head" style="background:#fff3cd;">
     <h3 style="color:#856404;">⚠️ Unassigned Documents ({{ unassigned_count }})</h3>
     <p style="margin:0;color:#856404;font-size:14px;">
-      These documents have no staff or client assigned. Click to view details.
+      These documents have no staff or client assigned. Use the form below to assign them.
     </p>
   </div>
   
@@ -98,12 +98,13 @@
         <th style="padding:10px;text-align:left;">Document Name</th>
         <th style="padding:10px;text-align:center;">Status</th>
         <th style="padding:10px;text-align:left;">Created</th>
+        <th style="padding:10px;text-align:center;">Assign To</th>
       </tr>
     </thead>
     <tbody>
       {% for doc in unassigned_docs %}
       <tr style="border-bottom:1px solid #eee;">
-        <td style="padding:10px;font-family:monospace;">{{ doc.get('id', '')[:20] }}...</td>
+        <td style="padding:10px;font-family:monospace;font-size:12px;">{{ doc.get('id', '')[:20] }}...</td>
         <td style="padding:10px;">{{ doc.get('doc_name', 'Untitled')[:50] }}</td>
         <td style="padding:10px;text-align:center;">
           <span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:4px;font-size:12px;">
@@ -111,6 +112,17 @@
           </span>
         </td>
         <td style="padding:10px;">{{ doc.get('created_at', '')[:16] }}</td>
+        <td style="padding:10px;text-align:center;">
+          <form method="post" action="/assign-doc/{{ doc.get('id') }}" style="display:inline;">
+            <select name="staff_username" required style="padding:6px;border:1px solid #ddd;border-radius:4px;min-width:150px;">
+              <option value="">-- Select --</option>
+              {% for username, stats in staff_stats.items()|sort(attribute='1.full_name') %}
+              <option value="{{ username }}">{{ stats.full_name }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm" style="margin-left:4px;">Assign</button>
+          </form>
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -124,10 +136,55 @@
 </div>
 {% endif %}
 
+<!-- Staff Documents with Unassign -->
+{% for username, stats in staff_stats.items() %}
+{% if stats.docs and stats.docs|length > 0 %}
+<div class="users-card" style="margin-top:24px;border-left:4px solid #667eea;">
+  <div class="users-head">
+    <h3>👤 {{ stats.full_name }} (@{{ username }}) - {{ stats.total }} Documents</h3>
+  </div>
+  
+  <table style="width:100%;border-collapse:collapse;">
+    <thead>
+      <tr style="background:#f8f9fa;border-bottom:2px solid #dee2e6;">
+        <th style="padding:8px;text-align:left;">Document</th>
+        <th style="padding:8px;text-align:center;">Status</th>
+        <th style="padding:8px;text-align:left;">Created</th>
+        <th style="padding:8px;text-align:center;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for doc in stats.docs[:30] %}
+      <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:8px;font-size:13px;">{{ doc.get('doc_name', 'Untitled')[:60] }}</td>
+        <td style="padding:8px;text-align:center;">
+          <span style="background:#e9ecef;padding:2px 8px;border-radius:4px;font-size:12px;">
+            {{ doc.get('status', 'Unknown') }}
+          </span>
+        </td>
+        <td style="padding:8px;">{{ doc.get('created_at', '')[:16] }}</td>
+        <td style="padding:8px;text-align:center;">
+          <form method="post" action="/unassign-doc/{{ doc.get('id') }}" style="display:inline;" onsubmit="return confirm('Unassign this document? It will become unassigned and appear in the Unassigned section.')">
+            <button type="submit" class="btn btn-secondary btn-sm">Unassign</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  
+  {% if stats.total > 30 %}
+  <div style="padding:12px;text-align:center;color:#666;">
+    Showing first 30 of {{ stats.total }} documents for {{ stats.full_name }}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endfor %}
+
 <style>
-.stat-card {
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
+.stat-card { box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
 </style>
 
 {% endblock %}

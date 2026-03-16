@@ -13,7 +13,7 @@ from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
 )
 from services.misc import audit_log, get_activity_logs
-from services.documents import load_docs
+from services.documents import load_docs, save_doc, get_doc
 from utils import admin_required, get_client_ip
 from config import ADMIN_USERNAME, MAIL_ENABLED, APP_URL
 
@@ -79,7 +79,8 @@ def staff_document_stats():
             "full_name": full_name,
             "office": staff.get("office", ""),
             "total": len(staff_docs),
-            "status_counts": status_counts
+            "status_counts": status_counts,
+            "docs": staff_docs  # Include actual docs for display
         }
     
     # Find documents with no staff assigned (not logged_by any staff and not submitted_by any client)
@@ -98,6 +99,76 @@ def staff_document_stats():
                            client_count=len(client_docs),
                            total_docs=len(docs),
                            admin_username=ADMIN_USERNAME)
+
+
+@admin_bp.route("/assign-doc/<doc_id>", methods=["POST"])
+@admin_required
+def assign_doc(doc_id):
+    """Admin can assign a document to a staff member."""
+    staff_username = request.form.get("staff_username", "").strip()
+    
+    if not staff_username:
+        flash("Please select a staff member.", "error")
+        return redirect(url_for("admin.staff_document_stats"))
+    
+    # Get the document
+    doc = get_doc(doc_id)
+    if not doc:
+        flash("Document not found.", "error")
+        return redirect(url_for("admin.staff_document_stats"))
+    
+    # Get staff details
+    from services.auth import get_all_users
+    all_users = get_all_users()
+    staff_user = next((u for u in all_users if u.get("username") == staff_username), None)
+    
+    if not staff_user:
+        flash("Staff member not found.", "error")
+        return redirect(url_for("admin.staff_document_stats"))
+    
+    staff_full_name = staff_user.get("full_name") or staff_username
+    
+    # Assign the document to staff
+    old_logged_by = doc.get("logged_by", "")
+    doc["logged_by"] = staff_username
+    doc["original_logged_by"] = staff_username  # Set as original logger
+    
+    save_doc(doc)
+    
+    audit_log("doc_assigned",
+              f"doc_id={doc_id} assigned to={staff_username} (was: {old_logged_by or 'unassigned'})",
+              username=session.get("username", "admin"),
+              ip=get_client_ip())
+    
+    flash(f"✅ Document assigned to {staff_full_name}.", "success")
+    return redirect(url_for("admin.staff_document_stats"))
+
+
+@admin_bp.route("/unassign-doc/<doc_id>", methods=["POST"])
+@admin_required
+def unassign_doc(doc_id):
+    """Admin can unassign a document from a staff member."""
+    doc = get_doc(doc_id)
+    if not doc:
+        flash("Document not found.", "error")
+        return redirect(url_for("admin.staff_document_stats"))
+    
+    old_logged_by = doc.get("logged_by", "unassigned")
+    old_original = doc.get("original_logged_by", "")
+    
+    # Unassign the document
+    doc["logged_by"] = ""
+    doc["original_logged_by"] = ""
+    
+    save_doc(doc)
+    
+    audit_log("doc_unassigned",
+              f"doc_id={doc_id} unassigned from={old_logged_by} (original: {old_original})",
+              username=session.get("username", "admin"),
+              ip=get_client_ip())
+    
+    flash(f"✅ Document unassigned.", "success")
+    return redirect(url_for("admin.staff_document_stats"))
 
 
 @admin_bp.route("/activity-log")

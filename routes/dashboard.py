@@ -99,6 +99,8 @@ def index():
                     d.get("transfer_status") == "pending"
                     and d.get("pending_at_staff") == current_username
                 )
+                # OR documents they have transferred (to see the status)
+                or d.get("transferred_by") == current_username
             )
         ]
     print(f"[DEBUG index] Docs after filter for {current_username}: {len(docs)}")
