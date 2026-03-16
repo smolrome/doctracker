@@ -49,9 +49,19 @@ def staff_document_stats():
     except Exception:
         pass
     
-    # Get all users with staff or admin role (include admins in stats)
+    # Get all users with staff or admin role
     all_users = get_all_users()
-    staff_users = [u for u in all_users if u.get("role") in ("staff", "admin") and u.get("username") != ADMIN_USERNAME]
+    staff_users = [u for u in all_users if u.get("role") in ("staff", "admin")]
+    
+    # Add admin user to staff stats so their logged documents are visible
+    admin_user = {
+        "username": ADMIN_USERNAME,
+        "full_name": "Administrator",
+        "role": "admin",
+        "office": ""
+    }
+    # Insert admin at the beginning of the list
+    staff_users.insert(0, admin_user)
     
     # Pagination for staff table
     try:
