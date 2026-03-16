@@ -63,6 +63,15 @@ var serverSessionData = {
     {# ══════════════════════════════════
        LEFT STAT RAIL
     ══════════════════════════════════ #}
+    {% if current_user_role == 'admin' %}
+    <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:16px;border-radius:12px;margin-bottom:16px;text-align:center;">
+      <div style="font-size:14px;opacity:0.9;">📊 Total Documents</div>
+      <div style="font-size:36px;font-weight:700;">{{ stats.total }}</div>
+      <div style="font-size:12px;opacity:0.8;margin-top:4px;">
+        Staff: {{ stats.staff }} · Client: {{ stats.client }}
+      </div>
+    </div>
+    {% endif %}
     <aside class="stats-rail" role="navigation" aria-label="Filter by status">
 
       <div class="rail-source-toggle" role="group" aria-label="Filter by source">
