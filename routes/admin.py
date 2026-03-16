@@ -13,6 +13,7 @@ from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
 )
 from services.misc import audit_log, get_activity_logs
+from services.documents import load_docs
 from utils import admin_required, get_client_ip
 from config import ADMIN_USERNAME, MAIL_ENABLED, APP_URL
 
@@ -35,6 +36,67 @@ def manage_users():
         pass
     users = get_all_users()
     return render_template("manage_users.html", users=users,
+                           admin_username=ADMIN_USERNAME)
+
+
+@admin_bp.route("/staff-document-stats")
+@admin_required
+def staff_document_stats():
+    """Show document counts per staff member - for admin to track productivity."""
+    try:
+        audit_log("staff_doc_stats_viewed", "Admin accessed staff document statistics",
+                  username=session.get("username","admin"), ip=get_client_ip())
+    except Exception:
+        pass
+    
+    # Get all users with staff role
+    all_users = get_all_users()
+    staff_users = [u for u in all_users if u.get("role") in ("staff", "admin") and u.get("username") != ADMIN_USERNAME]
+    
+    # Load all documents
+    docs = load_docs()
+    
+    # Calculate stats per staff
+    staff_stats = {}
+    for staff in staff_users:
+        username = staff.get("username")
+        full_name = staff.get("full_name") or username
+        
+        # Count documents where this staff is the original logger or current holder
+        staff_docs = [
+            d for d in docs
+            if d.get("original_logged_by") == username 
+            or d.get("logged_by") == username
+        ]
+        
+        # Count by status
+        status_counts = {}
+        for d in staff_docs:
+            status = d.get("status", "Unknown")
+            status_counts[status] = status_counts.get(status, 0) + 1
+        
+        staff_stats[username] = {
+            "full_name": full_name,
+            "office": staff.get("office", ""),
+            "total": len(staff_docs),
+            "status_counts": status_counts
+        }
+    
+    # Find documents with no staff assigned (not logged_by any staff and not submitted_by any client)
+    unassigned_docs = [
+        d for d in docs
+        if not d.get("logged_by") and not d.get("original_logged_by") and not d.get("submitted_by")
+    ]
+    
+    # Client-submitted documents (for reference)
+    client_docs = [d for d in docs if d.get("submitted_by")]
+    
+    return render_template("staff_document_stats.html",
+                           staff_stats=staff_stats,
+                           unassigned_count=len(unassigned_docs),
+                           unassigned_docs=unassigned_docs[:50],  # Show first 50
+                           client_count=len(client_docs),
+                           total_docs=len(docs),
                            admin_username=ADMIN_USERNAME)
 
 
