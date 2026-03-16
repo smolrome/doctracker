@@ -175,11 +175,11 @@ function openRerouteModal(slipId, currentDest) {
   currentSlipId = slipId;
   document.getElementById('reroute-dest').value = currentDest;
   document.getElementById('reroute-slip-id').value = slipId;
-  document.getElementById('reroute-modal').style.display = 'flex';
+  document.getElementById('reroute-modal').classList.add('open');
 }
 
 function closeRerouteModal() {
-  document.getElementById('reroute-modal').style.display = 'none';
+  document.getElementById('reroute-modal').classList.remove('open');
   currentSlipId = null;
 }
 
