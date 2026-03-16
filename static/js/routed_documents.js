@@ -48,7 +48,7 @@ function deleteDocument(docId, docName) {
   if (!confirm('Are you sure you want to delete "' + docName + '"? This action cannot be undone.')) {
     return;
   }
-  
+
   fetch('/document/' + docId + '/delete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
@@ -72,7 +72,7 @@ function deleteAllDocs(slipId, slipNo, docCount) {
   if (!confirm('Are you sure you want to delete all ' + docCount + ' documents in slip ' + slipNo + '? This action cannot be undone.')) {
     return;
   }
-  
+
   fetch('/routing-slip/' + slipId + '/delete-all-docs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
@@ -96,7 +96,7 @@ function archiveDocument(docId, docName) {
   if (!confirm('Are you sure you want to archive "' + docName + '"?')) {
     return;
   }
-  
+
   fetch('/document/' + docId + '/archive', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
@@ -120,7 +120,7 @@ function deleteRoutingSlip(slipId, slipNo) {
   if (!confirm('Are you sure you want to delete routing slip ' + slipNo + '? This action cannot be undone.')) {
     return;
   }
-  
+
   fetch('/routing-slip/' + slipId + '/delete', {
     method: 'POST',
     headers: {
@@ -146,7 +146,7 @@ function archiveRoutingSlip(slipId, slipNo) {
   if (!confirm('Are you sure you want to archive routing slip ' + slipNo + '?')) {
     return;
   }
-  
+
   fetch('/routing-slip/' + slipId + '/archive', {
     method: 'POST',
     headers: {
@@ -168,7 +168,6 @@ function archiveRoutingSlip(slipId, slipNo) {
 }
 
 /* Re-route Modal */
-var rerouteModal = null;
 var currentSlipId = null;
 
 function openRerouteModal(slipId, currentDest) {
@@ -177,19 +176,15 @@ function openRerouteModal(slipId, currentDest) {
   document.getElementById('reroute-slip-id').value = slipId;
   const modal = document.getElementById('reroute-modal');
   modal.classList.add('open');
-  modal.style.display = 'flex';   // ← force visible regardless of CSS class
+  modal.style.display = 'flex';
 }
 
 function closeRerouteModal() {
   const modal = document.getElementById('reroute-modal');
   modal.classList.remove('open');
-  modal.style.display = 'none';   // ← force hidden
+  modal.style.display = 'none';
   currentSlipId = null;
 }
-
-document.getElementById('reroute-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeRerouteModal();
-});
 
 function submitReroute() {
   const dest = document.getElementById('reroute-dest').value.trim();
@@ -200,12 +195,22 @@ function submitReroute() {
   document.getElementById('reroute-form').submit();
 }
 
+/* Click outside modal to close */
+document.addEventListener('DOMContentLoaded', function () {
+  const rerouteModal = document.getElementById('reroute-modal');
+  if (rerouteModal) {
+    rerouteModal.addEventListener('click', function (e) {
+      if (e.target === this) closeRerouteModal();
+    });
+  }
+});
+
 /* Delete all routing slips */
 function deleteAllSlips() {
   if (!confirm('Are you sure you want to delete ALL routing slips? This action cannot be undone and will remove all documents.')) {
     return;
   }
-  
+
   fetch('/routing-slip/delete-all', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
@@ -229,7 +234,7 @@ function archiveAllSlips() {
   if (!confirm('Are you sure you want to archive ALL routing slips?')) {
     return;
   }
-  
+
   fetch('/routing-slip/archive-all', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
