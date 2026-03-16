@@ -173,38 +173,23 @@ var currentSlipId = null;
 
 function openRerouteModal(slipId, currentDest) {
   currentSlipId = slipId;
-  // Handle empty or undefined destination
-  document.getElementById('reroute-dest').value = currentDest || '';
+  document.getElementById('reroute-dest').value = currentDest;
   document.getElementById('reroute-slip-id').value = slipId;
-  var modal = document.getElementById('reroute-modal');
-  if (modal) {
-    modal.style.display = 'flex';
-  } else {
-    alert('Error: Reroute modal not found');
-  }
+  document.getElementById('reroute-modal').style.display = 'flex';
 }
 
 function closeRerouteModal() {
-  var modal = document.getElementById('reroute-modal');
-  if (modal) {
-    modal.style.display = 'none';
-  }
+  document.getElementById('reroute-modal').style.display = 'none';
   currentSlipId = null;
 }
 
 function submitReroute() {
-  const destInput = document.getElementById('reroute-dest');
-  const dest = destInput ? destInput.value.trim() : '';
+  const dest = document.getElementById('reroute-dest').value.trim();
   if (!dest) {
     alert('Please enter a destination office.');
     return;
   }
-  var form = document.getElementById('reroute-form');
-  if (form) {
-    form.submit();
-  } else {
-    alert('Error: Form not found');
-  }
+  document.getElementById('reroute-form').submit();
 }
 
 /* Delete all routing slips */

@@ -9,34 +9,25 @@
 </div>
 
 <!-- Summary Cards -->
-{% set staff_total = staff_stats.values()|sum(attribute='total') %}
-{% set calculated_total = staff_total + client_count + unassigned_count %}
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;">
   <div class="stat-card" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:20px;border-radius:12px;">
     <div style="font-size:14px;opacity:0.9;">Total Documents</div>
     <div style="font-size:32px;font-weight:700;">{{ total_docs }}</div>
-    <div style="font-size:11px;opacity:0.8;margin-top:4px;">
-      {% if calculated_total != total_docs %}
-        <span style="color:#ffcccc;">⚠️ Sum: {{ calculated_total }}</span>
-      {% else %}
-        ✓ All accounted
-      {% endif %}
-    </div>
   </div>
   <div class="stat-card" style="background:linear-gradient(135deg,#f093fb,#f5576c);color:white;padding:20px;border-radius:12px;">
     <div style="font-size:14px;opacity:0.9;">Staff Documents</div>
-    <div style="font-size:32px;font-weight:700;">{{ staff_total }}</div>
-    <div style="font-size:11px;opacity:0.8;margin-top:4px;">logged by staff</div>
+    <div style="font-size:32px;font-weight:700;">
+      {% set staff_total = staff_stats.values()|sum(attribute='total') %}
+      {{ staff_total }}
+    </div>
   </div>
   <div class="stat-card" style="background:linear-gradient(135deg,#4facfe,#00f2fe);color:white;padding:20px;border-radius:12px;">
     <div style="font-size:14px;opacity:0.9;">Client Documents</div>
     <div style="font-size:32px;font-weight:700;">{{ client_count }}</div>
-    <div style="font-size:11px;opacity:0.8;margin-top:4px;">submitted by clients</div>
   </div>
   <div class="stat-card" style="background:linear-gradient(135deg,#fa709a,#fee140);color:white;padding:20px;border-radius:12px;">
     <div style="font-size:14px;opacity:0.9;">Unassigned</div>
     <div style="font-size:32px;font-weight:700;">{{ unassigned_count }}</div>
-    <div style="font-size:11px;opacity:0.8;margin-top:4px;">no staff assigned</div>
   </div>
 </div>
 

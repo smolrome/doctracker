@@ -100,7 +100,7 @@
         <a href="/routing-slip/{{ slip.id }}" class="kebab-edit" style="display:block;text-decoration:none;padding:10px 14px;">👁️ View Slip</a>
         {% if slip.status != 'Archived' %}
         <button type="button" onclick="archiveRoutingSlip('{{ slip.id }}', '{{ slip.slip_no }}')" class="kebab-archive" style="width:100%;text-align:left;">📦 Archive</button>
-        <button type="button" onclick="openRerouteModal('{{ slip.id }}', '{{ slip.destination or '' }}')" class="kebab-edit" style="width:100%;text-align:left;">🔄 Re-route</button>
+        <button type="button" onclick="openRerouteModal('{{ slip.id }}', '{{ slip.destination }}')" class="kebab-edit" style="width:100%;text-align:left;">🔄 Re-route</button>
         {% else %}
         {% if session.get('role') == 'admin' %}
         <button type="button" onclick="deleteRoutingSlip('{{ slip.id }}', '{{ slip.slip_no }}')" class="kebab-delete" style="width:100%;text-align:left;">🗑️ Delete</button>
