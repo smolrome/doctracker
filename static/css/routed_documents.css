@@ -192,3 +192,17 @@
     .doc-mini-table th, .doc-mini-table td { padding: 10px 11px; font-size: .88rem; }
     .rd-title { font-size: 1.45rem; }
   }
+
+  .modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.open {
+  display: flex;
+}

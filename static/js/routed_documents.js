@@ -175,13 +175,21 @@ function openRerouteModal(slipId, currentDest) {
   currentSlipId = slipId;
   document.getElementById('reroute-dest').value = currentDest;
   document.getElementById('reroute-slip-id').value = slipId;
-  document.getElementById('reroute-modal').classList.add('open');
+  const modal = document.getElementById('reroute-modal');
+  modal.classList.add('open');
+  modal.style.display = 'flex';   // ← force visible regardless of CSS class
 }
 
 function closeRerouteModal() {
-  document.getElementById('reroute-modal').classList.remove('open');
+  const modal = document.getElementById('reroute-modal');
+  modal.classList.remove('open');
+  modal.style.display = 'none';   // ← force hidden
   currentSlipId = null;
 }
+
+document.getElementById('reroute-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeRerouteModal();
+});
 
 function submitReroute() {
   const dest = document.getElementById('reroute-dest').value.trim();
