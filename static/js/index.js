@@ -670,8 +670,8 @@ function removeFromCart(docId) {
       cb.checked = false;
       cb.closest('tr').classList.remove('row-selected');
     }
-    // Update cart panel if open
-    renderCartPanel();
+    // Update cart modal if open
+    renderCartModal();
   }
 }
 
@@ -684,58 +684,80 @@ function updateCartBadge() {
   }
 }
 
-function toggleCartPanel() {
-  var panel = document.getElementById('cart-panel');
-  if (panel) {
-    panel.classList.toggle('open');
-    if (panel.classList.contains('open')) {
-      renderCartPanel();
-    }
+function openCartModal() {
+  var modal = document.getElementById('cart-modal');
+  if (modal) {
+    modal.classList.add('open');
+    renderCartModal();
+    document.body.style.overflow = 'hidden';
   }
 }
 
-function renderCartPanel() {
-  var content = document.getElementById('cart-content');
-  var emptyMsg = document.getElementById('cart-empty');
-  if (!content) return;
+function closeCartModal() {
+  var modal = document.getElementById('cart-modal');
+  if (modal) {
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+
+function renderCartModal() {
+  var body = document.getElementById('cart-modal-body');
+  var emptyMsg = document.getElementById('cart-empty-msg');
+  if (!body) return;
   
   var ids = getCartDocIds();
   
   if (ids.length === 0) {
     if (emptyMsg) emptyMsg.style.display = 'block';
-    content.innerHTML = '<p class="cart-empty" id="cart-empty">No documents selected</p>';
+    body.innerHTML = '<p class="cart-empty-msg" id="cart-empty-msg">No documents selected</p>';
     return;
   }
   
   if (emptyMsg) emptyMsg.style.display = 'none';
   
-  // Build cart items HTML
+  // Build cart items HTML with full particulars
   var html = '';
   ids.forEach(function(id) {
     // Try to find doc info from current page
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
     var row = cb ? cb.closest('tr') : null;
+    var docNum = id;
     var title = 'Document ' + id;
-    var meta = '';
+    var docType = '';
+    var status = '';
+    var dateReceived = '';
+    var routeTo = '';
     
     if (row) {
-      var titleCell = row.querySelector('td:nth-child(3)'); // Subject/title column
-      var metaCell = row.querySelector('td:nth-child(4)'); // Type column
-      if (titleCell) title = titleCell.textContent.trim();
-      if (metaCell) meta = metaCell.textContent.trim();
+      // Try to get document details from the table row
+      var cells = row.querySelectorAll('td');
+      if (cells.length >= 6) {
+        docNum = cells[0].textContent.trim() || id;
+        title = cells[2].textContent.trim() || 'Document ' + id;
+        docType = cells[3].textContent.trim();
+        status = cells[4].textContent.trim();
+        dateReceived = cells[5].textContent.trim();
+      }
     }
     
-    html += '<div class="cart-item" data-doc-id="' + id + '">';
-    html += '<input type="checkbox" class="cart-item-checkbox" ' + (cb && cb.checked ? 'checked' : '') + ' onchange="toggleCartItem(' + "'" + id + "'" + ', this.checked)">';
-    html += '<div class="cart-item-info">';
-    html += '<div class="cart-item-title" title="' + title + '">' + title + '</div>';
-    if (meta) html += '<div class="cart-item-meta">' + meta + '</div>';
+    html += '<div class="cart-modal-item" data-doc-id="' + id + '">';
+    html += '<div class="cart-modal-item-info">';
+    html += '<div class="cart-modal-item-header">';
+    html += '<span class="cart-modal-doc-num">#' + docNum + '</span>';
+    if (status) html += '<span class="cart-modal-status">' + status + '</span>';
     html += '</div>';
-    html += '<button class="cart-item-remove" onclick="removeFromCart(' + "'" + id + "'" + ')" title="Remove">✕</button>';
+    html += '<div class="cart-modal-item-title" title="' + title + '">' + title + '</div>';
+    html += '<div class="cart-modal-item-particulars">';
+    if (docType) html += '<span>📄 ' + docType + '</span>';
+    if (dateReceived) html += '<span>📅 ' + dateReceived + '</span>';
+    html += '</div>';
+    html += '</div>';
+    html += '<button class="cart-modal-remove" onclick="removeFromCart(' + "'" + id + "'" + ')" title="Remove from cart">✕</button>';
     html += '</div>';
   });
   
-  content.innerHTML = html;
+  body.innerHTML = html;
 }
 
 function toggleCartItem(docId, checked) {
@@ -765,8 +787,9 @@ function clearCart() {
   });
   localStorage.removeItem(CART_STORAGE_KEY);
   updateCartBadge();
-  renderCartPanel();
+  renderCartModal();
   updateSelection();
+  showToast('Cart cleared', 'info');
 }
 
 function openRoutingModalFromCart() {
@@ -784,9 +807,8 @@ function openRoutingModalFromCart() {
     }
   });
   updateSelection();
-  // Close cart panel
-  var panel = document.getElementById('cart-panel');
-  if (panel) panel.classList.remove('open');
+  // Close cart modal
+  closeCartModal();
   // Open the routing modal
   openRoutingModal();
 }
@@ -806,9 +828,8 @@ function openTransferModalFromCart() {
     }
   });
   updateSelection();
-  // Close cart panel
-  var panel = document.getElementById('cart-panel');
-  if (panel) panel.classList.remove('open');
+  // Close cart modal
+  closeCartModal();
   // Open the transfer modal
   openTransferModal();
 }
