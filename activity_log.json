@@ -327,5 +327,54 @@
     "ip": "192.168.1.15",
     "detail": "path=/static/img/matatag_seal.png",
     "ts": "2026-03-17T09:43:07.263238"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/delete/B85475A9",
+    "ts": "2026-03-17T13:04:09.675905"
+  },
+  {
+    "username": "admin",
+    "action": "doc_deleted",
+    "ip": "192.168.1.15",
+    "detail": "doc_id=B85475A9 name=Unknown",
+    "ts": "2026-03-17T13:04:09.710286"
+  },
+  {
+    "username": "admin",
+    "action": "admin_users_viewed",
+    "ip": "192.168.1.15",
+    "detail": "Admin accessed user management",
+    "ts": "2026-03-17T13:05:04.858180"
+  },
+  {
+    "username": "admin",
+    "action": "audit_log_viewed",
+    "ip": "192.168.1.15",
+    "detail": "Admin accessed the audit log",
+    "ts": "2026-03-17T13:05:13.249488"
+  },
+  {
+    "username": "admin",
+    "action": "audit_log_viewed",
+    "ip": "192.168.1.15",
+    "detail": "Admin accessed the audit log",
+    "ts": "2026-03-17T13:10:10.177999"
+  },
+  {
+    "username": "admin",
+    "action": "audit_log_viewed",
+    "ip": "192.168.1.15",
+    "detail": "Admin accessed the audit log",
+    "ts": "2026-03-17T13:15:12.920645"
+  },
+  {
+    "username": "admin",
+    "action": "404_not_found",
+    "ip": "192.168.1.15",
+    "detail": "path=/dropdown-options",
+    "ts": "2026-03-17T13:20:46.557018"
   }
 ]

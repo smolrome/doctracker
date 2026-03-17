@@ -1252,6 +1252,31 @@ def get_transferred_documents():
     return jsonify(transferred)
 
 
+@dashboard_bp.route("/dropdown-options")
+def get_dropdown_options_api():
+    """
+    API endpoint to get dropdown options for a specific field.
+    Query params:
+        - field: The field name (category, status, sender_org, referred_to)
+    Returns JSON list of options.
+    """
+    field_name = request.args.get("field", "").strip().lower()
+    
+    # If no field specified, return all available fields with their options
+    if not field_name:
+        from services.dropdown_options import get_all_dropdown_configs, MANAGEABLE_FIELDS
+        all_configs = get_all_dropdown_configs()
+        return jsonify(all_configs)
+    
+    # Get options for specific field
+    valid_fields = ["category", "status", "sender_org", "referred_to"]
+    if field_name not in valid_fields:
+        return jsonify({"error": f"Invalid field. Valid fields: {', '.join(valid_fields)}"}), 400
+    
+    options = get_dropdown_options(field_name)
+    return jsonify(options)
+
+
 @dashboard_bp.route("/debug-error")
 def debug_error():
     import os

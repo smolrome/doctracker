@@ -1,67 +1,106 @@
 {% extends "base.html" %}
 {% block content %}
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/trash.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trash.css') }}"/>
 
 <div class="page-header">
   <a href="/" class="page-back">← Dashboard</a>
-  <div class="page-title">🗑️ Document Trash</div>
+  <div class="page-title">Document Trash</div>
 </div>
 
-
-  <div class="icon">⚠️</div>
-  <div>
-    <strong>Trash — Deleted Documents</strong><br/>
-    These documents were soft-deleted and are hidden from normal views.
-    You can restore them at any time. Only admins can see this page.
+<div class="trash-info">
+  <div class="trash-info-icon">⚠️</div>
+  <div class="trash-info-body">
+    <div class="trash-info-title">Trash — Deleted Documents</div>
+    <div class="trash-info-sub">These documents were soft-deleted and are hidden from normal views. You can restore them at any time. Only admins can see this page.</div>
   </div>
 </div>
 
 {% if docs %}
+
 <div class="trash-actions">
-  <div class="trash-count">{{ docs|length }} document(s) in trash</div>
-  <form method="post" action="/trash/permanent-delete-all" onsubmit="return confirm('⚠️ PERMANENTLY DELETE ALL? This cannot be undone!')">
+  <div class="trash-count-wrap">
+    <span class="trash-count-num">{{ docs|length }}</span>
+    <span class="trash-count-label">document{{ 's' if docs|length != 1 else '' }} in trash</span>
+  </div>
+  <form method="post" action="/trash/permanent-delete-all"
+        onsubmit="return confirm('⚠️ PERMANENTLY DELETE ALL? This cannot be undone!')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <button type="submit" class="btn-delete-all">🗑️ Delete All Permanently</button>
   </form>
 </div>
-<table class="trash-table">
-  <thead>
-    <tr>
-      <th>Document</th>
-      <th>Deleted By</th>
-      <th>Deleted At</th>
-      <th>Action</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for doc in docs %}
-    <tr>
-      <td>
-        <div class="doc-name">{{ doc.doc_name }}</div>
-        <div class="del-meta">ID: {{ doc.id }} · {{ doc.category or '—' }}</div>
-      </td>
-      <td><span class="del-by">{{ doc.deleted_by or '—' }}</span></td>
-      <td><span style="font-size:14px;">{{ doc.deleted_at or '—' }}</span></td>
-      <td>
-        <div class="action-buttons">
-          <form method="post" action="/restore/{{ doc.id }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="btn-restore">↩️ Restore</button>
-          </form>
-          <form method="post" action="/trash/permanent-delete/{{ doc.id }}" onsubmit="return confirm('⚠️ Permanently delete this document? This cannot be undone!')">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="btn-perm-delete">🗑️ Delete</button>
-          </form>
-        </div>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% else %}
-<div class="empty-trash">
-  <div class="ei">✅</div>
-  <p>Trash is empty — no deleted documents.</p>
+
+<div class="trash-table-wrap">
+
+  <div class="trash-table-header">
+    <div class="trash-table-title">
+      Deleted Records
+      <span>{{ docs|length }}</span>
+    </div>
+  </div>
+
+  <table class="trash-table">
+    <thead>
+      <tr>
+        <th>Document</th>
+        <th style="width:130px">Deleted By</th>
+        <th style="width:160px">Deleted At</th>
+        <th style="width:200px">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for doc in docs %}
+      <tr>
+        <td>
+          <div class="doc-name">{{ doc.doc_name }}</div>
+          <div class="del-meta">
+            <span class="del-id">{{ doc.id }}</span>
+            {% if doc.category %}<span class="del-cat">{{ doc.category }}</span>{% endif %}
+          </div>
+        </td>
+        <td>
+          <div class="del-by-wrap">
+            <div class="del-by-avatar">{{ (doc.deleted_by or '?')[0].upper() }}</div>
+            <span class="del-by">{{ doc.deleted_by or '—' }}</span>
+          </div>
+        </td>
+        <td>
+          <div class="del-date-wrap">
+            {% if doc.deleted_at %}
+              <span class="del-date">{{ doc.deleted_at[:10] if doc.deleted_at|string|length > 10 else doc.deleted_at }}</span>
+              <span class="del-time">{{ doc.deleted_at[11:16] if doc.deleted_at|string|length > 10 else '' }}</span>
+            {% else %}
+              <span class="del-date">—</span>
+            {% endif %}
+          </div>
+        </td>
+        <td>
+          <div class="action-buttons">
+            <form method="post" action="/restore/{{ doc.id }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="btn-restore">↩ Restore</button>
+            </form>
+            <form method="post" action="/trash/permanent-delete/{{ doc.id }}"
+                  onsubmit="return confirm('⚠️ Permanently delete this document? This cannot be undone!')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="btn-perm-delete">🗑 Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
 </div>
+
+{% else %}
+
+<div class="empty-trash">
+  <div class="empty-trash-icon">✅</div>
+  <div class="empty-trash-title">Trash is empty</div>
+  <div class="empty-trash-sub">No deleted documents — everything is accounted for.</div>
+</div>
+
 {% endif %}
 {% endblock %}

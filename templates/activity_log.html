@@ -1,60 +1,178 @@
 {% extends "base.html" %}
 {% block content %}
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/activity_log.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/activity_log.css') }}"/>
 
 <div class="page-header">
   <a href="/manage-users" class="page-back">← Users</a>
-  <div class="page-title">📋 Activity Log</div>
+  <div class="page-title">Activity Log</div>
 </div>
 
 <div class="log-info">
-  📋 Showing last 200 events — logins, logouts, deletions, and errors. Visible to admins only.
+  Showing last 200 events — logins, logouts, deletions, and errors &nbsp;·&nbsp; Visible to admins only
 </div>
 
 {% if logs %}
-<table class="log-table">
-  <thead>
-    <tr>
-      <th>Time</th>
-      <th>User</th>
-      <th>Action</th>
-      <th class="ip-col">IP Address</th>
-      <th class="detail-col">Detail</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for log in logs %}
-    {% set ac = 'a-' + log.action.replace('-','_') if log.action else 'a-default' %}
-    <tr>
-      <td>
-        <span class="ts-text">
-          {{ log.ts.strftime('%Y-%m-%d %H:%M') if log.ts and log.ts is not string else (log.ts or log.get('timestamp','—'))[:16] }}
-        </span>
-      </td>
-      <td>
-        <strong style="font-size:15px;">{{ log.username or '—' }}</strong>
-      </td>
-      <td>
-        <span class="action-badge {{ ac }}">{{ log.action }}</span>
-        {% if log.detail %}
-        <div class="detail-text">{{ log.detail }}</div>
-        {% endif %}
-      </td>
-      <td class="ip-col">
-        <span class="ip-tag">{{ log.ip_address or log.get('ip','—') }}</span>
-      </td>
-      <td class="detail-col" style="font-size:13px;color:var(--muted);">
-        {{ log.detail or '—' }}
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="log-table-wrap">
+
+  <!-- Dark header bar -->
+  <div class="log-table-header">
+    <div class="log-table-title">
+      Audit Events
+      <span>{{ logs|length }} records</span>
+    </div>
+    <div class="log-filters">
+      <div class="log-date-filter">
+        <span class="filter-label">From:</span>
+        <input type="date" id="date-from" onchange="filterLogs()" class="date-input"/>
+        <input type="time" id="time-from" onchange="filterLogs()" class="time-input"/>
+      </div>
+      <div class="log-date-filter">
+        <span class="filter-label">To:</span>
+        <input type="date" id="date-to" onchange="filterLogs()" class="date-input"/>
+        <input type="time" id="time-to" onchange="filterLogs()" class="time-input"/>
+      </div>
+      <div class="log-search">
+        <span class="log-search-icon">🔍</span>
+        <input type="text" placeholder="Filter logs…" id="log-filter-input" oninput="filterLogs()" autocomplete="off"/>
+      </div>
+    </div>
+  </div>
+
+  <table class="log-table" id="log-table">
+    <thead>
+      <tr>
+        <th style="width:120px">Timestamp</th>
+        <th style="width:140px">User</th>
+        <th>Action</th>
+        <th class="ip-col" style="width:130px">IP Address</th>
+        <th class="detail-col">Detail</th>
+      </tr>
+    </thead>
+    <tbody id="log-tbody">
+      {% for log in logs %}
+      {% set ac = 'a-' + log.action.replace('-','_') if log.action else 'a-default' %}
+
+      {# Determine severity class for left border #}
+      {% if log.action in ('login_fail','login_blocked','user_deleted','500_error') %}
+        {% set sev = 'sev-danger' %}
+      {% elif log.action in ('user_disabled','doc_deleted') %}
+        {% set sev = 'sev-warn' %}
+      {% elif log.action in ('login_ok','user_enabled','doc_restored') %}
+        {% set sev = 'sev-success' %}
+      {% elif log.action in ('doc_viewed','logout') %}
+        {% set sev = 'sev-info' %}
+      {% else %}
+        {% set sev = 'sev-default' %}
+      {% endif %}
+
+      {# Parse timestamp #}
+      {% set ts_str = log.ts.strftime('%Y-%m-%d %H:%M') if log.ts and log.ts is not string else (log.ts or log.get('timestamp','—'))[:16] %}
+      {% set ts_date = ts_str[:10] if ts_str != '—' else '—' %}
+      {% set ts_time = ts_str[11:] if ts_str|length > 10 else '' %}
+
+      {# User initials for avatar #}
+      {% set uname = log.username or '?' %}
+      {% set initials = uname[0].upper() %}
+
+      <tr class="{{ sev }}" data-search="{{ (log.username or '') + ' ' + (log.action or '') + ' ' + (log.detail or '') + ' ' + (log.ip_address or '') | lower }}" data-date="{{ ts_str }}">
+
+        <!-- Timestamp -->
+        <td>
+          <div class="ts-wrap">
+            <span class="ts-date">{{ ts_date }}</span>
+            <span class="ts-time">{{ ts_time }}</span>
+          </div>
+        </td>
+
+        <!-- User -->
+        <td>
+          <div class="user-cell">
+            <div class="user-avatar">{{ initials }}</div>
+            <span class="user-name">{{ log.username or '—' }}</span>
+          </div>
+        </td>
+
+        <!-- Action + inline detail snippet -->
+        <td>
+          <span class="action-badge {{ ac }}">{{ log.action }}</span>
+          {% if log.detail %}
+          <div class="detail-snippet" title="{{ log.detail }}">{{ log.detail }}</div>
+          {% endif %}
+        </td>
+
+        <!-- IP -->
+        <td class="ip-col">
+          <span class="ip-tag">{{ log.ip_address or log.get('ip','—') }}</span>
+        </td>
+
+        <!-- Full detail -->
+        <td class="detail-col td-detail" title="{{ log.detail or '' }}">
+          {{ log.detail or '—' }}
+        </td>
+
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+</div>
+
+<script>
+function filterLogs() {
+  const rows = document.querySelectorAll('#log-tbody tr');
+  const searchTerm = (document.getElementById('log-filter-input').value || '').toLowerCase().trim();
+  
+  // Get date/time filter values
+  const dateFrom = document.getElementById('date-from').value;
+  const timeFrom = document.getElementById('time-from').value;
+  const dateTo = document.getElementById('date-to').value;
+  const timeTo = document.getElementById('time-to').value;
+  
+  // Build from datetime
+  let fromDateTime = null;
+  if (dateFrom) {
+    fromDateTime = new Date(dateFrom + (timeFrom ? 'T' + timeFrom : 'T00:00'));
+  }
+  
+  // Build to datetime
+  let toDateTime = null;
+  if (dateTo) {
+    toDateTime = new Date(dateTo + (timeTo ? 'T' + timeTo : 'T23:59:59'));
+  }
+  
+  rows.forEach(r => {
+    const searchText = r.dataset.search || r.textContent.toLowerCase();
+    const rowDateStr = r.dataset.date;
+    
+    // Text filter check
+    const matchesSearch = !searchTerm || searchText.includes(searchTerm);
+    
+    // Date filter check
+    let matchesDate = true;
+    if (rowDateStr && rowDateStr !== '—') {
+      const rowDateTime = new Date(rowDateStr.replace(' ', 'T'));
+      if (!isNaN(rowDateTime.getTime())) {
+        if (fromDateTime && rowDateTime < fromDateTime) {
+          matchesDate = false;
+        }
+        if (toDateTime && rowDateTime > toDateTime) {
+          matchesDate = false;
+        }
+      }
+    }
+    
+    r.style.display = (matchesSearch && matchesDate) ? '' : 'none';
+  });
+}
+</script>
+
 {% else %}
 <div class="empty-log">
-  <div style="font-size:48px;margin-bottom:12px;">📋</div>
-  <p>No activity logged yet.</p>
+  <div class="empty-log-icon">📋</div>
+  <div class="empty-log-title">No activity logged yet</div>
+  <div class="empty-log-sub">Events will appear here once users start interacting with the system.</div>
 </div>
 {% endif %}
+
 {% endblock %}
