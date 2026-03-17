@@ -124,14 +124,26 @@ var SELECTION_STORAGE_KEY = 'doctracker_selected_docs';
 
 function saveSelectionsToLocalStorage() {
   var selectedIds = getSelectedIds();
+
+  // Save doc names at the same time
+  var details = getCartDocDetails();
+  document.querySelectorAll('.doc-checkbox:checked').forEach(function(cb) {
+    if (!details[cb.value]) {
+      var row = cb.closest('tr');
+      var nameEl = row ? row.querySelector('.doc-name') : null;
+      details[cb.value] = {
+        title: nameEl ? nameEl.textContent.trim() : cb.value
+      };
+    }
+  });
+  saveCartDocDetails(details);
+
   if (selectedIds.length > 0) {
     localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(selectedIds));
   } else {
     localStorage.removeItem(SELECTION_STORAGE_KEY);
   }
-  // Also update cart
   var cartIds = getCartDocIds();
-  // Merge current selections with cart (union)
   var allIds = new Set([...cartIds, ...selectedIds]);
   if (allIds.size > 0) {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(Array.from(allIds)));
@@ -747,85 +759,54 @@ function closeCartModal() {
 
 function renderCartModal() {
   var body = document.getElementById('cart-modal-body');
-  var emptyMsg = document.getElementById('cart-empty-msg');
   if (!body) return;
-  
+
   var ids = getCartDocIds();
   var storedDetails = getCartDocDetails();
-  
+
   if (ids.length === 0) {
-    if (emptyMsg) emptyMsg.style.display = 'block';
     body.innerHTML = '<p class="cart-empty-msg" id="cart-empty-msg">No documents selected</p>';
     return;
   }
-  
-  if (emptyMsg) emptyMsg.style.display = 'none';
-  
-  // Build cart items HTML with full particulars
+
   var html = '';
   var updatedDetails = {};
-  
+
   ids.forEach(function(id) {
-    // First check if we have stored details
-    var details = storedDetails[id];
-    var docNum = id;
-    var title = 'Document ' + id;
-    var docType = '';
-    var status = '';
-    var dateReceived = '';
-    
-    // Try to find doc info from current page
+    // Default to stored title first — works on any page
+    var title = (storedDetails[id] && storedDetails[id].title)
+      ? storedDetails[id].title
+      : 'Document ' + id;
+
+    // If the doc exists on the current page, get fresh name from .doc-name
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
     if (cb) {
       var row = cb.closest('tr');
       if (row) {
-        // Use current page data
-        var cells = row.querySelectorAll('td');
-        if (cells.length >= 6) {
-          docNum = cells[0].textContent.trim() || id;
-          title = cells[2].textContent.trim() || 'Document ' + id;
-          docType = cells[3].textContent.trim();
-          status = cells[4].textContent.trim();
-          dateReceived = cells[5].textContent.trim();
+        var nameEl = row.querySelector('.doc-name');
+        if (nameEl && nameEl.textContent.trim()) {
+          title = nameEl.textContent.trim();
         }
-        
-        // Update stored details with current page data
-        updatedDetails[id] = {
-          docNum: docNum,
-          title: title,
-          type: docType,
-          status: status,
-          dateReceived: dateReceived
-        };
       }
-    } else if (details) {
-      // Use stored details from localStorage
-      docNum = details.docNum || id;
-      title = details.title || 'Document ' + id;
-      docType = details.type || '';
-      status = details.status || '';
-      dateReceived = details.dateReceived || '';
     }
-    
+
+    // Persist only the title — no fragile cell-index reads
+    updatedDetails[id] = { title: title };
+
     html += '<div class="cart-modal-item" data-doc-id="' + id + '">';
-    html += '<div class="cart-modal-item-info">';
-    html += '<div class="cart-modal-item-header">';
-    html += '<span class="cart-modal-doc-num">#' + docNum + '</span>';
-    if (status) html += '<span class="cart-modal-status">' + status + '</span>';
-    html += '</div>';
-    html += '<div class="cart-modal-item-title" title="' + title + '">' + title + '</div>';
-    html += '<div class="cart-modal-item-particulars">';
-    if (docType) html += '<span>📄 ' + docType + '</span>';
-    if (dateReceived) html += '<span>📅 ' + dateReceived + '</span>';
-    html += '</div>';
-    html += '</div>';
-    html += '<button class="cart-modal-remove" onclick="removeFromCart(' + "'" + id + "'" + ')" title="Remove from cart">✕</button>';
+    html +=   '<div class="cart-modal-item-info">';
+    html +=     '<div class="cart-modal-item-header">';
+    html +=       '<span class="cart-modal-doc-num" style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">' + id + '</span>';
+    html +=     '</div>';
+    html +=     '<div class="cart-modal-item-title" title="' + title.replace(/"/g, '&quot;') + '">' + title + '</div>';
+    html +=   '</div>';
+    html +=   '<button class="cart-modal-remove" onclick="removeFromCart(\'' + id + '\')" title="Remove from cart">✕</button>';
     html += '</div>';
   });
-  
-  // Save updated details to localStorage
+
+  // Save so names persist across page navigation
   saveCartDocDetails(updatedDetails);
-  
+
   body.innerHTML = html;
 }
 
