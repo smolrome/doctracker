@@ -368,25 +368,41 @@ function rowClick(e, docId) {
 // ─────────────────────────────────────────────────────────────
 function renderRelativeDates() {
   var chips = document.querySelectorAll('.date-rel[data-ts]');
-  var now   = new Date();
+  // Use fixed Asia/Manila timezone (UTC+8) for consistent comparison
+  var now = new Date();
+  // Get current time in UTC, then add 8 hours for Manila time
+  var utcNow = now.getTime() + (now.getTimezoneOffset() * 60000);
+  var manilaOffsetMs = 8 * 60 * 60 * 1000; // +8 hours in milliseconds
+  var nowManila = new Date(utcNow + manilaOffsetMs);
+
+  console.log('[DateDebug] Now (Manila):', nowManila.toISOString());
 
   chips.forEach(function (chip) {
     var ts = chip.getAttribute('data-ts');
     if (!ts) return;
     
-    // Handle both old format (2026-03-16 23:45:00) and new ISO format (2026-03-16T23:45:00+08:00)
+    console.log('[DateDebug] Raw timestamp:', ts);
+    
     var dt;
-    if (ts.includes(' ')) {
-      // Old format: replace space with T for JavaScript to parse as local time
-      dt = new Date(ts.replace(' ', 'T'));
+    if (ts.includes('+08:00')) {
+      // New ISO format with timezone - strip timezone and parse as Manila time
+      var tsWithoutTz = ts.replace('+08:00', '');
+      var parts = tsWithoutTz.split(/[-T:]/);
+      dt = new Date(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]);
+    } else if (ts.includes(' ')) {
+      // Old format: 2026-03-16 18:00:00 - assume Manila time
+      var parts = ts.split(/[- :]/);
+      dt = new Date(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]);
     } else {
-      // New ISO 8601 format with timezone
+      // Other ISO format
       dt = new Date(ts);
     }
     
+    console.log('[DateDebug] Parsed date:', dt.toISOString(), 'diffDays:', Math.floor((nowManila - dt) / 86400000));
+    
     if (isNaN(dt.getTime())) return;
 
-    var diffMs   = now - dt;
+    var diffMs   = nowManila - dt;
     var diffMins = Math.floor(diffMs / 60000);
     var diffHrs  = Math.floor(diffMs / 3600000);
     var diffDays = Math.floor(diffMs / 86400000);
