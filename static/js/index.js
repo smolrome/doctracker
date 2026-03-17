@@ -38,6 +38,7 @@ function onReady() {
   checkPendingDocuments();
   restoreSelectionsFromUrl();
   setupPaginationWithSelection();
+  initCart();
 
   // Slip date default
   var sd = document.getElementById('slip-date');
@@ -128,6 +129,14 @@ function saveSelectionsToLocalStorage() {
   } else {
     localStorage.removeItem(SELECTION_STORAGE_KEY);
   }
+  // Also update cart
+  var cartIds = getCartDocIds();
+  // Merge current selections with cart (union)
+  var allIds = new Set([...cartIds, ...selectedIds]);
+  if (allIds.size > 0) {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(Array.from(allIds)));
+  }
+  updateCartBadge();
 }
 
 function restoreSelectionsFromLocalStorage() {
@@ -610,7 +619,211 @@ function deselectAll() {
   
   // Clear selections from localStorage
   localStorage.removeItem(SELECTION_STORAGE_KEY);
+  localStorage.removeItem(CART_STORAGE_KEY);
+  updateCartBadge();
   showToast('Selection cleared', 'info');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FLOATING CART FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+var CART_STORAGE_KEY = 'doctracker_cart_docs';
+
+function getCartDocIds() {
+  try {
+    var stored = localStorage.getItem(CART_STORAGE_KEY);
+    if (!stored) return [];
+    var ids = JSON.parse(stored);
+    return Array.isArray(ids) ? ids : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveCartDocIds(ids) {
+  if (ids.length > 0) {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(ids));
+  } else {
+    localStorage.removeItem(CART_STORAGE_KEY);
+  }
+}
+
+function addToCart(docId) {
+  var ids = getCartDocIds();
+  if (!ids.includes(docId)) {
+    ids.push(docId);
+    saveCartDocIds(ids);
+    updateCartBadge();
+  }
+}
+
+function removeFromCart(docId) {
+  var ids = getCartDocIds();
+  var index = ids.indexOf(docId);
+  if (index > -1) {
+    ids.splice(index, 1);
+    saveCartDocIds(ids);
+    updateCartBadge();
+    // Also uncheck the checkbox if it exists on the current page
+    var cb = document.querySelector('.doc-checkbox[value="' + docId + '"]');
+    if (cb) {
+      cb.checked = false;
+      cb.closest('tr').classList.remove('row-selected');
+    }
+    // Update cart panel if open
+    renderCartPanel();
+  }
+}
+
+function updateCartBadge() {
+  var ids = getCartDocIds();
+  var badge = document.getElementById('cart-badge');
+  if (badge) {
+    badge.textContent = ids.length;
+    badge.classList.toggle('visible', ids.length > 0);
+  }
+}
+
+function toggleCartPanel() {
+  var panel = document.getElementById('cart-panel');
+  if (panel) {
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) {
+      renderCartPanel();
+    }
+  }
+}
+
+function renderCartPanel() {
+  var content = document.getElementById('cart-content');
+  var emptyMsg = document.getElementById('cart-empty');
+  if (!content) return;
+  
+  var ids = getCartDocIds();
+  
+  if (ids.length === 0) {
+    if (emptyMsg) emptyMsg.style.display = 'block';
+    content.innerHTML = '<p class="cart-empty" id="cart-empty">No documents selected</p>';
+    return;
+  }
+  
+  if (emptyMsg) emptyMsg.style.display = 'none';
+  
+  // Build cart items HTML
+  var html = '';
+  ids.forEach(function(id) {
+    // Try to find doc info from current page
+    var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
+    var row = cb ? cb.closest('tr') : null;
+    var title = 'Document ' + id;
+    var meta = '';
+    
+    if (row) {
+      var titleCell = row.querySelector('td:nth-child(3)'); // Subject/title column
+      var metaCell = row.querySelector('td:nth-child(4)'); // Type column
+      if (titleCell) title = titleCell.textContent.trim();
+      if (metaCell) meta = metaCell.textContent.trim();
+    }
+    
+    html += '<div class="cart-item" data-doc-id="' + id + '">';
+    html += '<input type="checkbox" class="cart-item-checkbox" ' + (cb && cb.checked ? 'checked' : '') + ' onchange="toggleCartItem(' + "'" + id + "'" + ', this.checked)">';
+    html += '<div class="cart-item-info">';
+    html += '<div class="cart-item-title" title="' + title + '">' + title + '</div>';
+    if (meta) html += '<div class="cart-item-meta">' + meta + '</div>';
+    html += '</div>';
+    html += '<button class="cart-item-remove" onclick="removeFromCart(' + "'" + id + "'" + ')" title="Remove">✕</button>';
+    html += '</div>';
+  });
+  
+  content.innerHTML = html;
+}
+
+function toggleCartItem(docId, checked) {
+  if (checked) {
+    addToCart(docId);
+    // Check the checkbox on the page if it exists
+    var cb = document.querySelector('.doc-checkbox[value="' + docId + '"]');
+    if (cb) {
+      cb.checked = true;
+      cb.closest('tr').classList.add('row-selected');
+    }
+  } else {
+    removeFromCart(docId);
+  }
+  updateSelection();
+}
+
+function clearCart() {
+  var ids = getCartDocIds();
+  // Uncheck all checkboxes on current page that are in cart
+  ids.forEach(function(id) {
+    var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
+    if (cb) {
+      cb.checked = false;
+      cb.closest('tr').classList.remove('row-selected');
+    }
+  });
+  localStorage.removeItem(CART_STORAGE_KEY);
+  updateCartBadge();
+  renderCartPanel();
+  updateSelection();
+}
+
+function openRoutingModalFromCart() {
+  var ids = getCartDocIds();
+  if (ids.length === 0) {
+    showToast('No documents in cart to route', 'warning');
+    return;
+  }
+  // Select all cart items on current page
+  ids.forEach(function(id) {
+    var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
+    if (cb) {
+      cb.checked = true;
+      cb.closest('tr').classList.add('row-selected');
+    }
+  });
+  updateSelection();
+  // Close cart panel
+  var panel = document.getElementById('cart-panel');
+  if (panel) panel.classList.remove('open');
+  // Open the routing modal
+  openRoutingModal();
+}
+
+function openTransferModalFromCart() {
+  var ids = getCartDocIds();
+  if (ids.length === 0) {
+    showToast('No documents in cart to transfer', 'warning');
+    return;
+  }
+  // Select all cart items on current page
+  ids.forEach(function(id) {
+    var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
+    if (cb) {
+      cb.checked = true;
+      cb.closest('tr').classList.add('row-selected');
+    }
+  });
+  updateSelection();
+  // Close cart panel
+  var panel = document.getElementById('cart-panel');
+  if (panel) panel.classList.remove('open');
+  // Open the transfer modal
+  openTransferModal();
+}
+
+// Initialize cart on page load
+function initCart() {
+  updateCartBadge();
+  // Also merge cart with localStorage selections on page load
+  var cartIds = getCartDocIds();
+  var storedIds = restoreSelectionsFromLocalStorage();
+  // Union of cart and stored selections
+  var allIds = new Set([...cartIds, ...storedIds]);
+  if (allIds.size > cartIds.length) {
+    saveCartDocIds(Array.from(allIds));
+  }
 }
 
 function updateSelectAllLabel() {

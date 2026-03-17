@@ -324,6 +324,30 @@ var serverSessionData = {
       </div>
       {% endif %}
 
+      {# Floating Cart Button #}
+      {% if logged_in and session.get('role') in ['admin','staff'] %}
+      <div id="floating-cart" class="floating-cart" role="toolbar" aria-label="Document cart">
+        <button class="cart-btn" onclick="toggleCartPanel()" aria-label="Open document cart">
+          <span class="cart-icon">🛒</span>
+          <span class="cart-badge" id="cart-badge">0</span>
+        </button>
+        <div class="cart-panel" id="cart-panel">
+          <div class="cart-header">
+            <h3>Document Cart</h3>
+            <button class="cart-close" onclick="toggleCartPanel()" aria-label="Close cart">✕</button>
+          </div>
+          <div class="cart-content" id="cart-content">
+            <p class="cart-empty" id="cart-empty">No documents selected</p>
+          </div>
+          <div class="cart-actions">
+            <button class="cart-action-btn cart-route" onclick="openRoutingModalFromCart()">📤 Route</button>
+            <button class="cart-action-btn cart-transfer" onclick="openTransferModalFromCart()">🔄 Transfer</button>
+            <button class="cart-action-btn cart-clear" onclick="clearCart()">Clear All</button>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
       {# TABLE #}
       <main id="main-content">
       <div class="table-outer">
