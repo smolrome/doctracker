@@ -409,7 +409,6 @@ var serverSessionData = {
                   {% if doc.created_at %}
                     <span class="date-main">{{ doc.created_at[:10] }}</span>
                     <span class="date-time">{{ doc.created_at | time12 }}</span>
-                    <span class="date-rel" data-ts="{{ doc.created_at }}"></span>
                   {% else %}
                     <span class="td-empty">—</span>
                   {% endif %}
