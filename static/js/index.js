@@ -1,8 +1,5 @@
 // ══════════════════════════════════════════════════════════════
 //  DOCUMENT TRACKER — INDEX PAGE JAVASCRIPT
-//  Upgraded: toast system, relative dates, selection bar,
-//  step indicators, inline search clear, jump-to-page,
-//  sortable headers, focus trap, Escape close, pending banner
 // ══════════════════════════════════════════════════════════════
 'use strict';
 
@@ -15,6 +12,10 @@ var currentUserRole     = null;
 var officesData         = {};
 var sortedOffices       = [];
 var transferSingleDocId = null;
+
+var SELECTION_STORAGE_KEY = 'doctracker_selected_docs';
+var CART_STORAGE_KEY      = 'doctracker_cart_docs';
+var CART_DETAILS_KEY      = 'doctracker_cart_details';
 
 
 // ─────────────────────────────────────────────────────────────
@@ -36,18 +37,26 @@ function onReady() {
   recalcStickyOffsets();
   initSlipDate();
   checkPendingDocuments();
-  restoreSelectionsFromUrl();
   setupPaginationWithSelection();
   initCart();
 
-  // Slip date default
+  // Apply stored selections to current page checkboxes
+  var restoredCount = applyStoredSelections();
+  if (restoredCount > 0) {
+    syncSelectionBar();
+    updateCartBadge();
+  }
+
+  // Restore from URL param (pagination navigation)
+  restoreSelectionsFromUrl();
+
   var sd = document.getElementById('slip-date');
   if (sd && !sd.value) sd.value = new Date().toISOString().slice(0, 10);
 }
 
 
 // ─────────────────────────────────────────────────────────────
-//  MODAL DATA — reads JSON blobs injected by Jinja
+//  MODAL DATA
 // ─────────────────────────────────────────────────────────────
 function initModalData() {
   try {
@@ -78,8 +87,7 @@ function initModalData() {
 //  STICKY OFFSET CALCULATOR
 // ─────────────────────────────────────────────────────────────
 function recalcStickyOffsets() {
-  var root = document.documentElement;
-
+  var root   = document.documentElement;
   var navbar = document.querySelector('nav');
   var navH   = navbar ? navbar.offsetHeight : 0;
   root.style.setProperty('--navbar-h',   navH + 'px');
@@ -89,8 +97,8 @@ function recalcStickyOffsets() {
   var statsH   = statsBar ? statsBar.offsetHeight : 0;
   root.style.setProperty('--thead-top', (navH + statsH) + 'px');
 
-  var filterBar = document.getElementById('filter-sticky-bar');
-  var filterH   = filterBar ? filterBar.offsetHeight : 0;
+  var filterBar  = document.getElementById('filter-sticky-bar');
+  var filterH    = filterBar ? filterBar.offsetHeight : 0;
   var colHeadTop = navH + statsH + filterH;
   root.style.setProperty('--col-head-top', colHeadTop + 'px');
 
@@ -100,47 +108,47 @@ function recalcStickyOffsets() {
 }
 
 window.addEventListener('resize', recalcStickyOffsets);
-window.addEventListener('load', function() {
-  recalcStickyOffsets();
-  
-  // Restore selections from localStorage (persists across refreshes)
-  var restoredCount = applyStoredSelections();
-  if (restoredCount > 0) {
-    updateSelection();
-    showToast(restoredCount + ' document' + (restoredCount > 1 ? 's' : '') + ' restored from previous session', 'info');
-  }
-  
-  // Also check for URL-based selection restoration (for page navigation)
-  restoreSelectionsFromUrl();
-});
+window.addEventListener('load', recalcStickyOffsets);
 setTimeout(recalcStickyOffsets, 150);
 setTimeout(recalcStickyOffsets, 600);
 
 
 // ─────────────────────────────────────────────────────────────
-//  SELECTION PERSISTENCE — saves/restores selections across page reloads using localStorage
+//  SELECTION PERSISTENCE
+//  Single source of truth: SELECTION_STORAGE_KEY
+//  CART_STORAGE_KEY is kept in sync but never used as the source
 // ─────────────────────────────────────────────────────────────
-var SELECTION_STORAGE_KEY = 'doctracker_selected_docs';
+
+function restoreSelectionsFromLocalStorage() {
+  try {
+    var stored = localStorage.getItem(SELECTION_STORAGE_KEY);
+    if (!stored) return [];
+    var ids = JSON.parse(stored);
+    return Array.isArray(ids) ? ids : [];
+  } catch (e) {
+    return [];
+  }
+}
 
 function saveSelectionsToLocalStorage() {
   var currentPageIds = getSelectedIds();
 
-  // Save doc names for current page selections
+  // Save doc names immediately for everything checked on this page
   var details = getCartDocDetails();
   document.querySelectorAll('.doc-checkbox:checked').forEach(function(cb) {
-    if (!details[cb.value]) {
-      var row = cb.closest('tr');
-      var nameEl = row ? row.querySelector('.doc-name') : null;
-      details[cb.value] = {
-        title: nameEl ? nameEl.textContent.trim() : cb.value
-      };
+    var row    = cb.closest('tr');
+    var nameEl = row ? row.querySelector('.doc-name') : null;
+    if (nameEl && nameEl.textContent.trim()) {
+      details[cb.value] = { title: nameEl.textContent.trim() };
+    } else if (!details[cb.value]) {
+      details[cb.value] = { title: cb.value };
     }
   });
   saveCartDocDetails(details);
 
-  // MERGE with existing stored IDs — don't overwrite other pages' selections
+  // MERGE — never overwrite selections from other pages
   var existingIds = restoreSelectionsFromLocalStorage();
-  var merged = Array.from(new Set([...existingIds, ...currentPageIds]));
+  var merged = Array.from(new Set(existingIds.concat(currentPageIds)));
 
   if (merged.length > 0) {
     localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(merged));
@@ -148,166 +156,87 @@ function saveSelectionsToLocalStorage() {
     localStorage.removeItem(SELECTION_STORAGE_KEY);
   }
 
-  // Also merge into cart
-  var cartIds = getCartDocIds();
-  var allIds = Array.from(new Set([...cartIds, ...merged]));
-  if (allIds.length > 0) {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(allIds));
-  }
-
   updateCartBadge();
 }
 
-function restoreSelectionsFromLocalStorage() {
-  try {
-    var stored = localStorage.getItem(SELECTION_STORAGE_KEY);
-    if (!stored) return [];
-    
-    var ids = JSON.parse(stored);
-    if (!Array.isArray(ids)) return [];
-    
-    return ids;
-  } catch (e) {
-    console.error('Error restoring selections from localStorage:', e);
-    return [];
-  }
-}
-
 function applyStoredSelections() {
-  var ids = restoreSelectionsFromLocalStorage();
-  if (ids.length === 0) return 0;
-  
-  var restoredCount = 0;
+  var ids   = restoreSelectionsFromLocalStorage();
+  var count = 0;
   ids.forEach(function(id) {
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
     if (cb) {
       cb.checked = true;
       cb.closest('tr').classList.add('row-selected');
-      restoredCount++;
+      count++;
     }
   });
-  
-  return restoredCount;
+  return count;
 }
 
 function restoreSelectionsFromUrl() {
-  var params = new URLSearchParams(window.location.search);
-  var selectedIdsParam = params.get('selected_docs');
-  if (!selectedIdsParam) return;
-  
-  // Get IDs from URL
-  var urlIds = selectedIdsParam.split(',');
-  
-  // Also get IDs from localStorage (selections from other pages)
+  var params          = new URLSearchParams(window.location.search);
+  var selectedIdParam = params.get('selected_docs');
+  if (!selectedIdParam) return;
+
+  var urlIds    = selectedIdParam.split(',').filter(Boolean);
   var storedIds = restoreSelectionsFromLocalStorage();
-  
-  // Merge URL IDs with stored IDs (union - no duplicates)
-  var allIds = new Set([...storedIds, ...urlIds]);
-  var mergedIds = Array.from(allIds);
-  
-  // Apply merged selections to checkboxes on current page
-  var restoredCount = 0;
-  mergedIds.forEach(function(id) {
+  var merged    = Array.from(new Set(storedIds.concat(urlIds)));
+
+  if (merged.length > 0) {
+    localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(merged));
+  }
+
+  var count = 0;
+  merged.forEach(function(id) {
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
-    if (cb) {
-      cb.checked = true;
-      cb.closest('tr').classList.add('row-selected');
-      restoredCount++;
-    }
+    if (cb) { cb.checked = true; cb.closest('tr').classList.add('row-selected'); count++; }
   });
-  
-  // Save merged IDs back to localStorage so they persist
-  if (mergedIds.length > 0) {
-    localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(mergedIds));
-  }
-  
-  // Clear the URL parameter after restoring (keeps URL clean)
-  if (urlIds.length > 0) {
-    params.delete('selected_docs');
-    var newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-    window.history.replaceState({}, '', newUrl);
-  }
-  
-  if (restoredCount > 0) {
-    updateSelection();
-    showToast(restoredCount + ' document' + (restoredCount > 1 ? 's' : '') + ' restored from previous selection', 'info');
-  }
+
+  // Clean URL
+  params.delete('selected_docs');
+  var newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+  window.history.replaceState({}, '', newUrl);
+
+  if (count > 0) { syncSelectionBar(); updateCartBadge(); }
 }
 
-// Setup pagination links to include selected docs in URL when clicked
 function setupPaginationWithSelection() {
-  var paginationWrap = document.querySelector('.pagination-wrap');
-  if (!paginationWrap) return;
-  
-  // Add click event listener to the pagination container
-  paginationWrap.addEventListener('click', function(e) {
+  var wrap = document.querySelector('.pagination-wrap');
+  if (!wrap) return;
+  wrap.addEventListener('click', function(e) {
     var link = e.target.closest('.page-btn');
-    if (!link) return;
-    
-    // Skip if it's the current page or disabled
-    if (link.classList.contains('active') || link.classList.contains('disabled')) return;
-    
-    // Get the href and modify it to include selected docs
+    if (!link || link.classList.contains('active') || link.classList.contains('disabled')) return;
     var href = link.getAttribute('href');
     if (!href) return;
-    
     e.preventDefault();
-    
-    // Get current selected IDs from localStorage
-    var storedIds = restoreSelectionsFromLocalStorage();
-    var currentPageIds = getSelectedIds();
-    
-    // Merge all IDs (from localStorage and current page checkboxes)
-    var allIds = new Set([...storedIds, ...currentPageIds]);
-    var idsString = Array.from(allIds).join(',');
-    
-    // Add selected_docs to the URL
-    var url = new URL(href, window.location.origin);
-    if (idsString) {
-      url.searchParams.set('selected_docs', idsString);
-    }
-    
-    // Navigate to the new URL
+
+    // Save current page names before navigating
+    saveSelectionsToLocalStorage();
+
+    var allIds = restoreSelectionsFromLocalStorage();
+    var url    = new URL(href, window.location.origin);
+    if (allIds.length > 0) url.searchParams.set('selected_docs', allIds.join(','));
     window.location.href = url.toString();
   });
 }
 
-function setupFilterFormWithSelection() {
-  var form = document.getElementById('filter-form');
-  if (!form) return;
-  
-  // Override form submission to include selected IDs
-  var originalSubmit = form.submit;
-  form.submit = function() {
-    var selectedIds = getSelectedIds();
-    if (selectedIds.length > 0) {
-      // Add selected IDs to form as hidden field
-      var existing = form.querySelector('input[name="selected_docs"]');
-      if (existing) existing.remove();
-      
-      var hiddenInput = document.createElement('input');
-      hiddenInput.type = 'hidden';
-      hiddenInput.name = 'selected_docs';
-      hiddenInput.value = selectedIds.join(',');
-      form.appendChild(hiddenInput);
-    }
-    originalSubmit.call(form);
-  };
-  
-  // Also handle regular submit button
-  form.addEventListener('submit', function(e) {
-    var selectedIds = getSelectedIds();
-    if (selectedIds.length > 0) {
-      // Add to URL params before submit
-      var params = new URLSearchParams(new FormData(form));
-      params.set('selected_docs', selectedIds.join(','));
-      form.action = '/?' + params.toString();
-    }
-  });
-}
-
-// Initialize on page load
+// Filter form: preserve selections on submit
 (function() {
+  function setupFilterFormWithSelection() {
+    var form = document.getElementById('filter-form');
+    if (!form) return;
+    var submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        saveSelectionsToLocalStorage();
+        var params = new URLSearchParams(new FormData(form));
+        var allIds = restoreSelectionsFromLocalStorage();
+        if (allIds.length > 0) params.set('selected_docs', allIds.join(','));
+        window.location.href = '/?' + params.toString();
+      });
+    }
+  }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupFilterFormWithSelection);
   } else {
@@ -315,79 +244,20 @@ function setupFilterFormWithSelection() {
   }
 })();
 
-// Hook into all filter functions to preserve selection
-var originalSetType = setType;
-setType = function(val) {
-  var ids = getSelectedIds();
-  var el = document.getElementById('type-hidden');
-  if (el) el.value = val;
-  var params = new URLSearchParams(window.location.search);
-  if (ids.length > 0) params.set('selected_docs', ids.join(','));
-  params.delete('page');
-  window.location.href = '/?' + params.toString();
-};
-
-var originalSetSource = setSource;
-setSource = function(val) {
-  var params = new URLSearchParams(window.location.search);
-  var ids = getSelectedIds();
-  if (ids.length > 0) params.set('selected_docs', ids.join(','));
-  if (!val || val === 'All') {
-    params.delete('source');
-  } else {
-    params.set('source', val);
-  }
-  params.delete('page');
-  window.location.href = '/?' + params.toString();
-};
-
-var originalClearField = clearField;
-clearField = function(name, val) {
-  if (val === undefined) val = '';
-  var el = document.querySelector('[name="' + name + '"]');
-  if (el) el.value = val;
-  
-  var params = new URLSearchParams(window.location.search);
-  var ids = getSelectedIds();
-  if (ids.length > 0) params.set('selected_docs', ids.join(','));
-  params.delete('page');
-  window.location.href = '/?' + params.toString();
-};
-
-// Also preserve selection when clicking filter form submit
-document.addEventListener('DOMContentLoaded', function() {
-  var form = document.getElementById('filter-form');
-  if (!form) return;
-  
-  var submitBtn = form.querySelector('button[type="submit"]');
-  if (submitBtn) {
-    submitBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      var params = new URLSearchParams(new FormData(form));
-      var ids = getSelectedIds();
-      if (ids.length > 0) params.set('selected_docs', ids.join(','));
-      window.location.href = '/?' + params.toString();
-    });
-  }
-});
-
 
 // ─────────────────────────────────────────────────────────────
-//  STAT FILTER
+//  STAT / FILTER HELPERS
 // ─────────────────────────────────────────────────────────────
 function statFilter(status) {
+  saveSelectionsToLocalStorage();
   var params = new URLSearchParams(window.location.search);
   params.set('status', status);
   params.delete('page');
-  var ids = getSelectedIds();
-  if (ids.length > 0) params.set('selected_docs', ids.join(','));
+  var allIds = restoreSelectionsFromLocalStorage();
+  if (allIds.length > 0) params.set('selected_docs', allIds.join(','));
   window.location.href = '/?' + params.toString();
 }
 
-
-// ─────────────────────────────────────────────────────────────
-//  FILTER HELPERS
-// ─────────────────────────────────────────────────────────────
 function toggleTimeRange(on) {
   var row = document.getElementById('time-range-row');
   if (!row) return;
@@ -397,11 +267,11 @@ function toggleTimeRange(on) {
     var tt = document.querySelector('[name="time_to"]');
     if (tf) tf.value = '';
     if (tt) tt.value = '';
+    saveSelectionsToLocalStorage();
     var params = new URLSearchParams(window.location.search);
-    params.delete('time_from');
-    params.delete('time_to');
-    var ids = getSelectedIds();
-    if (ids.length > 0) params.set('selected_docs', ids.join(','));
+    params.delete('time_from'); params.delete('time_to');
+    var allIds = restoreSelectionsFromLocalStorage();
+    if (allIds.length > 0) params.set('selected_docs', allIds.join(','));
     window.location.href = '/?' + params.toString();
   }
 }
@@ -410,10 +280,11 @@ function setToday() {
   var el = document.querySelector('[name="date"]');
   if (el) {
     el.value = new Date().toISOString().slice(0, 10);
+    saveSelectionsToLocalStorage();
     var params = new URLSearchParams(window.location.search);
     params.set('date', el.value);
-    var ids = getSelectedIds();
-    if (ids.length > 0) params.set('selected_docs', ids.join(','));
+    var allIds = restoreSelectionsFromLocalStorage();
+    if (allIds.length > 0) params.set('selected_docs', allIds.join(','));
     window.location.href = '/?' + params.toString();
   }
 }
@@ -421,22 +292,21 @@ function setToday() {
 function setType(val) {
   var el = document.getElementById('type-hidden');
   if (el) el.value = val;
+  saveSelectionsToLocalStorage();
   var params = new URLSearchParams(window.location.search);
-  params.set('type', val);
-  var ids = getSelectedIds();
-  if (ids.length > 0) params.set('selected_docs', ids.join(','));
-  params.delete('page');
+  params.set('type', val); params.delete('page');
+  var allIds = restoreSelectionsFromLocalStorage();
+  if (allIds.length > 0) params.set('selected_docs', allIds.join(','));
   window.location.href = '/?' + params.toString();
 }
 
 function setSource(val) {
+  saveSelectionsToLocalStorage();
   var params = new URLSearchParams(window.location.search);
-  if (!val || val === 'All') {
-    params.delete('source');
-  } else {
-    params.set('source', val);
-  }
+  if (!val || val === 'All') { params.delete('source'); } else { params.set('source', val); }
   params.delete('page');
+  var allIds = restoreSelectionsFromLocalStorage();
+  if (allIds.length > 0) params.set('selected_docs', allIds.join(','));
   window.location.href = '/?' + params.toString();
 }
 
@@ -444,15 +314,15 @@ function clearField(name, val) {
   if (val === undefined) val = '';
   var el = document.querySelector('[name="' + name + '"]');
   if (el) el.value = val;
+  saveSelectionsToLocalStorage();
   var params = new URLSearchParams(window.location.search);
   if (name) params.delete(name);
-  var ids = getSelectedIds();
-  if (ids.length > 0) params.set('selected_docs', ids.join(','));
   params.delete('page');
+  var allIds = restoreSelectionsFromLocalStorage();
+  if (allIds.length > 0) params.set('selected_docs', allIds.join(','));
   window.location.href = '/?' + params.toString();
 }
 
-// Inline search clear button (NEW)
 function onSearchInput(inp) {
   var btn = inp.parentElement.querySelector('.search-clear');
   if (btn) btn.style.display = inp.value.length > 0 ? '' : 'none';
@@ -460,40 +330,37 @@ function onSearchInput(inp) {
 
 function clearSearchField() {
   var inp = document.getElementById('search-input');
-  if (inp) {
-    inp.value = '';
-    inp.focus();
-    var btn = inp.parentElement.querySelector('.search-clear');
-    if (btn) btn.style.display = 'none';
-  }
+  if (inp) { inp.value = ''; inp.focus(); }
 }
 
 function changePerPage(val) {
+  saveSelectionsToLocalStorage();
   var url = new URL(window.location.href);
   url.searchParams.set('per_page', val);
   url.searchParams.set('page', 1);
-  var ids = getSelectedIds();
-  if (ids.length > 0) url.searchParams.set('selected_docs', ids.join(','));
+  var allIds = restoreSelectionsFromLocalStorage();
+  if (allIds.length > 0) url.searchParams.set('selected_docs', allIds.join(','));
   window.location = url.toString();
 }
 
-// Jump to specific page (NEW)
 function jumpToPage(val, qs) {
   var num = parseInt(val, 10);
   if (!isNaN(num) && num > 0) {
+    saveSelectionsToLocalStorage();
     var params = new URLSearchParams(qs);
     params.set('page', num);
-    var ids = getSelectedIds();
-    if (ids.length > 0) params.set('selected_docs', ids.join(','));
+    var allIds = restoreSelectionsFromLocalStorage();
+    if (allIds.length > 0) params.set('selected_docs', allIds.join(','));
     window.location.href = '/?' + params.toString();
   }
 }
 
 function clearAllFilters(e) {
   if (e) e.preventDefault();
+  saveSelectionsToLocalStorage();
   var params = new URLSearchParams();
-  var ids = getSelectedIds();
-  if (ids.length > 0) params.set('selected_docs', ids.join(','));
+  var allIds = restoreSelectionsFromLocalStorage();
+  if (allIds.length > 0) params.set('selected_docs', allIds.join(','));
   window.location.href = '/?' + params.toString();
 }
 
@@ -504,66 +371,41 @@ function rowClick(e, docId) {
 
 
 // ─────────────────────────────────────────────────────────────
-//  RELATIVE DATE CHIPS (NEW)
-//  Fills .date-rel[data-ts] spans with human-readable labels
+//  RELATIVE DATE CHIPS
 // ─────────────────────────────────────────────────────────────
 function renderRelativeDates() {
-  var chips = document.querySelectorAll('.date-rel[data-ts]');
-  // Use fixed Asia/Manila timezone (UTC+8) for consistent comparison
-  var now = new Date();
-  // Get current time in UTC, then add 8 hours for Manila time
-  var utcNow = now.getTime() + (now.getTimezoneOffset() * 60000);
-  var manilaOffsetMs = 8 * 60 * 60 * 1000; // +8 hours in milliseconds
-  var nowManila = new Date(utcNow + manilaOffsetMs);
+  var chips     = document.querySelectorAll('.date-rel[data-ts]');
+  var now       = new Date();
+  var utcNow    = now.getTime() + (now.getTimezoneOffset() * 60000);
+  var nowManila = new Date(utcNow + 8 * 3600000);
 
-  console.log('[DateDebug] Now (Manila):', nowManila.toISOString());
-
-  chips.forEach(function (chip) {
+  chips.forEach(function(chip) {
     var ts = chip.getAttribute('data-ts');
     if (!ts) return;
-    
-    console.log('[DateDebug] Raw timestamp:', ts);
-    
     var dt;
     if (ts.includes('+08:00')) {
-      // New ISO format with timezone - strip timezone and parse as Manila time
-      var tsWithoutTz = ts.replace('+08:00', '');
-      var parts = tsWithoutTz.split(/[-T:]/);
-      dt = new Date(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]);
+      var parts = ts.replace('+08:00', '').split(/[-T:]/);
+      dt = new Date(parts[0], parts[1]-1, parts[2], parts[3], parts[4], parts[5]);
     } else if (ts.includes(' ')) {
-      // Old format: 2026-03-16 18:00:00 - assume Manila time
       var parts = ts.split(/[- :]/);
-      dt = new Date(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]);
+      dt = new Date(parts[0], parts[1]-1, parts[2], parts[3], parts[4], parts[5]);
     } else {
-      // Other ISO format
       dt = new Date(ts);
     }
-    
-    console.log('[DateDebug] Parsed date:', dt.toISOString(), 'diffDays:', Math.floor((nowManila - dt) / 86400000));
-    
     if (isNaN(dt.getTime())) return;
 
     var diffMs   = nowManila - dt;
     var diffMins = Math.floor(diffMs / 60000);
     var diffHrs  = Math.floor(diffMs / 3600000);
     var diffDays = Math.floor(diffMs / 86400000);
+    var label = '', cls = '';
 
-    var label = '';
-    var cls   = '';
-
-    if (diffMins < 1) {
-      label = 'Just now'; cls = 'today';
-    } else if (diffHrs < 1) {
-      label = diffMins + 'm ago'; cls = 'today';
-    } else if (diffDays === 0) {
-      label = 'Today'; cls = 'today';
-    } else if (diffDays === 1) {
-      label = 'Yesterday'; cls = 'recent';
-    } else if (diffDays < 7) {
-      label = diffDays + ' days ago'; cls = 'recent';
-    } else {
-      label = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
+    if (diffMins < 1)        { label = 'Just now';             cls = 'today';  }
+    else if (diffHrs < 1)    { label = diffMins + 'm ago';     cls = 'today';  }
+    else if (diffDays === 0) { label = 'Today';                cls = 'today';  }
+    else if (diffDays === 1) { label = 'Yesterday';            cls = 'recent'; }
+    else if (diffDays < 7)   { label = diffDays + ' days ago'; cls = 'recent'; }
+    else { label = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
 
     chip.textContent = label;
     if (cls) chip.classList.add(cls);
@@ -577,13 +419,12 @@ function renderRelativeDates() {
 function setupSelectAll() {
   var selAll = document.getElementById('select-all');
   if (!selAll) return;
-  selAll.addEventListener('change', function () {
-    document.querySelectorAll('.doc-checkbox').forEach(function (cb) {
+  selAll.addEventListener('change', function() {
+    document.querySelectorAll('.doc-checkbox').forEach(function(cb) {
       cb.checked = selAll.checked;
       cb.closest('tr').classList.toggle('row-selected', selAll.checked);
     });
     updateSelection();
-    updateSelectAllLabel();
   });
 }
 
@@ -592,7 +433,7 @@ function updateSelection() {
   var checked = document.querySelectorAll('.doc-checkbox:checked');
   var n       = checked.length;
 
-  all.forEach(function (cb) {
+  all.forEach(function(cb) {
     cb.closest('tr').classList.toggle('row-selected', cb.checked);
   });
 
@@ -602,17 +443,18 @@ function updateSelection() {
     selAll.checked       = n === all.length && all.length > 0;
   }
 
-  // ── Save doc names immediately when checked ──
+  // Save doc names immediately when checked — critical for cross-page persistence
   var details = getCartDocDetails();
   checked.forEach(function(cb) {
-    var row = cb.closest('tr');
+    var row    = cb.closest('tr');
     var nameEl = row ? row.querySelector('.doc-name') : null;
     if (nameEl && nameEl.textContent.trim()) {
       details[cb.value] = { title: nameEl.textContent.trim() };
+    } else if (!details[cb.value]) {
+      details[cb.value] = { title: cb.value };
     }
   });
   saveCartDocDetails(details);
-  // ─────────────────────────────────────────────
 
   syncSelectionBar();
   updateSelectedPreview();
@@ -620,56 +462,65 @@ function updateSelection() {
   saveSelectionsToLocalStorage();
 }
 
-// Sync the sliding selection bar (NEW)
 function syncSelectionBar() {
-  var n   = document.querySelectorAll('.doc-checkbox:checked').length;
+  // Total = all stored (cross-page) merged with current page
+  var storedIds  = restoreSelectionsFromLocalStorage();
+  var currentIds = getSelectedIds();
+  var total      = Array.from(new Set(storedIds.concat(currentIds))).length;
+
   var bar = document.getElementById('selection-bar');
   if (bar) {
-    bar.classList.toggle('visible', n > 0);
-    bar.setAttribute('aria-hidden', n > 0 ? 'false' : 'true');
+    bar.classList.toggle('visible', total > 0);
+    bar.setAttribute('aria-hidden', total > 0 ? 'false' : 'true');
   }
   var lbl = document.getElementById('sel-count-label');
-  if (lbl) lbl.textContent = n;
+  if (lbl) lbl.textContent = total;
 }
 
-// Deselect all from the selection bar (NEW)
 function deselectAll() {
-  document.querySelectorAll('.doc-checkbox').forEach(function (cb) {
+  document.querySelectorAll('.doc-checkbox').forEach(function(cb) {
     cb.checked = false;
     cb.closest('tr').classList.remove('row-selected');
   });
   var selAll = document.getElementById('select-all');
   if (selAll) { selAll.checked = false; selAll.indeterminate = false; }
+
+  localStorage.removeItem(SELECTION_STORAGE_KEY);
+  localStorage.removeItem(CART_STORAGE_KEY);
+  localStorage.removeItem(CART_DETAILS_KEY);
+
   syncSelectionBar();
   updateSelectedPreview();
   updateSelectAllLabel();
-  
-  // Clear selections from localStorage
-  localStorage.removeItem(SELECTION_STORAGE_KEY);
-  localStorage.removeItem(CART_STORAGE_KEY);
   updateCartBadge();
   showToast('Selection cleared', 'info');
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  FLOATING CART FUNCTIONS
-// ═══════════════════════════════════════════════════════════════
-var CART_STORAGE_KEY = 'doctracker_cart_docs';
-var CART_DETAILS_KEY = 'doctracker_cart_details';
+function updateSelectAllLabel() {
+  var selAll = document.getElementById('select-all');
+  var label  = selAll ? selAll.nextElementSibling : null;
+  if (!label || !label.classList.contains('select-all-label')) return;
+  var total   = document.querySelectorAll('.doc-checkbox').length;
+  var checked = document.querySelectorAll('.doc-checkbox:checked').length;
+  label.textContent = checked > 0 && checked < total ? checked : 'Select';
+}
 
+
+// ─────────────────────────────────────────────────────────────
+//  CART STORAGE HELPERS
+// ─────────────────────────────────────────────────────────────
 function getCartDocIds() {
+  // Single source of truth
   return restoreSelectionsFromLocalStorage();
 }
 
 function getCartDocDetails() {
   try {
-    var stored = localStorage.getItem(CART_DETAILS_KEY);
+    var stored  = localStorage.getItem(CART_DETAILS_KEY);
     if (!stored) return {};
     var details = JSON.parse(stored);
     return typeof details === 'object' ? details : {};
-  } catch (e) {
-    return {};
-  }
+  } catch (e) { return {}; }
 }
 
 function saveCartDocIds(ids) {
@@ -688,60 +539,12 @@ function saveCartDocDetails(details) {
   }
 }
 
-function addToCart(docId) {
-  var ids = getCartDocIds();
-  if (!ids.includes(docId)) {
-    ids.push(docId);
-    saveCartDocIds(ids);
-    
-    // Also save document details if available
-    var cb = document.querySelector('.doc-checkbox[value="' + docId + '"]');
-    if (cb) {
-      var row = cb.closest('tr');
-      if (row) {
-        var details = getCartDocDetails();
-        var cells = row.querySelectorAll('td');
-        details[docId] = {
-          docNum: cells[0] ? cells[0].textContent.trim() : docId,
-          title: cells[2] ? cells[2].textContent.trim() : 'Document ' + docId,
-          type: cells[3] ? cells[3].textContent.trim() : '',
-          status: cells[4] ? cells[4].textContent.trim() : '',
-          dateReceived: cells[5] ? cells[5].textContent.trim() : ''
-        };
-        saveCartDocDetails(details);
-      }
-    }
-    updateCartBadge();
-  }
-}
 
-function removeFromCart(docId) {
-  var ids = getCartDocIds();
-  var index = ids.indexOf(docId);
-  if (index > -1) {
-    ids.splice(index, 1);
-    saveCartDocIds(ids);
-    
-    // Also remove document details
-    var details = getCartDocDetails();
-    delete details[docId];
-    saveCartDocDetails(details);
-    
-    updateCartBadge();
-    // Also uncheck the checkbox if it exists on the current page
-    var cb = document.querySelector('.doc-checkbox[value="' + docId + '"]');
-    if (cb) {
-      cb.checked = false;
-      cb.closest('tr').classList.remove('row-selected');
-    }
-    // Update cart modal if open
-    renderCartModal();
-  }
-}
-
+// ─────────────────────────────────────────────────────────────
+//  CART BADGE
+// ─────────────────────────────────────────────────────────────
 function updateCartBadge() {
-  // Always count from the selection storage — single source of truth
-  var ids = restoreSelectionsFromLocalStorage();
+  var ids   = restoreSelectionsFromLocalStorage();
   var badge = document.getElementById('cart-badge');
   if (badge) {
     badge.textContent = ids.length;
@@ -749,6 +552,10 @@ function updateCartBadge() {
   }
 }
 
+
+// ─────────────────────────────────────────────────────────────
+//  CART MODAL
+// ─────────────────────────────────────────────────────────────
 function openCartModal() {
   var modal = document.getElementById('cart-modal');
   if (modal) {
@@ -760,46 +567,36 @@ function openCartModal() {
 
 function closeCartModal() {
   var modal = document.getElementById('cart-modal');
-  if (modal) {
-    modal.classList.remove('open');
-    document.body.style.overflow = '';
-  }
+  if (modal) { modal.classList.remove('open'); document.body.style.overflow = ''; }
 }
 
 function renderCartModal() {
   var body = document.getElementById('cart-modal-body');
   if (!body) return;
 
-  var ids = getCartDocIds();
+  var ids           = getCartDocIds();
   var storedDetails = getCartDocDetails();
 
   if (ids.length === 0) {
-    body.innerHTML = '<p class="cart-empty-msg" id="cart-empty-msg">No documents selected</p>';
+    body.innerHTML = '<p class="cart-empty-msg">No documents selected</p>';
     return;
   }
 
-  var html = '';
+  var html           = '';
   var updatedDetails = {};
 
   ids.forEach(function(id) {
-    // Default to stored title first — works on any page
-    var title = (storedDetails[id] && storedDetails[id].title)
-      ? storedDetails[id].title
-      : 'Document ' + id;
+    // Start with stored title — works on any page
+    var title = (storedDetails[id] && storedDetails[id].title) ? storedDetails[id].title : id;
 
-    // If the doc exists on the current page, get fresh name from .doc-name
+    // Upgrade with live DOM name if doc is on current page
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
     if (cb) {
-      var row = cb.closest('tr');
-      if (row) {
-        var nameEl = row.querySelector('.doc-name');
-        if (nameEl && nameEl.textContent.trim()) {
-          title = nameEl.textContent.trim();
-        }
-      }
+      var row    = cb.closest('tr');
+      var nameEl = row ? row.querySelector('.doc-name') : null;
+      if (nameEl && nameEl.textContent.trim()) title = nameEl.textContent.trim();
     }
 
-    // Persist only the title — no fragile cell-index reads
     updatedDetails[id] = { title: title };
 
     html += '<div class="cart-modal-item" data-doc-id="' + id + '">';
@@ -809,124 +606,123 @@ function renderCartModal() {
     html +=     '</div>';
     html +=     '<div class="cart-modal-item-title" title="' + title.replace(/"/g, '&quot;') + '">' + title + '</div>';
     html +=   '</div>';
-    html +=   '<button class="cart-modal-remove" onclick="removeFromCart(\'' + id + '\')" title="Remove from cart">✕</button>';
+    html +=   '<button class="cart-modal-remove" onclick="removeFromCart(\'' + id + '\')" title="Remove">&#x2715;</button>';
     html += '</div>';
   });
 
-  // Save so names persist across page navigation
+  // Persist updated titles for next page navigation
   saveCartDocDetails(updatedDetails);
-
   body.innerHTML = html;
 }
 
-function toggleCartItem(docId, checked) {
-  if (checked) {
-    addToCart(docId);
-    // Check the checkbox on the page if it exists
+function addToCart(docId) {
+  var ids = restoreSelectionsFromLocalStorage();
+  if (!ids.includes(docId)) {
+    ids.push(docId);
+    localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(ids));
     var cb = document.querySelector('.doc-checkbox[value="' + docId + '"]');
     if (cb) {
-      cb.checked = true;
-      cb.closest('tr').classList.add('row-selected');
+      var row    = cb.closest('tr');
+      var nameEl = row ? row.querySelector('.doc-name') : null;
+      var details = getCartDocDetails();
+      details[docId] = { title: nameEl ? nameEl.textContent.trim() : docId };
+      saveCartDocDetails(details);
     }
-  } else {
-    removeFromCart(docId);
+    updateCartBadge();
   }
-  updateSelection();
+}
+
+function removeFromCart(docId) {
+  var ids   = restoreSelectionsFromLocalStorage();
+  var index = ids.indexOf(docId);
+  if (index > -1) ids.splice(index, 1);
+
+  if (ids.length > 0) {
+    localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(ids));
+  } else {
+    localStorage.removeItem(SELECTION_STORAGE_KEY);
+  }
+
+  var details = getCartDocDetails();
+  delete details[docId];
+  saveCartDocDetails(details);
+
+  var cb = document.querySelector('.doc-checkbox[value="' + docId + '"]');
+  if (cb) {
+    cb.checked = false;
+    cb.closest('tr').classList.remove('row-selected');
+    syncSelectionBar();
+    updateSelectAllLabel();
+  }
+
+  updateCartBadge();
+  renderCartModal();
 }
 
 function clearCart() {
-  var ids = getCartDocIds();
-  // Uncheck all checkboxes on current page that are in cart
-  ids.forEach(function(id) {
+  restoreSelectionsFromLocalStorage().forEach(function(id) {
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
-    if (cb) {
-      cb.checked = false;
-      cb.closest('tr').classList.remove('row-selected');
-    }
+    if (cb) { cb.checked = false; cb.closest('tr').classList.remove('row-selected'); }
   });
+  localStorage.removeItem(SELECTION_STORAGE_KEY);
   localStorage.removeItem(CART_STORAGE_KEY);
   localStorage.removeItem(CART_DETAILS_KEY);
+  syncSelectionBar();
+  updateSelectAllLabel();
   updateCartBadge();
   renderCartModal();
-  updateSelection();
   showToast('Cart cleared', 'info');
 }
 
 function openRoutingModalFromCart() {
   var ids = getCartDocIds();
-  if (ids.length === 0) {
-    showToast('No documents in cart to route', 'warning');
-    return;
-  }
-  // Select all cart items on current page
+  if (ids.length === 0) { showToast('No documents in cart to route', 'warning'); return; }
   ids.forEach(function(id) {
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
-    if (cb) {
-      cb.checked = true;
-      cb.closest('tr').classList.add('row-selected');
-    }
+    if (cb) { cb.checked = true; cb.closest('tr').classList.add('row-selected'); }
   });
-  updateSelection();
-  // Close cart modal
+  syncSelectionBar();
   closeCartModal();
-  // Open the routing modal
   openRoutingModal();
 }
 
 function openTransferModalFromCart() {
   var ids = getCartDocIds();
-  if (ids.length === 0) {
-    showToast('No documents in cart to transfer', 'warning');
-    return;
-  }
-  // Select all cart items on current page
+  if (ids.length === 0) { showToast('No documents in cart to transfer', 'warning'); return; }
   ids.forEach(function(id) {
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
-    if (cb) {
-      cb.checked = true;
-      cb.closest('tr').classList.add('row-selected');
-    }
+    if (cb) { cb.checked = true; cb.closest('tr').classList.add('row-selected'); }
   });
-  updateSelection();
-  // Close cart modal
+  syncSelectionBar();
   closeCartModal();
-  // Open the transfer modal
   openTransferModal();
 }
 
-// Initialize cart on page load
+function toggleCartItem(docId, checked) {
+  if (checked) {
+    addToCart(docId);
+    var cb = document.querySelector('.doc-checkbox[value="' + docId + '"]');
+    if (cb) { cb.checked = true; cb.closest('tr').classList.add('row-selected'); }
+  } else {
+    removeFromCart(docId);
+  }
+  syncSelectionBar();
+}
+
 function initCart() {
   updateCartBadge();
-  // Also merge cart with localStorage selections on page load
-  var cartIds = getCartDocIds();
-  var storedIds = restoreSelectionsFromLocalStorage();
-  // Union of cart and stored selections
-  var allIds = new Set([...cartIds, ...storedIds]);
-  if (allIds.size > cartIds.length) {
-    saveCartDocIds(Array.from(allIds));
-  }
-}
-
-function updateSelectAllLabel() {
-  var selAll = document.getElementById('select-all');
-  var label  = selAll ? selAll.nextElementSibling : null;
-  if (!label || !label.classList.contains('select-all-label')) return;
-  var total   = document.querySelectorAll('.doc-checkbox').length;
-  var checked = document.querySelectorAll('.doc-checkbox:checked').length;
-  label.textContent = checked > 0 && checked < total ? checked : 'Select';
 }
 
 
 // ─────────────────────────────────────────────────────────────
-//  SORTABLE COLUMN HEADERS (NEW)
+//  SORTABLE HEADERS
 // ─────────────────────────────────────────────────────────────
 function setupSortableHeaders() {
-  document.querySelectorAll('th.sortable').forEach(function (th) {
-    th.addEventListener('click', function () {
+  document.querySelectorAll('th.sortable').forEach(function(th) {
+    th.addEventListener('click', function() {
       var cur = th.getAttribute('aria-sort');
-      document.querySelectorAll('th.sortable').forEach(function (h) { h.setAttribute('aria-sort', 'none'); });
+      document.querySelectorAll('th.sortable').forEach(function(h) { h.setAttribute('aria-sort', 'none'); });
       th.setAttribute('aria-sort', cur === 'descending' ? 'ascending' : 'descending');
-      // In production: add sort params to URL / submit form
     });
   });
 }
@@ -939,19 +735,12 @@ function openModal(id) {
   var modal = document.getElementById(id);
   if (!modal) return;
   modal.classList.add('open');
-
-  // Focus first interactive element (NEW)
-  setTimeout(function () {
+  setTimeout(function() {
     var first = modal.querySelector('input:not([type=hidden]), select, textarea, .rp-close');
     if (first) first.focus();
   }, 80);
-
-  // Close on backdrop click
   function onBackdrop(e) {
-    if (e.target === modal) {
-      closeModal(id);
-      modal.removeEventListener('click', onBackdrop);
-    }
+    if (e.target === modal) { closeModal(id); modal.removeEventListener('click', onBackdrop); }
   }
   modal.addEventListener('click', onBackdrop);
 }
@@ -961,18 +750,12 @@ function closeModal(id) {
   if (modal) modal.classList.remove('open');
 }
 
-// Escape closes any open modal (NEW)
-document.addEventListener('keydown', function (e) {
+document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
-    document.querySelectorAll('.modal-overlay.open').forEach(function (m) {
-      m.classList.remove('open');
-    });
+    document.querySelectorAll('.modal-overlay.open').forEach(function(m) { m.classList.remove('open'); });
   }
-  // "/" opens office modal
-  if (e.key === '/' && document.activeElement.tagName !== 'INPUT' &&
-      document.activeElement.tagName !== 'TEXTAREA') {
-    e.preventDefault();
-    openOqsModal();
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+    e.preventDefault(); openOqsModal();
   }
 });
 
@@ -983,92 +766,73 @@ document.addEventListener('keydown', function (e) {
 function openRoutingModal() {
   openModal('routing-modal');
   initSlipDate();
-  
-  // Analyze selected documents for referred_to grouping
+
   var groupingInfo = analyzeReferredToGrouping();
-  
-  // Update the preview with grouping info
   updateSelectedPreview();
-  
-  // Update the hint text based on grouping
+
   var hintEl = document.getElementById('routing-hint');
   if (hintEl) {
     if (groupingInfo.groupCount > 1) {
-      hintEl.innerHTML = '📋 Documents will be grouped by "Referred To" — ' + groupingInfo.groupCount + ' routing slips will be created.';
+      hintEl.innerHTML = '&#128203; Documents will be grouped by "Referred To" &#8212; ' + groupingInfo.groupCount + ' routing slips will be created.';
     } else if (groupingInfo.totalDocs > 0 && groupingInfo.referredTo) {
-      hintEl.innerHTML = '✅ All selected documents have the same "Referred To" — 1 routing slip will be created.';
+      hintEl.innerHTML = '&#10003; All selected documents have the same "Referred To" &#8212; 1 routing slip will be created.';
     } else {
-      hintEl.innerHTML = '💡 Enter a destination office above, or select documents with "Referred To" values.';
+      hintEl.innerHTML = '&#128161; Enter a destination office above, or select documents with "Referred To" values.';
     }
   }
-  
-  // Pre-fill destination if all documents have the same referred_to
+
   var destInput = document.getElementById('route-dest');
+  var prev      = document.getElementById('modal-dest-preview');
   if (destInput) {
     if (groupingInfo.allSame && groupingInfo.referredTo) {
       destInput.value = groupingInfo.referredTo;
-      document.getElementById('modal-dest-preview').textContent = groupingInfo.referredTo;
+      if (prev) prev.textContent = groupingInfo.referredTo;
     } else {
       destInput.value = '';
-      document.getElementById('modal-dest-preview').textContent = '(enter below)';
+      if (prev) prev.textContent = '(enter below)';
     }
   }
-  
-  // Show grouping info in modal title if there are multiple groups
+
   var titleEl = document.getElementById('routing-modal-title');
   if (titleEl) {
     if (groupingInfo.groupCount > 1) {
-      titleEl.innerHTML = '📤 Create Routing Slip <span class="rp-count" id="sel-count">' + groupingInfo.totalDocs + ' selected (' + groupingInfo.groupCount + ' groups)</span>';
+      titleEl.innerHTML = '&#128228; Create Routing Slip <span class="rp-count" id="sel-count">' + groupingInfo.totalDocs + ' selected (' + groupingInfo.groupCount + ' groups)</span>';
     } else {
-      titleEl.innerHTML = '📤 Create Routing Slip <span class="rp-count" id="sel-count">' + groupingInfo.totalDocs + ' selected</span>';
+      titleEl.innerHTML = '&#128228; Create Routing Slip <span class="rp-count" id="sel-count">' + groupingInfo.totalDocs + ' selected</span>';
     }
   }
-  
+
   var btn = document.querySelector('#routing-modal .btn-route');
-  if (btn) { btn.disabled = false; btn.textContent = '🚀 Create Routing Slip' + (groupingInfo.groupCount > 1 ? 's' : ''); }
+  if (btn) { btn.disabled = false; btn.textContent = (groupingInfo.groupCount > 1 ? 'Create Routing Slips' : 'Create Routing Slip'); }
 }
 
-// Analyze selected documents and group by referred_to
 function analyzeReferredToGrouping() {
-  var checked = document.querySelectorAll('.doc-checkbox:checked');
+  var checked   = document.querySelectorAll('.doc-checkbox:checked');
   var totalDocs = checked.length;
-  
-  if (totalDocs === 0) {
-    return { totalDocs: 0, groupCount: 0, allSame: false, referredTo: '', groups: {} };
-  }
-  
-  var groups = {};
-  var referredTos = [];
-  
+  if (totalDocs === 0) return { totalDocs: 0, groupCount: 0, allSame: false, referredTo: '', groups: {} };
+
+  var groups = {}, referredTos = [];
   checked.forEach(function(cb) {
-    var row = cb.closest('tr');
-    var referredTo = row ? row.getAttribute('data-referred-to') || '' : '';
-    
-    if (!referredTo) referredTo = '(No Referred To)';
-    
-    if (!groups[referredTo]) {
-      groups[referredTo] = [];
-    }
+    var row        = cb.closest('tr');
+    var referredTo = (row ? row.getAttribute('data-referred-to') : '') || '(No Referred To)';
+    if (!groups[referredTo]) groups[referredTo] = [];
     groups[referredTo].push(cb.value);
     referredTos.push(referredTo);
   });
-  
-  // Check if all have the same referred_to
-  var uniqueReferredTos = [...new Set(referredTos.filter(function(r) { return r !== '(No Referred To)'; }))];
-  var allSame = uniqueReferredTos.length <= 1 && Object.keys(groups).length <= 1;
-  
-  // If all are empty/blank referred_to, treat as one group
-  var hasOnlyEmptyGroups = Object.keys(groups).every(function(k) { return k === '(No Referred To)'; });
-  if (hasOnlyEmptyGroups) {
-    allSame = true;
-  }
-  
+
+  var uniqueReferredTos = referredTos
+    .filter(function(r) { return r !== '(No Referred To)'; })
+    .filter(function(v, i, a) { return a.indexOf(v) === i; });
+  var allSame      = uniqueReferredTos.length <= 1 && Object.keys(groups).length <= 1;
+  var hasOnlyEmpty = Object.keys(groups).every(function(k) { return k === '(No Referred To)'; });
+  if (hasOnlyEmpty) allSame = true;
+
   return {
-    totalDocs: totalDocs,
+    totalDocs:  totalDocs,
     groupCount: Object.keys(groups).length,
-    allSame: allSame,
+    allSame:    allSame,
     referredTo: uniqueReferredTos[0] || '',
-    groups: groups
+    groups:     groups
   };
 }
 
@@ -1087,10 +851,8 @@ function toggleModalTimeRange(on) {
   if (tt)  tt.style.display  = on ? '' : 'none';
   if (btn) btn.style.display = on ? '' : 'none';
   if (!on) {
-    var tfv = document.getElementById('time-from');
-    var ttv = document.getElementById('time-to');
-    if (tfv) tfv.value = '';
-    if (ttv) ttv.value = '';
+    var tfv = document.getElementById('time-from'); if (tfv) tfv.value = '';
+    var ttv = document.getElementById('time-to');   if (ttv) ttv.value = '';
   }
 }
 
@@ -1099,14 +861,9 @@ function autoSelectByTime() {
   var tf = document.getElementById('time-from').value;
   var tt = document.getElementById('time-to').value;
   var sd = document.getElementById('slip-date').value;
-
-  if (useTime && (!tf || !tt)) {
-    showToast('Please set both From and To times.', 'warning');
-    return;
-  }
-
+  if (useTime && (!tf || !tt)) { showToast('Please set both From and To times.', 'warning'); return; }
   var count = 0;
-  document.querySelectorAll('.doc-checkbox').forEach(function (cb) {
+  document.querySelectorAll('.doc-checkbox').forEach(function(cb) {
     var row = cb.closest('tr');
     var ts  = row.dataset.createdAt || '';
     var inRange = false;
@@ -1119,80 +876,53 @@ function autoSelectByTime() {
     row.classList.toggle('row-selected', inRange);
     if (inRange) count++;
   });
-
   syncSelectionBar();
-
   if (count === 0) {
-    showToast('No documents found in that date/time range.', 'warning');
+    showToast('No documents found in that range.', 'warning');
   } else {
     showToast(count + ' document' + (count > 1 ? 's' : '') + ' selected by time range.', 'success');
-    var btn  = document.getElementById('btn-auto-select');
-    var orig = btn ? btn.textContent : '';
-    if (btn) {
-      btn.textContent = '✅ ' + count + ' selected';
-      setTimeout(function () { btn.textContent = orig; }, 2000);
-    }
+    var btn = document.getElementById('btn-auto-select');
+    if (btn) { var orig = btn.textContent; btn.textContent = '&#10003; ' + count + ' selected'; setTimeout(function() { btn.textContent = orig; }, 2000); }
   }
-
   updateSelectedPreview();
 }
 
 function submitRouting() {
   var groupingInfo = analyzeReferredToGrouping();
-  var groups = groupingInfo.groups;
-  var groupKeys = Object.keys(groups);
-  
-  // Determine if we need to use grouped routing or single destination
-  var useGroupedRouting = groupKeys.length > 1;
-  var manualDest = document.getElementById('route-dest').value.trim();
-  
-  // If there's a manual destination but multiple groups, ask user what to do
-  if (manualDest && useGroupedRouting) {
-    // Show confirmation - will route all to the manual destination
-    if (!confirm('You have selected documents with different "Referred To" values.\n\nDo you want to route ALL documents to "' + manualDest + '"?\n\nClick OK to route all to the manual destination.\nClick Cancel to create separate routing slips for each "Referred To" group.')) {
-      return;
-    }
-    useGroupedRouting = false;
+  var groups       = groupingInfo.groups;
+  var groupKeys    = Object.keys(groups);
+  var useGrouped   = groupKeys.length > 1;
+  var manualDest   = document.getElementById('route-dest').value.trim();
+
+  if (manualDest && useGrouped) {
+    if (!confirm('Route ALL documents to "' + manualDest + '"?\n\nOK = all to manual destination.\nCancel = separate slips per "Referred To".')) return;
+    useGrouped = false;
   }
-  
-  // If no manual destination and multiple groups, use grouped routing
-  if (!manualDest && useGroupedRouting) {
-    // Check if all groups have valid referred_to (not empty)
-    var hasEmptyGroup = groupKeys.some(function(k) { return k === '(No Referred To)'; });
-    if (hasEmptyGroup) {
-      showToast('Some documents have no "Referred To". Please enter a destination office manually.', 'warning');
+
+  if (!manualDest && useGrouped) {
+    var hasEmpty = groupKeys.some(function(k) { return k === '(No Referred To)'; });
+    if (hasEmpty) {
+      showToast('Some documents have no "Referred To". Enter a destination manually.', 'warning');
       var el = document.getElementById('route-dest');
-      el.focus();
-      el.style.borderColor = '#FCA5A5';
-      el.style.background  = 'rgba(220,38,38,.15)';
-      setTimeout(function () { el.style.borderColor = ''; el.style.background = ''; }, 2500);
+      el.focus(); el.style.borderColor = '#FCA5A5'; el.style.background = 'rgba(220,38,38,.15)';
+      setTimeout(function() { el.style.borderColor = ''; el.style.background = ''; }, 2500);
       return;
     }
   }
-  
-  // Single destination mode
-  if (!useGroupedRouting) {
-    var dest = manualDest || (groupingInfo.referredTo || '');
+
+  if (!useGrouped) {
+    var dest = manualDest || groupingInfo.referredTo || '';
     if (!dest) {
       var el = document.getElementById('route-dest');
-      el.focus();
-      el.style.borderColor = '#FCA5A5';
-      el.style.background  = 'rgba(220,38,38,.15)';
-      setTimeout(function () { el.style.borderColor = ''; el.style.background = ''; }, 2500);
-      showToast('Please enter a destination office.', 'warning');
-      return;
+      el.focus(); el.style.borderColor = '#FCA5A5'; el.style.background = 'rgba(220,38,38,.15)';
+      setTimeout(function() { el.style.borderColor = ''; el.style.background = ''; }, 2500);
+      showToast('Please enter a destination office.', 'warning'); return;
     }
-
-    var ids = getSelectedIds();
+    // Use ALL stored IDs (cross-page)
+    var ids = restoreSelectionsFromLocalStorage();
     if (!ids.length) { showToast('No documents selected.', 'warning'); return; }
-
     var btn = document.querySelector('#routing-modal .btn-route');
-    if (btn) {
-      if (btn.disabled) return;
-      btn.disabled    = true;
-      btn.textContent = '⏳ Creating slip…';
-    }
-
+    if (btn) { if (btn.disabled) return; btn.disabled = true; btn.textContent = 'Creating slip...'; }
     document.getElementById('routing-doc-ids').value    = ids.join(',');
     document.getElementById('routing-dest-field').value = dest;
     document.getElementById('routing-notes').value      = document.getElementById('route-notes').value;
@@ -1202,92 +932,34 @@ function submitRouting() {
     document.getElementById('routing-form').submit();
     return;
   }
-  
-  // Grouped routing mode - create multiple routing slips
+
   var btn = document.querySelector('#routing-modal .btn-route');
-  if (btn) {
-    if (btn.disabled) return;
-    btn.disabled    = true;
-    btn.textContent = '⏳ Creating ' + groupKeys.length + ' slips…';
-  }
-  
-  // Prepare grouped data
-  var groupedData = JSON.stringify(groups);
-  var notes = document.getElementById('route-notes').value || '';
-  var slipDate = document.getElementById('slip-date').value;
-  var timeFrom = document.getElementById('time-from').value;
-  var timeTo = document.getElementById('time-to').value;
-  
-  // Create hidden form fields for grouped data
+  if (btn) { if (btn.disabled) return; btn.disabled = true; btn.textContent = 'Creating ' + groupKeys.length + ' slips...'; }
+
   var form = document.getElementById('routing-form');
-  
-  // Remove any existing grouped data fields
-  var existingGrouped = form.querySelector('.grouped-data');
-  if (existingGrouped) existingGrouped.remove();
-  
-  // Add grouped data field
-  var groupedInput = document.createElement('input');
-  groupedInput.type = 'hidden';
-  groupedInput.name = 'grouped_routing';
-  groupedInput.className = 'grouped-data';
-  groupedInput.value = groupedData;
-  form.appendChild(groupedInput);
-  
-  // Add notes field
-  var existingNotes = form.querySelector('[name="grouped_notes"]');
-  if (existingNotes) existingNotes.remove();
-  var notesInput = document.createElement('input');
-  notesInput.type = 'hidden';
-  notesInput.name = 'grouped_notes';
-  notesInput.className = 'grouped-data';
-  notesInput.value = notes;
-  form.appendChild(notesInput);
-  
-  // Add slip date
-  var existingDate = form.querySelector('[name="grouped_slip_date"]');
-  if (existingDate) existingDate.remove();
-  var dateInput = document.createElement('input');
-  dateInput.type = 'hidden';
-  dateInput.name = 'grouped_slip_date';
-  dateInput.className = 'grouped-data';
-  dateInput.value = slipDate;
-  form.appendChild(dateInput);
-  
-  // Add time range
-  var existingTimeFrom = form.querySelector('[name="grouped_time_from"]');
-  if (existingTimeFrom) existingTimeFrom.remove();
-  var timeFromInput = document.createElement('input');
-  timeFromInput.type = 'hidden';
-  timeFromInput.name = 'grouped_time_from';
-  timeFromInput.className = 'grouped-data';
-  timeFromInput.value = timeFrom;
-  form.appendChild(timeFromInput);
-  
-  var existingTimeTo = form.querySelector('[name="grouped_time_to"]');
-  if (existingTimeTo) existingTimeTo.remove();
-  var timeToInput = document.createElement('input');
-  timeToInput.type = 'hidden';
-  timeToInput.name = 'grouped_time_to';
-  timeToInput.className = 'grouped-data';
-  timeToInput.value = timeTo;
-  form.appendChild(timeToInput);
-  
-  // Update form action to use grouped routing endpoint
+  form.querySelectorAll('.grouped-data').forEach(function(el) { el.remove(); });
+
+  function addHidden(name, val) {
+    var inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = name; inp.className = 'grouped-data'; inp.value = val;
+    form.appendChild(inp);
+  }
+  addHidden('grouped_routing',   JSON.stringify(groups));
+  addHidden('grouped_notes',     document.getElementById('route-notes').value || '');
+  addHidden('grouped_slip_date', document.getElementById('slip-date').value);
+  addHidden('grouped_time_from', document.getElementById('time-from').value);
+  addHidden('grouped_time_to',   document.getElementById('time-to').value);
   form.action = '/routing-slip/create-grouped';
-  
   form.submit();
 }
 
 
 // ─────────────────────────────────────────────────────────────
-//  TRANSFER MODAL (with step progress)
+//  TRANSFER MODAL
 // ─────────────────────────────────────────────────────────────
 function openTransferModal() {
   var ids = getSelectedIds();
-  if (!ids.length) {
-    showToast('Please select at least one document to transfer.', 'warning');
-    return;
-  }
+  if (!ids.length) { showToast('Please select at least one document to transfer.', 'warning'); return; }
   var countEl = document.getElementById('transfer-sel-count');
   if (countEl) countEl.textContent = ids.length + ' selected';
   resetTransferModal();
@@ -1298,25 +970,15 @@ function closeTransferModal() { closeModal('transfer-modal'); }
 
 function resetTransferModal() {
   var el;
-  el = document.getElementById('transfer-type');
-  if (el) el.value = '';
-
-  el = document.getElementById('transfer-office');
-  if (el) { el.innerHTML = '<option value="">— Select Office —</option>'; el.disabled = true; }
-
-  el = document.getElementById('transfer-office-info');
-  if (el) el.textContent = '';
-
-  el = document.getElementById('transfer-staff');
-  if (el) { el.innerHTML = '<option value="">— Select Staff —</option>'; el.disabled = true; }
-
+  el = document.getElementById('transfer-type');        if (el) el.value = '';
+  el = document.getElementById('transfer-office');      if (el) { el.innerHTML = '<option value="">— Select Office —</option>'; el.disabled = true; }
+  el = document.getElementById('transfer-office-info'); if (el) el.textContent = '';
+  el = document.getElementById('transfer-staff');       if (el) { el.innerHTML = '<option value="">— Select Staff —</option>'; el.disabled = true; }
   _hideBlock('transfer-office-block');
   _hideBlock('transfer-staff-block');
   _hideBlock('transfer-submit-block');
-
   var btn = document.getElementById('btn-do-transfer');
-  if (btn) { btn.disabled = true; btn.textContent = '🔄 Transfer Documents'; }
-
+  if (btn) { btn.disabled = true; btn.textContent = 'Transfer Documents'; }
   _setStep(1);
 }
 
@@ -1324,69 +986,43 @@ function onTransferTypeChangeIndex() {
   var type         = document.getElementById('transfer-type').value;
   var officeSelect = document.getElementById('transfer-office');
   var staffSelect  = document.getElementById('transfer-staff');
-
-  staffSelect.innerHTML = '<option value="">— Select Staff —</option>';
-  staffSelect.disabled  = true;
-
-  var btn = document.getElementById('btn-do-transfer');
-  if (btn) btn.disabled = true;
-
-  _hideBlock('transfer-staff-block');
-  _hideBlock('transfer-submit-block');
-
+  staffSelect.innerHTML = '<option value="">— Select Staff —</option>'; staffSelect.disabled = true;
+  var btn = document.getElementById('btn-do-transfer'); if (btn) btn.disabled = true;
+  _hideBlock('transfer-staff-block'); _hideBlock('transfer-submit-block');
   if (!type) { _hideBlock('transfer-office-block'); _setStep(1); return; }
-
   _setStep(2);
-
   if (type === 'inside_office') {
-    var lbl = document.getElementById('transfer-office-label');
-    if (lbl) lbl.textContent = 'Your Office';
-
+    var lbl = document.getElementById('transfer-office-label'); if (lbl) lbl.textContent = 'Your Office';
     officeSelect.innerHTML = '<option value="' + modalCurrentOffice + '">' + modalCurrentOffice + '</option>';
-    officeSelect.value     = modalCurrentOffice;
-    officeSelect.disabled  = true;
-    var info = document.getElementById('transfer-office-info');
-    if (info) info.textContent = '📍 Auto-selected: your office';
-
-    _showBlock('transfer-office-block');
-    _populateTransferStaff(modalCurrentOffice);
-    _showBlock('transfer-staff-block');
-    _setStep(3);
+    officeSelect.value = modalCurrentOffice; officeSelect.disabled = true;
+    var info = document.getElementById('transfer-office-info'); if (info) info.textContent = 'Auto-selected: your office';
+    _showBlock('transfer-office-block'); _populateTransferStaff(modalCurrentOffice); _showBlock('transfer-staff-block'); _setStep(3);
   } else {
-    var lbl2 = document.getElementById('transfer-office-label');
-    if (lbl2) lbl2.textContent = 'Select Office';
-
+    var lbl2 = document.getElementById('transfer-office-label'); if (lbl2) lbl2.textContent = 'Select Office';
     var opts = '<option value="">— Select Office —</option>';
-    sortedOffices.forEach(function (office) {
+    sortedOffices.forEach(function(office) {
       if (office === 'No Office' || office === modalCurrentOffice) return;
       opts += '<option value="' + office + '">' + office + '</option>';
     });
-    officeSelect.innerHTML = opts;
-    officeSelect.disabled  = false;
-    var info2 = document.getElementById('transfer-office-info');
-    if (info2) info2.textContent = '';
-
+    officeSelect.innerHTML = opts; officeSelect.disabled = false;
+    var info2 = document.getElementById('transfer-office-info'); if (info2) info2.textContent = '';
     _showBlock('transfer-office-block');
   }
 }
 
 function updateTransferStaffIndex() {
   var office = document.getElementById('transfer-office').value;
-  _hideBlock('transfer-staff-block');
-  _hideBlock('transfer-submit-block');
-  var btn = document.getElementById('btn-do-transfer');
-  if (btn) btn.disabled = true;
+  _hideBlock('transfer-staff-block'); _hideBlock('transfer-submit-block');
+  var btn = document.getElementById('btn-do-transfer'); if (btn) btn.disabled = true;
   if (!office) return;
-  _populateTransferStaff(office);
-  _showBlock('transfer-staff-block');
-  _setStep(3);
+  _populateTransferStaff(office); _showBlock('transfer-staff-block'); _setStep(3);
 }
 
 function _populateTransferStaff(office) {
   var sel = document.getElementById('transfer-staff');
   sel.innerHTML = '<option value="">— Select Staff —</option>';
   if (!office || !officesData[office]) return;
-  officesData[office].forEach(function (s) {
+  officesData[office].forEach(function(s) {
     var name = s.full_name || s.username;
     sel.innerHTML += '<option value="' + s.username + '">' + name + ' (@' + s.username + ')</option>';
   });
@@ -1395,8 +1031,12 @@ function _populateTransferStaff(office) {
 
 function onTransferStaffChangeIndex() {
   var val = document.getElementById('transfer-staff').value;
-  if (val) { _showBlock('transfer-submit-block'); var btn = document.getElementById('btn-do-transfer'); if (btn) btn.disabled = false; }
-  else     { _hideBlock('transfer-submit-block'); }
+  if (val) {
+    _showBlock('transfer-submit-block');
+    var btn = document.getElementById('btn-do-transfer'); if (btn) btn.disabled = false;
+  } else {
+    _hideBlock('transfer-submit-block');
+  }
 }
 
 function submitTransfer() {
@@ -1406,15 +1046,13 @@ function submitTransfer() {
   var staff        = document.getElementById('transfer-staff').value;
   var selectedIds  = transferSingleDocId ? [transferSingleDocId] : getSelectedIds();
 
-  if (!transferType || !staff) { showToast('Please complete all steps before transferring.', 'warning'); return; }
+  if (!transferType || !staff) { showToast('Please complete all steps.', 'warning'); return; }
   if (!selectedIds.length)     { showToast('Please select at least one document.', 'warning'); return; }
 
   var btn = document.getElementById('btn-do-transfer');
-  if (btn) { if (btn.disabled) return; btn.disabled = true; btn.textContent = '⏳ Transferring…'; }
+  if (btn) { if (btn.disabled) return; btn.disabled = true; btn.textContent = 'Transferring...'; }
 
-  var form = document.createElement('form');
-  form.method = 'POST';
-
+  var form = document.createElement('form'); form.method = 'POST';
   var fields;
   if (transferSingleDocId) {
     form.action = '/transfer/' + transferSingleDocId;
@@ -1423,25 +1061,17 @@ function submitTransfer() {
     form.action = '/transfer-batch';
     fields = [['doc_ids',selectedIds.join(',')],['transfer_type',transferType],['new_office',office],['new_staff',staff],['csrf_token',csrfToken]];
   }
-
-  fields.forEach(function (pair) {
-    var inp = document.createElement('input');
-    inp.type = 'hidden'; inp.name = pair[0]; inp.value = pair[1];
-    form.appendChild(inp);
+  fields.forEach(function(pair) {
+    var inp = document.createElement('input'); inp.type = 'hidden'; inp.name = pair[0]; inp.value = pair[1]; form.appendChild(inp);
   });
-
-  document.body.appendChild(form);
-  form.submit();
+  document.body.appendChild(form); form.submit();
 }
 
-// Update step indicator (NEW)
 function _setStep(active) {
   for (var i = 1; i <= 3; i++) {
-    var el = document.getElementById('step-' + i);
-    if (!el) continue;
+    var el = document.getElementById('step-' + i); if (!el) continue;
     el.classList.remove('active', 'done');
-    if (i < active)      el.classList.add('done');
-    else if (i === active) el.classList.add('active');
+    if (i < active) el.classList.add('done'); else if (i === active) el.classList.add('active');
   }
 }
 
@@ -1452,17 +1082,10 @@ function _setStep(active) {
 function openStatusModal() {
   var ids = getSelectedIds();
   if (!ids.length) { showToast('Please select at least one document to update.', 'warning'); return; }
-
-  var countEl = document.getElementById('status-sel-count');
-  if (countEl) countEl.textContent = ids.length + ' selected';
-
-  var sel = document.getElementById('new-status');
-  if (sel) sel.value = '';
-  var rem = document.getElementById('status-remarks');
-  if (rem) rem.value = '';
-  var btn = document.getElementById('btn-do-status-update');
-  if (btn) btn.disabled = true;
-
+  var countEl = document.getElementById('status-sel-count'); if (countEl) countEl.textContent = ids.length + ' selected';
+  var sel = document.getElementById('new-status'); if (sel) sel.value = '';
+  var rem = document.getElementById('status-remarks'); if (rem) rem.value = '';
+  var btn = document.getElementById('btn-do-status-update'); if (btn) btn.disabled = true;
   openModal('status-modal');
 }
 
@@ -1477,99 +1100,64 @@ function onStatusChange() {
 function submitBulkStatusUpdate() {
   var ids = getSelectedIds();
   if (!ids.length) { showToast('No documents selected.', 'warning'); return; }
-
   var newStatus = document.getElementById('new-status').value;
   if (!newStatus) { showToast('Please select a status.', 'warning'); return; }
-
   var remarks   = document.getElementById('status-remarks').value;
   var csrfToken = (document.getElementById('csrf-token-value') || {}).value || '';
-
-  var form = document.createElement('form');
-  form.method = 'POST';
-  form.action = '/bulk-update-status';
-
-  var pairs = [['doc_ids', ids.join(',')], ['new_status', newStatus], ['csrf_token', csrfToken]];
+  var form = document.createElement('form'); form.method = 'POST'; form.action = '/bulk-update-status';
+  var pairs = [['doc_ids',ids.join(',')],['new_status',newStatus],['csrf_token',csrfToken]];
   if (remarks) pairs.push(['remarks', remarks]);
-
-  pairs.forEach(function (pair) {
-    var inp = document.createElement('input');
-    inp.type = 'hidden'; inp.name = pair[0]; inp.value = pair[1];
-    form.appendChild(inp);
+  pairs.forEach(function(pair) {
+    var inp = document.createElement('input'); inp.type = 'hidden'; inp.name = pair[0]; inp.value = pair[1]; form.appendChild(inp);
   });
-
-  document.body.appendChild(form);
-  form.submit();
+  document.body.appendChild(form); form.submit();
 }
 
 
 // ─────────────────────────────────────────────────────────────
-//  SELECTED DOCUMENT PREVIEW (routing modal) - WITH GROUPING
+//  SELECTED DOCUMENT PREVIEW
 // ─────────────────────────────────────────────────────────────
 function updateSelectedPreview() {
   var checked = document.querySelectorAll('.doc-checkbox:checked');
   var n       = checked.length;
-
   var countEl = document.getElementById('sel-count');
   if (countEl) {
-    var groupingInfo = analyzeReferredToGrouping();
-    if (groupingInfo.groupCount > 1) {
-      countEl.textContent = n + ' selected (' + groupingInfo.groupCount + ' groups)';
-    } else {
-      countEl.textContent = n + ' selected';
-    }
+    var gi = analyzeReferredToGrouping();
+    countEl.textContent = gi.groupCount > 1 ? n + ' selected (' + gi.groupCount + ' groups)' : n + ' selected';
   }
-
   var preview = document.getElementById('selected-preview');
   var list    = document.getElementById('selected-list');
   if (!preview || !list) return;
-
-  if (n === 0) {
-    preview.style.display = 'none';
-    list.innerHTML = '';
-  } else {
-    preview.style.display = 'block';
-    
-    // Get grouping info
-    var groupingInfo = analyzeReferredToGrouping();
-    var groups = groupingInfo.groups;
-    var groupKeys = Object.keys(groups);
-    
-    // If there are multiple groups, show them grouped
-    if (groupKeys.length > 1 || (groupKeys.length === 1 && groupKeys[0] === '(No Referred To)')) {
-      var html = '';
-      var docCounter = 1;
-      groupKeys.forEach(function(key) {
-        var docsInGroup = groups[key];
-        var groupLabel = key === '(No Referred To)' ? '📭 Documents without Referred To' : '📋 Referred To: ' + key;
-        html += '<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.2);margin-top:8px;">';
-        html += '<div style="font-weight:600;color:#FCD34D;font-size:11px;text-transform:uppercase;margin-bottom:4px;">' + groupLabel + ' (' + docsInGroup.length + ' docs)</div>';
-        
-        docsInGroup.forEach(function(docId) {
-          var cb = document.querySelector('.doc-checkbox[value="' + docId + '"]');
-          var row = cb ? cb.closest('tr') : null;
-          var name = row ? row.querySelector('.doc-name') : null;
-          html += '<div style="padding:2px 0;padding-left:12px;font-size:12px;">' +
-                 docCounter + '. ' + (name ? name.textContent.trim() : docId) + '</div>';
-          docCounter++;
-        });
-        html += '</div>';
+  if (n === 0) { preview.style.display = 'none'; list.innerHTML = ''; return; }
+  preview.style.display = 'block';
+  var gi = analyzeReferredToGrouping();
+  var groups = gi.groups; var groupKeys = Object.keys(groups);
+  if (groupKeys.length > 1 || (groupKeys.length === 1 && groupKeys[0] === '(No Referred To)')) {
+    var html = ''; var counter = 1;
+    groupKeys.forEach(function(key) {
+      var docs  = groups[key];
+      var label = key === '(No Referred To)' ? 'No Referred To' : 'Referred To: ' + key;
+      html += '<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.2);margin-top:8px;">';
+      html += '<div style="font-weight:600;color:#FCD34D;font-size:11px;text-transform:uppercase;margin-bottom:4px;">' + label + ' (' + docs.length + ')</div>';
+      docs.forEach(function(id) {
+        var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
+        var row = cb ? cb.closest('tr') : null; var name = row ? row.querySelector('.doc-name') : null;
+        html += '<div style="padding:2px 0;padding-left:12px;font-size:12px;">' + counter++ + '. ' + (name ? name.textContent.trim() : id) + '</div>';
       });
-      list.innerHTML = html;
-    } else {
-      // Single group - show simple list
-      list.innerHTML = Array.from(checked).map(function (cb, i) {
-        var row  = cb.closest('tr');
-        var name = row ? row.querySelector('.doc-name') : null;
-        return '<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.1)">' +
-               (i + 1) + '. ' + (name ? name.textContent.trim() : cb.value) + '</div>';
-      }).join('');
-    }
+      html += '</div>';
+    });
+    list.innerHTML = html;
+  } else {
+    list.innerHTML = Array.from(checked).map(function(cb, i) {
+      var row = cb.closest('tr'); var name = row ? row.querySelector('.doc-name') : null;
+      return '<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.1)">' + (i+1) + '. ' + (name ? name.textContent.trim() : cb.value) + '</div>';
+    }).join('');
   }
 }
 
 
 // ─────────────────────────────────────────────────────────────
-//  PENDING DOCUMENTS — FAB + banner (UPGRADED)
+//  PENDING DOCUMENTS
 // ─────────────────────────────────────────────────────────────
 function checkPendingDocuments() {
   var badge   = document.getElementById('pending-badge');
@@ -1577,56 +1165,40 @@ function checkPendingDocuments() {
   var ibBadge = document.getElementById('ib-badge');
   var ibSub   = document.getElementById('ib-sub-text');
   if (!badge && !banner) return;
-
   fetch('/api/pending-count')
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
       var count = data.count || 0;
-
-      // FAB badge
-      if (badge) {
-        badge.textContent   = count > 0 ? count : '';
-        badge.style.display = count > 0 ? 'block' : 'none';
-      }
-
-      // Incoming banner (NEW)
+      if (badge) { badge.textContent = count > 0 ? count : ''; badge.style.display = count > 0 ? 'block' : 'none'; }
       if (banner) {
         banner.style.display = count > 0 ? 'flex' : 'none';
         if (ibBadge) ibBadge.textContent = count;
-        if (ibSub) ibSub.textContent = count + ' document' + (count !== 1 ? 's' : '') +
-          ' transferred to you · Click to review and accept';
+        if (ibSub) ibSub.textContent = count + ' document' + (count !== 1 ? 's' : '') + ' transferred to you · Click to review and accept';
       }
     })
-    .catch(function (err) { console.error('pending-count error:', err); });
+    .catch(function(err) { console.error('pending-count error:', err); });
 }
 
 
 // ─────────────────────────────────────────────────────────────
-//  TOAST NOTIFICATIONS (NEW — replaces all alert() calls)
+//  TOAST
 // ─────────────────────────────────────────────────────────────
-var _toastIcons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+var _toastIcons = { success: '&#10003;', error: '&#10007;', info: '&#x2139;', warning: '&#9888;' };
 
 function showToast(message, type) {
   type = type || 'info';
   var container = document.getElementById('toast-container');
   if (!container) return;
-
   var toast = document.createElement('div');
   toast.className = 'toast ' + type;
   toast.setAttribute('role', 'alert');
-
   toast.innerHTML =
-    '<span class="toast-icon" aria-hidden="true">' + (_toastIcons[type] || 'ℹ️') + '</span>' +
+    '<span class="toast-icon">' + (_toastIcons[type] || '') + '</span>' +
     '<span class="toast-msg">' + message + '</span>' +
-    '<button class="toast-close" aria-label="Dismiss notification">✕</button>';
-
-  toast.querySelector('.toast-close').addEventListener('click', function () {
-    _dismissToast(toast);
-  });
-
+    '<button class="toast-close" aria-label="Dismiss">&#x2715;</button>';
+  toast.querySelector('.toast-close').addEventListener('click', function() { _dismissToast(toast); });
   container.appendChild(toast);
-
-  var timer = setTimeout(function () { _dismissToast(toast); }, 3500);
+  var timer = setTimeout(function() { _dismissToast(toast); }, 3500);
   toast._timer = timer;
 }
 
@@ -1635,30 +1207,25 @@ function _dismissToast(toast) {
   toast.style.transition = 'opacity .3s, transform .3s';
   toast.style.opacity    = '0';
   toast.style.transform  = 'translateY(8px)';
-  setTimeout(function () { if (toast.parentElement) toast.parentElement.removeChild(toast); }, 320);
+  setTimeout(function() { if (toast.parentElement) toast.parentElement.removeChild(toast); }, 320);
 }
 
 
 // ─────────────────────────────────────────────────────────────
-//  OFFICE QR MODAL (unchanged from original)
+//  OFFICE QR MODAL
 // ─────────────────────────────────────────────────────────────
 function openOqsModal() {
-  var overlay = document.getElementById('oqs-modal-overlay');
-  if (overlay) overlay.classList.add('open');
-  var search = document.getElementById('oqs-search');
-  if (search) search.focus();
+  var overlay = document.getElementById('oqs-modal-overlay'); if (overlay) overlay.classList.add('open');
+  var search  = document.getElementById('oqs-search');        if (search)  search.focus();
 }
-
 function closeOqsModal() {
-  var overlay = document.getElementById('oqs-modal-overlay');
-  if (overlay) overlay.classList.remove('open');
+  var overlay = document.getElementById('oqs-modal-overlay'); if (overlay) overlay.classList.remove('open');
 }
-
 function filterOffices(query) {
   var q       = (query || '').toLowerCase().trim();
   var cards   = document.querySelectorAll('.oqs-card');
   var visible = 0;
-  cards.forEach(function (card) {
+  cards.forEach(function(card) {
     var show = !q || (card.dataset.name || '').toLowerCase().includes(q);
     card.classList.toggle('hidden', !show);
     if (show) visible++;
@@ -1674,70 +1241,46 @@ function filterOffices(query) {
 //  HELPERS
 // ─────────────────────────────────────────────────────────────
 function getSelectedIds() {
-  return Array.from(document.querySelectorAll('.doc-checkbox:checked')).map(function (cb) { return cb.value; });
+  return Array.from(document.querySelectorAll('.doc-checkbox:checked')).map(function(cb) { return cb.value; });
 }
-
 function _showBlock(id) { var el = document.getElementById(id); if (el) el.style.display = 'block'; }
 function _hideBlock(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; }
-
-// Legacy aliases (kept for any inline HTML still using old names)
 function _showTransferBlock(id) { _showBlock(id); }
 function _hideTransferBlock(id) { _hideBlock(id); }
 
+
 // ─────────────────────────────────────────────────────────────
-// Kebab Menu Functions
+//  KEBAB MENU
+// ─────────────────────────────────────────────────────────────
 function toggleKebabMenu(btn) {
   var dropdown = btn.nextElementSibling;
-  var isShown = dropdown.classList.contains('show');
-  
-  // Close all other dropdowns first
-  document.querySelectorAll('.kebab-dropdown.show').forEach(function(d) {
-    d.classList.remove('show');
-  });
-  
-  // Toggle current dropdown
-  if (!isShown) {
-    dropdown.classList.add('show');
-  }
+  var isShown  = dropdown.classList.contains('show');
+  document.querySelectorAll('.kebab-dropdown.show').forEach(function(d) { d.classList.remove('show'); });
+  if (!isShown) dropdown.classList.add('show');
 }
 
-// Close dropdowns when clicking outside
 document.addEventListener('click', function(e) {
   if (!e.target.closest('.kebab-menu')) {
     document.querySelectorAll('.kebab-dropdown.show').forEach(function(d) {
       d.classList.remove('show');
-      // Reset position to default
-      d.style.position = '';
-      d.style.left = '';
-      d.style.top = '';
-      d.style.right = '';
-      d.style.margin = '';
+      d.style.position = ''; d.style.left = ''; d.style.top = ''; d.style.right = ''; d.style.margin = '';
     });
   }
 });
 
-// Handle right-click to open kebab menu
 document.addEventListener('contextmenu', function(e) {
   var row = e.target.closest('.doc-row');
   if (row) {
     e.preventDefault();
     var kebabMenu = row.querySelector('.kebab-menu');
     if (kebabMenu) {
-      var btn = kebabMenu.querySelector('.kebab-btn');
       var dropdown = kebabMenu.querySelector('.kebab-dropdown');
-      
-      // Close all other dropdowns first
-      document.querySelectorAll('.kebab-dropdown.show').forEach(function(d) {
-        d.classList.remove('show');
-      });
-      
-      // Position dropdown at cursor location
+      document.querySelectorAll('.kebab-dropdown.show').forEach(function(d) { d.classList.remove('show'); });
       dropdown.style.position = 'fixed';
-      dropdown.style.left = e.clientX + 'px';
-      dropdown.style.top = e.clientY + 'px';
-      dropdown.style.right = 'auto';
-      dropdown.style.margin = '0';
-      
+      dropdown.style.left     = e.clientX + 'px';
+      dropdown.style.top      = e.clientY + 'px';
+      dropdown.style.right    = 'auto';
+      dropdown.style.margin   = '0';
       dropdown.classList.add('show');
     }
   }
