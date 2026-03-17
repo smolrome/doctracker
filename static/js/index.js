@@ -451,7 +451,7 @@ function updateSelection() {
     selAll.checked       = n === all.length && all.length > 0;
   }
 
-  // Save doc names immediately when checked — critical for cross-page persistence
+  // Save doc names immediately
   var details = getCartDocDetails();
   checked.forEach(function(cb) {
     var row    = cb.closest('tr');
@@ -464,10 +464,14 @@ function updateSelection() {
   });
   saveCartDocDetails(details);
 
-  syncSelectionBar();
+  // ── SAVE FIRST, then sync UI ──
+  saveSelectionsToLocalStorage(); // updates localStorage with unchecked removed
+  syncSelectionBar();             // now reads the correct updated count
+  updateCartBadge();              // badge also reads updated count
+  // ─────────────────────────────
+
   updateSelectedPreview();
   updateSelectAllLabel();
-  saveSelectionsToLocalStorage();
 }
 
 function syncSelectionBar() {
