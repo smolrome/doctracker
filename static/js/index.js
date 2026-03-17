@@ -373,8 +373,18 @@ function renderRelativeDates() {
   chips.forEach(function (chip) {
     var ts = chip.getAttribute('data-ts');
     if (!ts) return;
-    var dt = new Date(ts);
-    if (isNaN(dt)) return;
+    
+    // Handle both old format (2026-03-16 23:45:00) and new ISO format (2026-03-16T23:45:00+08:00)
+    var dt;
+    if (ts.includes(' ')) {
+      // Old format: replace space with T for JavaScript to parse as local time
+      dt = new Date(ts.replace(' ', 'T'));
+    } else {
+      // New ISO 8601 format with timezone
+      dt = new Date(ts);
+    }
+    
+    if (isNaN(dt.getTime())) return;
 
     var diffMs   = now - dt;
     var diffMins = Math.floor(diffMs / 60000);
