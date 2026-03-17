@@ -146,7 +146,7 @@
     <thead>
       <tr style="background:#fff3cd;border-bottom:2px solid #ffeeba;">
         <th style="padding:10px;text-align:center;width:40px;">
-          <input type="checkbox" class="unassigned-checkbox" onchange="updateUnassignedSelection()">
+          <input type="checkbox" id="select-all-unassigned-header" onchange="toggleSelectAllUnassigned(this)">
         </th>
         <th style="padding:10px;text-align:left;">Document ID</th>
         <th style="padding:10px;text-align:left;">Document Name</th>
@@ -277,14 +277,24 @@ function toggleBatchAssign() {
   
   checkboxes.forEach(function(cb) {
     cb.style.display = anyChecked ? 'none' : '';
+    // Auto-check all checkboxes when entering batch mode
+    if (!anyChecked) {
+      cb.checked = true;
+    }
   });
   
   document.getElementById('select-all-staff').style.display = anyChecked ? 'none' : '';
+  // Auto-check the select all checkbox when entering batch mode
+  if (!anyChecked) {
+    document.getElementById('select-all-staff').checked = true;
+  }
   document.getElementById('btn-batch-assign').textContent = anyChecked ? '📋 Batch Assign' : '✓ Done';
   
   if (!anyChecked) {
     document.getElementById('batch-staff-select').style.display = 'none';
     document.getElementById('btn-confirm-assign').style.display = 'none';
+    // Update the selected count
+    updateStaffSelection();
   }
 }
 
@@ -350,6 +360,21 @@ function updateUnassignedSelection() {
   // Just for potential future use
 }
 
+// Unassigned documents batch operations
+function toggleSelectAllUnassigned(source) {
+  var checkboxes = document.querySelectorAll('.unassigned-checkbox');
+  checkboxes.forEach(function(cb) {
+    cb.checked = source.checked;
+  });
+  // Also sync the other select-all checkbox
+  var otherCheckbox = source.id === 'select-all-unassigned' ? 
+    document.getElementById('select-all-unassigned-header') : 
+    document.getElementById('select-all-unassigned');
+  if (otherCheckbox) {
+    otherCheckbox.checked = source.checked;
+  }
+}
+
 function bulkAssignUnassigned() {
   var checkboxes = document.querySelectorAll('.unassigned-checkbox:checked');
   var staffSelect = document.getElementById('bulk-assign-staff');
@@ -405,6 +430,17 @@ function updateDocSelection(username) {
 }
 
 function batchReassignDocs(fromUsername) {
+  // Auto-check all documents for this staff first
+  var allCheckboxes = document.querySelectorAll('.doc-checkbox-' + fromUsername);
+  var selectAllCheckbox = document.querySelector('.select-all-docs-' + fromUsername);
+  
+  allCheckboxes.forEach(function(cb) {
+    cb.checked = true;
+  });
+  if (selectAllCheckbox) {
+    selectAllCheckbox.checked = true;
+  }
+  
   var checkboxes = document.querySelectorAll('.doc-checkbox-' + fromUsername + ':checked');
   var staffSelect = document.getElementById('reassign-staff-' + fromUsername);
   var toUsername = staffSelect.value;

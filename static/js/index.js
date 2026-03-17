@@ -98,14 +98,69 @@ function recalcStickyOffsets() {
 }
 
 window.addEventListener('resize', recalcStickyOffsets);
-window.addEventListener('load',   recalcStickyOffsets);
+window.addEventListener('load', function() {
+  recalcStickyOffsets();
+  
+  // Restore selections from localStorage (persists across refreshes)
+  var restoredCount = applyStoredSelections();
+  if (restoredCount > 0) {
+    updateSelection();
+    showToast(restoredCount + ' document' + (restoredCount > 1 ? 's' : '') + ' restored from previous session', 'info');
+  }
+  
+  // Also check for URL-based selection restoration (for page navigation)
+  restoreSelectionsFromUrl();
+});
 setTimeout(recalcStickyOffsets, 150);
 setTimeout(recalcStickyOffsets, 600);
 
 
 // ─────────────────────────────────────────────────────────────
-//  SELECTION PERSISTENCE — saves/restores selections across page reloads
+//  SELECTION PERSISTENCE — saves/restores selections across page reloads using localStorage
 // ─────────────────────────────────────────────────────────────
+var SELECTION_STORAGE_KEY = 'doctracker_selected_docs';
+
+function saveSelectionsToLocalStorage() {
+  var selectedIds = getSelectedIds();
+  if (selectedIds.length > 0) {
+    localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(selectedIds));
+  } else {
+    localStorage.removeItem(SELECTION_STORAGE_KEY);
+  }
+}
+
+function restoreSelectionsFromLocalStorage() {
+  try {
+    var stored = localStorage.getItem(SELECTION_STORAGE_KEY);
+    if (!stored) return [];
+    
+    var ids = JSON.parse(stored);
+    if (!Array.isArray(ids)) return [];
+    
+    return ids;
+  } catch (e) {
+    console.error('Error restoring selections from localStorage:', e);
+    return [];
+  }
+}
+
+function applyStoredSelections() {
+  var ids = restoreSelectionsFromLocalStorage();
+  if (ids.length === 0) return 0;
+  
+  var restoredCount = 0;
+  ids.forEach(function(id) {
+    var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
+    if (cb) {
+      cb.checked = true;
+      cb.closest('tr').classList.add('row-selected');
+      restoredCount++;
+    }
+  });
+  
+  return restoredCount;
+}
+
 function restoreSelectionsFromUrl() {
   var params = new URLSearchParams(window.location.search);
   var selectedIds = params.get('selected_docs');
@@ -466,6 +521,9 @@ function updateSelection() {
   syncSelectionBar();
   updateSelectedPreview();
   updateSelectAllLabel();
+  
+  // Save selections to localStorage
+  saveSelectionsToLocalStorage();
 }
 
 // Sync the sliding selection bar (NEW)
@@ -491,6 +549,9 @@ function deselectAll() {
   syncSelectionBar();
   updateSelectedPreview();
   updateSelectAllLabel();
+  
+  // Clear selections from localStorage
+  localStorage.removeItem(SELECTION_STORAGE_KEY);
   showToast('Selection cleared', 'info');
 }
 
