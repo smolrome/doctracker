@@ -428,12 +428,12 @@ def routed_documents():
         filtered_slips = []
         for slip in slips:
             # Search in slip number, destination, prepared_by
-            if (search_lower in slip.get('slip_no', '').lower() or
-                search_lower in slip.get('destination', '').lower() or
-                search_lower in slip.get('prepared_by', '').lower() or
-                search_lower in slip.get('from_office', '').lower() or
-                search_lower in slip.get('rerouted_to', '').lower() or
-                search_lower in slip.get('rerouted_from', '').lower()):
+            if (search_lower in (slip.get('slip_no') or '').lower() or
+                search_lower in (slip.get('destination') or '').lower() or
+                search_lower in (slip.get('prepared_by') or '').lower() or
+                search_lower in (slip.get('from_office') or '').lower() or
+                search_lower in (slip.get('rerouted_to') or '').lower() or
+                search_lower in (slip.get('rerouted_from') or '').lower()):
                 filtered_slips.append(slip)
         slips = filtered_slips
     
