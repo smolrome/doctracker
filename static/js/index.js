@@ -650,14 +650,7 @@ var CART_STORAGE_KEY = 'doctracker_cart_docs';
 var CART_DETAILS_KEY = 'doctracker_cart_details';
 
 function getCartDocIds() {
-  try {
-    var stored = localStorage.getItem(CART_STORAGE_KEY);
-    if (!stored) return [];
-    var ids = JSON.parse(stored);
-    return Array.isArray(ids) ? ids : [];
-  } catch (e) {
-    return [];
-  }
+  return restoreSelectionsFromLocalStorage();
 }
 
 function getCartDocDetails() {
@@ -739,7 +732,8 @@ function removeFromCart(docId) {
 }
 
 function updateCartBadge() {
-  var ids = getCartDocIds();
+  // Always count from the selection storage — single source of truth
+  var ids = restoreSelectionsFromLocalStorage();
   var badge = document.getElementById('cart-badge');
   if (badge) {
     badge.textContent = ids.length;
