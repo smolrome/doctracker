@@ -37,6 +37,7 @@ function onReady() {
   initSlipDate();
   checkPendingDocuments();
   restoreSelectionsFromUrl();
+  setupPaginationWithSelection();
 
   // Slip date default
   var sd = document.getElementById('slip-date');
@@ -163,27 +164,84 @@ function applyStoredSelections() {
 
 function restoreSelectionsFromUrl() {
   var params = new URLSearchParams(window.location.search);
-  var selectedIds = params.get('selected_docs');
-  if (!selectedIds) return;
+  var selectedIdsParam = params.get('selected_docs');
+  if (!selectedIdsParam) return;
   
-  var ids = selectedIds.split(',');
-  ids.forEach(function(id) {
+  // Get IDs from URL
+  var urlIds = selectedIdsParam.split(',');
+  
+  // Also get IDs from localStorage (selections from other pages)
+  var storedIds = restoreSelectionsFromLocalStorage();
+  
+  // Merge URL IDs with stored IDs (union - no duplicates)
+  var allIds = new Set([...storedIds, ...urlIds]);
+  var mergedIds = Array.from(allIds);
+  
+  // Apply merged selections to checkboxes on current page
+  var restoredCount = 0;
+  mergedIds.forEach(function(id) {
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
     if (cb) {
       cb.checked = true;
       cb.closest('tr').classList.add('row-selected');
+      restoredCount++;
     }
   });
   
-  // Clear the URL parameter after restoring (optional - keeps URL clean)
-  if (ids.length > 0) {
+  // Save merged IDs back to localStorage so they persist
+  if (mergedIds.length > 0) {
+    localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(mergedIds));
+  }
+  
+  // Clear the URL parameter after restoring (keeps URL clean)
+  if (urlIds.length > 0) {
     params.delete('selected_docs');
     var newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
     window.history.replaceState({}, '', newUrl);
   }
   
-  updateSelection();
-  showToast(ids.length + ' document' + (ids.length > 1 ? 's' : '') + ' restored from previous selection', 'info');
+  if (restoredCount > 0) {
+    updateSelection();
+    showToast(restoredCount + ' document' + (restoredCount > 1 ? 's' : '') + ' restored from previous selection', 'info');
+  }
+}
+
+// Setup pagination links to include selected docs in URL when clicked
+function setupPaginationWithSelection() {
+  var paginationWrap = document.querySelector('.pagination-wrap');
+  if (!paginationWrap) return;
+  
+  // Add click event listener to the pagination container
+  paginationWrap.addEventListener('click', function(e) {
+    var link = e.target.closest('.page-btn');
+    if (!link) return;
+    
+    // Skip if it's the current page or disabled
+    if (link.classList.contains('active') || link.classList.contains('disabled')) return;
+    
+    // Get the href and modify it to include selected docs
+    var href = link.getAttribute('href');
+    if (!href) return;
+    
+    e.preventDefault();
+    
+    // Get current selected IDs from localStorage
+    var storedIds = restoreSelectionsFromLocalStorage();
+    var currentPageIds = getSelectedIds();
+    
+    // Merge all IDs (from localStorage and current page checkboxes)
+    var allIds = new Set([...storedIds, ...currentPageIds]);
+    var idsString = Array.from(allIds).join(',');
+    
+    // Add selected_docs to the URL
+    var url = new URL(href, window.location.origin);
+    if (idsString) {
+      url.searchParams.set('selected_docs', idsString);
+    }
+    
+    // Navigate to the new URL
+    window.location.href = url.toString();
+  });
 }
 
 function setupFilterFormWithSelection() {
