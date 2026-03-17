@@ -558,9 +558,14 @@ function saveCartDocDetails(details) {
 function updateCartBadge() {
   var ids   = restoreSelectionsFromLocalStorage();
   var badge = document.getElementById('cart-badge');
+  var headerBadge = document.getElementById('cart-badge-header');
   if (badge) {
     badge.textContent = ids.length;
     badge.classList.toggle('visible', ids.length > 0);
+  }
+  if (headerBadge) {
+    headerBadge.textContent = ids.length;
+    headerBadge.classList.toggle('visible', ids.length > 0);
   }
 }
 

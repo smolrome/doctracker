@@ -49,6 +49,9 @@ var serverSessionData = {
     {% if logged_in %}
     <div class="page-header-actions">
       <a href="/routed-documents" class="hdr-btn hdr-btn-ghost">🚌 Routed Docs</a>
+      <button class="hdr-btn hdr-btn-ghost" onclick="openCartModal()" aria-label="Open document cart">
+        🛒 Document Cart <span class="cart-badge" id="cart-badge-header">0</span>
+      </button>
       <a href="/add"              class="hdr-btn hdr-btn-primary">+ Add Document</a>
     </div>
     {% endif %}
@@ -324,15 +327,6 @@ var serverSessionData = {
       </div>
       {% endif %}
 
-      {# Floating Cart Button #}
-      {% if logged_in and session.get('role') in ['admin','staff'] %}
-      <div id="floating-cart" class="floating-cart" role="toolbar" aria-label="Document cart">
-        <button class="cart-btn" onclick="openCartModal()" aria-label="Open document cart">
-          <span class="cart-icon">🛒</span>
-          <span class="cart-badge" id="cart-badge">0</span>
-        </button>
-      </div>
-      
       {# Cart Modal #}
       <div id="cart-modal" class="cart-modal" role="dialog" aria-labelledby="cart-modal-title" aria-modal="true">
         <div class="cart-modal-overlay" onclick="closeCartModal()"></div>
