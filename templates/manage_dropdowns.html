@@ -1,62 +1,452 @@
 {% extends "base.html" %}
 {% block content %}
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/manage_dropdowns.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/manage_dropdowns.css') }}"/>
 
 <div class="page-header">
-  <a href="/manage-users" class="page-back">← Users</a>
-  <div class="page-title">⚙️ Manage Dropdown Options</div>
+  <a href="/" class="page-back">← Dashboard</a>
+  <div class="page-title">Manage Dropdown Options</div>
 </div>
 
 <!-- Flash messages -->
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for cat, msg in messages %}
-    {% if cat == 'success' %}
-    <div class="flash-ok">✅ {{ msg }}</div>
-    {% else %}
-    <div class="flash-err">❌ {{ msg }}</div>
-    {% endif %}
+    <div class="flash-msg flash-{{ cat }}">
+      <span class="flash-icon">{{ '✅' if cat == 'success' else '❌' }}</span>
+      <span>{{ msg }}</span>
+    </div>
   {% endfor %}
 {% endwith %}
 
 <div class="intro-box">
-  <h2>📋 Dropdown Customization</h2>
-  <p>Customize the dropdown options available when logging new documents. Changes will be reflected in the document entry form immediately.</p>
+  <div class="intro-icon">⚙️</div>
+  <div class="intro-body">
+    <div class="intro-title">Dropdown Customization</div>
+    <div class="intro-sub">Customize the dropdown options available when logging new documents. Changes are reflected in the document entry form immediately.</div>
+  </div>
+  <div class="intro-count">
+    <span class="intro-count-num">{{ configs|length }}</span>
+    <span class="intro-count-label">fields</span>
+  </div>
 </div>
 
-{% for field_name, config in configs.items() %}
-<div class="dd-card">
-  <h3>
-    {{ config.display_name }}
-    {% if config.is_default %}
-    <span class="default-badge">Default</span>
-    {% else %}
-    <span class="custom-badge">Custom</span>
-    {% endif %}
-  </h3>
-  <p class="desc">Field: <code>{{ field_name }}</code></p>
-  
-  <div class="dd-tags">
-    {% for opt in config.options[:10] %}
-    <span class="dd-tag">{{ opt }}</span>
-    {% endfor %}
-    {% if config.options|length > 10 %}
-    <span class="dd-more">+{{ config.options|length - 10 }} more...</span>
-    {% endif %}
-    {% if config.options|length == 0 %}
-    <span class="dd-more">No options defined</span>
-    {% endif %}
+<div class="dd-grid">
+  {% for field_name, config in configs.items() %}
+  <div class="dd-card">
+
+    <div class="dd-card-header">
+      <div class="dd-card-title">{{ config.display_name }}</div>
+      {% if config.is_default %}
+        <span class="badge-default">Default</span>
+      {% else %}
+        <span class="badge-custom">Custom</span>
+      {% endif %}
+    </div>
+
+    <div class="dd-field-name">
+      <span class="field-label">field</span>
+      <code class="field-code">{{ field_name }}</code>
+    </div>
+
+    <div class="dd-tags">
+      {% for opt in config.options[:10] %}
+        <span class="dd-tag">{{ opt }}</span>
+      {% endfor %}
+      {% if config.options|length > 10 %}
+        <span class="dd-more">+{{ config.options|length - 10 }} more</span>
+      {% endif %}
+      {% if config.options|length == 0 %}
+        <span class="dd-empty">No options defined</span>
+      {% endif %}
+    </div>
+
+    <div class="dd-footer">
+      <span class="dd-opt-count">
+        {{ config.options|length }} option{{ 's' if config.options|length != 1 else '' }}
+      </span>
+      <div class="dd-actions">
+        <button class="btn-edit btn-edit-dropdown" data-field="{{ field_name }}" data-name="{{ config.display_name|e }}" data-options="{{ config.options|join(',') }}">✏️ Edit</button>
+        {% if not config.is_default %}
+        <form method="post" action="/dropdown-options/reset/{{ field_name }}" style="margin:0;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn-reset"
+                  onclick="return confirm('Reset to default options?')">↺ Reset</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
   </div>
-  
-  <div class="dd-actions">
-    <a href="/dropdown-options/edit/{{ field_name }}" class="btn-edit">✏️ Edit Options</a>
-    {% if not config.is_default %}
-    <form method="post" action="/dropdown-options/reset/{{ field_name }}" style="display:inline;">
-      <button type="submit" class="btn-reset" onclick="return confirm('Reset to default options?')">🔄 Reset</button>
+  {% endfor %}
+</div>
+
+<!-- Edit Dropdown Modal -->
+<div id="dropdown-edit-modal" class="dd-modal-overlay" style="display: none;">
+  <div class="dd-modal-container">
+    <div class="dd-modal-header">
+      <h2 class="dd-modal-title">✏️ Edit <span id="modalFieldName">Options</span></h2>
+      <button class="dd-modal-close" onclick="closeDropdownModal()">×</button>
+    </div>
+    
+    <form id="editForm" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" id="modalFieldInput" name="field_name" value="">
+      
+      <div class="dd-modal-body">
+        <div class="current-options-preview">
+          <span class="preview-label">Current Options:</span>
+          <div id="currentOptionsPreview" class="preview-tags"></div>
+        </div>
+        
+        <div class="form-group">
+          <label for="modalOptions">Dropdown Options <span>(one per line or comma-separated)</span></label>
+          <textarea 
+            id="modalOptions" 
+            name="options" 
+            rows="8" 
+            placeholder="Letter&#10;Memorandum&#10;Report&#10;Application&#10;..."
+          ></textarea>
+          <p class="hint">Enter each option on a new line or separate with commas. Empty lines will be ignored.</p>
+        </div>
+      </div>
+      
+      <div class="dd-modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeDropdownModal()">Cancel</button>
+        <button type="submit" class="btn-save">💾 Save Options</button>
+      </div>
     </form>
-    {% endif %}
   </div>
 </div>
-{% endfor %}
+
+<!-- Flash message container for AJAX responses -->
+<div id="ajaxFlash"></div>
+
+<style>
+/* Modal Styles - using dd- prefix to avoid conflicts */
+.dd-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(10, 37, 64, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  animation: fadeIn .2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dd-modal-container {
+  background: var(--card, #fff);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(10, 37, 64, 0.35);
+  animation: slideUp .25s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dd-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1.5px solid var(--border, #e2e8f0);
+  background: #FAFCFF;
+}
+
+.dd-modal-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--navy, #0f172a);
+  margin: 0;
+}
+
+.dd-modal-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 24px;
+  color: var(--muted, #64748b);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.dd-modal-close:hover {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.dd-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.current-options-preview {
+  margin-bottom: 20px;
+  padding: 14px;
+  background: #F0FDFF;
+  border: 1px solid #A5F3FC;
+  border-radius: 10px;
+}
+
+.preview-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #0891B2;
+  margin-bottom: 10px;
+}
+
+.preview-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preview-tag {
+  display: inline-block;
+  background: #fff;
+  color: #0E7490;
+  border: 1px solid #A5F3FC;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.form-group {
+  margin-bottom: 0;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--navy, #0f172a);
+  margin-bottom: 8px;
+}
+
+.form-group label span {
+  font-weight: 400;
+  color: var(--muted, #64748b);
+  font-size: 12px;
+}
+
+.form-group textarea {
+  width: 100%;
+  padding: 14px;
+  border: 1.5px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 140px;
+  background: #FAFCFF;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.form-group textarea:focus {
+  outline: none;
+  border-color: #0E7490;
+  box-shadow: 0 0 0 3px rgba(14, 116, 144, 0.15);
+}
+
+.form-group .hint {
+  font-size: 12px;
+  color: var(--muted, #64748b);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.dd-modal-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 18px 24px;
+  border-top: 1.5px solid var(--border, #e2e8f0);
+  background: #FAFCFF;
+}
+
+.btn-cancel {
+  padding: 10px 20px;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted, #64748b);
+  border: 1.5px solid var(--border, #e2e8f0);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.btn-cancel:hover {
+  background: #F1F5F9;
+  border-color: #CBD5E1;
+}
+
+.btn-save {
+  padding: 10px 24px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0E7490, #059669);
+  color: #fff;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  box-shadow: 0 2px 10px rgba(14, 116, 144, 0.3);
+}
+
+.btn-save:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(14, 116, 144, 0.4);
+}
+
+/* AJAX Flash Messages */
+#ajaxFlash {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  max-width: 360px;
+}
+
+.ajax-flash {
+  padding: 14px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  animation: slideIn .25s ease;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.ajax-flash.success {
+  background: #D1FAE5;
+  border: 1.5px solid #6EE7B7;
+  color: #065F46;
+}
+
+.ajax-flash.error {
+  background: #FEE2E2;
+  border: 1.5px solid #FCA5A5;
+  color: #7F1D1D;
+}
+</style>
+
+<script>
+// Handle edit button clicks via event delegation
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.btn-edit-dropdown');
+  if (btn) {
+    const fieldName = btn.dataset.field;
+    const displayName = btn.dataset.name;
+    const options = btn.dataset.options ? btn.dataset.options.split(',') : [];
+    openDropdownEditModal(fieldName, displayName, options);
+  }
+});
+
+function openDropdownEditModal(fieldName, displayName, options) {
+  document.getElementById('modalFieldName').textContent = displayName;
+  document.getElementById('modalFieldInput').value = fieldName;
+  document.getElementById('modalOptions').value = options.join('\n');
+  
+  // Show current options preview
+  const preview = document.getElementById('currentOptionsPreview');
+  preview.innerHTML = options.slice(0, 15).map(opt => 
+    `<span class="preview-tag">${escapeHtml(opt)}</span>`
+  ).join('');
+  if (options.length > 15) {
+    preview.innerHTML += `<span class="preview-tag" style="background:#FEF3C7;color:#92400E;border-color:#FCD34D;">+${options.length - 15} more</span>`;
+  }
+  
+  document.getElementById('dropdown-edit-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  
+  // Focus textarea
+  setTimeout(() => document.getElementById('modalOptions').focus(), 100);
+}
+
+function closeDropdownModal() {
+  document.getElementById('dropdown-edit-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// Close modal on overlay click
+document.getElementById('dropdown-edit-modal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeDropdownModal();
+  }
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeDropdownModal();
+  }
+});
+
+// Handle form submission - submit normally with correct action URL
+document.getElementById('editForm').addEventListener('submit', function(e) {
+  // Get the field name and set the correct action URL
+  const fieldName = document.getElementById('modalFieldInput').value;
+  this.action = '/dropdown-options/save/' + encodeURIComponent(fieldName);
+  // Let the form submit normally - it will redirect back
+});
+
+function showAjaxFlash(type, message) {
+  const container = document.getElementById('ajaxFlash');
+  const flash = document.createElement('div');
+  flash.className = `ajax-flash ${type}`;
+  flash.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> <span>${escapeHtml(message)}</span>`;
+  container.appendChild(flash);
+  
+  // Auto-remove after 4 seconds
+  setTimeout(() => {
+    flash.style.opacity = '0';
+    flash.style.transform = 'translateX(20px)';
+    setTimeout(() => flash.remove(), 300);
+  }, 4000);
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+</script>
 
 {% endblock %}

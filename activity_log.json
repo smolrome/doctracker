@@ -376,5 +376,47 @@
     "ip": "192.168.1.15",
     "detail": "path=/dropdown-options",
     "ts": "2026-03-17T13:20:46.557018"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/dropdown-options/save/category fields={'field_name': 'category', 'options': 'Letter\\r\\nMemorandum\\r\\nReport\\r\\nApplication\\r\\nVoucher\\r\\nPlantilla\\r\\nPayroll\\r\\nMemo\\r\\nRequest\\r\\nEndorsement\\r\\nOrder\\r\\nNotice\\r\\nCircula'}",
+    "ts": "2026-03-17T13:54:06.277319"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/dropdown-options/save/category fields={'field_name': 'category', 'options': 'Letter\\r\\nMemorandum\\r\\nReport\\r\\nApplication\\r\\nVoucher\\r\\nPlantilla\\r\\nPayroll\\r\\nMemo\\r\\nRequest\\r\\nEndorsement\\r\\nOrder\\r\\nNotice\\r\\nCircula'}",
+    "ts": "2026-03-17T13:54:39.245118"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/dropdown-options/save/category fields={'field_name': 'category', 'options': 'Letter\\r\\nMemorandum\\r\\nReport\\r\\nApplication\\r\\nVoucher\\r\\nPlantilla\\r\\nPayroll\\r\\nMemo\\r\\nRequest\\r\\nEndorsement\\r\\nOrder\\r\\nNotice\\r\\nCircula'}",
+    "ts": "2026-03-17T13:57:38.934438"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/dropdown-options/save/category fields={'field_name': 'category', 'options': 'Letter\\r\\nMemorandum\\r\\nReport\\r\\nApplication\\r\\nVoucher\\r\\nPlantilla\\r\\nPayroll\\r\\nMemo\\r\\nRequest\\r\\nEndorsement\\r\\nOrder\\r\\nNotice\\r\\nCircula'}",
+    "ts": "2026-03-17T13:58:00.033479"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/dropdown-options/save/category fields={'field_name': 'category', 'options': 'Letter\\r\\nMemorandum\\r\\nReport\\r\\nApplication\\r\\nVoucher\\r\\nPlantilla\\r\\nPayroll\\r\\nMemo\\r\\nRequest\\r\\nEndorsement\\r\\nOrder\\r\\nNotice\\r\\nCircula'}",
+    "ts": "2026-03-17T13:59:11.985922"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/dropdown-options/save/category fields={'field_name': 'category', 'options': 'Letter\\r\\nMemorandum\\r\\nReport\\r\\nApplication\\r\\nVoucher\\r\\nPlantilla\\r\\nPayroll\\r\\nMemo\\r\\nRequest\\r\\nEndorsement\\r\\nOrder\\r\\nNotice\\r\\nCircula'}",
+    "ts": "2026-03-17T14:03:55.860114"
   }
 ]

@@ -19,7 +19,7 @@
   {% endfor %}
 {% endwith %}
 
-<form method="post">
+<form method="post" action="/dropdown-options/save/{{ field_name }}">
   <div class="edit-card">
     <h3>📋 {{ display_name }} Options</h3>
     <p>Enter each option on a new line. These will appear in the dropdown when logging new documents.</p>

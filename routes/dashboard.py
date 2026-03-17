@@ -1252,7 +1252,7 @@ def get_transferred_documents():
     return jsonify(transferred)
 
 
-@dashboard_bp.route("/dropdown-options")
+@dashboard_bp.route("/api/dropdown-options")
 def get_dropdown_options_api():
     """
     API endpoint to get dropdown options for a specific field.
@@ -1275,6 +1275,106 @@ def get_dropdown_options_api():
     
     options = get_dropdown_options(field_name)
     return jsonify(options)
+
+
+@dashboard_bp.route("/dropdown-options", methods=["GET"])
+@login_required
+def manage_dropdowns():
+    """
+    Admin page to manage all dropdown options.
+    """
+    from services.dropdown_options import get_all_dropdown_configs
+    configs = get_all_dropdown_configs()
+    return render_template("manage_dropdowns.html", configs=configs)
+
+
+@dashboard_bp.route("/dropdown-options/edit/<field_name>", methods=["GET"])
+@login_required
+def edit_dropdown(field_name):
+    """
+    Admin page to edit a specific dropdown's options.
+    """
+    from services.dropdown_options import get_all_dropdown_configs, MANAGEABLE_FIELDS
+    
+    # Validate field_name
+    if field_name not in MANAGEABLE_FIELDS:
+        flash(f"Invalid field: {field_name}", "error")
+        return redirect(url_for("dashboard.manage_dropdowns"))
+    
+    configs = get_all_dropdown_configs()
+    if field_name not in configs:
+        flash(f"No configuration found for {field_name}", "error")
+        return redirect(url_for("dashboard.manage_dropdowns"))
+    
+    config = configs[field_name]
+    display_name = config.get("display_name", field_name.title())
+    
+    return render_template("edit_dropdown.html", 
+                          field_name=field_name,
+                          display_name=display_name,
+                          config=config)
+
+
+@dashboard_bp.route("/dropdown-options/save/<field_name>", methods=["POST"])
+@login_required
+def save_dropdown(field_name):
+    """
+    Save dropdown options for a specific field.
+    """
+    from services.dropdown_options import update_dropdown_options, MANAGEABLE_FIELDS
+    
+    # Validate field_name
+    if field_name not in MANAGEABLE_FIELDS:
+        flash(f"Invalid field: {field_name}", "error")
+        return redirect(url_for("dashboard.manage_dropdowns"))
+    
+    # Get options from form - handle both newline-separated and comma-separated
+    options_raw = request.form.get("options", "").strip()
+    
+    # Split by newline or comma
+    if "\n" in options_raw:
+        options = [opt.strip() for opt in options_raw.split("\n") if opt.strip()]
+    else:
+        options = [opt.strip() for opt in options_raw.split(",") if opt.strip()]
+    
+    success, message = update_dropdown_options(field_name, options)
+    
+    if success:
+        flash(message, "success")
+    else:
+        flash(message, "error")
+    
+    return redirect(url_for("dashboard.manage_dropdowns"))
+
+
+@dashboard_bp.route("/dropdown-options/reset/<field_name>", methods=["POST"])
+@login_required
+def reset_dropdown(field_name):
+    """
+    Reset dropdown options to default for a specific field.
+    Returns JSON for AJAX requests, redirects for form submissions.
+    """
+    from services.dropdown_options import reset_to_default, MANAGEABLE_FIELDS
+    
+    # Validate field_name
+    if field_name not in MANAGEABLE_FIELDS:
+        message = f"Invalid field: {field_name}"
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
+            return jsonify({"success": False, "message": message}), 400
+        flash(message, "error")
+        return redirect(url_for("dashboard.manage_dropdowns"))
+    
+    success, message = reset_to_default(field_name)
+    
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
+        return jsonify({"success": success, "message": message})
+    
+    if success:
+        flash(message, "success")
+    else:
+        flash(message, "error")
+    
+    return redirect(url_for("dashboard.manage_dropdowns"))
 
 
 @dashboard_bp.route("/debug-error")
