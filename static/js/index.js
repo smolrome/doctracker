@@ -628,6 +628,7 @@ function deselectAll() {
 //  FLOATING CART FUNCTIONS
 // ═══════════════════════════════════════════════════════════════
 var CART_STORAGE_KEY = 'doctracker_cart_docs';
+var CART_DETAILS_KEY = 'doctracker_cart_details';
 
 function getCartDocIds() {
   try {
@@ -640,6 +641,17 @@ function getCartDocIds() {
   }
 }
 
+function getCartDocDetails() {
+  try {
+    var stored = localStorage.getItem(CART_DETAILS_KEY);
+    if (!stored) return {};
+    var details = JSON.parse(stored);
+    return typeof details === 'object' ? details : {};
+  } catch (e) {
+    return {};
+  }
+}
+
 function saveCartDocIds(ids) {
   if (ids.length > 0) {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(ids));
@@ -648,11 +660,37 @@ function saveCartDocIds(ids) {
   }
 }
 
+function saveCartDocDetails(details) {
+  if (Object.keys(details).length > 0) {
+    localStorage.setItem(CART_DETAILS_KEY, JSON.stringify(details));
+  } else {
+    localStorage.removeItem(CART_DETAILS_KEY);
+  }
+}
+
 function addToCart(docId) {
   var ids = getCartDocIds();
   if (!ids.includes(docId)) {
     ids.push(docId);
     saveCartDocIds(ids);
+    
+    // Also save document details if available
+    var cb = document.querySelector('.doc-checkbox[value="' + docId + '"]');
+    if (cb) {
+      var row = cb.closest('tr');
+      if (row) {
+        var details = getCartDocDetails();
+        var cells = row.querySelectorAll('td');
+        details[docId] = {
+          docNum: cells[0] ? cells[0].textContent.trim() : docId,
+          title: cells[2] ? cells[2].textContent.trim() : 'Document ' + docId,
+          type: cells[3] ? cells[3].textContent.trim() : '',
+          status: cells[4] ? cells[4].textContent.trim() : '',
+          dateReceived: cells[5] ? cells[5].textContent.trim() : ''
+        };
+        saveCartDocDetails(details);
+      }
+    }
     updateCartBadge();
   }
 }
@@ -663,6 +701,12 @@ function removeFromCart(docId) {
   if (index > -1) {
     ids.splice(index, 1);
     saveCartDocIds(ids);
+    
+    // Also remove document details
+    var details = getCartDocDetails();
+    delete details[docId];
+    saveCartDocDetails(details);
+    
     updateCartBadge();
     // Also uncheck the checkbox if it exists on the current page
     var cb = document.querySelector('.doc-checkbox[value="' + docId + '"]');
@@ -707,6 +751,7 @@ function renderCartModal() {
   if (!body) return;
   
   var ids = getCartDocIds();
+  var storedDetails = getCartDocDetails();
   
   if (ids.length === 0) {
     if (emptyMsg) emptyMsg.style.display = 'block';
@@ -718,27 +763,48 @@ function renderCartModal() {
   
   // Build cart items HTML with full particulars
   var html = '';
+  var updatedDetails = {};
+  
   ids.forEach(function(id) {
-    // Try to find doc info from current page
-    var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
-    var row = cb ? cb.closest('tr') : null;
+    // First check if we have stored details
+    var details = storedDetails[id];
     var docNum = id;
     var title = 'Document ' + id;
     var docType = '';
     var status = '';
     var dateReceived = '';
-    var routeTo = '';
     
-    if (row) {
-      // Try to get document details from the table row
-      var cells = row.querySelectorAll('td');
-      if (cells.length >= 6) {
-        docNum = cells[0].textContent.trim() || id;
-        title = cells[2].textContent.trim() || 'Document ' + id;
-        docType = cells[3].textContent.trim();
-        status = cells[4].textContent.trim();
-        dateReceived = cells[5].textContent.trim();
+    // Try to find doc info from current page
+    var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
+    if (cb) {
+      var row = cb.closest('tr');
+      if (row) {
+        // Use current page data
+        var cells = row.querySelectorAll('td');
+        if (cells.length >= 6) {
+          docNum = cells[0].textContent.trim() || id;
+          title = cells[2].textContent.trim() || 'Document ' + id;
+          docType = cells[3].textContent.trim();
+          status = cells[4].textContent.trim();
+          dateReceived = cells[5].textContent.trim();
+        }
+        
+        // Update stored details with current page data
+        updatedDetails[id] = {
+          docNum: docNum,
+          title: title,
+          type: docType,
+          status: status,
+          dateReceived: dateReceived
+        };
       }
+    } else if (details) {
+      // Use stored details from localStorage
+      docNum = details.docNum || id;
+      title = details.title || 'Document ' + id;
+      docType = details.type || '';
+      status = details.status || '';
+      dateReceived = details.dateReceived || '';
     }
     
     html += '<div class="cart-modal-item" data-doc-id="' + id + '">';
@@ -756,6 +822,9 @@ function renderCartModal() {
     html += '<button class="cart-modal-remove" onclick="removeFromCart(' + "'" + id + "'" + ')" title="Remove from cart">✕</button>';
     html += '</div>';
   });
+  
+  // Save updated details to localStorage
+  saveCartDocDetails(updatedDetails);
   
   body.innerHTML = html;
 }
@@ -786,6 +855,7 @@ function clearCart() {
     }
   });
   localStorage.removeItem(CART_STORAGE_KEY);
+  localStorage.removeItem(CART_DETAILS_KEY);
   updateCartBadge();
   renderCartModal();
   updateSelection();
