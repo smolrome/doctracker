@@ -420,17 +420,17 @@ th.cb-cell { background: #F1F7FB; }
 .doc-checkbox, #select-all { width: 15px; height: 15px; cursor: pointer; accent-color: var(--teal); }
 
 /* Document cell */
-.td-doc { min-width: 220px; max-width: 320px; }
+.td-doc { min-width: 220px; max-width: 500px; }
 .doc-name {
   font-size: 14px; font-weight: 700; color: #0F172A; line-height: 1.35;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  word-break: break-word; white-space: normal;
 }
 .doc-meta-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
 .doc-id    { font-size: 10.5px; color: #94A3B8; font-weight: 500; font-family: var(--font-mono); }
 .doc-cat   { font-size: 10.5px; font-weight: 700; color: var(--teal); background: #F0FDFF; border: 1px solid #A5F3FC; border-radius: 4px; padding: 2px 7px; font-family: var(--font-mono); }
 .doc-client-badge { font-size: 10.5px; font-weight: 700; color: var(--emerald); background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 4px; padding: 2px 7px; font-family: var(--font-mono); }
 
-.td-text  { font-size: 13px; color: #334155; min-width: 110px; max-width: 160px; }
+.td-text  { font-size: 13px; color: #334155; min-width: 110px; max-width: 250px; word-break: break-word; white-space: normal; }
 .td-empty { color: #CBD5E1; font-family: var(--font-mono); }
 .td-date  { white-space: nowrap; min-width: 120px; }
 
