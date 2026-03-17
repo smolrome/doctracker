@@ -203,13 +203,29 @@
 {% for username, stats in staff_stats.items() %}
 {% if stats.docs and stats.docs|length > 0 %}
 <div class="users-card" style="margin-top:24px;border-left:4px solid #667eea;">
-  <div class="users-head">
+  <div class="users-head" style="display:flex;justify-content:space-between;align-items:center;">
     <h3>👤 {{ stats.full_name }} (@{{ username }}) - {{ stats.total }} Documents</h3>
+    <div>
+      <input type="checkbox" class="select-all-docs-{{ username }}" onchange="toggleSelectAllDocs('{{ username }}', this)">
+      <label style="font-size:13px;margin-right:8px;">Select All</label>
+      <select id="reassign-staff-{{ username }}" style="padding:6px;border-radius:4px;margin-right:4px;">
+        <option value="">-- Assign to --</option>
+        {% for other_username, other_stats in staff_stats.items() %}
+        {% if other_username != username %}
+        <option value="{{ other_username }}">{{ other_stats.full_name }}</option>
+        {% endif %}
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-primary btn-sm" onclick="batchReassignDocs('{{ username }}')">Assign Selected</button>
+    </div>
   </div>
   
   <table style="width:100%;border-collapse:collapse;">
     <thead>
       <tr style="background:#f8f9fa;border-bottom:2px solid #dee2e6;">
+        <th style="padding:8px;text-align:center;width:40px;">
+          <input type="checkbox" class="doc-checkbox-{{ username }}" onchange="updateDocSelection('{{ username }}')">
+        </th>
         <th style="padding:8px;text-align:left;">Document</th>
         <th style="padding:8px;text-align:center;">Status</th>
         <th style="padding:8px;text-align:left;">Created</th>
@@ -219,6 +235,9 @@
     <tbody>
       {% for doc in stats.docs[:30] %}
       <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:8px;text-align:center;">
+          <input type="checkbox" class="doc-checkbox-{{ username }}" value="{{ doc.get('id') }}">
+        </td>
         <td style="padding:8px;font-size:13px;">{{ doc.get('doc_name', 'Untitled')[:60] }}</td>
         <td style="padding:8px;text-align:center;">
           <span style="background:#e9ecef;padding:2px 8px;border-radius:4px;font-size:12px;">
@@ -361,6 +380,60 @@ function bulkAssignUnassigned() {
   staffInput.type = 'hidden';
   staffInput.name = 'staff_username';
   staffInput.value = staffUsername;
+  form.appendChild(staffInput);
+  
+  document.body.appendChild(form);
+  form.submit();
+}
+
+// Batch reassign documents from one staff to another
+function toggleSelectAllDocs(username, source) {
+  var checkboxes = document.querySelectorAll('.doc-checkbox-' + username);
+  checkboxes.forEach(function(cb) {
+    cb.checked = source.checked;
+  });
+}
+
+function updateDocSelection(username) {
+  // Update the "Select All" checkbox based on individual selections
+  var checkboxes = document.querySelectorAll('.doc-checkbox-' + username);
+  var allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  var selectAllCheckbox = document.querySelector('.select-all-docs-' + username);
+  if (selectAllCheckbox) {
+    selectAllCheckbox.checked = allChecked;
+  }
+}
+
+function batchReassignDocs(fromUsername) {
+  var checkboxes = document.querySelectorAll('.doc-checkbox-' + fromUsername + ':checked');
+  var staffSelect = document.getElementById('reassign-staff-' + fromUsername);
+  var toUsername = staffSelect.value;
+  
+  if (checkboxes.length === 0) {
+    alert('Please select at least one document');
+    return;
+  }
+  
+  if (!toUsername) {
+    alert('Please select a staff member to assign documents to');
+    return;
+  }
+  
+  var docIds = Array.from(checkboxes).map(cb => cb.value);
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/assign-doc-batch';
+  
+  var docIdsInput = document.createElement('input');
+  docIdsInput.type = 'hidden';
+  docIdsInput.name = 'doc_ids';
+  docIdsInput.value = docIds.join(',');
+  form.appendChild(docIdsInput);
+  
+  var staffInput = document.createElement('input');
+  staffInput.type = 'hidden';
+  staffInput.name = 'staff_username';
+  staffInput.value = toUsername;
   form.appendChild(staffInput);
   
   document.body.appendChild(form);

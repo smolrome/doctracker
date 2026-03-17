@@ -4,6 +4,18 @@
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/routed_documents.css') }}"/>
 
+<style>
+  #reroute-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+</style>
+
 <!-- PAGE HEADER -->
 <div class="rd-header">
   <div>
@@ -11,10 +23,10 @@
     <div class="rd-title">🚌 Routed Documents</div>
     <div class="rd-subtitle">All routing slips — view documents and update statuses in bulk</div>
   </div>
-  
+
   <!-- Search form -->
   <form method="GET" action="/routed-documents" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-    <input type="text" name="search" value="{{ search or '' }}" placeholder="Search slip no, destination, prepared by..." 
+    <input type="text" name="search" value="{{ search or '' }}" placeholder="Search slip no, destination, prepared by..."
            style="padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:.9rem;min-width:220px;"/>
     <input type="hidden" name="filter" value="{{ filter }}"/>
     <input type="hidden" name="per_page" value="{{ per_page }}"/>
@@ -23,7 +35,7 @@
     <a href="/routed-documents?filter={{ filter }}&per_page={{ per_page }}" class="btn" style="background:#E2E8F0;color:var(--navy);padding:10px 14px;">✕ Clear</a>
     {% endif %}
   </form>
-  
+
   {% if session.get('last_rerouted_slip_id') %}
   <a href="/routing-slip/{{ session.get('last_rerouted_slip_id') }}" class="btn" style="background:#F59E0B;color:#fff;">🖨️ Print Updated Slip</a>
   {% endif %}
@@ -53,8 +65,10 @@
     {% endif %}
   </div>
   <div class="pager-perpage" style="display:flex;gap:12px;align-items:center;">
-    <a href="/routed-documents?page=1&per_page={{ per_page }}&filter=active" class="btn {% if filter != 'archived' %}btn-primary{% else %}{% endif %}" style="padding:8px 16px;font-size:.85rem;{% if filter != 'archived' %}background:var(--navy);color:#fff;{% else %}background:#E2E8F0;color:var(--navy);{% endif %}">📂 Active</a>
-    <a href="/routed-documents?page=1&per_page={{ per_page }}&filter=archived" class="btn" style="padding:8px 16px;font-size:.85rem;{% if filter == 'archived' %}background:var(--navy);color:#fff;{% else %}background:#E2E8F0;color:var(--navy);{% endif %}">🗄️ Archived</a>
+    <a href="/routed-documents?page=1&per_page={{ per_page }}&filter=active" class="btn"
+       style="padding:8px 16px;font-size:.85rem;{% if filter != 'archived' %}background:var(--navy);color:#fff;{% else %}background:#E2E8F0;color:var(--navy);{% endif %}">📂 Active</a>
+    <a href="/routed-documents?page=1&per_page={{ per_page }}&filter=archived" class="btn"
+       style="padding:8px 16px;font-size:.85rem;{% if filter == 'archived' %}background:var(--navy);color:#fff;{% else %}background:#E2E8F0;color:var(--navy);{% endif %}">🗄️ Archived</a>
     Show
     <select onchange="changeRdPerPage(this.value)">
       {% for n in [5, 10, 20, 50] %}
@@ -92,15 +106,21 @@
       <span>📄 {{ slip.docs|length }} doc{{ 's' if slip.docs|length != 1 else '' }}</span>
       <span>👤 {{ slip.prepared_by }}</span>
     </div>
-    
+
     <!-- Kebab menu for slip actions -->
-    <div class="kebab-cell" style="position:relative;margin-left:auto;" oncontextmenu="event.preventDefault(); toggleKebab(this.querySelector('.kebab-btn'), event)">
+    <div class="kebab-cell" style="position:relative;margin-left:auto;"
+         oncontextmenu="event.preventDefault(); toggleKebab(this.querySelector('.kebab-btn'), event)">
       <button type="button" class="kebab-btn" onclick="toggleKebab(this, event)" style="font-size:1.4rem;">⋮</button>
       <div class="kebab-menu" style="right:0;left:auto;">
         <a href="/routing-slip/{{ slip.id }}" class="kebab-edit" style="display:block;text-decoration:none;padding:10px 14px;">👁️ View Slip</a>
         {% if slip.status != 'Archived' %}
         <button type="button" onclick="archiveRoutingSlip('{{ slip.id }}', '{{ slip.slip_no }}')" class="kebab-archive" style="width:100%;text-align:left;">📦 Archive</button>
-        <button type="button" onclick="openRerouteModal('{{ slip.id }}', '{{ slip.destination }}')" class="kebab-edit" style="width:100%;text-align:left;">🔄 Re-route</button>
+        {# Use data attributes to avoid any quoting/escaping issues with destination text #}
+        <button type="button"
+                class="kebab-edit reroute-btn"
+                data-slip-id="{{ slip.id }}"
+                data-destination="{{ slip.destination | e }}"
+                style="width:100%;text-align:left;">🔄 Re-route</button>
         {% else %}
         {% if session.get('role') == 'admin' %}
         <button type="button" onclick="deleteRoutingSlip('{{ slip.id }}', '{{ slip.slip_no }}')" class="kebab-delete" style="width:100%;text-align:left;">🗑️ Delete</button>
@@ -132,7 +152,8 @@
       </thead>
       <tbody>
         {% for doc in slip.docs %}
-        <tr onclick="window.location='/dashboard/view/{{ doc.id }}'; event.stopPropagation()" title="View document" style="cursor:pointer;">
+        <tr onclick="window.location='/dashboard/view/{{ doc.id }}'; event.stopPropagation()"
+            title="View document" style="cursor:pointer;">
           <td style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.8rem;text-align:center;">
             {{ loop.index }}
           </td>
@@ -153,13 +174,22 @@
             {% else %}                  <span class="s-badge s-archived">🗄️ {{ s }}</span>
             {% endif %}
           </td>
-          <td class="kebab-cell" onclick="event.stopPropagation()" oncontextmenu="event.preventDefault(); toggleKebab(this, event)">
+          <td class="kebab-cell" onclick="event.stopPropagation()"
+              oncontextmenu="event.preventDefault(); toggleKebab(this, event)">
             <button type="button" class="kebab-btn" onclick="toggleKebab(this, event)">⋮</button>
             <div class="kebab-menu">
-              <button type="button" class="kebab-edit" onclick="editDocument('{{ doc.id }}')">✏️ Edit</button>
-              <button type="button" class="kebab-archive" onclick="archiveDocument('{{ doc.id }}', '{{ doc.doc_name|replace("'", "\\'") }}')">📦 Archive</button>
+              <button type="button" class="kebab-edit"
+                      onclick="editDocument('{{ doc.id }}')">✏️ Edit</button>
+              {# data attributes avoid all quoting issues with doc names #}
+              <button type="button" class="kebab-archive doc-action-btn"
+                      data-action="archive"
+                      data-doc-id="{{ doc.id }}"
+                      data-doc-name="{{ doc.doc_name | e }}">📦 Archive</button>
               {% if session.get('role') == 'admin' %}
-              <button type="button" class="kebab-delete" onclick="deleteDocument('{{ doc.id }}', '{{ doc.doc_name|replace("'", "\\'") }}')">🗑️ Delete</button>
+              <button type="button" class="kebab-delete doc-action-btn"
+                      data-action="delete"
+                      data-doc-id="{{ doc.id }}"
+                      data-doc-name="{{ doc.doc_name | e }}">🗑️ Delete</button>
               {% endif %}
             </div>
           </td>
@@ -243,22 +273,45 @@
 
 <script src="{{ url_for('static', filename='js/routed_documents.js') }}"></script>
 
+{# Wire up data-attribute buttons AFTER the JS file loads — no inline onclick needed #}
+<script>
+  /* Re-route buttons — reads slip-id and destination from data attributes */
+  document.querySelectorAll('.reroute-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      openRerouteModal(btn.dataset.slipId, btn.dataset.destination);
+    });
+  });
+
+  /* Archive / Delete doc buttons — reads action, doc-id, doc-name from data attributes */
+  document.querySelectorAll('.doc-action-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var action  = btn.dataset.action;
+      var docId   = btn.dataset.docId;
+      var docName = btn.dataset.docName;
+      if (action === 'archive') archiveDocument(docId, docName);
+      if (action === 'delete')  deleteDocument(docId, docName);
+    });
+  });
+</script>
+
 <!-- Re-route Modal -->
-<div id="reroute-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-content" style="max-width:480px;padding:24px;">
+<div id="reroute-modal">
+  <div class="modal-content" style="max-width:480px;padding:24px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);width:90%;">
     <h3 style="margin-top:0;color:var(--navy);">🔄 Re-route Documents</h3>
     <p style="color:var(--muted);margin-bottom:20px;">Update the destination office for this routing slip.</p>
-    
+
     <form method="POST" action="/routing-slip/reroute" id="reroute-form">
       <input type="hidden" name="slip_id" id="reroute-slip-id" value=""/>
-      
+
       <div style="margin-bottom:16px;">
         <label style="display:block;font-weight:700;color:var(--navy);margin-bottom:6px;">New Destination Office</label>
         <input type="text" name="destination" id="reroute-dest" required
-               style="width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:1rem;"
+               style="width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:1rem;box-sizing:border-box;"
                placeholder="e.g., Budget Section, HR Unit"/>
       </div>
-      
+
       <div style="margin-bottom:20px;">
         <label style="display:block;font-weight:700;color:var(--navy);margin-bottom:6px;">New Status</label>
         <select name="status" required
@@ -269,13 +322,14 @@
           <option value="Received">✅ Received</option>
         </select>
       </div>
-      
+
       <div style="margin-bottom:20px;">
         <label style="display:block;font-weight:700;color:var(--navy);margin-bottom:6px;">Notes (optional)</label>
-        <textarea name="notes" rows="2" style="width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:1rem;"
+        <textarea name="notes" rows="2"
+                  style="width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:1rem;box-sizing:border-box;"
                   placeholder="Reason for re-routing..."></textarea>
       </div>
-      
+
       <div style="display:flex;gap:12px;justify-content:flex-end;">
         <button type="button" onclick="closeRerouteModal()" class="btn" style="background:#E2E8F0;color:var(--navy);">Cancel</button>
         <button type="button" onclick="submitReroute()" class="btn" style="background:var(--teal);color:#fff;">✔ Re-route</button>
