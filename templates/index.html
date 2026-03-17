@@ -328,6 +328,7 @@ var serverSessionData = {
       {% endif %}
 
       {# Cart Modal #}
+      {% if logged_in and session.get('role') in ['admin','staff'] %}
       <div id="cart-modal" class="cart-modal" role="dialog" aria-labelledby="cart-modal-title" aria-modal="true">
         <div class="cart-modal-overlay" onclick="closeCartModal()"></div>
         <div class="cart-modal-content">
