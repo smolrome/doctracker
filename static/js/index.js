@@ -592,23 +592,31 @@ function updateSelection() {
   var checked = document.querySelectorAll('.doc-checkbox:checked');
   var n       = checked.length;
 
-  // Highlight rows
   all.forEach(function (cb) {
     cb.closest('tr').classList.toggle('row-selected', cb.checked);
   });
 
-  // Indeterminate state on select-all
   var selAll = document.getElementById('select-all');
   if (selAll) {
     selAll.indeterminate = n > 0 && n < all.length;
     selAll.checked       = n === all.length && all.length > 0;
   }
 
+  // ── Save doc names immediately when checked ──
+  var details = getCartDocDetails();
+  checked.forEach(function(cb) {
+    var row = cb.closest('tr');
+    var nameEl = row ? row.querySelector('.doc-name') : null;
+    if (nameEl && nameEl.textContent.trim()) {
+      details[cb.value] = { title: nameEl.textContent.trim() };
+    }
+  });
+  saveCartDocDetails(details);
+  // ─────────────────────────────────────────────
+
   syncSelectionBar();
   updateSelectedPreview();
   updateSelectAllLabel();
-  
-  // Save selections to localStorage
   saveSelectionsToLocalStorage();
 }
 
