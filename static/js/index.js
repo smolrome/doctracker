@@ -131,9 +131,10 @@ function restoreSelectionsFromLocalStorage() {
 }
 
 function saveSelectionsToLocalStorage() {
-  var currentPageIds = getSelectedIds();
+  var currentPageIds    = getSelectedIds();
+  var currentPageAllIds = Array.from(document.querySelectorAll('.doc-checkbox')).map(function(cb) { return cb.value; });
 
-  // Save doc names immediately for everything checked on this page
+  // Save doc names for checked items
   var details = getCartDocDetails();
   document.querySelectorAll('.doc-checkbox:checked').forEach(function(cb) {
     var row    = cb.closest('tr');
@@ -146,9 +147,16 @@ function saveSelectionsToLocalStorage() {
   });
   saveCartDocDetails(details);
 
-  // MERGE — never overwrite selections from other pages
+  // Get existing stored IDs from other pages
   var existingIds = restoreSelectionsFromLocalStorage();
-  var merged = Array.from(new Set(existingIds.concat(currentPageIds)));
+
+  // Remove IDs that are on the current page but now unchecked
+  var filteredExisting = existingIds.filter(function(id) {
+    return !currentPageAllIds.includes(id); // keep IDs from other pages only
+  });
+
+  // Merge: other-page IDs + currently checked on this page
+  var merged = Array.from(new Set(filteredExisting.concat(currentPageIds)));
 
   if (merged.length > 0) {
     localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(merged));
