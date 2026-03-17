@@ -123,9 +123,9 @@ setTimeout(recalcStickyOffsets, 600);
 var SELECTION_STORAGE_KEY = 'doctracker_selected_docs';
 
 function saveSelectionsToLocalStorage() {
-  var selectedIds = getSelectedIds();
+  var currentPageIds = getSelectedIds();
 
-  // Save doc names at the same time
+  // Save doc names for current page selections
   var details = getCartDocDetails();
   document.querySelectorAll('.doc-checkbox:checked').forEach(function(cb) {
     if (!details[cb.value]) {
@@ -138,16 +138,23 @@ function saveSelectionsToLocalStorage() {
   });
   saveCartDocDetails(details);
 
-  if (selectedIds.length > 0) {
-    localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(selectedIds));
+  // MERGE with existing stored IDs — don't overwrite other pages' selections
+  var existingIds = restoreSelectionsFromLocalStorage();
+  var merged = Array.from(new Set([...existingIds, ...currentPageIds]));
+
+  if (merged.length > 0) {
+    localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(merged));
   } else {
     localStorage.removeItem(SELECTION_STORAGE_KEY);
   }
+
+  // Also merge into cart
   var cartIds = getCartDocIds();
-  var allIds = new Set([...cartIds, ...selectedIds]);
-  if (allIds.size > 0) {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(Array.from(allIds)));
+  var allIds = Array.from(new Set([...cartIds, ...merged]));
+  if (allIds.length > 0) {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(allIds));
   }
+
   updateCartBadge();
 }
 
