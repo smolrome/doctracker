@@ -467,5 +467,89 @@
     "ip": "192.168.1.15",
     "detail": "path=/favicon.ico",
     "ts": "2026-03-17T15:45:13.785232"
+  },
+  {
+    "username": "anonymous",
+    "action": "404_not_found",
+    "ip": "169.254.83.107",
+    "detail": "path=/favicon.ico",
+    "ts": "2026-03-19T12:16:00.600039"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "169.254.83.107",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-19T12:16:42.458616"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_ok",
+    "ip": "169.254.83.107",
+    "detail": "role=admin",
+    "ts": "2026-03-19T12:16:42.479855"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "169.254.83.107",
+    "detail": "method=POST path=/delete/8E593FB3",
+    "ts": "2026-03-19T12:18:24.998763"
+  },
+  {
+    "username": "admin",
+    "action": "doc_deleted",
+    "ip": "169.254.83.107",
+    "detail": "doc_id=8E593FB3 name=dfhdsfhdfs",
+    "ts": "2026-03-19T12:18:25.025532"
+  },
+  {
+    "username": "anonymous",
+    "action": "404_not_found",
+    "ip": "192.168.1.13",
+    "detail": "path=/favicon.ico",
+    "ts": "2026-03-21T09:36:21.635362"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.1.13",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-21T09:36:29.597738"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_fail",
+    "ip": "192.168.1.13",
+    "detail": "username=admin",
+    "ts": "2026-03-21T09:36:29.971004"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.1.13",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-21T09:37:51.126201"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_ok",
+    "ip": "192.168.1.13",
+    "detail": "role=admin",
+    "ts": "2026-03-21T09:37:51.148413"
+  },
+  {
+    "username": "admin",
+    "action": "500_error",
+    "ip": "192.168.1.13",
+    "detail": "500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.",
+    "ts": "2026-03-21T09:43:11.011750"
+  },
+  {
+    "username": "admin",
+    "action": "500_error",
+    "ip": "192.168.1.13",
+    "detail": "500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.",
+    "ts": "2026-03-21T09:43:37.631651"
   }
 ]

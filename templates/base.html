@@ -132,22 +132,8 @@
   </button>
 </nav>
 
-<!-- ═══ Floating Notification + Modals (staff/admin only) ═══ -->
-{% if logged_in and current_role in ('staff', 'admin') and request.endpoint == 'dashboard.index' %}
-
-<div id="floating-notification"
-     class="fab-notify"
-     onclick="showPendingDocumentsModal()"
-     role="button"
-     aria-label="Documents to Receive"
-     tabindex="0">
-  <div class="fab-notify-circle">
-    <span aria-hidden="true">📥</span>
-    <span id="pending-badge" class="fab-notify-badge" aria-live="polite">0</span>
-  </div>
-</div>
-
-<!-- ── Pending Documents Modal ── -->
+<!-- ═══ Pending Documents Modal (staff/admin only) ═══ -->
+{% if logged_in and current_role in ('staff', 'admin') %}
 <div id="pending-documents-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="pending-modal-title">
   <div class="modal-sheet">
     <div class="modal-header modal-header-teal">
@@ -165,6 +151,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 <!-- ── Accept Confirmation Modal ── -->
 <div id="accept-confirm-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="accept-modal-title">
@@ -216,8 +203,6 @@
     </div>
   </div>
 </div>
-
-{% endif %}
 
 <!-- ═══ MOBILE DRAWER ═══ -->
 <!-- CHANGED: added overlay div so tapping outside closes drawer -->

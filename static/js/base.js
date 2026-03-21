@@ -356,11 +356,13 @@ function checkPendingDocuments() {
   fetch('/api/pending-count')
     .then(function (r) { return r.json(); })
     .then(function (data) {
-      const badge       = document.getElementById('pending-badge');
-      const banner      = document.getElementById('pending-banner');
-      const bannerCount = document.getElementById('pending-banner-count');
+      const badge         = document.getElementById('pending-badge');
+      const headerBadge   = document.getElementById('pending-badge-header');
+      const banner        = document.getElementById('pending-banner');
+      const bannerCount   = document.getElementById('pending-banner-count');
       // Only show badge when count > 0
-      if (badge) badge.textContent = data.count > 0 ? data.count : '';
+      if (badge) { badge.textContent = data.count > 0 ? data.count : ''; badge.style.display = data.count > 0 ? 'block' : 'none'; }
+      if (headerBadge) { headerBadge.textContent = data.count > 0 ? data.count : ''; headerBadge.style.display = data.count > 0 ? 'block' : 'none'; }
       if (banner && bannerCount) {
         bannerCount.textContent = data.count;
         banner.style.display = data.count > 0 ? 'block' : 'none';

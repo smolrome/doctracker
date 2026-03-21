@@ -49,8 +49,11 @@ var serverSessionData = {
     {% if logged_in %}
     <div class="page-header-actions">
       <a href="/routed-documents" class="hdr-btn hdr-btn-ghost">🚌 Routed Docs</a>
+      <button class="hdr-btn hdr-btn-ghost" onclick="showPendingDocumentsModal()" aria-label="Documents to receive">
+        📥 Receive <span class="cart-badge" id="pending-badge-header">0</span>
+      </button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openCartModal()" aria-label="Open document cart">
-        🛒 Document Cart <span class="cart-badge" id="cart-badge-header">0</span>
+        🛒 Cart <span class="cart-badge" id="cart-badge-header">0</span>
       </button>
       <a href="/add"              class="hdr-btn hdr-btn-primary">+ Add Document</a>
     </div>
