@@ -40,6 +40,16 @@ function onReady() {
   setupPaginationWithSelection();
   initCart();
 
+  // Check if this page was redirected after a successful transfer/routing
+  var urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('cart_cleared') === '1') {
+    clearCart();
+    // Remove the query parameter from URL without reloading
+    urlParams.delete('cart_cleared');
+    var newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+    window.history.replaceState({}, document.title, newUrl);
+  }
+
   // Apply stored selections to current page checkboxes
   var restoredCount = applyStoredSelections();
   if (restoredCount > 0) {

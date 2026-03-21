@@ -124,6 +124,27 @@ document.addEventListener('DOMContentLoaded', function () {
       setTimeout(function () { flash.remove(); }, 420);
     }, 5000);
   });
+
+  // Check if this page was redirected after a successful transfer/routing
+  var urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('cart_cleared') === '1') {
+    // Clear cart from localStorage
+    var CART_STORAGE_KEY = 'doctracker_cart_docs';
+    var CART_DETAILS_KEY = 'doctracker_cart_details';
+    var SELECTION_STORAGE_KEY = 'doctracker_selected_docs';
+    localStorage.removeItem(CART_STORAGE_KEY);
+    localStorage.removeItem(CART_DETAILS_KEY);
+    localStorage.removeItem(SELECTION_STORAGE_KEY);
+    
+    // Update cart badge if it exists
+    var cartBadge = document.getElementById('cart-badge-header');
+    if (cartBadge) cartBadge.textContent = '0';
+    
+    // Remove the query parameter from URL without reloading
+    urlParams.delete('cart_cleared');
+    var newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+    window.history.replaceState({}, document.title, newUrl);
+  }
 });
 
 

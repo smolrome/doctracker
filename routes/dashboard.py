@@ -781,7 +781,7 @@ def transfer_doc(doc_id):
                 f"{new_staff_office or 'N/A'} {status_note}.", "success"
             )
 
-        return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
+        return redirect(url_for("dashboard.view_doc", doc_id=doc_id) + "?cart_cleared=1")
 
     # ── GET ──
     all_users      = get_all_users()
@@ -983,7 +983,7 @@ def transfer_batch():
               f"count={transferred_count} to={new_staff} type={transfer_type}",
               username=session.get("username","?"), ip=get_client_ip())
     flash(f"{transferred_count} document(s) transferred to {new_staff_full_name} at {new_staff_office or 'N/A'}. Status changed to Routed", "success")
-    return redirect(url_for("dashboard.index"))
+    return redirect(url_for("dashboard.index") + "?cart_cleared=1")
 
 
 # ── QR download ───────────────────────────────────────────────────────────────
