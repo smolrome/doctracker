@@ -49,6 +49,12 @@ var serverSessionData = {
     {% if logged_in %}
     <div class="page-header-actions">
       <a href="/routed-documents" class="hdr-btn hdr-btn-ghost">🚌 Routed Docs</a>
+      <button class="hdr-btn hdr-btn-ghost" onclick="showPendingDocumentsModal()" aria-label="Documents to receive">
+        📥 Receive <span class="cart-badge" id="pending-badge-header">0</span>
+      </button>
+      <button class="hdr-btn hdr-btn-ghost" onclick="openCartModal()" aria-label="Open document cart">
+        🛒 Cart <span class="cart-badge" id="cart-badge-header">0</span>
+      </button>
       <a href="/add"              class="hdr-btn hdr-btn-primary">+ Add Document</a>
     </div>
     {% endif %}
@@ -324,6 +330,27 @@ var serverSessionData = {
       </div>
       {% endif %}
 
+      {# Cart Modal #}
+      {% if logged_in and session.get('role') in ['admin','staff'] %}
+      <div id="cart-modal" class="cart-modal" role="dialog" aria-labelledby="cart-modal-title" aria-modal="true">
+        <div class="cart-modal-overlay" onclick="closeCartModal()"></div>
+        <div class="cart-modal-content">
+          <div class="cart-modal-header">
+            <h2 id="cart-modal-title">📋 Document Cart</h2>
+            <button class="cart-modal-close" onclick="closeCartModal()" aria-label="Close cart">✕</button>
+          </div>
+          <div class="cart-modal-body" id="cart-modal-body">
+            <p class="cart-empty-msg" id="cart-empty-msg">No documents selected</p>
+          </div>
+          <div class="cart-modal-footer">
+            <button class="cart-modal-btn cart-route-btn" onclick="openRoutingModalFromCart()">📤 Route Documents</button>
+            <button class="cart-modal-btn cart-transfer-btn" onclick="openTransferModalFromCart()">🔄 Transfer Documents</button>
+            <button class="cart-modal-btn cart-clear-btn" onclick="clearCart()">Clear All</button>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
       {# TABLE #}
       <main id="main-content">
       <div class="table-outer">
@@ -409,7 +436,6 @@ var serverSessionData = {
                   {% if doc.created_at %}
                     <span class="date-main">{{ doc.created_at[:10] }}</span>
                     <span class="date-time">{{ doc.created_at | time12 }}</span>
-                    <span class="date-rel" data-ts="{{ doc.created_at }}"></span>
                   {% else %}
                     <span class="td-empty">—</span>
                   {% endif %}

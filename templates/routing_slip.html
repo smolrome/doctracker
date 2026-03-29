@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Routing Slip {{ slip.slip_no }} — DocTracker</title>
+  <!-- <title>Routing Slip {{ slip.slip_no }} — DocTracker</title> -->
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/routing_slip.css') }}"/>
 </head>
@@ -11,6 +11,7 @@
 
 <!-- Topbar -->
 <div class="topbar">
+  <img src="{{ url_for('static', filename='logo.png') }}" alt="DocTracker Logo" class="tb-logo"/>
   <div class="tb-brand">Doc<span>Tracker</span></div>
   <div class="tb-sep"></div>
   <div class="tb-label">Routing Slip</div>
@@ -35,19 +36,29 @@
   <!-- ═══════════ PRINTABLE SLIP CARD ═══════════ -->
   <div class="slip-card">
 
-    <!-- Letterhead -->
+    <!-- ══ OFFICIAL LETTERHEAD ══ -->
     <div class="letterhead">
-      <img class="lh-seal" src="/static/logo.png" alt="DepEd Leyte"/>
-      <div class="lh-text">
-        <div class="lh-gov">Republic of the Philippines</div>
-        <div class="lh-dept">Department of Education</div>
-        <div class="lh-div">Schools Division of Leyte — Division Office</div>
+
+      <!-- Top row: center text only -->
+      <div class="lh-top">
+
+        <!-- Center: logo on top, then stacked text -->
+        <div class="lh-text">
+          <div class="lh-center-logo">
+            <img src="{{ url_for('static', filename='img/kagawaran.png') }}" alt="DepEd Logo" class="lh-logo-img"/>
+          </div>
+          <div class="lh-republic">Republic of the Philippines</div>
+          <div class="lh-dept">Department of Education</div>
+          <div class="lh-region">REGION VIII</div>
+          <div class="lh-division">SCHOOLS DIVISION OF LEYTE</div>
+        </div>
+
       </div>
-      <div class="lh-badge">
-        <span class="lh-badge-text">Official</span>
-        <div class="lh-badge-title">ROUTING<br/>SLIP</div>
-      </div>
+
+      <!-- Divider -->
+      <div class="lh-divider"></div>
     </div>
+    <!-- /letterhead -->
 
     <!-- Meta strip -->
     <div class="meta-strip">
@@ -73,53 +84,50 @@
         <div class="meta-label">No. of Documents</div>
         <div class="meta-val">{{ docs|length }}</div>
       </div>
-      <div class="meta-cell">
+      <!-- <div class="meta-cell">
         <div class="meta-label">Prepared By</div>
         <div class="meta-val">{{ slip.prepared_by }}</div>
-      </div>
+      </div> -->
     </div>
 
     <!-- Body -->
     <div class="slip-body">
 
       <!-- From → To route indicator -->
-      <div style="display:flex;align-items:center;gap:0;margin-bottom:16px;
-                  border:1.5px solid var(--border);border-radius:12px;overflow:hidden;">
-        <div style="flex:1;padding:12px 18px;background:#F8FAFC;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;
-                      letter-spacing:.1em;color:var(--muted);margin-bottom:2px;">From Office</div>
-          <div style="font-weight:800;color:var(--navy);font-size:.95rem;">
+      <div class="route-indicator">
+        <div class="route-from">
+          <div class="route-label">From Office</div>
+          <div class="route-val-from">
             {{ slip.from_office if slip.from_office and slip.from_office != 'DepEd Leyte Division' else (slip.prepared_by + "'s Office" if slip.prepared_by else 'DepEd Leyte Division') }}
           </div>
         </div>
-        <div style="padding:0 14px;font-size:1.4rem;color:var(--teal);font-weight:900;">→</div>
-        <div style="flex:1;padding:12px 18px;background:#EFF6FF;border-left:1.5px solid var(--border);">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;
-                      letter-spacing:.1em;color:var(--muted);margin-bottom:2px;">To Office</div>
-          <div style="font-weight:800;color:#1D4ED8;font-size:.95rem;">{{ slip.destination }}</div>
+        <div class="route-arrow">→</div>
+        <div class="route-to">
+          <div class="route-label">To Office</div>
+          <div class="route-val-to">{{ slip.destination }}</div>
         </div>
       </div>
 
       <!-- Rerouted Info Banner -->
       {% if slip.original_slip_no %}
-      <div style="background:linear-gradient(135deg,#FEF3C7,#FDE68A);border:2px solid #F59E0B;border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
-        <div style="font-size:1.5rem;">🔄</div>
+      <div class="reroute-banner">
+        <div class="reroute-icon">🔄</div>
         <div>
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#92400E;">Re-routed Document</div>
-          <div style="font-weight:800;color:#78350F;font-size:.95rem;">From: {{ slip.rerouted_from }} → To: {{ slip.destination }}</div>
-          <div style="font-size:12px;color:#92400E;">Original Slip: {{ slip.original_slip_no }} | Re-routed: {{ slip.rerouted_at[:19] if slip.rerouted_at else '' }}</div>
+          <div class="reroute-title">Re-routed Document</div>
+          <div class="reroute-route">From: {{ slip.rerouted_from }} → To: {{ slip.destination }}</div>
+          <div class="reroute-meta">Original Slip: {{ slip.original_slip_no }} | Re-routed: {{ slip.rerouted_at[:19] if slip.rerouted_at else '' }}</div>
         </div>
       </div>
       {% endif %}
 
-      <!-- Destination -->
+      <!-- Destination
       <div class="dest-strip">
         <div class="dest-ico">🏢</div>
         <div>
           <div class="dest-lbl">Forwarded To</div>
           <div class="dest-name">{{ slip.destination }}</div>
         </div>
-      </div>
+      </div> -->
 
       <!-- Notes (if any) -->
       {% if slip.notes %}
@@ -156,9 +164,9 @@
                 {% if doc.doc_id %}<div class="doc-ref">{{ doc.doc_id }}</div>{% endif %}
                 {% if doc.category %}<div class="doc-cat">{{ doc.category }}</div>{% endif %}
               </td>
-              <td style="font-size:13px">{{ doc.sender_org or '—' }}</td>
-              <td style="font-size:13px">{{ doc.sender_name or '—' }}</td>
-              <td style="font-size:13px">{{ doc.referred_to or '—' }}</td>
+              <td class="td-sm">{{ doc.sender_org or '—' }}</td>
+              <td class="td-sm">{{ doc.sender_name or '—' }}</td>
+              <td class="td-sm">{{ doc.referred_to or '—' }}</td>
               <td class="sig-cell">
                 <div class="sig-line"></div>
                 <div class="sig-sub">Date</div>
@@ -173,6 +181,7 @@
       <div class="sig-footer">
         <div class="sig-block">
           <div class="sig-block-lbl">Prepared &amp; Released By</div>
+          <div class="sig-block-spacer"></div>
           <div class="sig-block-name">{{ slip.prepared_by }}</div>
           <div class="sig-block-line"></div>
           <div class="sig-block-sub">Signature over Printed Name / Designation</div>
@@ -184,6 +193,7 @@
         <div class="sig-block">
           <div class="sig-block-lbl">Received By</div>
           <div class="sig-block-office">{{ slip.destination }}</div>
+          <div class="sig-block-spacer"></div>
           <div class="sig-block-line"></div>
           <div class="sig-block-sub">Signature over Printed Name / Designation</div>
           <div class="sig-block-date">
@@ -195,11 +205,37 @@
 
     </div><!-- /slip-body -->
 
-    <!-- Bottom bar -->
-    <div class="slip-footer-bar">
-      <span>DocTracker — DepEd Leyte Division Office</span>
-      <span>Slip No.: <strong>{{ slip.slip_no }}</strong> &nbsp;·&nbsp; Generated: {{ slip.created_at[:10] }} {{ slip.created_at[11:19] if slip.created_at else '' }}</span>
+    <!-- ══ OFFICIAL FOOTER (mirrors DepEd Leyte docx footer) ══ -->
+    <div class="slip-official-footer">
+      <div class="sof-inner">
+
+        <!-- Left: Matatag logos cluster + SDO logo -->
+        <div class="sof-logos">
+          <img src="{{ url_for('static', filename='img/matatag_logos.png') }}" alt="DepEd Matatag Logos" class="sof-logos-img"/>
+          <img src="{{ url_for('static', filename='img/sdo_logo.jpg') }}" alt="SDO Leyte Logo" class="sof-logos-img"/>
+        </div>
+
+        <!-- Center: contact info -->
+        <div class="sof-contact">
+          <div class="sof-row"><b>Address:</b> Government Center, Candahug, Palo, Leyte</div>
+          <div class="sof-row"><b>Telephone No.:</b> (053) 888-3527</div>
+          <div class="sof-row"><b>Email Address:</b> leyte.ro8@deped.gov.ph</div>
+          <div class="sof-row"><b>Website:</b> https://depedleytedivision.com</div>
+        </div>
+
+        <!-- Right: page number box -->
+        <div class="sof-pagebox">
+          Page <b>&nbsp;1&nbsp;</b> of <b>&nbsp;1</b>
+        </div>
+
+      </div>
     </div>
+
+    <!-- DocTracker system bar (hidden on print)
+    <div class="slip-footer-bar screen-only">
+      <span>DocTracker — DepEd Leyte Division Office </span>
+      <span>Slip No.: <strong>{{ slip.slip_no }}</strong> &nbsp;·&nbsp; Generated: {{ slip.created_at[:10] }} {{ slip.created_at[11:19] if slip.created_at else '' }}</span>
+    </div> -->
 
   </div><!-- /slip-card -->
 

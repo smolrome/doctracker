@@ -263,7 +263,8 @@ def create_routing_slip():
               f"slip_no={slip_no} from={from_office} dest={destination} "
                   f"docs={len(doc_ids)} ids={','.join(str(x) for x in doc_ids[:5])}",
               username=session.get("username", ""), ip=get_client_ip())
-    return redirect(url_for("offices.view_routing_slip", slip_id=slip_id))
+    flash(f"✅ Routing slip {slip_no} created successfully!", "success")
+    return redirect(url_for("offices.view_routing_slip", slip_id=slip_id) + "?cart_cleared=1")
 
 
 @offices_bp.route("/routing-slip/create-grouped", methods=["POST"])
@@ -379,10 +380,10 @@ def create_grouped_routing_slip():
     
     if len(created_slips) == 1:
         flash(f"✅ 1 routing slip created successfully!", "success")
-        return redirect(url_for("offices.view_routing_slip", slip_id=created_slips[0]))
+        return redirect(url_for("offices.view_routing_slip", slip_id=created_slips[0]) + "?cart_cleared=1")
     else:
         flash(f"✅ {len(created_slips)} routing slips created successfully!", "success")
-        return redirect(url_for("offices.routed_documents"))
+        return redirect(url_for("offices.routed_documents") + "?cart_cleared=1")
 
 
 @offices_bp.route("/routing-slip/<slip_id>")
@@ -428,12 +429,12 @@ def routed_documents():
         filtered_slips = []
         for slip in slips:
             # Search in slip number, destination, prepared_by
-            if (search_lower in slip.get('slip_no', '').lower() or
-                search_lower in slip.get('destination', '').lower() or
-                search_lower in slip.get('prepared_by', '').lower() or
-                search_lower in slip.get('from_office', '').lower() or
-                search_lower in slip.get('rerouted_to', '').lower() or
-                search_lower in slip.get('rerouted_from', '').lower()):
+            if (search_lower in (slip.get('slip_no') or '').lower() or
+                search_lower in (slip.get('destination') or '').lower() or
+                search_lower in (slip.get('prepared_by') or '').lower() or
+                search_lower in (slip.get('from_office') or '').lower() or
+                search_lower in (slip.get('rerouted_to') or '').lower() or
+                search_lower in (slip.get('rerouted_from') or '').lower()):
                 filtered_slips.append(slip)
         slips = filtered_slips
     
@@ -656,7 +657,7 @@ def reroute_slip():
     flash(f"✅ Documents re-routed to \"{new_destination}\" (New Slip: {new_slip_no}).", "success")
     # Store new slip_id in session for the template to show a reprint link
     session["last_rerouted_slip_id"] = new_slip_id
-    return redirect(url_for("offices.routed_documents"))
+    return redirect(url_for("offices.routed_documents") + "?cart_cleared=1")
 
 
 @offices_bp.route("/routing-slip/<slip_id>/delete", methods=["POST"])

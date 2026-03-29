@@ -215,5 +215,341 @@
     "ip": "192.168.100.79",
     "detail": "username=admin",
     "ts": "2026-03-15T05:38:05.184619"
+  },
+  {
+    "username": "anonymous",
+    "action": "404_not_found",
+    "ip": "192.168.1.15",
+    "detail": "path=/favicon.ico",
+    "ts": "2026-03-17T09:36:14.331675"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-17T09:36:35.575853"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_fail",
+    "ip": "192.168.1.15",
+    "detail": "username=admin",
+    "ts": "2026-03-17T09:36:35.792336"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/login fields={'username': 'admin'}",
+    "ts": "2026-03-17T09:36:56.539419"
+  },
+  {
+    "username": "admin",
+    "action": "login_fail",
+    "ip": "192.168.1.15",
+    "detail": "username=admin",
+    "ts": "2026-03-17T09:36:56.756696"
+  },
+  {
+    "username": "anonymous",
+    "action": "404_not_found",
+    "ip": "127.0.0.1",
+    "detail": "path=/favicon.ico",
+    "ts": "2026-03-17T09:37:33.628689"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "127.0.0.1",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-17T09:37:51.209917"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_fail",
+    "ip": "127.0.0.1",
+    "detail": "username=admin",
+    "ts": "2026-03-17T09:37:51.425676"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/login fields={'username': 'admin'}",
+    "ts": "2026-03-17T09:40:24.946522"
+  },
+  {
+    "username": "admin",
+    "action": "login_fail",
+    "ip": "192.168.1.15",
+    "detail": "username=admin",
+    "ts": "2026-03-17T09:40:25.160624"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-17T09:42:00.249587"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_ok",
+    "ip": "192.168.1.15",
+    "detail": "role=admin",
+    "ts": "2026-03-17T09:42:00.260999"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/routing-slip/create fields={'doc_ids': 'B85475A9', 'destination': 'test', 'notes': '', 'slip_date': '2026-03-17', 'time_from': '', 'time_to': ''}",
+    "ts": "2026-03-17T09:43:07.132818"
+  },
+  {
+    "username": "admin",
+    "action": "routing_slip_created",
+    "ip": "192.168.1.15",
+    "detail": "slip_no=SLIP-2026-1FDB from=DepEd Leyte Division dest=test docs=1 ids=B85475A9",
+    "ts": "2026-03-17T09:43:07.160607"
+  },
+  {
+    "username": "admin",
+    "action": "slip_viewed",
+    "ip": "192.168.1.15",
+    "detail": "slip_id=6AD082B1 slip_no=SLIP-2026-1FDB dest=test docs=1",
+    "ts": "2026-03-17T09:43:07.194958"
+  },
+  {
+    "username": "admin",
+    "action": "404_not_found",
+    "ip": "192.168.1.15",
+    "detail": "path=/static/img/matatag_seal.png",
+    "ts": "2026-03-17T09:43:07.263238"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/delete/B85475A9",
+    "ts": "2026-03-17T13:04:09.675905"
+  },
+  {
+    "username": "admin",
+    "action": "doc_deleted",
+    "ip": "192.168.1.15",
+    "detail": "doc_id=B85475A9 name=Unknown",
+    "ts": "2026-03-17T13:04:09.710286"
+  },
+  {
+    "username": "admin",
+    "action": "admin_users_viewed",
+    "ip": "192.168.1.15",
+    "detail": "Admin accessed user management",
+    "ts": "2026-03-17T13:05:04.858180"
+  },
+  {
+    "username": "admin",
+    "action": "audit_log_viewed",
+    "ip": "192.168.1.15",
+    "detail": "Admin accessed the audit log",
+    "ts": "2026-03-17T13:05:13.249488"
+  },
+  {
+    "username": "admin",
+    "action": "audit_log_viewed",
+    "ip": "192.168.1.15",
+    "detail": "Admin accessed the audit log",
+    "ts": "2026-03-17T13:10:10.177999"
+  },
+  {
+    "username": "admin",
+    "action": "audit_log_viewed",
+    "ip": "192.168.1.15",
+    "detail": "Admin accessed the audit log",
+    "ts": "2026-03-17T13:15:12.920645"
+  },
+  {
+    "username": "admin",
+    "action": "404_not_found",
+    "ip": "192.168.1.15",
+    "detail": "path=/dropdown-options",
+    "ts": "2026-03-17T13:20:46.557018"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/dropdown-options/save/category fields={'field_name': 'category', 'options': 'Letter\\r\\nMemorandum\\r\\nReport\\r\\nApplication\\r\\nVoucher\\r\\nPlantilla\\r\\nPayroll\\r\\nMemo\\r\\nRequest\\r\\nEndorsement\\r\\nOrder\\r\\nNotice\\r\\nCircula'}",
+    "ts": "2026-03-17T13:54:06.277319"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/dropdown-options/save/category fields={'field_name': 'category', 'options': 'Letter\\r\\nMemorandum\\r\\nReport\\r\\nApplication\\r\\nVoucher\\r\\nPlantilla\\r\\nPayroll\\r\\nMemo\\r\\nRequest\\r\\nEndorsement\\r\\nOrder\\r\\nNotice\\r\\nCircula'}",
+    "ts": "2026-03-17T13:54:39.245118"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/dropdown-options/save/category fields={'field_name': 'category', 'options': 'Letter\\r\\nMemorandum\\r\\nReport\\r\\nApplication\\r\\nVoucher\\r\\nPlantilla\\r\\nPayroll\\r\\nMemo\\r\\nRequest\\r\\nEndorsement\\r\\nOrder\\r\\nNotice\\r\\nCircula'}",
+    "ts": "2026-03-17T13:57:38.934438"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/dropdown-options/save/category fields={'field_name': 'category', 'options': 'Letter\\r\\nMemorandum\\r\\nReport\\r\\nApplication\\r\\nVoucher\\r\\nPlantilla\\r\\nPayroll\\r\\nMemo\\r\\nRequest\\r\\nEndorsement\\r\\nOrder\\r\\nNotice\\r\\nCircula'}",
+    "ts": "2026-03-17T13:58:00.033479"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/dropdown-options/save/category fields={'field_name': 'category', 'options': 'Letter\\r\\nMemorandum\\r\\nReport\\r\\nApplication\\r\\nVoucher\\r\\nPlantilla\\r\\nPayroll\\r\\nMemo\\r\\nRequest\\r\\nEndorsement\\r\\nOrder\\r\\nNotice\\r\\nCircula'}",
+    "ts": "2026-03-17T13:59:11.985922"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/dropdown-options/save/category fields={'field_name': 'category', 'options': 'Letter\\r\\nMemorandum\\r\\nReport\\r\\nApplication\\r\\nVoucher\\r\\nPlantilla\\r\\nPayroll\\r\\nMemo\\r\\nRequest\\r\\nEndorsement\\r\\nOrder\\r\\nNotice\\r\\nCircula'}",
+    "ts": "2026-03-17T14:03:55.860114"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/add fields={'_action': 'add', 'sender_org': 'fdhdfshdsfh', 'sender_name': 'dfhdsfh', 'doc_name': 'dfhdsfhdfs', 'category': 'dfhdsfh', 'referred_to': '', 'description': ''}",
+    "ts": "2026-03-17T15:44:30.685476"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/add fields={'_action': 'submit_all'}",
+    "ts": "2026-03-17T15:44:44.761096"
+  },
+  {
+    "username": "admin",
+    "action": "doc_created",
+    "ip": "192.168.1.15",
+    "detail": "doc_name=dfhdsfhdfs sender_org=fdhdfshdsfh",
+    "ts": "2026-03-17T15:44:44.807386"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.1.15",
+    "detail": "method=POST path=/routing-slip/create fields={'doc_ids': '8E593FB3', 'destination': 'dfhdfh', 'notes': '', 'slip_date': '2026-03-17', 'time_from': '', 'time_to': ''}",
+    "ts": "2026-03-17T15:45:13.469248"
+  },
+  {
+    "username": "admin",
+    "action": "routing_slip_created",
+    "ip": "192.168.1.15",
+    "detail": "slip_no=SLIP-2026-0BB2 from=DepEd Leyte Division dest=dfhdfh docs=1 ids=8E593FB3",
+    "ts": "2026-03-17T15:45:13.522063"
+  },
+  {
+    "username": "admin",
+    "action": "slip_viewed",
+    "ip": "192.168.1.15",
+    "detail": "slip_id=D9A1AAD4 slip_no=SLIP-2026-0BB2 dest=dfhdfh docs=1",
+    "ts": "2026-03-17T15:45:13.582236"
+  },
+  {
+    "username": "admin",
+    "action": "404_not_found",
+    "ip": "192.168.1.15",
+    "detail": "path=/favicon.ico",
+    "ts": "2026-03-17T15:45:13.785232"
+  },
+  {
+    "username": "anonymous",
+    "action": "404_not_found",
+    "ip": "169.254.83.107",
+    "detail": "path=/favicon.ico",
+    "ts": "2026-03-19T12:16:00.600039"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "169.254.83.107",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-19T12:16:42.458616"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_ok",
+    "ip": "169.254.83.107",
+    "detail": "role=admin",
+    "ts": "2026-03-19T12:16:42.479855"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "169.254.83.107",
+    "detail": "method=POST path=/delete/8E593FB3",
+    "ts": "2026-03-19T12:18:24.998763"
+  },
+  {
+    "username": "admin",
+    "action": "doc_deleted",
+    "ip": "169.254.83.107",
+    "detail": "doc_id=8E593FB3 name=dfhdsfhdfs",
+    "ts": "2026-03-19T12:18:25.025532"
+  },
+  {
+    "username": "anonymous",
+    "action": "404_not_found",
+    "ip": "192.168.1.13",
+    "detail": "path=/favicon.ico",
+    "ts": "2026-03-21T09:36:21.635362"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.1.13",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-21T09:36:29.597738"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_fail",
+    "ip": "192.168.1.13",
+    "detail": "username=admin",
+    "ts": "2026-03-21T09:36:29.971004"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.1.13",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-21T09:37:51.126201"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_ok",
+    "ip": "192.168.1.13",
+    "detail": "role=admin",
+    "ts": "2026-03-21T09:37:51.148413"
+  },
+  {
+    "username": "admin",
+    "action": "500_error",
+    "ip": "192.168.1.13",
+    "detail": "500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.",
+    "ts": "2026-03-21T09:43:11.011750"
+  },
+  {
+    "username": "admin",
+    "action": "500_error",
+    "ip": "192.168.1.13",
+    "detail": "500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.",
+    "ts": "2026-03-21T09:43:37.631651"
   }
 ]

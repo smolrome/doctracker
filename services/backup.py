@@ -619,7 +619,7 @@ def _export_routing_slips() -> list[dict]:
                         # doc_ids is JSONB — ensure it's a list
                         if isinstance(d.get("doc_ids"), str):
                             d["doc_ids"] = json.loads(d["doc_ids"])
-                        d["created_at"] = str(d["created_at"])[:19] if d.get("created_at") else ""
+                        d["created_at"] = str(d["created_at"]) if d.get("created_at") else ""
                         result.append(d)
                     return result
         except Exception as e:
@@ -642,7 +642,7 @@ def _export_saved_offices() -> list[dict]:
                     )
                     rows = [dict(r) for r in cur.fetchall()]
                     for r in rows:
-                        r["created_at"] = str(r["created_at"])[:19] if r.get("created_at") else ""
+                        r["created_at"] = str(r["created_at"]) if r.get("created_at") else ""
                     return rows
         except Exception as e:
             return []

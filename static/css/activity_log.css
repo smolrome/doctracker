@@ -1,35 +1,372 @@
-.log-info{background:#EFF6FF;border:2px solid #3B82F6;border-radius:14px;
-    padding:14px 18px;margin-bottom:18px;font-size:15px;color:#1D4ED8;}
-  .log-table{width:100%;border-collapse:collapse;background:#fff;
-    border-radius:14px;overflow:hidden;border:2px solid var(--border);}
-  .log-table th{background:var(--surface);padding:12px 16px;text-align:left;
-    font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
-    color:var(--muted);border-bottom:2px solid var(--border);}
-  .log-table td{padding:12px 16px;font-size:15px;border-bottom:1.5px solid var(--border);
-    vertical-align:middle;}
-  .log-table tr:last-child td{border-bottom:none;}
-  .log-table tr:hover td{background:var(--surface);}
-  .action-badge{display:inline-block;padding:4px 12px;border-radius:20px;
-    font-size:13px;font-weight:700;white-space:nowrap;}
-  .a-login_ok{background:#D1FAE5;color:#065F46;}
-  .a-login_fail{background:#FEE2E2;color:#7F1D1D;}
-  .a-login_blocked{background:#FEE2E2;color:#7F1D1D;}
-  .a-logout{background:#F3F4F6;color:#374151;}
-  .a-user_deleted{background:#FEE2E2;color:#7F1D1D;}
-  .a-user_disabled{background:#FEF3C7;color:#92400E;}
-  .a-user_enabled{background:#D1FAE5;color:#065F46;}
-  .a-doc_deleted{background:#FEF3C7;color:#92400E;}
-  .a-doc_restored{background:#D1FAE5;color:#065F46;}
-  .a-doc_viewed{background:#EFF6FF;color:#1D4ED8;}
-  .a-500_error{background:#FEE2E2;color:#7F1D1D;}
-  .a-default{background:#F3F4F6;color:#374151;}
-  .ip-tag{font-family:monospace;font-size:13px;color:var(--muted);}
-  .detail-text{font-size:13px;color:var(--muted);margin-top:2px;}
-  .ts-text{font-size:13px;color:var(--muted);white-space:nowrap;}
-  .empty-log{text-align:center;padding:40px;color:var(--muted);
-    background:#fff;border:2px solid var(--border);border-radius:14px;}
-  @media(max-width:700px){
-    .log-table{display:block;overflow-x:auto;}
-    .log-table th,.log-table td{font-size:13px;padding:10px 12px;}
-    .ip-col,.detail-col{display:none;}
+/* ═══════════════════════════════════════════════
+   ACTIVITY LOG — DocTracker
+   Aesthetic: Dark terminal / forensic audit log
+   ═══════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap');
+
+/* ── Page Header ── */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.page-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  transition: all .15s;
+  white-space: nowrap;
+}
+.page-back:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+  background: #F0FDFF;
+}
+
+.page-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--navy);
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Info banner ── */
+.log-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #0A4D68 0%, #0E7490 50%, #059669 100%);
+  border-radius: 12px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: rgba(255,255,255,.65);
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 4px 20px rgba(10,37,64,.15);
+}
+.log-info::before {
+  content: '⬤';
+  color: #22D3EE;
+  font-size: 8px;
+  animation: pulse-dot 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; }
+  50%      { opacity: .3; }
+}
+
+/* ── Log table wrapper ── */
+.log-table-wrap {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(10,45,100,.08);
+}
+
+/* ── Table header bar ── */
+.log-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #0A4D68 0%, #0E7490 55%, #059669 100%);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.log-table-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: rgba(255,255,255,.5);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.log-table-title span {
+  background: rgba(34,211,238,.15);
+  color: #22D3EE;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  border: 1px solid rgba(34,211,238,.25);
+}
+.log-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 8px;
+  padding: 6px 12px;
+}
+.log-search input {
+  background: none;
+  border: none;
+  outline: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: rgba(255,255,255,.8);
+  width: 180px;
+}
+.log-search input::placeholder { color: rgba(255,255,255,.25); }
+.log-search-icon { font-size: 13px; opacity: .4; }
+
+/* ── Date/Time Filters ── */
+.log-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.log-date-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+.filter-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255,255,255,.5);
+  font-weight: 500;
+}
+.date-input, .time-input {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255,255,255,.85);
+  outline: none;
+  cursor: pointer;
+}
+.date-input:focus, .time-input:focus {
+  border-color: #22D3EE;
+  background: rgba(255,255,255,.15);
+}
+.date-input::-webkit-calendar-picker-indicator,
+.time-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
+
+/* ── Table ── */
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.log-table thead th {
+  padding: 10px 18px;
+  text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--muted);
+  background: #F8FAFC;
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+.log-table thead th:first-child { padding-left: 20px; }
+.log-table thead th:last-child  { padding-right: 20px; }
+
+/* ── Rows ── */
+.log-table tbody tr {
+  border-bottom: 1px solid #EFF4F8;
+  transition: background .1s;
+  cursor: default;
+}
+.log-table tbody tr:last-child { border-bottom: none; }
+.log-table tbody tr:hover { background: #F7FAFB; }
+
+/* Severity left-border accent */
+.log-table tbody tr.sev-danger  { border-left: 3px solid #EF4444; }
+.log-table tbody tr.sev-warn    { border-left: 3px solid #F59E0B; }
+.log-table tbody tr.sev-success { border-left: 3px solid #10B981; }
+.log-table tbody tr.sev-info    { border-left: 3px solid #0EA5E9; }
+.log-table tbody tr.sev-default { border-left: 3px solid #CBD5E1; }
+
+.log-table td {
+  padding: 11px 18px;
+  vertical-align: middle;
+}
+.log-table td:first-child { padding-left: 20px; }
+.log-table td:last-child  { padding-right: 20px; }
+
+/* ── Timestamp ── */
+.ts-wrap { display: flex; flex-direction: column; gap: 1px; }
+.ts-date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  white-space: nowrap;
+}
+.ts-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ── User cell ── */
+.user-cell { display: flex; align-items: center; gap: 9px; }
+.user-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0E7490, #059669);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+  font-family: 'Syne', sans-serif;
+  letter-spacing: -.5px;
+}
+.user-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--navy);
+  white-space: nowrap;
+}
+
+/* ── Action badge ── */
+.action-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  letter-spacing: .02em;
+}
+.action-badge::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .6;
+  flex-shrink: 0;
+}
+
+/* Action badge variants */
+.a-login_ok       { background: #D1FAE5; color: #065F46; border: 1px solid #A7F3D0; }
+.a-login_fail     { background: #FEE2E2; color: #7F1D1D; border: 1px solid #FCA5A5; }
+.a-login_blocked  { background: #FEE2E2; color: #991B1B; border: 1px solid #F87171; }
+.a-logout         { background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
+.a-user_deleted   { background: #FEE2E2; color: #7F1D1D; border: 1px solid #FCA5A5; }
+.a-user_disabled  { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+.a-user_enabled   { background: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; }
+.a-doc_deleted    { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+.a-doc_restored   { background: #CFFAFE; color: #164E63; border: 1px solid #67E8F9; }
+.a-doc_viewed     { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+.a-500_error      { background: #FEE2E2; color: #7F1D1D; border: 1px solid #FCA5A5; }
+.a-default        { background: #F8FAFC; color: #64748B; border: 1px solid #E2E8F0; }
+
+/* ── Detail text ── */
+.detail-snippet {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── IP tag ── */
+.ip-tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--muted);
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 5px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+/* ── Full detail col ── */
+.td-detail {
+  font-size: 12.5px;
+  color: var(--muted);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Empty state ── */
+.empty-log {
+  text-align: center;
+  padding: 64px 20px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+}
+.empty-log-icon  { font-size: 48px; margin-bottom: 14px; opacity: .4; }
+.empty-log-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--navy); margin-bottom: 6px; }
+.empty-log-sub   { font-size: 14px; color: var(--muted); }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .log-filters {
+    width: 100%;
+    justify-content: flex-start;
+    padding-top: 8px;
   }
+  .log-date-filter {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 700px) {
+  .log-table-wrap  { border-radius: 12px; }
+  .log-table       { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .log-table th,
+  .log-table td    { font-size: 12px; padding: 10px 12px; }
+  .ip-col,
+  .detail-col      { display: none; }
+  .log-search input { width: 120px; }
+  .user-avatar     { display: none; }
+  .log-date-filter { display: none; }
+}

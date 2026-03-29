@@ -4,9 +4,10 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="csrf-token" content="{{ csrf_token }}"/>
-  <title>DocTracker — DepEd Leyte Division</title>
-  <link rel="icon" type="image/png" href="/static/logo.png"/>
-  <link rel="apple-touch-icon" href="/static/logo.png"/>
+  <title>DocTracker</title>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png"/>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}"/>
 </head>
@@ -21,7 +22,7 @@
     <img src="/static/logo.png" alt="DepEd Leyte DocTracker Logo" class="nav-logo"/>
     <div class="nav-brand-text">
       <div class="nav-brand-main">DocTracker</div>
-      <div class="nav-brand-sub">DepEd Leyte Division</div>
+      <div class="nav-brand-sub">DepEd Leyte Division - Personnel Unit</div>
     </div>
   </a>
 
@@ -131,22 +132,8 @@
   </button>
 </nav>
 
-<!-- ═══ Floating Notification + Modals (staff/admin only) ═══ -->
-{% if logged_in and current_role in ('staff', 'admin') and request.endpoint == 'dashboard.index' %}
-
-<div id="floating-notification"
-     class="fab-notify"
-     onclick="showPendingDocumentsModal()"
-     role="button"
-     aria-label="Documents to Receive"
-     tabindex="0">
-  <div class="fab-notify-circle">
-    <span aria-hidden="true">📥</span>
-    <span id="pending-badge" class="fab-notify-badge" aria-live="polite">0</span>
-  </div>
-</div>
-
-<!-- ── Pending Documents Modal ── -->
+<!-- ═══ Pending Documents Modal (staff/admin only) ═══ -->
+{% if logged_in and current_role in ('staff', 'admin') %}
 <div id="pending-documents-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="pending-modal-title">
   <div class="modal-sheet">
     <div class="modal-header modal-header-teal">
@@ -164,6 +151,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 <!-- ── Accept Confirmation Modal ── -->
 <div id="accept-confirm-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="accept-modal-title">
@@ -215,8 +203,6 @@
     </div>
   </div>
 </div>
-
-{% endif %}
 
 <!-- ═══ MOBILE DRAWER ═══ -->
 <!-- CHANGED: added overlay div so tapping outside closes drawer -->

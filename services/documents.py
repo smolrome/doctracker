@@ -17,7 +17,8 @@ def now_str() -> str:
     # Use Asia/Manila timezone (UTC+8) for local time
     from datetime import datetime, timezone, timedelta
     Manila_tz = timezone(timedelta(hours=8))
-    return datetime.now(Manila_tz).strftime("%Y-%m-%d %H:%M:%S")
+    # Return ISO 8601 format with timezone for proper JavaScript parsing
+    return datetime.now(Manila_tz).strftime("%Y-%m-%dT%H:%M:%S+08:00")
 
 
 def normalize_status_fields(doc: dict) -> dict:

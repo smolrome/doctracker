@@ -456,7 +456,7 @@ def get_routing_slip(slip_id: str) -> dict | None:
                     r = dict(row)
                     if isinstance(r["doc_ids"], str):
                         r["doc_ids"] = json.loads(r["doc_ids"])
-                    r["created_at"] = str(r["created_at"])[:19] if r.get("created_at") else now_str()
+                    r["created_at"] = str(r["created_at"]) if r.get("created_at") else now_str()
                     return r
         except Exception as e:
             return None
@@ -489,7 +489,7 @@ def get_all_routing_slips(filter_type=None) -> list[dict]:
                         r = dict(row)
                         if isinstance(r.get("doc_ids"), str):
                             r["doc_ids"] = json.loads(r["doc_ids"])
-                        r["created_at"] = str(r["created_at"])[:19] if r.get("created_at") else ""
+                        r["created_at"] = str(r["created_at"]) if r.get("created_at") else ""
                         slips.append(r)
                     return slips
         except Exception as e:
