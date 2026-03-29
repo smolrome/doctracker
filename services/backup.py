@@ -690,6 +690,7 @@ def restore_backup(backup: dict, mode: str = "merge") -> dict:
         "users":         0,
         "routing_slips": 0,
         "saved_offices": 0,
+        "office_traffic": 0,
         "skipped":       0,
         "errors":        [],
     }
@@ -701,6 +702,7 @@ def restore_backup(backup: dict, mode: str = "merge") -> dict:
     summary["users"]         = _restore_users(backup.get("users", []), mode, summary)
     summary["routing_slips"] = _restore_routing_slips(backup.get("routing_slips", []), mode, summary)
     summary["saved_offices"] = _restore_saved_offices(backup.get("saved_offices", []), mode, summary)
+    summary["office_traffic"] = _restore_office_traffic(backup.get("office_traffic", []), mode, summary)
 
     return summary
 
@@ -713,6 +715,7 @@ def _wipe_tables():
                 cur.execute("DELETE FROM documents")
                 cur.execute("DELETE FROM routing_slips")
                 cur.execute("DELETE FROM saved_offices")
+                cur.execute("DELETE FROM office_traffic")
                 # Note: we do NOT wipe users in replace mode for safety
             conn.commit()
     except Exception as e:
@@ -834,4 +837,36 @@ def _restore_saved_offices(offices: list, mode: str, summary: dict) -> int:
             count += 1
         except Exception as e:
             summary["errors"].append(f"Office {office.get('office_slug','?')}: {e}")
+    return count
+
+
+def _restore_office_traffic(traffic: list, mode: str, summary: dict) -> int:
+    if not USE_DB:
+        return 0
+    count = 0
+    for t in traffic:
+        if not t.get("office_slug") or not t.get("scanned_at"):
+            continue
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO office_traffic
+                               (office_slug, office_name, event_type,
+                                doc_id, client_username, scanned_at)
+                           VALUES (%s,%s,%s,%s,%s,%s)
+                           ON CONFLICT DO NOTHING""",
+                        (
+                            t["office_slug"],
+                            t.get("office_name", ""),
+                            t.get("event_type", ""),
+                            t.get("doc_id", ""),
+                            t.get("client_username", ""),
+                            t.get("scanned_at", ""),
+                        )
+                    )
+                conn.commit()
+            count += 1
+        except Exception as e:
+            summary["errors"].append(f"Traffic {t.get('office_slug','?')}: {e}")
     return count

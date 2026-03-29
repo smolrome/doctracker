@@ -144,8 +144,14 @@ def backup_restore():
         backup = json.loads(raw)
 
         # Basic validation
-        if "meta" not in backup or "documents" not in backup:
+        if "meta" not in backup:
             flash("Invalid backup file — missing required sections.", "error")
+            return redirect(url_for("backup.backup_page"))
+        
+        # Check if at least one data section exists
+        has_data = any(key in backup for key in ["documents", "users", "routing_slips", "saved_offices", "office_traffic"])
+        if not has_data:
+            flash("Invalid backup file — no data sections found.", "error")
             return redirect(url_for("backup.backup_page"))
 
         summary = restore_backup(backup, mode=mode)
