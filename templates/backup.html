@@ -162,6 +162,7 @@
     </div>
     <p class="backup-card-desc">
       Upload a previously downloaded backup file to restore data.
+      Supports both <strong>JSON</strong> and <strong>Excel (.xlsx)</strong> backup files.
       Choose <strong>Merge</strong> to add missing records without touching existing ones,
       or <strong>Full Replace</strong> to wipe documents and reload everything fresh.
     </p>
@@ -179,11 +180,11 @@
       <div class="drop-zone" id="drop-zone" onclick="document.getElementById('backup-file-input').click()">
         <div class="dz-icon">📂</div>
         <div class="dz-label">Click to choose backup file</div>
-        <div class="dz-hint">or drag &amp; drop a <code>.json</code> backup here</div>
+        <div class="dz-hint">or drag &amp; drop a <code>.json</code> or <code>.xlsx</code> backup here</div>
         <div class="dz-file" id="dz-file-name"></div>
       </div>
       <input type="file" id="backup-file-input" name="backup_file"
-             accept=".json" onchange="handleFileSelect(this)">
+             accept=".json,.xlsx,.xls" onchange="handleFileSelect(this)">
 
       <div class="mode-grid" id="mode-grid">
         <label class="mode-card selected" onclick="selectMode(this,'merge')">

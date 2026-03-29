@@ -127,7 +127,7 @@ def backup_export():
 @backup_bp.route("/backup/restore", methods=["POST"])
 @admin_required
 def backup_restore():
-    """Upload a backup JSON file and restore data."""
+    """Upload a backup file (JSON or Excel) and restore data."""
     uploaded = request.files.get("backup_file")
     mode     = request.form.get("mode", "merge")   # 'merge' or 'replace'
 
@@ -135,26 +135,36 @@ def backup_restore():
         flash("Please select a backup file to upload.", "error")
         return redirect(url_for("backup.backup_page"))
 
-    if not uploaded.filename.endswith(".json"):
-        flash("Only .json backup files are supported.", "error")
+    filename = uploaded.filename.lower()
+    is_json = filename.endswith(".json")
+    is_excel = filename.endswith(".xlsx") or filename.endswith(".xls")
+    
+    if not is_json and not is_excel:
+        flash("Only .json and .xlsx backup files are supported.", "error")
         return redirect(url_for("backup.backup_page"))
 
     try:
-        raw    = uploaded.read()
-        backup = json.loads(raw)
+        if is_excel:
+            # Import from Excel
+            from services.backup import restore_from_excel
+            summary = restore_from_excel(uploaded.read(), mode=mode)
+        else:
+            # Import from JSON
+            raw    = uploaded.read()
+            backup = json.loads(raw)
 
-        # Basic validation
-        if "meta" not in backup:
-            flash("Invalid backup file — missing required sections.", "error")
-            return redirect(url_for("backup.backup_page"))
-        
-        # Check if at least one data section exists
-        has_data = any(key in backup for key in ["documents", "users", "routing_slips", "saved_offices", "office_traffic"])
-        if not has_data:
-            flash("Invalid backup file — no data sections found.", "error")
-            return redirect(url_for("backup.backup_page"))
+            # Basic validation
+            if "meta" not in backup:
+                flash("Invalid backup file — missing required sections.", "error")
+                return redirect(url_for("backup.backup_page"))
+            
+            # Check if at least one data section exists
+            has_data = any(key in backup for key in ["documents", "users", "routing_slips", "saved_offices", "office_traffic"])
+            if not has_data:
+                flash("Invalid backup file — no data sections found.", "error")
+                return redirect(url_for("backup.backup_page"))
 
-        summary = restore_backup(backup, mode=mode)
+            summary = restore_backup(backup, mode=mode)
 
         audit_log("backup_restored",
                   f"mode={mode} docs={summary['documents']} "

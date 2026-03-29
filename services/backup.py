@@ -571,6 +571,121 @@ def create_selective_excel_backup(export_items: list) -> bytes:
     return buf.getvalue()
 
 
+def restore_from_excel(excel_bytes: bytes, mode: str = "merge") -> dict:
+    """Restore data from an Excel workbook. Returns summary dict."""
+    from openpyxl import load_workbook
+    from io import BytesIO
+    
+    wb = load_workbook(BytesIO(excel_bytes), read_only=True, data_only=True)
+    
+    summary = {
+        "mode":          mode,
+        "documents":     0,
+        "users":         0,
+        "routing_slips": 0,
+        "saved_offices": 0,
+        "office_traffic": 0,
+        "skipped":       0,
+        "errors":        [],
+    }
+    
+    # Restore Documents
+    if "Documents" in wb.sheetnames:
+        ws = wb["Documents"]
+        docs = []
+        for row in ws.iter_rows(min_row=4, values_only=True):
+            if row and row[0]:  # Has row number
+                doc = {
+                    "id": str(row[12]) if row[12] else None,  # Reference No.
+                    "date_received": str(row[1]) if row[1] else "",
+                    "received_by": str(row[2]) if row[2] else "",
+                    "sender_org": str(row[3]) if row[3] else "",
+                    "sender_name": str(row[4]) if row[4] else "",
+                    "doc_name": str(row[5]) if row[5] else "",
+                    "referred_to": str(row[6]) if row[6] else "",
+                    "forwarded_to": str(row[7]) if row[7] else "",
+                    "date_released": str(row[8]) if row[8] else "",
+                    "status": str(row[9]) if row[9] else "Pending",
+                    "category": str(row[10]) if row[10] else "",
+                    "doc_id": str(row[11]) if row[11] else "",
+                    "notes": str(row[12]) if row[12] else "",
+                }
+                if doc["id"]:
+                    docs.append(doc)
+        summary["documents"] = _restore_documents(docs, mode, summary)
+    
+    # Restore Users
+    if "Users" in wb.sheetnames:
+        ws = wb["Users"]
+        users = []
+        for row in ws.iter_rows(min_row=4, values_only=True):
+            if row and row[0]:  # Has row number
+                user = {
+                    "username": str(row[1]) if row[1] else None,
+                    "full_name": str(row[2]) if row[2] else "",
+                    "role": str(row[3]) if row[3] else "staff",
+                    "office": str(row[4]) if row[4] else "",
+                    "active": str(row[5]).lower() == "yes" if row[5] else True,
+                }
+                if user["username"]:
+                    users.append(user)
+        summary["users"] = _restore_users(users, mode, summary)
+    
+    # Restore Routing Slips
+    if "Routing Slips" in wb.sheetnames:
+        ws = wb["Routing Slips"]
+        slips = []
+        for row in ws.iter_rows(min_row=4, values_only=True):
+            if row and row[0]:  # Has row number
+                slip = {
+                    "id": str(row[1]) if row[1] else None,  # Slip No.
+                    "slip_no": str(row[1]) if row[1] else "",
+                    "slip_date": str(row[2]) if row[2] else "",
+                    "destination": str(row[3]) if row[3] else "",
+                    "prepared_by": str(row[4]) if row[4] else "",
+                    "notes": str(row[5]) if row[5] else "",
+                }
+                if slip["id"]:
+                    slips.append(slip)
+        summary["routing_slips"] = _restore_routing_slips(slips, mode, summary)
+    
+    # Restore Saved Offices
+    if "Saved Offices" in wb.sheetnames:
+        ws = wb["Saved Offices"]
+        offices = []
+        for row in ws.iter_rows(min_row=4, values_only=True):
+            if row and row[0]:  # Has row number
+                office = {
+                    "office_slug": str(row[1]) if row[1] else None,
+                    "office_name": str(row[2]) if row[2] else "",
+                    "created_by": str(row[3]) if row[3] else "",
+                }
+                if office["office_slug"]:
+                    offices.append(office)
+        summary["saved_offices"] = _restore_saved_offices(offices, mode, summary)
+    
+    # Restore Office Traffic
+    if "Office Traffic" in wb.sheetnames:
+        ws = wb["Office Traffic"]
+        traffic = []
+        for row in ws.iter_rows(min_row=4, values_only=True):
+            if row and row[0]:  # Has row number
+                t = {
+                    "office_slug": str(row[1]) if row[1] else None,
+                    "office_name": str(row[2]) if row[2] else "",
+                    "event_type": str(row[3]) if row[3] else "",
+                    "doc_id": str(row[4]) if row[4] else "",
+                    "client_username": str(row[5]) if row[5] else "",
+                    "scanned_at": str(row[6]) if row[6] else "",
+                }
+                if t["office_slug"]:
+                    traffic.append(t)
+        summary["office_traffic"] = _restore_office_traffic(traffic, mode, summary)
+    
+    wb.close()
+    return summary
+
+
 def _export_documents() -> list[dict]:
     """Export ALL documents including soft-deleted ones."""
     if USE_DB:
@@ -742,107 +857,184 @@ def _restore_documents(docs: list, mode: str, summary: dict) -> int:
 
 
 def _restore_users(users: list, mode: str, summary: dict) -> int:
-    if not USE_DB:
+    if not users:
         return 0
     count = 0
-    for u in users:
-        if not u.get("username"):
-            continue
-        try:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
-                    if mode == "merge":
-                        cur.execute("SELECT 1 FROM users WHERE username=%s", (u["username"],))
-                        if cur.fetchone():
-                            summary["skipped"] += 1
-                            continue
-                    cur.execute(
-                        """INSERT INTO users
-                               (username, password_hash, full_name, role, active, office)
-                           VALUES (%s,%s,%s,%s,%s,%s)
-                           ON CONFLICT (username) DO UPDATE SET
-                               full_name = EXCLUDED.full_name,
-                               role      = EXCLUDED.role,
-                               office    = EXCLUDED.office""",
-                        (
-                            u["username"],
-                            u.get("password_hash", ""),
-                            u.get("full_name", ""),
-                            u.get("role", "staff"),
-                            u.get("active", True),
-                            u.get("office", ""),
+    
+    if USE_DB:
+        for u in users:
+            if not u.get("username"):
+                continue
+            try:
+                with get_conn() as conn:
+                    with conn.cursor() as cur:
+                        if mode == "merge":
+                            cur.execute("SELECT 1 FROM users WHERE username=%s", (u["username"],))
+                            if cur.fetchone():
+                                summary["skipped"] += 1
+                                continue
+                        cur.execute(
+                            """INSERT INTO users
+                                   (username, password_hash, full_name, role, active, office)
+                               VALUES (%s,%s,%s,%s,%s,%s)
+                               ON CONFLICT (username) DO UPDATE SET
+                                   full_name = EXCLUDED.full_name,
+                                   role      = EXCLUDED.role,
+                                   office    = EXCLUDED.office""",
+                            (
+                                u["username"],
+                                u.get("password_hash", ""),
+                                u.get("full_name", ""),
+                                u.get("role", "staff"),
+                                u.get("active", True),
+                                u.get("office", ""),
+                            )
                         )
-                    )
-                conn.commit()
+                    conn.commit()
+                count += 1
+            except Exception as e:
+                summary["errors"].append(f"User {u.get('username','?')}: {e}")
+    else:
+        # JSON file mode
+        import os
+        existing = {}
+        if os.path.exists("users.json"):
+            with open("users.json") as f:
+                existing = json.load(f)
+        
+        for u in users:
+            if not u.get("username"):
+                continue
+            username = u["username"]
+            if mode == "merge" and username in existing:
+                summary["skipped"] += 1
+                continue
+            existing[username] = u
             count += 1
-        except Exception as e:
-            summary["errors"].append(f"User {u.get('username','?')}: {e}")
+        
+        with open("users.json", "w") as f:
+            json.dump(existing, f, indent=2, default=str)
+    
     return count
 
 
 def _restore_routing_slips(slips: list, mode: str, summary: dict) -> int:
-    if not USE_DB:
+    if not slips:
         return 0
     count = 0
-    for slip in slips:
-        if not slip.get("id"):
-            continue
-        try:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
-                    if mode == "merge":
-                        cur.execute("SELECT 1 FROM routing_slips WHERE id=%s", (slip["id"],))
-                        if cur.fetchone():
-                            summary["skipped"] += 1
-                            continue
-                    cur.execute(
-                        """INSERT INTO routing_slips
-                               (id, slip_no, destination, prepared_by,
-                                doc_ids, notes, slip_date, time_from, time_to)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                           ON CONFLICT (id) DO NOTHING""",
-                        (
-                            slip["id"], slip.get("slip_no", ""),
-                            slip.get("destination", ""), slip.get("prepared_by", ""),
-                            json.dumps(slip.get("doc_ids", [])),
-                            slip.get("notes", ""), slip.get("slip_date", ""),
-                            slip.get("time_from", ""), slip.get("time_to", ""),
+    
+    if USE_DB:
+        for slip in slips:
+            if not slip.get("id"):
+                continue
+            try:
+                with get_conn() as conn:
+                    with conn.cursor() as cur:
+                        if mode == "merge":
+                            cur.execute("SELECT 1 FROM routing_slips WHERE id=%s", (slip["id"],))
+                            if cur.fetchone():
+                                summary["skipped"] += 1
+                                continue
+                        cur.execute(
+                            """INSERT INTO routing_slips
+                                   (id, slip_no, destination, prepared_by,
+                                    doc_ids, notes, slip_date, time_from, time_to)
+                               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                               ON CONFLICT (id) DO NOTHING""",
+                            (
+                                slip["id"], slip.get("slip_no", ""),
+                                slip.get("destination", ""), slip.get("prepared_by", ""),
+                                json.dumps(slip.get("doc_ids", [])),
+                                slip.get("notes", ""), slip.get("slip_date", ""),
+                                slip.get("time_from", ""), slip.get("time_to", ""),
+                            )
                         )
-                    )
-                conn.commit()
+                    conn.commit()
+                count += 1
+            except Exception as e:
+                summary["errors"].append(f"Slip {slip.get('id','?')}: {e}")
+    else:
+        # JSON file mode
+        import os
+        existing = {}
+        if os.path.exists("routing_slips.json"):
+            with open("routing_slips.json") as f:
+                existing = json.load(f)
+        
+        for slip in slips:
+            if not slip.get("id"):
+                continue
+            slip_id = slip["id"]
+            if mode == "merge" and slip_id in existing:
+                summary["skipped"] += 1
+                continue
+            existing[slip_id] = slip
             count += 1
-        except Exception as e:
-            summary["errors"].append(f"Slip {slip.get('id','?')}: {e}")
+        
+        with open("routing_slips.json", "w") as f:
+            json.dump(existing, f, indent=2, default=str)
+    
     return count
 
 
 def _restore_saved_offices(offices: list, mode: str, summary: dict) -> int:
-    if not USE_DB:
+    if not offices:
         return 0
     count = 0
-    for office in offices:
-        if not office.get("office_slug"):
-            continue
-        try:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        """INSERT INTO saved_offices (office_slug, office_name, created_by)
-                           VALUES (%s,%s,%s)
-                           ON CONFLICT (office_slug) DO NOTHING""",
-                        (office["office_slug"], office.get("office_name", ""),
-                         office.get("created_by", ""))
-                    )
-                conn.commit()
+    
+    if USE_DB:
+        for office in offices:
+            if not office.get("office_slug"):
+                continue
+            try:
+                with get_conn() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            """INSERT INTO saved_offices (office_slug, office_name, created_by)
+                               VALUES (%s,%s,%s)
+                               ON CONFLICT (office_slug) DO NOTHING""",
+                            (office["office_slug"], office.get("office_name", ""),
+                             office.get("created_by", ""))
+                        )
+                    conn.commit()
+                count += 1
+            except Exception as e:
+                summary["errors"].append(f"Office {office.get('office_slug','?')}: {e}")
+    else:
+        # JSON file mode
+        import os
+        existing = {}
+        if os.path.exists("saved_offices.json"):
+            with open("saved_offices.json") as f:
+                existing = json.load(f)
+        
+        for office in offices:
+            if not office.get("office_slug"):
+                continue
+            slug = office["office_slug"]
+            if mode == "merge" and slug in existing:
+                summary["skipped"] += 1
+                continue
+            existing[slug] = {
+                "office_name": office.get("office_name", ""),
+                "created_by": office.get("created_by", "")
+            }
             count += 1
-        except Exception as e:
-            summary["errors"].append(f"Office {office.get('office_slug','?')}: {e}")
+        
+        with open("saved_offices.json", "w") as f:
+            json.dump(existing, f, indent=2, default=str)
+    
     return count
 
 
 def _restore_office_traffic(traffic: list, mode: str, summary: dict) -> int:
-    if not USE_DB:
+    if not traffic:
         return 0
+    if not USE_DB:
+        # Office traffic only works with database, skip in JSON file mode
+        summary["errors"].append("Office traffic requires database — skipped in local mode")
+        return 0
+    
     count = 0
     for t in traffic:
         if not t.get("office_slug") or not t.get("scanned_at"):
