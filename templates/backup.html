@@ -112,6 +112,7 @@
     </p>
 
     <form method="POST" action="{{ url_for('backup.backup_export') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <div class="backup-section-label">Select data to export:</div>
       <div class="export-options-grid">
         <label class="export-option-label">
@@ -176,6 +177,7 @@
 
     <form method="POST" action="{{ url_for('backup.backup_restore') }}"
           enctype="multipart/form-data" id="restore-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
       <div class="drop-zone" id="drop-zone" onclick="document.getElementById('backup-file-input').click()">
         <div class="dz-icon">📂</div>

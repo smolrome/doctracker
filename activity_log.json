@@ -551,5 +551,152 @@
     "ip": "192.168.1.13",
     "detail": "500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.",
     "ts": "2026-03-21T09:43:37.631651"
+  },
+  {
+    "username": "admin",
+    "action": "logout",
+    "ip": "192.168.1.10",
+    "detail": "",
+    "ts": "2026-03-27T09:35:23.913384"
+  },
+  {
+    "username": "anonymous",
+    "action": "404_not_found",
+    "ip": "192.168.0.124",
+    "detail": "path=/favicon.ico",
+    "ts": "2026-03-30T09:13:26.409943"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.0.124",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-30T09:13:37.289972"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_fail",
+    "ip": "192.168.0.124",
+    "detail": "username=admin",
+    "ts": "2026-03-30T09:13:37.678077"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.0.124",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-30T09:13:48.280691"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_fail",
+    "ip": "192.168.0.124",
+    "detail": "username=admin",
+    "ts": "2026-03-30T09:13:48.662058"
+  },
+  {
+    "username": "anonymous",
+    "action": "http_write",
+    "ip": "192.168.0.124",
+    "detail": "method=POST path=/client/login fields={'next_url': '', 'username': 'admin'}",
+    "ts": "2026-03-30T09:14:11.093235"
+  },
+  {
+    "username": "admin",
+    "action": "client_login_ok",
+    "ip": "192.168.0.124",
+    "detail": "role=admin",
+    "ts": "2026-03-30T09:14:11.115727"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.0.124",
+    "detail": "method=POST path=/delete/C4C94FCD",
+    "ts": "2026-03-30T09:14:16.811030"
+  },
+  {
+    "username": "admin",
+    "action": "doc_deleted",
+    "ip": "192.168.0.124",
+    "detail": "doc_id=C4C94FCD name=test",
+    "ts": "2026-03-30T09:14:16.838088"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.0.124",
+    "detail": "method=POST path=/backup/restore fields={'mode': 'replace'}",
+    "ts": "2026-03-30T09:14:28.480200"
+  },
+  {
+    "username": "admin",
+    "action": "backup_restored",
+    "ip": "192.168.0.124",
+    "detail": "mode=replace docs=373 users=5 skipped=0",
+    "ts": "2026-03-30T09:14:44.743696"
+  },
+  {
+    "username": "admin",
+    "action": "500_error",
+    "ip": "192.168.0.124",
+    "detail": "500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.",
+    "ts": "2026-03-30T09:14:54.509342"
+  },
+  {
+    "username": "admin",
+    "action": "500_error",
+    "ip": "192.168.0.124",
+    "detail": "500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.",
+    "ts": "2026-03-30T09:14:59.140288"
+  },
+  {
+    "username": "admin",
+    "action": "500_error",
+    "ip": "192.168.0.124",
+    "detail": "500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.",
+    "ts": "2026-03-30T09:15:00.870821"
+  },
+  {
+    "username": "admin",
+    "action": "500_error",
+    "ip": "192.168.0.124",
+    "detail": "500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.",
+    "ts": "2026-03-30T09:15:01.491236"
+  },
+  {
+    "username": "admin",
+    "action": "admin_users_viewed",
+    "ip": "192.168.0.124",
+    "detail": "Admin accessed user management",
+    "ts": "2026-03-30T09:17:46.993800"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.0.124",
+    "detail": "method=POST path=/clear-database",
+    "ts": "2026-03-30T09:23:10.011162"
+  },
+  {
+    "username": "admin",
+    "action": "database_cleared",
+    "ip": "192.168.0.124",
+    "detail": "deleted_count=359",
+    "ts": "2026-03-30T09:23:10.047074"
+  },
+  {
+    "username": "admin",
+    "action": "http_write",
+    "ip": "192.168.0.124",
+    "detail": "method=POST path=/backup/restore fields={'mode': 'replace'}",
+    "ts": "2026-03-30T09:23:27.622242"
+  },
+  {
+    "username": "admin",
+    "action": "backup_restored",
+    "ip": "192.168.0.124",
+    "detail": "mode=replace docs=373 users=0 skipped=0",
+    "ts": "2026-03-30T09:23:44.152874"
   }
 ]
