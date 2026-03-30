@@ -2,6 +2,7 @@
 routes/backup.py — Backup and restore routes.
 Admin-only. Download a full JSON backup, upload to restore.
 """
+import sys
 import json
 from datetime import datetime
 from io import BytesIO
@@ -128,8 +129,9 @@ def backup_export():
 @admin_required
 def backup_restore():
     """Upload a backup file (JSON or Excel) and restore data."""
+    print(f"DEBUG restore: method={request.method} files={list(request.files.keys())} form={list(request.form.keys())}", file=sys.stderr, flush=True)
     uploaded = request.files.get("backup_file")
-    mode     = request.form.get("mode", "merge")   # 'merge' or 'replace'
+    mode     = request.form.get("mode", "merge")
 
     if not uploaded or not uploaded.filename:
         flash("Please select a backup file to upload.", "error")
