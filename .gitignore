@@ -4,3 +4,9 @@ __pycache__/
 .env.local
 .env
 documents.json
+users.json
+routing_slips.json
+activity_log.json
+saved_offices.json
+doc_qr_tokens.json
+*.pyc
