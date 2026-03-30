@@ -307,7 +307,7 @@ def get_all_users() -> list[dict]:
         # FIX 9: strip password_hash from JSON results
         return [
             {k: v for k, v in u.items() if k != "password_hash"}
-            for u in _load_users_json().values()
+            for u in _load_users_json()
         ]
 
 

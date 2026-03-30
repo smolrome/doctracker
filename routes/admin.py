@@ -282,6 +282,92 @@ def activity_log():
     return render_template("activity_log.html", logs=logs)
 
 
+@admin_bp.route("/office-documents")
+@admin_required
+def office_documents():
+    """Show documents grouped by office - for admin to view all office documents."""
+    try:
+        from services.misc import audit_log
+        from utils import get_client_ip
+        audit_log("office_documents_viewed", "Admin accessed office documents view",
+                  username=session.get("username","admin"), ip=get_client_ip())
+    except Exception:
+        pass
+    
+    from services.misc import load_saved_offices
+    from services.documents import load_docs
+    from services.auth import get_all_users
+    
+    saved_offices = load_saved_offices()
+    docs = load_docs()
+    all_users = get_all_users()
+    
+    user_office_map = {}
+    for u in all_users:
+        username = u.get("username", "")
+        office = u.get("office", "").strip()
+        if username and office:
+            user_office_map[username] = office
+    
+    office_docs = {}
+    for office in saved_offices:
+        office_name = office.get("office_name", "")
+        office_slug = office.get("office_slug", "")
+        if office_name:
+            office_docs[office_name] = {
+                "slug": office_slug,
+                "name": office_name,
+                "docs": [],
+                "count": 0
+            }
+    
+    unassigned_docs = []
+    
+    for doc in docs:
+        target = doc.get("target_office_name", "").strip()
+        pending = doc.get("pending_at_office", "").strip()
+        logged_by = doc.get("logged_by", "").strip()
+        
+        staff_office = user_office_map.get(logged_by, "")
+        
+        if target and target in office_docs:
+            office_docs[target]["docs"].append(doc)
+            office_docs[target]["count"] += 1
+        elif pending and pending in office_docs:
+            office_docs[pending]["docs"].append(doc)
+            office_docs[pending]["count"] += 1
+        elif staff_office and staff_office in office_docs:
+            office_docs[staff_office]["docs"].append(doc)
+            office_docs[staff_office]["count"] += 1
+        else:
+            unassigned_docs.append(doc)
+    
+    try:
+        office_page = max(1, int(request.args.get("office_page", 1)))
+    except ValueError:
+        office_page = 1
+    office_per_page = 10
+    office_list = [o for o in office_docs.values()]
+    office_total = len(office_list)
+    office_total_pages = max(1, (office_total + office_per_page - 1) // office_per_page)
+    office_page = min(office_page, office_total_pages)
+    office_start = (office_page - 1) * office_per_page
+    office_paginated = office_list[office_start:office_start + office_per_page]
+    
+    total_docs = len(docs)
+    assigned_docs = sum(o["count"] for o in office_docs.values())
+    
+    return render_template("office_documents.html",
+                           office_docs=office_paginated,
+                           unassigned_docs=unassigned_docs,
+                           unassigned_count=len(unassigned_docs),
+                           total_docs=total_docs,
+                           assigned_docs=assigned_docs,
+                           office_page=office_page,
+                           office_total_pages=office_total_pages,
+                           admin_username=ADMIN_USERNAME)
+
+
 @admin_bp.route("/send-invite", methods=["GET", "POST"])
 @admin_required
 def send_invite():

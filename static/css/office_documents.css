@@ -1,0 +1,205 @@
+.office-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.office-tab {
+  padding: 10px 16px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+  transition: all 0.2s;
+}
+
+.office-tab:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.office-tab.active {
+  background: #0f766e;
+  color: #fff;
+  border-color: #0f766e;
+}
+
+.office-count {
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+.office-content {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.office-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 8px 8px 0 0;
+}
+
+.office-header-bar h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #1e293b;
+}
+
+.office-doc-count {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.doc-table-wrapper {
+  overflow-x: auto;
+}
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.doc-table th {
+  text-align: left;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.doc-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+}
+
+.doc-table tr:hover {
+  background: #f8fafc;
+}
+
+.doc-name-cell {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-logged { background: #dbeafe; color: #1d4ed8; }
+.status-pending { background: #fef3c7; color: #b45309; }
+.status-received { background: #dcfce7; color: #15803d; }
+.status-in-review { background: #f3e8ff; color: #7c3aed; }
+.status-routed { background: #fee2e2; color: #dc2626; }
+.status-transferred { background: #ffedd5; color: #ea580c; }
+.status-released { background: #d1fae5; color: #059669; }
+.status-on-hold { background: #f1f5f9; color: #64748b; }
+.status-archived { background: #e2e8f0; color: #475569; }
+
+.btn-view {
+  display: inline-block;
+  padding: 6px 12px;
+  background: #3b82f6;
+  color: #fff;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.btn-view:hover {
+  background: #2563eb;
+}
+
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: #64748b;
+}
+
+.empty-offices {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-offices .icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-offices p {
+  color: #64748b;
+  margin-bottom: 20px;
+}
+
+.btn-primary {
+  display: inline-block;
+  padding: 12px 24px;
+  background: #0f766e;
+  color: #fff;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: #0d655d;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.page-link {
+  padding: 8px 16px;
+  background: #f1f5f9;
+  color: #475569;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.page-link:hover {
+  background: #e2e8f0;
+}
+
+.page-info {
+  font-size: 14px;
+  color: #64748b;
+}
+
+code {
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: monospace;
+}

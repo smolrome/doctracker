@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/office_documents.css') }}">
+
+<div class="page-header">
+  <a href="/" class="page-back">← Dashboard</a>
+  <div class="page-title">🏢 Office Documents</div>
+</div>
+
+<div class="summary-box">
+  <div>
+    <h2>📊 Documents by Office</h2>
+    <p>View all documents assigned to each office</p>
+  </div>
+  <div class="summary-stats">
+    <div class="stat-item">
+      <div class="stat-number">{{ office_docs|length }}</div>
+      <div class="stat-label">Offices</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">{{ assigned_docs }}</div>
+      <div class="stat-label">Assigned Docs</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">{{ unassigned_count }}</div>
+      <div class="stat-label">Unassigned</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">{{ total_docs }}</div>
+      <div class="stat-label">Total Docs</div>
+    </div>
+  </div>
+</div>
+
+{% if office_docs %}
+<div class="office-tabs">
+  {% for office in office_docs %}
+  <button class="office-tab" data-office="{{ office.name }}" onclick="switchOfficeTab('{{ office.name }}')">
+    {{ office.name }} <span class="office-count">({{ office.count }})</span>
+  </button>
+  {% endfor %}
+  <button class="office-tab {% if not office_docs %}active{% endif %}" data-office="unassigned" onclick="switchOfficeTab('unassigned')">
+    Unassigned <span class="office-count">({{ unassigned_count }})</span>
+  </button>
+</div>
+
+{% for office in office_docs %}
+<div id="office-content-{{ office.name }}" class="office-content" {% if not loop.first %}style="display:none;"{% endif %}>
+  <div class="office-header-bar">
+    <h3>{{ office.name }}</h3>
+    <span class="office-doc-count">{{ office.count }} document{{ 's' if office.count != 1 else '' }}</span>
+  </div>
+  
+  {% if office.docs %}
+  <div class="doc-table-wrapper">
+    <table class="doc-table">
+      <thead>
+        <tr>
+          <th>Doc ID</th>
+          <th>Document Name</th>
+          <th>Status</th>
+          <th>Logged By</th>
+          <th>Target Office</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for doc in office.docs %}
+        <tr>
+          <td><code>{{ doc.doc_id or doc.id }}</code></td>
+          <td class="doc-name-cell">{{ doc.doc_name[:50] }}{{ '...' if doc.doc_name|length > 50 else '' }}</td>
+          <td><span class="status-badge status-{{ doc.status|lower|replace(' ', '-') }}">{{ doc.status }}</span></td>
+          <td>{{ doc.logged_by or '-' }}</td>
+          <td>{{ doc.target_office_name or '-' }}</td>
+          <td>{{ doc.created_at[:10] if doc.created_at else '-' }}</td>
+          <td>
+            <a href="/view/{{ doc.id }}" class="btn-view">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <p>No documents for this office</p>
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+
+<div id="office-content-unassigned" class="office-content" style="display:none;">
+  <div class="office-header-bar">
+    <h3>Unassigned Documents</h3>
+    <span class="office-doc-count">{{ unassigned_count }} document{{ 's' if unassigned_count != 1 else '' }}</span>
+  </div>
+  
+  {% if unassigned_docs %}
+  <div class="doc-table-wrapper">
+    <table class="doc-table">
+      <thead>
+        <tr>
+          <th>Doc ID</th>
+          <th>Document Name</th>
+          <th>Status</th>
+          <th>Logged By</th>
+          <th>Target Office</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for doc in unassigned_docs %}
+        <tr>
+          <td><code>{{ doc.doc_id or doc.id }}</code></td>
+          <td class="doc-name-cell">{{ doc.doc_name[:50] }}{{ '...' if doc.doc_name|length > 50 else '' }}</td>
+          <td><span class="status-badge status-{{ doc.status|lower|replace(' ', '-') }}">{{ doc.status }}</span></td>
+          <td>{{ doc.logged_by or '-' }}</td>
+          <td>{{ doc.target_office_name or '-' }}</td>
+          <td>{{ doc.created_at[:10] if doc.created_at else '-' }}</td>
+          <td>
+            <a href="/view/{{ doc.id }}" class="btn-view">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <p>No unassigned documents</p>
+  </div>
+  {% endif %}
+</div>
+
+<div class="pagination">
+  {% if office_page > 1 %}
+  <a href="?office_page={{ office_page - 1 }}" class="page-link">← Previous</a>
+  {% endif %}
+  <span class="page-info">Page {{ office_page }} of {{ office_total_pages }}</span>
+  {% if office_page < office_total_pages %}
+  <a href="?office_page={{ office_page + 1 }}" class="page-link">Next →</a>
+  {% endif %}
+</div>
+
+{% else %}
+<div class="empty-offices">
+  <div class="icon">🏢</div>
+  <p>No offices found. Create offices first to track documents by office.</p>
+  <a href="/office-staff" class="btn-primary">Manage Offices</a>
+</div>
+{% endif %}
+
+<script>
+function switchOfficeTab(officeName) {
+  document.querySelectorAll('.office-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.office-tab').forEach(el => el.classList.remove('active'));
+  
+  document.getElementById('office-content-' + officeName).style.display = 'block';
+  document.querySelector('[data-office="' + officeName + '"]').classList.add('active');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const firstTab = document.querySelector('.office-tab');
+  if (firstTab) {
+    firstTab.classList.add('active');
+  }
+});
+</script>
+
+{% endblock %}
