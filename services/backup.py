@@ -897,19 +897,31 @@ def _restore_users(users: list, mode: str, summary: dict) -> int:
     else:
         # JSON file mode
         import os
-        existing = {}
+        existing = []
         if os.path.exists("users.json"):
             with open("users.json") as f:
                 existing = json.load(f)
+        
+        # Convert to dict for merge mode lookup
+        existing_dict = {u.get("username"): u for u in existing if isinstance(u, dict) and u.get("username")}
         
         for u in users:
             if not u.get("username"):
                 continue
             username = u["username"]
-            if mode == "merge" and username in existing:
+            if mode == "merge" and username in existing_dict:
                 summary["skipped"] += 1
                 continue
-            existing[username] = u
+            # Update or add user
+            if username in existing_dict:
+                # Update existing user in list
+                for i, existing_user in enumerate(existing):
+                    if isinstance(existing_user, dict) and existing_user.get("username") == username:
+                        existing[i] = u
+                        break
+            else:
+                existing.append(u)
+            existing_dict[username] = u
             count += 1
         
         with open("users.json", "w") as f:
