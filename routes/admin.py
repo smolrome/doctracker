@@ -13,7 +13,7 @@ from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
 )
 from services.misc import audit_log, get_activity_logs
-from services.documents import load_docs, save_doc, get_doc
+from services.documents import load_docs, save_doc, get_doc, delete_doc
 from utils import admin_required, get_client_ip
 from config import ADMIN_USERNAME, MAIL_ENABLED, APP_URL
 
@@ -265,6 +265,63 @@ def assign_doc_batch():
               ip=get_client_ip())
     
     flash(f"✅ {assigned_count} document(s) assigned to {staff_full_name}.", "success")
+    return redirect(url_for("admin.staff_document_stats"))
+
+
+@admin_bp.route("/delete-unassigned-batch", methods=["POST"])
+@admin_required
+def delete_unassigned_batch():
+    """Admin can delete all unassigned documents or selected ones."""
+    doc_ids = request.form.get("doc_ids", "").strip()
+    delete_all = request.form.get("delete_all", "").strip() == "1"
+
+    if delete_all:
+        # Delete ALL unassigned documents (not just those on current page)
+        docs = load_docs()
+        unassigned_docs = [
+            d for d in docs
+            if not d.get("logged_by") and not d.get("original_logged_by") and not d.get("submitted_by")
+        ]
+        deleted_count = 0
+        username = session.get("username", "admin")
+        for doc in unassigned_docs:
+            doc_id = doc.get("id")
+            if doc_id:
+                delete_doc(doc_id, deleted_by=username)
+                deleted_count += 1
+
+        audit_log("unassigned_docs_deleted_all",
+                  f"deleted_count={deleted_count}",
+                  username=username,
+                  ip=get_client_ip())
+
+        flash(f"✅ {deleted_count} unassigned document(s) deleted.", "success")
+    else:
+        # Delete selected documents only
+        if not doc_ids:
+            flash("No documents selected.", "error")
+            return redirect(url_for("admin.staff_document_stats"))
+
+        id_list = [d.strip() for d in doc_ids.split(",") if d.strip()]
+        deleted_count = 0
+        username = session.get("username", "admin")
+
+        for doc_id in id_list:
+            doc = get_doc(doc_id)
+            if not doc:
+                continue
+            # Only delete if truly unassigned
+            if not doc.get("logged_by") and not doc.get("original_logged_by") and not doc.get("submitted_by"):
+                delete_doc(doc_id, deleted_by=username)
+                deleted_count += 1
+
+        audit_log("unassigned_docs_deleted_selected",
+                  f"deleted_count={deleted_count}",
+                  username=username,
+                  ip=get_client_ip())
+
+        flash(f"✅ {deleted_count} unassigned document(s) deleted.", "success")
+
     return redirect(url_for("admin.staff_document_stats"))
 
 

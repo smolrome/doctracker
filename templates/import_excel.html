@@ -78,6 +78,77 @@
     </div>
   </div>
 
+  <!-- ── REASSIGN IMPORTED DOCS ── -->
+  {% elif reassign_docs is defined %}
+  <div class="card">
+    <div class="card-title">🔁 Reassign Imported Documents</div>
+    <p style="font-size:.88rem;color:var(--muted);margin:0 0 12px;">
+      {{ reassign_docs|length }} document(s) found from Excel imports. Select documents and choose a new office/staff.
+    </p>
+
+    {% if reassign_docs %}
+    <form method="POST" action="{{ url_for('import_excel.reassign_imported') }}">
+      <div style="max-height:400px;overflow-y:auto;margin-bottom:16px;border:1px solid #e5e7eb;border-radius:8px;">
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="select-all" onchange="toggleAll(this)"></th>
+              <th>Doc ID</th>
+              <th>Name</th>
+              <th>Office</th>
+              <th>Staff</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in reassign_docs %}
+            <tr>
+              <td><input type="checkbox" name="doc_ids" value="{{ d.id }}" class="doc-cb"></td>
+              <td><span class="ref">{{ d.doc_id }}</span></td>
+              <td>{{ d.doc_name[:50] }}{% if d.doc_name|length > 50 %}…{% endif %}</td>
+              <td>{{ d.sender_org or '—' }}</td>
+              <td>{{ d.received_by or '—' }}</td>
+              <td style="font-size:.8rem;color:var(--muted);">{{ d.source }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <label style="display:block;margin-bottom:8px;font-size:.9rem;font-weight:600;color:var(--navy);">
+        Reassign to office:
+      </label>
+      <select name="reassign_office" id="reassign_office" style="margin-bottom:20px;" onchange="filterStaff()">
+        <option value="">— Keep current —</option>
+        {% for office in offices %}
+        <option value="{{ office.office_name }}">{{ office.office_name }}</option>
+        {% endfor %}
+      </select>
+
+      <div id="staff-wrapper" style="display:none;">
+        <label style="display:block;margin-bottom:8px;font-size:.9rem;font-weight:600;color:var(--navy);">
+          Reassign to staff:
+        </label>
+        <select name="reassign_staff" id="default_staff" style="margin-bottom:20px;">
+          <option value="">— Keep current —</option>
+        </select>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-green" onclick="return confirm('Reassign selected documents?')">
+          ✅ Reassign Selected
+        </button>
+        <a href="{{ url_for('import_excel.import_page') }}" class="btn btn-ghost">
+          ✕ Cancel
+        </a>
+      </div>
+    </form>
+    {% else %}
+    <p style="color:var(--muted);">No imported documents found.</p>
+    <a href="{{ url_for('import_excel.import_page') }}" class="btn btn-ghost">← Back to Import</a>
+    {% endif %}
+  </div>
+
   <!-- ── PREVIEW (confirm step) ── -->
   {% elif preview is defined %}
   <div class="card">
@@ -201,6 +272,12 @@
         👁️ Preview Import
       </button>
     </form>
+  </div>
+
+  <div style="margin-top:12px;text-align:center;">
+    <a href="{{ url_for('import_excel.reassign_imported') }}" class="btn btn-ghost" style="font-size:.88rem;">
+      🔁 Reassign Previously Imported Documents
+    </a>
   </div>
 
   <!-- Column mapping reference -->

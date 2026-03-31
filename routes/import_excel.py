@@ -8,6 +8,7 @@ from services.excel_import import import_excel, parse_excel
 from services.dropdown_options import get_dropdown_options
 from services.misc import audit_log, load_saved_offices
 from services.auth import get_all_users
+from services.documents import load_docs, save_doc
 from utils import login_required, get_client_ip
 
 import_bp = Blueprint("import_excel", __name__)
@@ -111,3 +112,51 @@ def import_confirm():
               ip=get_client_ip())
 
     return render_template("import_excel.html", summary=summary, filename=filename)
+
+
+@import_bp.route("/import-excel/reassign", methods=["GET", "POST"])
+@login_required
+def reassign_imported():
+    """Reassign office/staff for previously imported documents."""
+    imported_docs = [d for d in load_docs() if d.get("source", "").startswith("Imported from")]
+
+    if request.method == "POST":
+        doc_ids = request.form.getlist("doc_ids")
+        new_office = request.form.get("reassign_office", "").strip()
+        new_staff_username = request.form.get("reassign_staff", "").strip()
+
+        if not doc_ids:
+            flash("No documents selected.", "error")
+            return redirect(url_for("import_excel.reassign_imported"))
+
+        new_staff_name = ""
+        if new_staff_username:
+            for u in get_all_users():
+                if u["username"] == new_staff_username:
+                    new_staff_name = u.get("full_name", new_staff_username)
+                    break
+
+        updated = 0
+        for d in load_docs():
+            if d.get("id") in doc_ids or d.get("doc_id") in doc_ids:
+                if new_office:
+                    d["sender_org"] = new_office
+                if new_staff_username:
+                    d["received_by"] = new_staff_name
+                    d["logged_by"] = new_staff_username
+                    d["original_logged_by"] = new_staff_username
+                save_doc(d)
+                updated += 1
+
+        audit_log("import_reassign",
+                  f"reassigned {updated} imported docs office={new_office} staff={new_staff_username}",
+                  username=session.get("username", "admin"), ip=get_client_ip())
+        flash(f"Reassigned {updated} document(s).", "success")
+        return redirect(url_for("import_excel.reassign_imported"))
+
+    staff_users = [u for u in get_all_users() if u.get("role") != "client"]
+    return render_template("import_excel.html",
+                           reassign_docs=imported_docs,
+                           offices=load_saved_offices(),
+                           staff_users=staff_users,
+                           staff_users_json=[{"username": u["username"], "full_name": u.get("full_name", u["username"]), "office": u.get("office", "")} for u in staff_users])

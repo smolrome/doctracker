@@ -127,10 +127,12 @@
     <p style="margin:0;color:#856404;font-size:14px;">
       These documents have no staff or client assigned. Use the form below to assign them.
     </p>
-    <div style="margin-top:8px;">
-      <input type="checkbox" id="select-all-unassigned" onchange="toggleSelectAllUnassigned(this)">
-      <label for="select-all-unassigned" style="color:#856404;">Select All</label>
-      <span style="margin-left:16px;">
+    <div style="margin-top:8px;display:flex;flex-wrap:wrap;align-items:center;gap:12px;">
+      <div>
+        <input type="checkbox" id="select-all-unassigned" onchange="toggleSelectAllUnassigned(this)">
+        <label for="select-all-unassigned" style="color:#856404;">Select All (this page)</label>
+      </div>
+      <div>
         <select id="bulk-assign-staff" style="padding:6px;border-radius:4px;">
           <option value="">-- Select Staff --</option>
           {% for staff in staff_list %}
@@ -138,7 +140,11 @@
           {% endfor %}
         </select>
         <button type="button" class="btn btn-primary btn-sm" onclick="bulkAssignUnassigned()">Assign Selected</button>
-      </span>
+      </div>
+      <div>
+        <button type="button" class="btn btn-danger btn-sm" onclick="bulkDeleteSelectedUnassigned()">🗑️ Delete Selected</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="deleteAllUnassigned()" style="margin-left:4px;">🗑️ Delete ALL Unassigned ({{ unassigned_count }})</button>
+      </div>
     </div>
   </div>
   
@@ -421,6 +427,66 @@ function bulkAssignUnassigned() {
   staffInput.value = staffUsername;
   form.appendChild(staffInput);
   
+  document.body.appendChild(form);
+  form.submit();
+}
+
+function bulkDeleteSelectedUnassigned() {
+  var checkboxes = document.querySelectorAll('.unassigned-checkbox:checked');
+
+  if (checkboxes.length === 0) {
+    alert('Please select at least one document to delete.');
+    return;
+  }
+
+  if (!confirm('Are you sure you want to delete ' + checkboxes.length + ' selected unassigned document(s)? This action cannot be undone.')) {
+    return;
+  }
+
+  var docIds = Array.from(checkboxes).map(cb => cb.value);
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/delete-unassigned-batch';
+
+  var csrfInput = document.createElement('input');
+  csrfInput.type = 'hidden';
+  csrfInput.name = 'csrf_token';
+  csrfInput.value = window.CSRF_TOKEN || '';
+  form.appendChild(csrfInput);
+
+  var docIdsInput = document.createElement('input');
+  docIdsInput.type = 'hidden';
+  docIdsInput.name = 'doc_ids';
+  docIdsInput.value = docIds.join(',');
+  form.appendChild(docIdsInput);
+
+  document.body.appendChild(form);
+  form.submit();
+}
+
+function deleteAllUnassigned() {
+  var totalCount = {{ unassigned_count }};
+
+  if (!confirm('Are you sure you want to delete ALL ' + totalCount + ' unassigned document(s)? This will delete all unassigned documents, not just those shown on this page. This action cannot be undone.')) {
+    return;
+  }
+
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/delete-unassigned-batch';
+
+  var csrfInput = document.createElement('input');
+  csrfInput.type = 'hidden';
+  csrfInput.name = 'csrf_token';
+  csrfInput.value = window.CSRF_TOKEN || '';
+  form.appendChild(csrfInput);
+
+  var deleteAllInput = document.createElement('input');
+  deleteAllInput.type = 'hidden';
+  deleteAllInput.name = 'delete_all';
+  deleteAllInput.value = '1';
+  form.appendChild(deleteAllInput);
+
   document.body.appendChild(form);
   form.submit();
 }

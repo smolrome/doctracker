@@ -137,6 +137,14 @@
         </label>
       </div>
 
+      <div class="backup-section-label">Filter documents by office (optional):</div>
+      <select name="filter_office" style="margin-bottom:16px;padding:8px 12px;border-radius:8px;border:1px solid #CBD5E1;font-size:.9rem;width:100%;max-width:400px;">
+        <option value="">— All offices —</option>
+        {% for office in offices %}
+        <option value="{{ office.office_name }}">{{ office.office_name }}</option>
+        {% endfor %}
+      </select>
+
       <div class="backup-section-label">File format:</div>
       <div class="format-row">
         <label class="format-label">

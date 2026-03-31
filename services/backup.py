@@ -342,7 +342,7 @@ def create_backup() -> dict:
     return backup
 
 
-def create_selective_backup(export_items: list) -> dict:
+def create_selective_backup(export_items: list, filter_office: str = "") -> dict:
     """Collect selected data from the database into a single dict."""
     backup = {
         "meta": {
@@ -356,7 +356,10 @@ def create_selective_backup(export_items: list) -> dict:
     
     counts = {}
     if "documents" in export_items:
-        backup["documents"] = _export_documents()
+        docs = _export_documents()
+        if filter_office:
+            docs = [d for d in docs if d.get("sender_org", "").strip().lower() == filter_office.lower()]
+        backup["documents"] = docs
         counts["documents"] = len(backup["documents"])
     if "users" in export_items:
         backup["users"] = _export_users()
@@ -375,7 +378,7 @@ def create_selective_backup(export_items: list) -> dict:
     return backup
 
 
-def create_selective_excel_backup(export_items: list) -> bytes:
+def create_selective_excel_backup(export_items: list, filter_office: str = "") -> bytes:
     """Export selected data to a formatted multi-sheet Excel workbook."""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -434,6 +437,8 @@ def create_selective_excel_backup(export_items: list) -> bytes:
     # Documents sheet
     if "documents" in export_items:
         docs = _export_documents()
+        if filter_office:
+            docs = [d for d in docs if d.get("sender_org", "").strip().lower() == filter_office.lower()]
         wd = wb.create_sheet("Documents")
         wb.active = wd
         wd.sheet_view.showGridLines = False
