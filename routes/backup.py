@@ -21,7 +21,7 @@ backup_bp = Blueprint("backup", __name__)
 @admin_required
 def backup_page():
     """Backup & Restore admin page."""
-    return render_template("backup.html")
+    return render_template("backup.html", csrf_token=session.get("csrf_token", ""))
 
 
 @backup_bp.route("/backup/download")

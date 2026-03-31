@@ -220,6 +220,7 @@ def create_app() -> Flask:
     # /client/* is no longer exempt — it handles CSRF internally.
     @app.before_request
     def csrf_check():
+        print(f"[CSRF] method={request.method} path={request.path} session_token={session.get(CSRF_SESSION_KEY,'NONE')[:8]} form_token={request.form.get(CSRF_FORM_FIELD,'NONE')[:8]}", flush=True)
         if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
             return
         path = request.path
@@ -232,6 +233,7 @@ def create_app() -> Flask:
             flash("Security check failed. Please try again.", "error")
             return redirect(request.referrer or url_for("auth.login"))
         if not secrets.compare_digest(session_token, form_token):
+            print(f"CSRF FAIL: session={session_token[:8]}... form={form_token[:8]}...", flush=True)
             try:
                 from services.misc import audit_log
                 audit_log("csrf_mismatch",
@@ -318,6 +320,11 @@ def create_app() -> Flask:
         except Exception:
             pass
         return render_template("500.html"), 500
+
+    @app.errorhandler(400)
+    def bad_request(e):
+        print(f"400 BAD REQUEST: {e} path={request.path}", flush=True)
+        return f"Bad Request: {e}", 400
 
     @app.errorhandler(429)
     def too_many_requests(e):
