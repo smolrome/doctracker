@@ -5,6 +5,7 @@ from flask import (Blueprint, flash, redirect, render_template,
                    request, session, url_for)
 
 from services.excel_import import import_excel, parse_excel
+from services.dropdown_options import get_dropdown_options
 from services.misc import audit_log
 from utils import login_required, get_client_ip
 
@@ -62,6 +63,11 @@ def import_confirm():
     tmp_path = session.pop("import_tmp", None)
     filename = session.pop("import_filename", "upload.xlsx")
     status   = request.form.get("default_status", "Received")
+
+    if status:
+        allowed_statuses = get_dropdown_options("status")
+        if status not in allowed_statuses:
+            status = ""
 
     if not tmp_path:
         flash("Session expired — please re-upload the file.", "error")

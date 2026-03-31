@@ -163,12 +163,23 @@ def import_excel(file_bytes: bytes, filename: str,
             uid    = str(uuid.uuid4())[:8].upper()
             doc_id = generate_ref()
             ts     = now_str()
+            if default_status:
+                auto_status = default_status
+            else:
+                remarks = row["notes"].strip()
+                if remarks and "released" in remarks.lower():
+                    auto_status = "Released"
+                elif not remarks:
+                    auto_status = "Logged"
+                else:
+                    auto_status = "Received"
+
             doc = {
                 "id":           uid,
                 "doc_id":       doc_id,
                 "doc_name":     row["doc_name"],
                 "category":     "Special Order",
-                "status":       default_status,
+                "status":       auto_status,
                 "sender_name":  row["sender_name"],
                 "sender_org":   row["sender_org"],
                 "received_by":  row["received_by"],

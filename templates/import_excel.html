@@ -134,15 +134,19 @@
     <div class="card-title">⚙️ Import Settings</div>
     <form method="POST" action="{{ url_for('import_excel.import_confirm') }}">
       <label style="display:block;margin-bottom:8px;font-size:.9rem;font-weight:600;color:var(--navy);">
-        Set initial status for all imported documents:
+        Override status for all imported documents (leave empty to auto-detect from remarks):
       </label>
       <select name="default_status" style="margin-bottom:20px;">
-        <option value="Received" selected>Received</option>
+        <option value="">— Auto (from remarks) —</option>
+        <option value="Logged">Logged</option>
         <option value="Pending">Pending</option>
+        <option value="Received">Received</option>
+        <option value="In Review">In Review</option>
         <option value="Routed">Routed</option>
         <option value="Transferred">Transferred</option>
-        <option value="In Review">In Review</option>
         <option value="Released">Released</option>
+        <option value="On Hold">On Hold</option>
+        <option value="Archived">Archived</option>
       </select>
       <br>
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
