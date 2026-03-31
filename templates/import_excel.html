@@ -250,7 +250,7 @@ function filterStaff() {
   const matched = allStaff.filter(s => (s.office || '').toLowerCase() === office.toLowerCase());
   matched.forEach(s => {
     const opt = document.createElement('option');
-    opt.value = s.full_name;
+    opt.value = s.username;
     opt.textContent = s.full_name + ' (' + s.username + ')';
     sel.appendChild(opt);
   });

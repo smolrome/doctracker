@@ -70,7 +70,14 @@ def import_confirm():
     filename = session.pop("import_filename", "upload.xlsx")
     status   = request.form.get("default_status", "")
     office   = request.form.get("default_office", "").strip()
-    staff    = request.form.get("default_staff", "").strip()
+    staff_username = request.form.get("default_staff", "").strip()
+
+    staff_full_name = ""
+    if staff_username:
+        for u in get_all_users():
+            if u["username"] == staff_username:
+                staff_full_name = u.get("full_name", staff_username)
+                break
 
     if status:
         allowed_statuses = get_dropdown_options("status")
@@ -94,7 +101,8 @@ def import_confirm():
                            imported_by=session.get("username", "admin"),
                            default_status=status,
                            default_office=office,
-                           default_staff=staff)
+                           default_staff_username=staff_username,
+                           default_staff_name=staff_full_name)
 
     audit_log("excel_import",
               f"file={filename} imported={summary['imported']} "
