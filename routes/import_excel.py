@@ -6,7 +6,8 @@ from flask import (Blueprint, flash, redirect, render_template,
 
 from services.excel_import import import_excel, parse_excel
 from services.dropdown_options import get_dropdown_options
-from services.misc import audit_log
+from services.misc import audit_log, load_saved_offices
+from services.auth import get_all_users
 from utils import login_required, get_client_ip
 
 import_bp = Blueprint("import_excel", __name__)
@@ -49,11 +50,16 @@ def import_preview():
     session["import_tmp"]      = tmp.name
     session["import_filename"] = uploaded.filename
 
+    staff_users = [u for u in get_all_users() if u.get("role") != "client"]
+
     return render_template("import_excel.html",
                            preview=rows[:50],   # show first 50 rows
                            total=len(rows),
                            filename=uploaded.filename,
-                           warnings=warnings)
+                           warnings=warnings,
+                           offices=load_saved_offices(),
+                           staff_users=staff_users,
+                           staff_users_json=[{"username": u["username"], "full_name": u.get("full_name", u["username"]), "office": u.get("office", "")} for u in staff_users])
 
 
 @import_bp.route("/import-excel/confirm", methods=["POST"])
@@ -62,7 +68,9 @@ def import_confirm():
     """Read temp file and do the actual import."""
     tmp_path = session.pop("import_tmp", None)
     filename = session.pop("import_filename", "upload.xlsx")
-    status   = request.form.get("default_status", "Received")
+    status   = request.form.get("default_status", "")
+    office   = request.form.get("default_office", "").strip()
+    staff    = request.form.get("default_staff", "").strip()
 
     if status:
         allowed_statuses = get_dropdown_options("status")
@@ -84,7 +92,9 @@ def import_confirm():
 
     summary = import_excel(file_bytes, filename,
                            imported_by=session.get("username", "admin"),
-                           default_status=status)
+                           default_status=status,
+                           default_office=office,
+                           default_staff=staff)
 
     audit_log("excel_import",
               f"file={filename} imported={summary['imported']} "

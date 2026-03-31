@@ -139,7 +139,8 @@ def parse_excel(file_bytes: bytes, filename: str) -> tuple[list[dict], list[str]
 
 
 def import_excel(file_bytes: bytes, filename: str,
-                 imported_by: str, default_status: str = "Received",
+                 imported_by: str, default_status: str = "",
+                 default_office: str = "", default_staff: str = "",
                  skip_duplicates: bool = True) -> dict:
     """Parse and batch-insert all rows in a single DB transaction."""
     rows, warnings = parse_excel(file_bytes, filename)
@@ -181,8 +182,8 @@ def import_excel(file_bytes: bytes, filename: str,
                 "category":     "Special Order",
                 "status":       auto_status,
                 "sender_name":  row["sender_name"],
-                "sender_org":   row["sender_org"],
-                "received_by":  row["received_by"],
+                "sender_org":   default_office or row["sender_org"],
+                "received_by":  default_staff or row["received_by"],
                 "referred_to":  row["referred_to"],
                 "forwarded_to": row["forwarded_to"],
                 "routed_to":    row["routed_to"],

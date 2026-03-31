@@ -148,6 +148,25 @@
         <option value="On Hold">On Hold</option>
         <option value="Archived">Archived</option>
       </select>
+
+      <label style="display:block;margin-bottom:8px;font-size:.9rem;font-weight:600;color:var(--navy);">
+        Assign to office (leave empty to keep from spreadsheet):
+      </label>
+      <select name="default_office" id="default_office" style="margin-bottom:20px;" onchange="filterStaff()">
+        <option value="">— From spreadsheet —</option>
+        {% for office in offices %}
+        <option value="{{ office.office_name }}">{{ office.office_name }}</option>
+        {% endfor %}
+      </select>
+
+      <div id="staff-wrapper" style="display:none;">
+        <label style="display:block;margin-bottom:8px;font-size:.9rem;font-weight:600;color:var(--navy);">
+          Received by staff:
+        </label>
+        <select name="default_staff" id="default_staff" style="margin-bottom:20px;">
+          <option value="">— From spreadsheet —</option>
+        </select>
+      </div>
       <br>
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
         <button type="submit" class="btn btn-green">
@@ -210,6 +229,33 @@
 </div>
 
 <script>
+{% if staff_users_json is defined %}
+const allStaff = {{ staff_users_json | tojson }};
+{% else %}
+const allStaff = [];
+{% endif %}
+
+function filterStaff() {
+  const office = document.getElementById('default_office').value;
+  const wrapper = document.getElementById('staff-wrapper');
+  const sel = document.getElementById('default_staff');
+
+  sel.innerHTML = '<option value="">— From spreadsheet —</option>';
+
+  if (!office) {
+    wrapper.style.display = 'none';
+    return;
+  }
+
+  const matched = allStaff.filter(s => (s.office || '').toLowerCase() === office.toLowerCase());
+  matched.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.full_name;
+    opt.textContent = s.full_name + ' (' + s.username + ')';
+    sel.appendChild(opt);
+  });
+  wrapper.style.display = matched.length ? '' : 'none';
+}
 function handleFile(input) {
   const file = input.files[0];
   if (!file) return;
