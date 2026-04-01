@@ -36,6 +36,8 @@ except ImportError:
 
 from flask import (Flask, flash, jsonify, redirect,
                    render_template, request, session, url_for)
+from flask_jwt_extended import JWTManager
+from flask_cors import CORS
 
 import config
 from utils import get_client_ip, is_logged_in
@@ -70,7 +72,8 @@ CSRF_EXEMPT_PREFIXES = (
     "/office-qr/",       # QR image download, no state change
     "/login",            # not yet authenticated
     "/register",         # not yet authenticated
-    "/logout",           # GET-based logout can stay; POST logout gets CSRF from form
+    "/logout", 
+    "/api/",# GET-based logout can stay; POST logout gets CSRF from form
 )
 
 
@@ -96,6 +99,15 @@ def create_app() -> Flask:
         MAX_CONTENT_LENGTH         = config.MAX_CONTENT_LENGTH,
     )
 
+    # --- JWT Configuration ---
+    app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', secrets.token_hex(32))
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=30)
+    app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=7)
+    jwt = JWTManager(app)
+
+    # --- CORS Configuration for mobile app ---
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
+
     # Initialize database
     from services.database import USE_DB, init_db
     if USE_DB:
@@ -105,6 +117,7 @@ def create_app() -> Flask:
             print(f"DB init error: {e}")
 
     # Register blueprints
+    from blueprints.api        import api_bp
     from routes.auth         import auth_bp
     from routes.admin        import admin_bp
     from routes.dashboard    import dashboard_bp
@@ -115,6 +128,7 @@ def create_app() -> Flask:
     from routes.import_excel import import_bp
     from routes.progress     import progress_bp
 
+    app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(dashboard_bp)
