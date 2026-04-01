@@ -18,7 +18,7 @@ from datetime import datetime
 from io import BytesIO
 
 from services.database import USE_DB, get_conn
-from services.documents import load_docs, save_doc, insert_doc, get_doc, now_str
+from services.documents import load_docs, save_doc, insert_doc, get_doc, now_str, batch_save_docs
 
 BACKUP_VERSION = "2"
 
@@ -843,22 +843,31 @@ def _wipe_tables():
 
 
 def _restore_documents(docs: list, mode: str, summary: dict) -> int:
-    count = 0
+    if not docs:
+        return 0
+    valid_docs = []
     for doc in docs:
         if not isinstance(doc, dict) or not doc.get("id"):
             summary["errors"].append(f"Skipped invalid document: {str(doc)[:60]}")
             summary["skipped"] += 1
             continue
-        try:
-            existing = get_doc(doc["id"])
-            if existing and mode == "merge":
-                summary["skipped"] += 1
+        if mode == "merge":
+            try:
+                existing = get_doc(doc["id"])
+                if existing:
+                    summary["skipped"] += 1
+                    continue
+            except Exception as e:
+                summary["errors"].append(f"Doc {doc.get('id','?')}: {e}")
                 continue
-            save_doc(doc)
-            count += 1
+        valid_docs.append(doc)
+    if valid_docs:
+        try:
+            batch_save_docs(valid_docs)
         except Exception as e:
-            summary["errors"].append(f"Doc {doc.get('id','?')}: {e}")
-    return count
+            summary["errors"].append(f"Batch save error: {e}")
+            return 0
+    return len(valid_docs)
 
 
 def _restore_users(users: list, mode: str, summary: dict) -> int:
@@ -867,17 +876,24 @@ def _restore_users(users: list, mode: str, summary: dict) -> int:
     count = 0
     
     if USE_DB:
-        for u in users:
-            if not u.get("username"):
-                continue
+        existing_usernames = set()
+        if mode == "merge":
             try:
                 with get_conn() as conn:
                     with conn.cursor() as cur:
-                        if mode == "merge":
-                            cur.execute("SELECT 1 FROM users WHERE username=%s", (u["username"],))
-                            if cur.fetchone():
-                                summary["skipped"] += 1
-                                continue
+                        cur.execute("SELECT username FROM users")
+                        existing_usernames = {row[0] for row in cur.fetchall()}
+            except Exception:
+                pass
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    for u in users:
+                        if not u.get("username"):
+                            continue
+                        if mode == "merge" and u["username"] in existing_usernames:
+                            summary["skipped"] += 1
+                            continue
                         cur.execute(
                             """INSERT INTO users
                                    (username, password_hash, full_name, role, active, office)
@@ -895,10 +911,10 @@ def _restore_users(users: list, mode: str, summary: dict) -> int:
                                 u.get("office", ""),
                             )
                         )
-                    conn.commit()
-                count += 1
-            except Exception as e:
-                summary["errors"].append(f"User {u.get('username','?')}: {e}")
+                        count += 1
+                conn.commit()
+        except Exception as e:
+            summary["errors"].append(f"Users batch error: {e}")
     else:
         # JSON file mode
         import os
@@ -939,19 +955,26 @@ def _restore_routing_slips(slips: list, mode: str, summary: dict) -> int:
     if not slips:
         return 0
     count = 0
-    
+
     if USE_DB:
-        for slip in slips:
-            if not slip.get("id"):
-                continue
+        existing_ids = set()
+        if mode == "merge":
             try:
                 with get_conn() as conn:
                     with conn.cursor() as cur:
-                        if mode == "merge":
-                            cur.execute("SELECT 1 FROM routing_slips WHERE id=%s", (slip["id"],))
-                            if cur.fetchone():
-                                summary["skipped"] += 1
-                                continue
+                        cur.execute("SELECT id FROM routing_slips")
+                        existing_ids = {row[0] for row in cur.fetchall()}
+            except Exception:
+                pass
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    for slip in slips:
+                        if not slip.get("id"):
+                            continue
+                        if mode == "merge" and slip["id"] in existing_ids:
+                            summary["skipped"] += 1
+                            continue
                         cur.execute(
                             """INSERT INTO routing_slips
                                    (id, slip_no, destination, prepared_by,
@@ -966,10 +989,10 @@ def _restore_routing_slips(slips: list, mode: str, summary: dict) -> int:
                                 slip.get("time_from", ""), slip.get("time_to", ""),
                             )
                         )
-                    conn.commit()
-                count += 1
-            except Exception as e:
-                summary["errors"].append(f"Slip {slip.get('id','?')}: {e}")
+                        count += 1
+                conn.commit()
+        except Exception as e:
+            summary["errors"].append(f"Routing slips batch error: {e}")
     else:
         # JSON file mode
         import os
@@ -998,14 +1021,26 @@ def _restore_saved_offices(offices: list, mode: str, summary: dict) -> int:
     if not offices:
         return 0
     count = 0
-    
+
     if USE_DB:
-        for office in offices:
-            if not office.get("office_slug"):
-                continue
+        existing_slugs = set()
+        if mode == "merge":
             try:
                 with get_conn() as conn:
                     with conn.cursor() as cur:
+                        cur.execute("SELECT office_slug FROM saved_offices")
+                        existing_slugs = {row[0] for row in cur.fetchall()}
+            except Exception:
+                pass
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    for office in offices:
+                        if not office.get("office_slug"):
+                            continue
+                        if mode == "merge" and office["office_slug"] in existing_slugs:
+                            summary["skipped"] += 1
+                            continue
                         cur.execute(
                             """INSERT INTO saved_offices (office_slug, office_name, created_by)
                                VALUES (%s,%s,%s)
@@ -1013,10 +1048,10 @@ def _restore_saved_offices(offices: list, mode: str, summary: dict) -> int:
                             (office["office_slug"], office.get("office_name", ""),
                              office.get("created_by", ""))
                         )
-                    conn.commit()
-                count += 1
-            except Exception as e:
-                summary["errors"].append(f"Office {office.get('office_slug','?')}: {e}")
+                        count += 1
+                conn.commit()
+        except Exception as e:
+            summary["errors"].append(f"Offices batch error: {e}")
     else:
         # JSON file mode
         import os
@@ -1048,17 +1083,16 @@ def _restore_office_traffic(traffic: list, mode: str, summary: dict) -> int:
     if not traffic:
         return 0
     if not USE_DB:
-        # Office traffic only works with database, skip in JSON file mode
         summary["errors"].append("Office traffic requires database — skipped in local mode")
         return 0
-    
+
     count = 0
-    for t in traffic:
-        if not t.get("office_slug") or not t.get("scanned_at"):
-            continue
-        try:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                for t in traffic:
+                    if not t.get("office_slug") or not t.get("scanned_at"):
+                        continue
                     cur.execute(
                         """INSERT INTO office_traffic
                                (office_slug, office_name, event_type,
@@ -1074,8 +1108,8 @@ def _restore_office_traffic(traffic: list, mode: str, summary: dict) -> int:
                             t.get("scanned_at", ""),
                         )
                     )
-                conn.commit()
-            count += 1
-        except Exception as e:
-            summary["errors"].append(f"Traffic {t.get('office_slug','?')}: {e}")
+                    count += 1
+            conn.commit()
+    except Exception as e:
+        summary["errors"].append(f"Traffic batch error: {e}")
     return count
