@@ -339,6 +339,22 @@ def activity_log():
     return render_template("activity_log.html", logs=logs)
 
 
+@admin_bp.route("/pending-clients")
+@admin_required
+def pending_clients():
+    """Show pending client registrations for admin approval."""
+    try:
+        from services.misc import audit_log
+        from utils import get_client_ip
+        audit_log("pending_clients_viewed", "Admin accessed pending clients",
+                  username=session.get("username","admin"), ip=get_client_ip())
+    except Exception:
+        pass
+    pending = get_pending_clients()
+    return render_template("pending_clients.html", pending_clients=pending,
+                           admin_username=ADMIN_USERNAME)
+
+
 @admin_bp.route("/office-documents")
 @admin_required
 def office_documents():
