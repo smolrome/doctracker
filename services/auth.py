@@ -311,6 +311,32 @@ def get_all_users() -> list[dict]:
         ]
 
 
+def get_user(username: str) -> dict | None:
+    """Return a single user by username, or None if not found."""
+    uname = username.lower().strip()
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT username, full_name, role, active, last_login,
+                                  created_at,
+                                  COALESCE(office, '') AS office,
+                                  COALESCE(approved, TRUE) AS approved
+                           FROM users WHERE username = %s""",
+                        (uname,),
+                    )
+                    row = cur.fetchone()
+                    return dict(row) if row else None
+        except Exception:
+            return None
+    else:
+        for u in _load_users_json():
+            if u.get("username", "").lower() == uname:
+                return {k: v for k, v in u.items() if k != "password_hash"}
+        return None
+
+
 def approve_user(username: str) -> tuple[bool, str | None]:
     """Approve a client user. Returns (success, error_message)."""
     uname = username.lower().strip()

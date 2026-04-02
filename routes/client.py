@@ -25,7 +25,7 @@ from flask import (Blueprint, abort, flash, redirect, render_template,
 from urllib.parse import urlparse
 
 from services.auth import (
-    check_rate_limit, create_user, reset_rate_limit,
+    check_rate_limit, create_user, get_user, reset_rate_limit,
     update_last_login, verify_user,
 )
 from services.documents import (
@@ -191,6 +191,20 @@ def login():
             full_name, role, office = verify_user(username, password)
             if full_name:
                 reset_rate_limit("login", f"{ip}:{username.lower()}")
+
+                # Check if client account is pending approval
+                if role == "client":
+                    from services.auth import get_user
+                    user = get_user(username.lower().strip())
+                    if user and not user.get("approved", True):
+                        error = "Your account is pending approval. Please wait for the administrator to approve your registration."
+                        return render_template("client_login.html", error=error,
+                                               lockout_remaining=0,
+                                               csrf_token=csrf_token,
+                                               office_slug=request.args.get("office_slug", ""),
+                                               office_name=request.args.get("office_name", ""),
+                                               next_url=request.args.get("next", ""))
+
                 # FIX 4 – regenerate session to prevent session fixation
                 _regenerate_session({
                     "logged_in":   True,
