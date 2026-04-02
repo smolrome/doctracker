@@ -557,6 +557,20 @@ def disable_user_route(username):
     return redirect(url_for("admin.manage_users"))
 
 
+@admin_bp.route("/approve-client/<username>", methods=["POST"])
+@admin_required
+def approve_client_route(username):
+    ok, err = approve_user(username)
+    if ok:
+        audit_log("client_approved", f"approved_client={username}",
+                  username=session.get("username", "admin"),
+                  ip=get_client_ip())
+        flash(f"Client '{username}' has been approved.", "success")
+    else:
+        flash(err or "Failed to approve client.", "error")
+    return redirect(url_for("admin.pending_clients"))
+
+
 @admin_bp.route("/enable-user/<username>", methods=["POST"])
 @admin_required
 def enable_user_route(username):
