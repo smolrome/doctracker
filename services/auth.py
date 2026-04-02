@@ -226,11 +226,10 @@ def verify_user(username: str, password: str) -> tuple[str | None, str | None, s
             # FIX 2: always run the real bcrypt compare regardless of account state
             pw_ok = verify_password(password, row["password_hash"])
 
-            # FIX 3: check active + approved AFTER the hash compare so the
+            # FIX 3: check active AFTER the hash compare so the
             # timing profile doesn't reveal which check failed
-            if not pw_ok or not row["active"] or (
-                row["role"] == "client" and not row["approved"]
-            ):
+            # Note: approval check is done in client login route to show proper error
+            if not pw_ok or not row["active"]:
                 return None, None, ""
 
             _upgrade_hash_if_needed(uname, password, row["password_hash"])
@@ -256,9 +255,8 @@ def verify_user(username: str, password: str) -> tuple[str | None, str | None, s
         pw_ok = verify_password(password, found.get("password_hash", ""))
 
         # FIX 3: generic failure — don't reveal which condition failed
-        if not pw_ok or not found.get("active", True) or (
-            found.get("role") == "client" and not found.get("approved", True)
-        ):
+        # Note: approval check is done in client login route to show proper error
+        if not pw_ok or not found.get("active", True):
             return None, None, ""
 
         return (
@@ -309,6 +307,32 @@ def get_all_users() -> list[dict]:
             {k: v for k, v in u.items() if k != "password_hash"}
             for u in _load_users_json()
         ]
+
+
+def get_user(username: str) -> dict | None:
+    """Return a single user by username, or None if not found."""
+    uname = username.lower().strip()
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT username, full_name, role, active, last_login,
+                                  created_at,
+                                  COALESCE(office, '') AS office,
+                                  COALESCE(approved, TRUE) AS approved
+                           FROM users WHERE username = %s""",
+                        (uname,),
+                    )
+                    row = cur.fetchone()
+                    return dict(row) if row else None
+        except Exception:
+            return None
+    else:
+        for u in _load_users_json():
+            if u.get("username", "").lower() == uname:
+                return {k: v for k, v in u.items() if k != "password_hash"}
+        return None
 
 
 def approve_user(username: str) -> tuple[bool, str | None]:
