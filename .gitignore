@@ -11,3 +11,7 @@ saved_offices.json
 doc_qr_tokens.json
 *.pyc
 node_modules
+tsconfig.tsbuildinfo
+devices.json
+README.md
+settings.json
