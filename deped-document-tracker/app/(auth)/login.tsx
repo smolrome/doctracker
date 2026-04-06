@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,26 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert
+  StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import api from '../../lib/api';
 import { authStorage } from '../../lib/auth';
 import { useAuthStore } from '../../lib/store';
+
+interface ApiError {
+  response?: {
+    data?: {
+      error?: string;
+    };
+    status?: number;
+  };
+  request?: {
+    status?: number;
+  };
+  message?: string;
+  code?: string;
+}
 
 export default function Login() {
   const router = useRouter();
@@ -24,9 +38,53 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const parseError = (err: ApiError): string => {
+    if (err.response) {
+      const status = err.response.status;
+      const serverMsg = err.response.data?.error;
+      
+      if (status === 401) {
+        return 'Invalid username or password';
+      }
+      if (status === 403) {
+        return 'Account is locked or inactive';
+      }
+      if (status === 404) {
+        return 'Server not found. Please try again later';
+      }
+      if (status === 500) {
+        return 'Server error. Please try again later';
+      }
+      if (serverMsg) {
+        return serverMsg;
+      }
+    }
+    
+    if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+      return 'Request timed out. Please check your connection';
+    }
+    if (err.message?.includes('Network request failed') || !err.response) {
+      return 'Unable to connect. Please check your internet';
+    }
+    
+    return 'Login failed. Please try again';
+  };
+
+  const dismissError = useCallback(() => {
+    setError('');
+  }, []);
+
   const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
+    
+    if (!trimmedUsername || !trimmedPassword) {
       setError('Please enter username and password');
+      return;
+    }
+
+    if (trimmedUsername.length < 3) {
+      setError('Username must be at least 3 characters');
       return;
     }
 
@@ -35,8 +93,8 @@ export default function Login() {
 
     try {
       const response = await api.post('/auth/login', {
-        username,
-        password,
+        username: trimmedUsername,
+        password: trimmedPassword,
       });
 
       const { access_token, refresh_token, user } = response.data;
@@ -49,8 +107,7 @@ export default function Login() {
       router.replace('/(app)/dashboard');
 
     } catch (err: any) {
-      const msg = err.response?.data?.error || 'Login failed. Check your connection.';
-      setError(msg);
+      setError(parseError(err));
     } finally {
       setLoading(false);
     }
@@ -103,16 +160,25 @@ export default function Login() {
           </View>
 
           {error ? (
-            <View style={{
-              backgroundColor: '#FEE2E2',
-              borderRadius: 8,
-              padding: 12,
-              marginBottom: 16,
-            }}>
+            <TouchableOpacity 
+              onPress={dismissError}
+              activeOpacity={0.7}
+              style={{
+                backgroundColor: '#FEE2E2',
+                borderRadius: 8,
+                padding: 12,
+                marginBottom: 16,
+                borderWidth: 1,
+                borderColor: '#FECACA',
+              }}
+            >
               <Text style={{ color: '#DC2626', fontSize: 13 }}>
                 {error}
               </Text>
-            </View>
+              <Text style={{ color: '#991B1B', fontSize: 11, marginTop: 4 }}>
+                Tap to dismiss
+              </Text>
+            </TouchableOpacity>
           ) : null}
 
           <Text style={{
@@ -125,20 +191,24 @@ export default function Login() {
           </Text>
           <TextInput
             value={username}
-            onChangeText={setUsername}
+            onChangeText={(text) => {
+              setUsername(text);
+              if (error) setError('');
+            }}
             placeholder="Enter your username"
             placeholderTextColor="#9CA3AF"
             autoCapitalize="none"
             autoCorrect={false}
+            editable={!loading}
             style={{
               borderWidth: 1,
-              borderColor: '#D1D5DB',
+              borderColor: error ? '#EF4444' : '#D1D5DB',
               borderRadius: 10,
               paddingHorizontal: 14,
               paddingVertical: 12,
               fontSize: 15,
               color: '#111',
-              backgroundColor: '#F9FAFB',
+              backgroundColor: loading ? '#E5E7EB' : '#F9FAFB',
               marginBottom: 16,
             }}
           />
@@ -153,19 +223,23 @@ export default function Login() {
           </Text>
           <TextInput
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (error) setError('');
+            }}
             placeholder="Enter your password"
             placeholderTextColor="#9CA3AF"
             secureTextEntry
+            editable={!loading}
             style={{
               borderWidth: 1,
-              borderColor: '#D1D5DB',
+              borderColor: error ? '#EF4444' : '#D1D5DB',
               borderRadius: 10,
               paddingHorizontal: 14,
               paddingVertical: 12,
               fontSize: 15,
               color: '#111',
-              backgroundColor: '#F9FAFB',
+              backgroundColor: loading ? '#E5E7EB' : '#F9FAFB',
               marginBottom: 24,
             }}
           />
@@ -173,6 +247,7 @@ export default function Login() {
           <TouchableOpacity
             onPress={handleLogin}
             disabled={loading}
+            activeOpacity={0.8}
             style={{
               backgroundColor: loading ? '#93C5FD' : '#0038A8',
               borderRadius: 10,
@@ -181,7 +256,17 @@ export default function Login() {
             }}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={{
+                  color: '#fff',
+                  fontSize: 16,
+                  fontWeight: '600',
+                  marginLeft: 8,
+                }}>
+                  Signing in...
+                </Text>
+              </View>
             ) : (
               <Text style={{
                 color: '#fff',

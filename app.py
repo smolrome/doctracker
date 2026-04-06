@@ -105,6 +105,18 @@ def create_app() -> Flask:
     app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=7)
     jwt = JWTManager(app)
 
+    @jwt.unauthorized_loader
+    def unauthorized_callback(reason):
+        return jsonify(error='Missing or invalid token', reason=reason), 401
+
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_data):
+        return jsonify(error='Token expired'), 401
+
+    @jwt.invalid_token_loader
+    def invalid_token_callback(reason):
+        return jsonify(error='Invalid token', reason=reason), 422
+
     # --- CORS Configuration for mobile app ---
     CORS(app, resources={r"/api/*": {"origins": "*"}})
 
@@ -321,6 +333,8 @@ def create_app() -> Flask:
     def internal_error(e):
         import traceback
         print(f"500 ERROR:\n{traceback.format_exc()}")
+        if request.path.startswith('/api/'):
+            return jsonify(error='Internal server error'), 500
         if os.environ.get("FLASK_DEBUG") == "1":
             return (
                 f"<pre style='padding:20px'><b>500 Error</b>\n\n"
@@ -359,6 +373,8 @@ def create_app() -> Flask:
 
     @app.errorhandler(404)
     def not_found(e):
+        if request.path.startswith('/api/'):
+            return jsonify(error='Endpoint not found', path=request.path), 404
         try:
             from services.misc import audit_log
             audit_log("404_not_found", f"path={request.path}",
@@ -398,15 +414,23 @@ def create_app() -> Flask:
 
     @app.route("/api/gen-ref")
     def api_gen_ref():
-        if not is_logged_in() or session.get("role") not in ("staff", "admin"):
-            return jsonify({"error": "unauthorized"}), 401
+        from flask_jwt_extended import verify_jwt_in_request
+        try:
+            verify_jwt_in_request()
+        except Exception:
+            if not is_logged_in() or session.get("role") not in ("staff", "admin"):
+                return jsonify({"error": "unauthorized"}), 401
         from services.documents import generate_ref
         return jsonify({"ref": generate_ref()})
 
     @app.route("/api/docs")
     def api_docs():
-        if not is_logged_in() or session.get("role") not in ("staff", "admin"):
-            return jsonify({"error": "unauthorized"}), 401
+        from flask_jwt_extended import verify_jwt_in_request
+        try:
+            verify_jwt_in_request()
+        except Exception:
+            if not is_logged_in() or session.get("role") not in ("staff", "admin"):
+                return jsonify({"error": "unauthorized"}), 401
         from services.documents import load_docs
         try:
             from services.misc import audit_log
@@ -418,8 +442,12 @@ def create_app() -> Flask:
 
     @app.route("/api/docs/<doc_id>/log")
     def api_log(doc_id):
-        if not is_logged_in() or session.get("role") not in ("staff", "admin"):
-            return jsonify({"error": "unauthorized"}), 401
+        from flask_jwt_extended import verify_jwt_in_request
+        try:
+            verify_jwt_in_request()
+        except Exception:
+            if not is_logged_in() or session.get("role") not in ("staff", "admin"):
+                return jsonify({"error": "unauthorized"}), 401
         from services.documents import get_doc
         doc = get_doc(doc_id)
         if not doc:

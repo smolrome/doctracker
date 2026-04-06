@@ -230,6 +230,7 @@ def api_update_status(doc_id):
     if not doc:
         return jsonify(error='Document not found'), 404
 
+    old_status = doc.get('status')
     doc['status'] = new_status
     if remarks:
         doc['remarks'] = remarks
@@ -242,6 +243,18 @@ def api_update_status(doc_id):
         doc['date_released'] = now_str()[:16].replace('T', ' ')
 
     save_doc(doc)
+
+    if doc.get('logged_by') and doc['logged_by'] != user_id:
+        send_push_notification(
+            username=doc['logged_by'],
+            title=f"Document {new_status}",
+            body=f"{doc.get('ref', doc_id)} has been {new_status.lower()}",
+            data={
+                'doc_id': doc_id,
+                'screen': f'/(app)/documents/{doc_id}'
+            }
+        )
+
     return jsonify(serialize(doc))
 
 
@@ -337,3 +350,67 @@ def api_dropdown_options():
     from services.dropdown_options import get_all_dropdown_configs
     options = get_all_dropdown_configs()
     return jsonify(serialize(options))
+
+
+_push_tokens: dict = {}
+
+
+@api_bp.route('/notifications/register-token', methods=['POST'])
+@jwt_required()
+def register_push_token():
+    data = request.get_json(force=True, silent=True)
+    token = data.get('token')
+    username = get_jwt_identity()
+
+    if not token:
+        return jsonify(error='Token required'), 400
+
+    _push_tokens[username] = token
+    print(f"[FCM] Registered token for {username}: {token[:20]}...")
+
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO push_tokens (username, token, updated_at)
+                        VALUES (%s, %s, NOW())
+                        ON CONFLICT (username)
+                        DO UPDATE SET token = EXCLUDED.token,
+                                      updated_at = NOW()
+                    """, (username, token))
+        except Exception as e:
+            print(f"[FCM] DB save failed (table may not exist yet): {e}")
+
+    return jsonify(message='Token registered')
+
+
+def send_push_notification(username: str, title: str, body: str, data: dict = {}):
+    """Send push notification to a specific user via Expo Push API."""
+    import requests as req
+
+    token = _push_tokens.get(username)
+    if not token:
+        print(f"[FCM] No token found for {username}")
+        return False
+
+    try:
+        response = req.post(
+            'https://exp.host/--/api/v2/push/send',
+            json={
+                'to': token,
+                'title': title,
+                'body': body,
+                'data': data,
+                'sound': 'default',
+                'priority': 'high',
+                'channelId': 'documents',
+            },
+            headers={'Content-Type': 'application/json'},
+            timeout=10
+        )
+        print(f"[FCM] Sent to {username}: {response.status_code}")
+        return True
+    except Exception as e:
+        print(f"[FCM] Send failed: {e}")
+        return False

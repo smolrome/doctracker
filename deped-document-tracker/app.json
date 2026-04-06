@@ -2,11 +2,31 @@
   "expo": {
     "name": "DepEd Document Tracker",
     "slug": "deped-document-tracker",
-    "userInterfaceStyle": "automatic",
     "version": "1.0.0",
     "scheme": "deped-tracker",
-    "web": {
-      "bundler": "metro"
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0038A8"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0038A8"
+      },
+      "package": "com.deped.documenttracker",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.deped.documenttracker",
+      "supportsTablet": true,
+      "icon": "./assets/icon.png"
     },
     "plugins": [
       "expo-router",
@@ -14,20 +34,22 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow DepEd Tracker to use your camera for QR scanning."
+          "cameraPermission": "Allow DepEd Tracker to use your camera to scan document QR codes."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "sounds": []
         }
       ]
     ],
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0038A8"
-      },
-      "package": "com.deped.documenttracker"
-    },
-    "ios": {
-      "bundleIdentifier": "com.deped.documenttracker",
-      "supportsTablet": true
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bfb449ae-b254-4e5e-aa6e-858fa64f8973"
+      }
     }
   }
 }

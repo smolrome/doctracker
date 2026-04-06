@@ -1,7 +1,22 @@
 import axios from 'axios';
+import Constants from 'expo-constants';
 import { authStorage } from './auth';
 
-export const BASE_URL = 'http://192.168.1.9:5000';
+function getBaseUrl(): string {
+  const debuggerHost = Constants.expoConfig?.hostUri
+    ?? Constants.manifest2?.extra?.expoGo?.debuggerHost
+    ?? Constants.manifest?.debuggerHost;
+
+  if (debuggerHost) {
+    const ip = debuggerHost.split(':')[0];
+    return `http://${ip}:5000`;
+  }
+
+  return 'http://localhost:5000';
+}
+
+export const BASE_URL = getBaseUrl();
+console.log('API connecting to:', BASE_URL);
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api`,
@@ -20,6 +35,7 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    console.log('API ERROR:', error.message, error.config?.url);
     const original = error.config;
 
     if (error.response?.status === 401 && !original._retry) {

@@ -15,16 +15,22 @@ export default function AppLayout() {
   }, [isAuthenticated, isLoading]);
 
   return (
-    <Tabs screenOptions={{
-      headerShown: false,
-      tabBarActiveTintColor: '#0038A8',
-      tabBarInactiveTintColor: '#999',
-      tabBarStyle: {
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-        paddingBottom: 4,
-      }
-    }}>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: '#0038A8',
+        tabBarInactiveTintColor: '#999',
+        tabBarStyle: {
+          borderTopWidth: 1,
+          borderTopColor: '#E5E7EB',
+          paddingBottom: 4,
+          height: 60,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+        },
+      }}>
       <Tabs.Screen
         name="dashboard"
         options={{
@@ -53,6 +59,9 @@ export default function AppLayout() {
           tabBarIcon: ({ color }) => <User size={22} color={color} />,
         }}
       />
+      <Tabs.Screen name="index" options={{ href: null }} />
+      <Tabs.Screen name="documents/[id]" options={{ href: null }} />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
     </Tabs>
   );
 }
