@@ -92,19 +92,14 @@ def get_user_by_id(user_id):
 
 @api_bp.route('/auth/login', methods=['POST'])
 def api_login():
+    import os, secrets
     data = request.get_json(force=True, silent=True)
-    
-    # DEBUG
-    print(f"RAW DATA: {data}")
-    
+
     if not data:
         return jsonify(error='Invalid JSON body'), 400
 
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
-    
-    # DEBUG
-    print(f"LOGIN ATTEMPT: username='{username}' password='{password}'")
 
     if not username or not password:
         return jsonify(error='Username and password required'), 400
@@ -114,10 +109,27 @@ def api_login():
     if not allowed:
         return jsonify(error=f'Too many attempts. Wait {wait} seconds.'), 429
 
+    admin_username = os.environ.get('ADMIN_USERNAME', '')
+    admin_password = os.environ.get('ADMIN_PASSWORD', '')
+
+    if (admin_username and admin_password and
+            secrets.compare_digest(username.lower(), admin_username.lower()) and
+            secrets.compare_digest(password, admin_password)):
+        reset_rate_limit('login', username)
+        access_token = create_access_token(identity=username)
+        refresh_token = create_refresh_token(identity=username)
+        return jsonify(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            user=dict(
+                username=username,
+                full_name='Administrator',
+                role='admin',
+                office='IT Unit'
+            )
+        )
+
     full_name, role, office = verify_user(username, password)
-    
-    # DEBUG
-    print(f"VERIFY RESULT: full_name='{full_name}' role='{role}' office='{office}'")
 
     if role is None:
         return jsonify(error='Invalid username or password'), 401
