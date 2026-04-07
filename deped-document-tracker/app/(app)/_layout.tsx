@@ -6,11 +6,19 @@ import { useAuthStore } from '../../lib/store';
 import { FileText, QrCode, LayoutDashboard, User, Plus, X } from 'lucide-react-native';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 
-const label: any = {
-  fontSize: 13,
-  fontWeight: '600',
-  color: '#475569',
+// ── Shared form styles (mirrors Login field language) ────────────────────────
+const fieldLabel: any = {
+  fontSize: 11,
+  fontWeight: '700',
+  color: '#0038A8',
   marginBottom: 6,
+  textTransform: 'uppercase',
+  letterSpacing: 0.8,
+};
+
+const fieldLabelMuted: any = {
+  ...fieldLabel,
+  color: '#475569',
 };
 
 const req: any = {
@@ -18,13 +26,14 @@ const req: any = {
 };
 
 const input: any = {
-  backgroundColor: '#F8FAFC',
-  borderRadius: 10,
-  padding: 12,
-  marginBottom: 14,
-  borderWidth: 1,
+  backgroundColor: '#fff',
+  borderRadius: 12,
+  paddingHorizontal: 14,
+  paddingVertical: 13,
+  marginBottom: 16,
+  borderWidth: 1.5,
   borderColor: '#E2E8F0',
-  fontSize: 14,
+  fontSize: 14.5,
   color: '#1E293B',
 };
 
@@ -45,29 +54,33 @@ export default function AppLayout() {
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: '#0038A8',
-          tabBarInactiveTintColor: '#64748B',
+          tabBarInactiveTintColor: '#94A3B8',
           tabBarStyle: {
             position: 'absolute',
-            bottom: 30,
+            bottom: 28,
             left: 20,
             right: 20,
             height: 64,
             borderRadius: 32,
             backgroundColor: '#FFFFFF',
             borderTopWidth: 0,
-            elevation: 8,
+            elevation: 10,
             shadowColor: '#0038A8',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.12,
+            shadowRadius: 16,
             paddingBottom: 0,
             paddingHorizontal: 8,
             overflow: 'visible',
+            // Thin border for definition on light backgrounds
+            borderWidth: 0.5,
+            borderColor: '#E2E8F0',
           },
           tabBarLabelStyle: {
-            fontSize: 11,
-            fontWeight: '600',
+            fontSize: 10.5,
+            fontWeight: '700',
             marginTop: -2,
+            letterSpacing: 0.2,
           },
           tabBarItemStyle: {
             paddingVertical: 4,
@@ -88,6 +101,8 @@ export default function AppLayout() {
             tabBarIcon: ({ color }) => <FileText size={22} color={color} />,
           }}
         />
+
+        {/* ── Centre FAB ── */}
         <Tabs.Screen
           name="add"
           options={{
@@ -96,30 +111,33 @@ export default function AppLayout() {
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                 <TouchableOpacity
                   onPress={() => setModalVisible(true)}
+                  activeOpacity={0.85}
                   style={{
                     position: 'absolute',
-                    top: -28,
+                    top: -26,
                     width: 56,
                     height: 56,
                     borderRadius: 28,
-                    backgroundColor: '#10B981',
+                    backgroundColor: '#0038A8',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    shadowColor: '#10B981',
+                    // Halo ring matching Login logo
+                    borderWidth: 3,
+                    borderColor: '#fff',
+                    shadowColor: '#0038A8',
                     shadowOffset: { width: 0, height: 6 },
-                    shadowOpacity: 0.5,
+                    shadowOpacity: 0.35,
                     shadowRadius: 10,
                     elevation: 10,
-                    borderWidth: 3,
-                    borderColor: '#FFFFFF',
                   }}
                 >
-                  <Plus size={28} color="#fff" />
+                  <Plus size={26} color="#fff" />
                 </TouchableOpacity>
               </View>
             ),
           }}
         />
+
         <Tabs.Screen
           name="scanner"
           options={{
@@ -140,9 +158,10 @@ export default function AppLayout() {
         <Tabs.Screen name="notifications" options={{ href: null }} />
       </Tabs>
 
+      {/* ── New Document Modal ── */}
       <Modal
         visible={modalVisible}
-        animationType="fade"
+        animationType="slide"
         transparent={true}
         onRequestClose={() => setModalVisible(false)}
       >
@@ -152,11 +171,10 @@ export default function AppLayout() {
         >
           <View style={{
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingHorizontal: 20,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+            justifyContent: 'flex-end',
           }}>
+            {/* Tap outside to close */}
             <TouchableOpacity
               style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
               onPress={() => setModalVisible(false)}
@@ -164,72 +182,155 @@ export default function AppLayout() {
             />
 
             <View style={{
-              backgroundColor: '#FFFFFF',
-              borderRadius: 24,
-              width: '100%',
-              maxHeight: '85%',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.2,
-              shadowRadius: 24,
-              elevation: 16,
+              backgroundColor: '#F8FAFC',
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              maxHeight: '92%',
+              overflow: 'hidden',
             }}>
+
+              {/* Modal header — blue hero strip */}
               <View style={{
+                backgroundColor: '#0038A8',
+                paddingTop: 20,
+                paddingBottom: 20,
+                paddingHorizontal: 20,
                 flexDirection: 'row',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                padding: 20,
-                borderBottomWidth: 1,
-                borderBottomColor: '#F1F5F9',
               }}>
-                <Text style={{ fontSize: 18, fontWeight: '800', color: '#0038A8' }}>
-                  ➕ New Document
-                </Text>
-                <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <X size={22} color="#94A3B8" />
+                {/* Drag handle */}
+                <View style={{
+                  position: 'absolute',
+                  top: 10,
+                  left: 0, right: 0,
+                  alignItems: 'center',
+                }}>
+                  <View style={{
+                    width: 36, height: 4, borderRadius: 2,
+                    backgroundColor: 'rgba(255,255,255,0.30)',
+                  }} />
+                </View>
+
+                <View>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: -0.3 }}>
+                    New Document
+                  </Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.60)', marginTop: 2 }}>
+                    Fill in the document details below
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => setModalVisible(false)}
+                  style={{
+                    width: 34, height: 34, borderRadius: 17,
+                    backgroundColor: 'rgba(255,255,255,0.15)',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <X size={18} color="#fff" />
                 </TouchableOpacity>
               </View>
 
+              {/* Form */}
               <ScrollView
                 contentContainerStyle={{ padding: 20, paddingBottom: 8 }}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
               >
-                <Text style={label}>Unit / Office / School <Text style={req}>*</Text></Text>
-                <TextInput placeholder="e.g. Palo Central School" style={input} placeholderTextColor="#CBD5E1" />
+                <Text style={fieldLabel}>
+                  Unit / Office / School <Text style={req}>*</Text>
+                </Text>
+                <TextInput
+                  placeholder="e.g. Palo Central School"
+                  style={input}
+                  placeholderTextColor="#CBD5E1"
+                />
 
-                <Text style={label}>Sender Name & Designation</Text>
-                <TextInput placeholder="e.g. Juan dela Cruz, Principal II" style={input} placeholderTextColor="#CBD5E1" />
+                <Text style={fieldLabelMuted}>Sender Name & Designation</Text>
+                <TextInput
+                  placeholder="e.g. Juan dela Cruz, Principal II"
+                  style={input}
+                  placeholderTextColor="#CBD5E1"
+                />
 
-                <Text style={label}>Content / Particulars <Text style={req}>*</Text></Text>
-                <TextInput placeholder="e.g. Plantilla of Personnel" style={input} placeholderTextColor="#CBD5E1" />
+                <Text style={fieldLabel}>
+                  Content / Particulars <Text style={req}>*</Text>
+                </Text>
+                <TextInput
+                  placeholder="e.g. Plantilla of Personnel"
+                  style={input}
+                  placeholderTextColor="#CBD5E1"
+                />
 
-                <Text style={label}>Document Type</Text>
-                <TextInput placeholder="Select or type document type" style={input} placeholderTextColor="#CBD5E1" />
+                <Text style={fieldLabelMuted}>Document Type</Text>
+                <TextInput
+                  placeholder="Select or type document type"
+                  style={input}
+                  placeholderTextColor="#CBD5E1"
+                />
 
-                <Text style={label}>Referred To</Text>
-                <TextInput placeholder="e.g. SDS, Budget Officer" style={input} placeholderTextColor="#CBD5E1" />
+                <Text style={fieldLabelMuted}>Referred To</Text>
+                <TextInput
+                  placeholder="e.g. SDS, Budget Officer"
+                  style={input}
+                  placeholderTextColor="#CBD5E1"
+                />
 
-                <Text style={label}>Description / Remarks</Text>
+                <Text style={fieldLabelMuted}>Description / Remarks</Text>
                 <TextInput
                   placeholder="Additional details..."
-                  style={[input, { height: 80, textAlignVertical: 'top' }]}
+                  style={[input, { height: 88, textAlignVertical: 'top' }]}
                   multiline
                   placeholderTextColor="#CBD5E1"
                 />
               </ScrollView>
 
-              <View style={{ padding: 16, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}>
+              {/* Footer actions */}
+              <View style={{
+                padding: 16, paddingBottom: Platform.OS === 'ios' ? 32 : 20,
+                borderTopWidth: 0.5, borderTopColor: '#E2E8F0',
+                backgroundColor: '#F8FAFC',
+                gap: 10,
+              }}>
+                {/* Primary CTA */}
                 <TouchableOpacity style={{
-                  backgroundColor: '#10B981',
-                  borderRadius: 12,
-                  paddingVertical: 14,
+                  backgroundColor: '#0038A8',
+                  borderRadius: 13,
+                  paddingVertical: 15,
                   alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  gap: 8,
                 }}>
-                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>➕ Add to Log List</Text>
+                  <Plus size={18} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.2 }}>
+                    Add to Log List
+                  </Text>
                 </TouchableOpacity>
+
+                {/* Secondary cancel */}
+                <TouchableOpacity
+                  onPress={() => setModalVisible(false)}
+                  style={{
+                    borderWidth: 1.5, borderColor: '#E2E8F0',
+                    borderRadius: 13, paddingVertical: 13,
+                    alignItems: 'center', backgroundColor: '#fff',
+                  }}
+                >
+                  <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+                </TouchableOpacity>
+
+                {/* PH flag strip */}
+                <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 4 }}>
+                  <View style={{ width: 18, height: 3, backgroundColor: '#0038A8', borderRadius: 1 }} />
+                  <View style={{ width: 18, height: 3, backgroundColor: '#CE1126' }} />
+                  <View style={{ width: 18, height: 3, backgroundColor: '#FCD116', borderRadius: 1 }} />
+                </View>
               </View>
+
             </View>
           </View>
         </KeyboardAvoidingView>
