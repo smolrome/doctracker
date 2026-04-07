@@ -1,21 +1,7 @@
 import axios from 'axios';
-import Constants from 'expo-constants';
 import { authStorage } from './auth';
 
-function getBaseUrl(): string {
-  const debuggerHost = Constants.expoConfig?.hostUri
-    ?? Constants.manifest2?.extra?.expoGo?.debuggerHost
-    ?? Constants.manifest?.debuggerHost;
-
-  if (debuggerHost) {
-    const ip = debuggerHost.split(':')[0];
-    return `http://${ip}:5000`;
-  }
-
-  return 'http://localhost:5000';
-}
-
-export const BASE_URL = getBaseUrl();
+export const BASE_URL = 'https://docktracker.up.railway.app';
 console.log('API connecting to:', BASE_URL);
 
 const api = axios.create({

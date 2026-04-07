@@ -145,6 +145,18 @@
         {% endfor %}
       </select>
 
+      <div class="backup-section-label">Filter documents by date (optional):</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px;">
+        <div>
+          <label style="font-size:.85rem;color:#64748B;display:block;margin-bottom:4px;">From date:</label>
+          <input type="date" name="date_from" style="padding:8px 12px;border-radius:8px;border:1px solid #CBD5E1;font-size:.9rem;">
+        </div>
+        <div>
+          <label style="font-size:.85rem;color:#64748B;display:block;margin-bottom:4px;">To date:</label>
+          <input type="date" name="date_to" style="padding:8px 12px;border-radius:8px;border:1px solid #CBD5E1;font-size:.9rem;">
+        </div>
+      </div>
+
       <div class="backup-section-label">File format:</div>
       <div class="format-row">
         <label class="format-label">

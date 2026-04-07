@@ -79,12 +79,12 @@ export default function Documents() {
       </View>
 
       <Text style={{ color: '#374151', fontSize: 14, marginBottom: 4 }} numberOfLines={2}>
-        {item.doc_name || item.description || 'No subject'}
+        {item.doc_name || 'No name'}
       </Text>
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
         <Text style={{ color: '#9CA3AF', fontSize: 12 }}>
-          {item.sender_org || item.from_office || '—'}
+          {item.from_office || item.sender_org || '—'}
         </Text>
         <Text style={{ color: '#9CA3AF', fontSize: 12 }}>
           {item.doc_date || item.created_at?.slice(0, 10) || '—'}

@@ -150,8 +150,8 @@ export default function Dashboard() {
         <View style={{
           flexDirection: 'row',
           flexWrap: 'wrap',
-          gap: 10,
           marginBottom: 20,
+          marginRight: -10,
         }}>
           {statEntries.map(([key, value], index) => (
             <View key={key} style={{
@@ -159,6 +159,8 @@ export default function Dashboard() {
               borderRadius: 12,
               padding: 16,
               width: '47%',
+              marginRight: 10,
+              marginBottom: 10,
               borderLeftWidth: 4,
               borderLeftColor: STAT_COLORS[index % STAT_COLORS.length],
             }}>
@@ -206,18 +208,17 @@ export default function Dashboard() {
           >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ fontWeight: '600', color: '#111', fontSize: 13 }}>
-                {doc.ref || doc.id?.slice(0, 8).toUpperCase()}
+                {doc.doc_id || doc.id}
               </Text>
               <Text style={{ color: '#6B7280', fontSize: 12 }}>
                 {doc.status}
               </Text>
             </View>
-            <Text style={{
-              color: '#6B7280',
-              fontSize: 13,
-              marginTop: 4,
-            }} numberOfLines={1}>
-              {doc.subject || 'No subject'}
+            <Text style={{ color: '#6B7280', fontSize: 13, marginTop: 4 }} numberOfLines={1}>
+              {doc.doc_name || '—'}
+            </Text>
+            <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 2 }}>
+              {doc.from_office || doc.sender_org || '—'}
             </Text>
           </TouchableOpacity>
         ))}

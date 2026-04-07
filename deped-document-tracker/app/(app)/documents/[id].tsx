@@ -120,17 +120,17 @@ export default function DocumentDetail() {
             Document Info
           </Text>
           {[
-            ['Reference',    doc.doc_id || '—'],
-            ['Category',     doc.category || '—'],
-            ['From Office',  doc.sender_org || doc.from_office || '—'],
-            ['Sender',       doc.sender_name || '—'],
-            ['Referred To',  doc.referred_to || '—'],
-            ['Forwarded To', doc.forwarded_to || '—'],
-            ['Received By',  doc.received_by || '—'],
-            ['Date',         doc.doc_date || '—'],
-            ['Date Received',doc.date_received || '—'],
-            ['Date Released',doc.date_released || '—'],
-            ['Logged By',    doc.logged_by || '—'],
+            ['Reference', doc.doc_id || '—'],
+            ['Document Name', doc.doc_name || '—'],
+            ['Category', doc.category || '—'],
+            ['From Office', doc.from_office || '—'],
+            ['Sender Org', doc.sender_org || '—'],
+            ['Sender Name', doc.sender_name || '—'],
+            ['Referred To', doc.referred_to || '—'],
+            ['Logged By', doc.logged_by || '—'],
+            ['Date', doc.doc_date || '—'],
+            ['Date Received', doc.date_received || '—'],
+            ['Date Released', doc.date_released || '—'],
           ].map(([label, value]) => (
             <View key={label} style={{
               flexDirection: 'row',

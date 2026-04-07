@@ -179,7 +179,11 @@ def api_get_documents():
         docs = [d for d in docs if d.get('office') == office]
     if search:
         search_lower = search.lower()
-        docs = [d for d in docs if search_lower in (d.get('subject') or '').lower() or search_lower in (d.get('id') or '').lower()]
+        docs = [d for d in docs if
+                search_lower in (d.get('doc_name') or '').lower() or
+                search_lower in (d.get('doc_id') or '').lower() or
+                search_lower in (d.get('sender_org') or '').lower() or
+                search_lower in (d.get('from_office') or '').lower()]
 
     total = len(docs)
     start = (page - 1) * limit
@@ -206,10 +210,13 @@ def api_create_document():
 
     doc = {
         "id": str(uuid.uuid4()),
-        "ref": generate_ref(),
-        "subject": data.get('subject', ''),
-        "type": data.get('type', ''),
-        "office": data.get('office', ''),
+        "doc_id": generate_ref(),
+        "doc_name": data.get('doc_name', ''),
+        "category": data.get('category', ''),
+        "from_office": data.get('from_office', ''),
+        "sender_org": data.get('sender_org', ''),
+        "sender_name": data.get('sender_name', ''),
+        "doc_date": data.get('doc_date', now_str()),
         "status": "Pending",
         "created_at": now_str(),
         "logged_by": user_id,

@@ -11,7 +11,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import api from '../../lib/api';
+import api, { BASE_URL } from '../../lib/api';
 import { authStorage } from '../../lib/auth';
 import { useAuthStore } from '../../lib/store';
 

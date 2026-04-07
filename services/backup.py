@@ -342,7 +342,7 @@ def create_backup() -> dict:
     return backup
 
 
-def create_selective_backup(export_items: list, filter_office: str = "") -> dict:
+def create_selective_backup(export_items: list, filter_office: str = "", date_from: str = "", date_to: str = "") -> dict:
     """Collect selected data from the database into a single dict."""
     backup = {
         "meta": {
@@ -356,7 +356,7 @@ def create_selective_backup(export_items: list, filter_office: str = "") -> dict
     
     counts = {}
     if "documents" in export_items:
-        docs = _export_documents()
+        docs = _export_documents(date_from=date_from, date_to=date_to)
         if filter_office:
             docs = [d for d in docs if d.get("sender_org", "").strip().lower() == filter_office.lower()]
         backup["documents"] = docs
@@ -378,7 +378,7 @@ def create_selective_backup(export_items: list, filter_office: str = "") -> dict
     return backup
 
 
-def create_selective_excel_backup(export_items: list, filter_office: str = "") -> bytes:
+def create_selective_excel_backup(export_items: list, filter_office: str = "", date_from: str = "", date_to: str = "") -> bytes:
     """Export selected data to a formatted multi-sheet Excel workbook."""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -436,7 +436,7 @@ def create_selective_excel_backup(export_items: list, filter_office: str = "") -
     
     # Documents sheet
     if "documents" in export_items:
-        docs = _export_documents()
+        docs = _export_documents(date_from=date_from, date_to=date_to)
         if filter_office:
             docs = [d for d in docs if d.get("sender_org", "").strip().lower() == filter_office.lower()]
         wd = wb.create_sheet("Documents")
@@ -691,17 +691,45 @@ def restore_from_excel(excel_bytes: bytes, mode: str = "merge") -> dict:
     return summary
 
 
-def _export_documents() -> list[dict]:
-    """Export ALL documents including soft-deleted ones."""
+def _export_documents(date_from: str = "", date_to: str = "") -> list[dict]:
+    """Export ALL documents including soft-deleted ones, optionally filtered by date."""
+    from datetime import datetime
+    
+    docs = []
     if USE_DB:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute("SELECT data FROM documents ORDER BY created_at DESC")
-                    return [row["data"] for row in cur.fetchall()]
+                    docs = [row["data"] for row in cur.fetchall()]
         except Exception as e:
-            return []
-    return load_docs(include_deleted=True)
+            docs = []
+    else:
+        docs = load_docs(include_deleted=True)
+    
+    # Apply date filters if provided
+    if date_from or date_to:
+        filtered = []
+        for d in docs:
+            doc_date_str = d.get("date_received") or d.get("created_at", "")
+            if not doc_date_str:
+                continue
+            try:
+                doc_date = datetime.strptime(str(doc_date_str)[:10], "%Y-%m-%d")
+                if date_from:
+                    from_date = datetime.strptime(date_from, "%Y-%m-%d")
+                    if doc_date < from_date:
+                        continue
+                if date_to:
+                    to_date = datetime.strptime(date_to, "%Y-%m-%d")
+                    if doc_date > to_date:
+                        continue
+                filtered.append(d)
+            except ValueError:
+                continue
+        docs = filtered
+    
+    return docs
 
 
 def _export_users() -> list[dict]:

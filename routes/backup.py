@@ -78,6 +78,10 @@ def backup_export():
     export_traffic = request.form.get("export_traffic") == "on"
     filter_office = request.form.get("filter_office", "").strip()
     
+    # Get date filters for documents
+    date_from = request.form.get("date_from", "").strip()
+    date_to = request.form.get("date_to", "").strip()
+    
     # Get file type
     file_type = request.form.get("file_type", "json")
     
@@ -102,7 +106,7 @@ def backup_export():
         if file_type == "excel":
             from services.backup import create_selective_excel_backup
             filename = f"doctracker_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-            buf = BytesIO(create_selective_excel_backup(export_items, filter_office=filter_office))
+            buf = BytesIO(create_selective_excel_backup(export_items, filter_office=filter_office, date_from=date_from, date_to=date_to))
             buf.seek(0)
             audit_log("backup_excel_downloaded", 
                       f"type=selective items={','.join(export_items)}",
@@ -112,7 +116,7 @@ def backup_export():
                              mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                              as_attachment=True, download_name=filename)
         else:
-            data = create_selective_backup(export_items, filter_office=filter_office)
+            data = create_selective_backup(export_items, filter_office=filter_office, date_from=date_from, date_to=date_to)
             filename = f"doctracker_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
             buf = BytesIO(json.dumps(data, indent=2, default=str).encode("utf-8"))
             buf.seek(0)
