@@ -185,15 +185,21 @@ def api_get_documents():
     limit = int(request.args.get('limit', 20))
 
     user_id = get_jwt_identity()
+    print(f"[API] user_id from JWT: {user_id}")
+    
     user = get_user_by_username(user_id)
+    print(f"[API] user from DB: {user}")
+    
     user_role = user.get('role', '') if user else ''
     user_office = user.get('office', '') if user else ''
 
     docs = load_docs()
+    print(f"[API] Total docs loaded: {len(docs)}")
 
     # Filter documents based on user role
     if user_role not in ['admin', 'superadmin']:
         docs = [d for d in docs if d.get('logged_by') == user_id]
+        print(f"[API] Filtered docs for staff: {len(docs)}")
 
     if status:
         docs = [d for d in docs if d.get('status') == status]
