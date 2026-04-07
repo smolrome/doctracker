@@ -315,7 +315,14 @@ def api_delete_document(doc_id):
 def api_stats():
     user_id = get_jwt_identity()
     user = get_user_by_username(user_id)
+    
+    # Check if admin from env vars
+    admin_username = os.environ.get('ADMIN_USERNAME', '')
+    is_admin = secrets.compare_digest(user_id.lower(), admin_username.lower()) if admin_username else False
+    
     user_role = user.get('role', '') if user else ''
+    if is_admin:
+        user_role = 'admin'
 
     docs = load_docs()
 
