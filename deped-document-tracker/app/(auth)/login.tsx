@@ -208,7 +208,7 @@ export default function Login() {
               overflow: 'hidden',
             }}>
               <Image
-                source={require('../../assets/new.png')}
+                source={require('../../assets/wow.png')}
                 style={{ width: 100, height: 100, resizeMode: 'cover' }}
               />
             </View>

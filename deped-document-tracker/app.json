@@ -5,15 +5,15 @@
     "version": "1.0.0",
     "scheme": "deped-tracker",
     "userInterfaceStyle": "automatic",
-    "icon": "./assets/new.png",
+    "icon": "./assets/wow.png",
     "splash": {
-      "image": "./assets/new.png",
+      "image": "./assets/wow.png",
       "resizeMode": "contain",
       "backgroundColor": "#F0F4FF"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/wow.png",
         "backgroundColor": "#0038A8"
       },
       "package": "com.deped.documenttracker",
@@ -26,7 +26,7 @@
     "ios": {
       "bundleIdentifier": "com.deped.documenttracker",
       "supportsTablet": true,
-      "icon": "./assets/icon.png"
+      "icon": "./assets/wow.png"
     },
     "plugins": [
       "expo-router",
@@ -40,7 +40,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/wow.png",
           "sounds": []
         }
       ]
