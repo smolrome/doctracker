@@ -3,6 +3,8 @@ blueprints/api.py — REST API for mobile app.
 Provides JWT-based authentication and document operations.
 """
 
+import os
+import secrets
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import (
@@ -190,11 +192,18 @@ def api_get_documents():
     user = get_user_by_username(user_id)
     print(f"[API] user from DB: {user}")
     
+    # Check if admin from env vars
+    admin_username = os.environ.get('ADMIN_USERNAME', '')
+    is_admin = secrets.compare_digest(user_id.lower(), admin_username.lower()) if admin_username else False
+    
     user_role = user.get('role', '') if user else ''
+    if is_admin:
+        user_role = 'admin'
+    
     user_office = user.get('office', '') if user else ''
 
     docs = load_docs()
-    print(f"[API] Total docs loaded: {len(docs)}")
+    print(f"[API] Total docs loaded: {len(docs)}, user_role: {user_role}")
 
     # Filter documents based on user role
     if user_role not in ['admin', 'superadmin']:
