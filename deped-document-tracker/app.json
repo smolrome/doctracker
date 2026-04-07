@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "DepEd Document Tracker",
+    "name": "DocTracker",
     "slug": "deped-document-tracker",
     "version": "1.0.0",
     "scheme": "deped-tracker",
