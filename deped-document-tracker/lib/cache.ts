@@ -5,6 +5,7 @@ const CACHE_KEYS = {
   STATS: 'cache:stats',
   OFFICES: 'cache:offices',
   LAST_SYNC: 'cache:last_sync',
+  USER_ID: 'cache:user_id',
 };
 
 const CACHE_EXPIRY_MS = 1000 * 60 * 30; // 30 minutes

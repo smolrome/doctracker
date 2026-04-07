@@ -1,22 +1,29 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Slot } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
 import { useAuthStore } from '../lib/store';
 import { registerForPushNotifications } from '../lib/notifications';
-import '../global.css';
-
-const queryClient = new QueryClient();
+import { cache } from '../lib/cache';
 
 export default function RootLayout() {
   const loadFromStorage = useAuthStore((s) => s.loadFromStorage);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const notificationListener = useRef<any>();
-  const responseListener = useRef<any>();
+  const isLoading = useAuthStore((s) => s.isLoading);
+  const [queryClient] = useState(() => new QueryClient());
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   useEffect(() => {
     loadFromStorage();
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated && !isLoading) {
+      queryClient.clear();
+      cache.clearAll();
+    }
+  }, [isAuthenticated, isLoading]);
 
   useEffect(() => {
     if (!isAuthenticated) return;

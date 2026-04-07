@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 import { cache } from '../lib/cache';
 import { useNetwork } from './useNetwork';
+import { useAuthStore } from '../lib/store';
 
 export function useDocuments(search = '', status = 'All') {
   const { isOnline } = useNetwork();
   const [isFromCache, setIsFromCache] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const userId = user?.id || user?.username || '';
 
   const fetchDocuments = async () => {
     if (!isOnline) {
@@ -42,7 +45,7 @@ export function useDocuments(search = '', status = 'All') {
   };
 
   const query = useQuery({
-    queryKey: ['documents', search, status, isOnline],
+    queryKey: ['documents', userId, search, status, isOnline],
     queryFn: fetchDocuments,
     staleTime: 1000 * 60 * 5,
     retry: isOnline ? 2 : 0,
@@ -54,6 +57,8 @@ export function useDocuments(search = '', status = 'All') {
 export function useStats() {
   const { isOnline } = useNetwork();
   const [isFromCache, setIsFromCache] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const userId = user?.id || user?.username || '';
 
   const fetchStats = async () => {
     if (!isOnline) {
@@ -81,7 +86,7 @@ export function useStats() {
   };
 
   const query = useQuery({
-    queryKey: ['stats', isOnline],
+    queryKey: ['stats', userId, isOnline],
     queryFn: fetchStats,
     staleTime: 1000 * 60 * 5,
     retry: isOnline ? 2 : 0,
