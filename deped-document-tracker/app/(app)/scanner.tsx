@@ -122,7 +122,7 @@ export default function Scanner() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
+    <View style={{ flex: 1, backgroundColor: '#000', paddingBottom: 100 }}>
 
       <CameraView
         style={StyleSheet.absoluteFillObject}

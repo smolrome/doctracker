@@ -94,7 +94,7 @@ export default function Documents() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F3F4F6' }}>
+    <View style={{ flex: 1, backgroundColor: '#F3F4F6', paddingBottom: 100 }}>
       <OfflineBanner />
 
       <View style={{
