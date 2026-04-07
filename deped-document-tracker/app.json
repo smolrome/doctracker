@@ -5,9 +5,9 @@
     "version": "1.0.0",
     "scheme": "deped-tracker",
     "userInterfaceStyle": "automatic",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/new.png",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/new.png",
       "resizeMode": "contain",
       "backgroundColor": "#F0F4FF"
     },
