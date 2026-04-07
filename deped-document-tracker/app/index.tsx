@@ -1,16 +1,14 @@
+import { useState } from 'react';
 import { Redirect } from 'expo-router';
-import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../lib/store';
+import SplashScreen from './splash';
 
 export default function Index() {
   const { isAuthenticated, isLoading } = useAuthStore();
+  const [showSplash, setShowSplash] = useState(true);
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
-        <ActivityIndicator size="large" color="#0038A8" />
-      </View>
-    );
+  if (showSplash || isLoading) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
   }
 
   if (isAuthenticated) {
