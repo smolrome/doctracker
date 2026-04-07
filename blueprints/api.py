@@ -184,7 +184,17 @@ def api_get_documents():
     page = int(request.args.get('page', 1))
     limit = int(request.args.get('limit', 20))
 
+    user_id = get_jwt_identity()
+    user = get_user_by_username(user_id)
+    user_role = user.get('role', '') if user else ''
+    user_office = user.get('office', '') if user else ''
+
     docs = load_docs()
+
+    # Filter documents based on user role
+    if user_role not in ['admin', 'superadmin']:
+        docs = [d for d in docs if d.get('logged_by') == user_id]
+
     if status:
         docs = [d for d in docs if d.get('status') == status]
     if office:
@@ -288,7 +298,16 @@ def api_delete_document(doc_id):
 @api_bp.route('/stats', methods=['GET'])
 @jwt_required()
 def api_stats():
+    user_id = get_jwt_identity()
+    user = get_user_by_username(user_id)
+    user_role = user.get('role', '') if user else ''
+
     docs = load_docs()
+
+    # Filter documents based on user role
+    if user_role not in ['admin', 'superadmin']:
+        docs = [d for d in docs if d.get('logged_by') == user_id]
+
     stats = get_stats(docs)
     return jsonify(serialize(stats))
 
