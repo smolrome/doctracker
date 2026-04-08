@@ -172,31 +172,31 @@ def index():
         before_count = len(filtered)
         
         def _matches_office(doc):
-            doc_sender    = (doc.get("sender_org") or "").lower().strip()
             doc_referred  = (doc.get("referred_to") or "").lower().strip()
             doc_target    = (doc.get("target_office_name") or "").lower().strip()
             doc_forwarded = (doc.get("forwarded_to") or "").lower().strip()
             doc_pending   = (doc.get("pending_at_office") or "").lower().strip()
             doc_transferred = (doc.get("transferred_to_office") or "").lower().strip()
             doc_routing   = " ".join(doc.get("routing", [])).lower()
+            doc_logged_office = (doc.get("logged_by_office") or "").lower().strip()
             return (
-                office_lower in doc_sender or
                 office_lower in doc_referred or
                 office_lower in doc_target or
                 office_lower in doc_forwarded or
                 office_lower in doc_pending or
                 office_lower in doc_transferred or
-                office_lower in doc_routing
+                office_lower in doc_routing or
+                office_lower in doc_logged_office
             )
         
         for d in filtered[:3]:
-            sender = d.get("sender_org") or ""
             referred = d.get("referred_to") or ""
             forwarded = d.get("forwarded_to") or ""
             pending = d.get("pending_at_office") or ""
             transferred = d.get("transferred_to_office") or ""
             routing = d.get("routing", [])
-            print(f"  Sample - sender: '{sender}', referred: '{referred}', forwarded: '{forwarded}', pending: '{pending}', transferred: '{transferred}', routing: {routing}")
+            logged_office = d.get("logged_by_office") or ""
+            print(f"  Sample - referred: '{referred}', forwarded: '{forwarded}', pending: '{pending}', transferred: '{transferred}', routing: {routing}, logged_office: '{logged_office}'")
         filtered = [d for d in filtered if _matches_office(d)]
         print(f"[DEBUG] After office filter: {before_count} -> {len(filtered)}")
 

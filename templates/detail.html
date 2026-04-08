@@ -413,7 +413,12 @@
     {% if doc.logged_by %}
     <div class="field">
       <div class="field-label">Logged By</div>
-      <div class="field-val mono" style="font-size:14px;">{{ doc.logged_by }}</div>
+      <div class="field-val mono" style="font-size:14px;">
+        {{ doc.logged_by }}
+        {% if doc.logged_by_office %}
+        <span style="font-weight:400;color:var(--muted);font-size:13px;">· {{ doc.logged_by_office }}</span>
+        {% endif %}
+      </div>
     </div>
     {% endif %}
     {% if doc.transferred_to %}
