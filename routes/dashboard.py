@@ -166,7 +166,8 @@ def index():
             filtered = [d for d in filtered if _doc_time(d) <= filter_time_to]
 
     if filter_office and filter_office != "All":
-        filtered = [d for d in filtered if (d.get("sender_org") or "").strip() == filter_office]
+        office_lower = filter_office.lower().strip()
+        filtered = [d for d in filtered if (d.get("sender_org") or "").lower().strip() == office_lower]
 
     try:
         per_page = int(request.args.get("per_page", 25))
