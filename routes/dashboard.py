@@ -179,6 +179,10 @@ def index():
             doc_transferred = (doc.get("transferred_to_office") or "").lower().strip()
             doc_routing   = " ".join(doc.get("routing", [])).lower()
             doc_logged_office = (doc.get("logged_by_office") or "").lower().strip()
+            if not doc_logged_office:
+                tl = doc.get("travel_log", [])
+                if tl:
+                    doc_logged_office = (tl[0].get("office") or "").lower().strip()
             return (
                 office_lower in doc_referred or
                 office_lower in doc_target or
@@ -1427,3 +1431,25 @@ def debug_error():
     except Exception as ex:
         info["db_error"] = str(ex)
     return jsonify(info)
+
+
+@dashboard_bp.route("/admin/backfill-logged-office", methods=["POST"])
+@admin_required
+def backfill_logged_office():
+    docs = load_docs()
+    updated = 0
+    for doc in docs:
+        if doc.get("logged_by_office"):
+            continue  # already has it, skip
+        
+        # Try to get it from the first travel log entry
+        travel_log = doc.get("travel_log", [])
+        if travel_log:
+            first_entry = travel_log[0]
+            office = first_entry.get("office", "")
+            if office:
+                doc["logged_by_office"] = office
+                save_doc(doc)
+                updated += 1
+    
+    return jsonify({"updated": updated, "total": len(docs)})
