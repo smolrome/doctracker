@@ -172,16 +172,31 @@ def index():
         before_count = len(filtered)
         
         def _matches_office(doc):
-            doc_office = (doc.get("sender_org") or "").lower().strip()
-            doc_referred = (doc.get("referred_to") or "").lower().strip()
-            doc_target = (doc.get("target_office_name") or "").lower().strip()
-            return office_lower in doc_office or office_lower in doc_referred or office_lower in doc_target or doc_office == office_lower or doc_referred == office_lower or doc_target == office_lower
+            doc_sender    = (doc.get("sender_org") or "").lower().strip()
+            doc_referred  = (doc.get("referred_to") or "").lower().strip()
+            doc_target    = (doc.get("target_office_name") or "").lower().strip()
+            doc_forwarded = (doc.get("forwarded_to") or "").lower().strip()
+            doc_pending   = (doc.get("pending_at_office") or "").lower().strip()
+            doc_transferred = (doc.get("transferred_to_office") or "").lower().strip()
+            doc_routing   = " ".join(doc.get("routing", [])).lower()
+            return (
+                office_lower in doc_sender or
+                office_lower in doc_referred or
+                office_lower in doc_target or
+                office_lower in doc_forwarded or
+                office_lower in doc_pending or
+                office_lower in doc_transferred or
+                office_lower in doc_routing
+            )
         
         for d in filtered[:3]:
             sender = d.get("sender_org") or ""
             referred = d.get("referred_to") or ""
-            target = d.get("target_office_name") or ""
-            print(f"  Sample - sender_org: '{sender}', referred_to: '{referred}', target_office: '{target}'")
+            forwarded = d.get("forwarded_to") or ""
+            pending = d.get("pending_at_office") or ""
+            transferred = d.get("transferred_to_office") or ""
+            routing = d.get("routing", [])
+            print(f"  Sample - sender: '{sender}', referred: '{referred}', forwarded: '{forwarded}', pending: '{pending}', transferred: '{transferred}', routing: {routing}")
         filtered = [d for d in filtered if _matches_office(d)]
         print(f"[DEBUG] After office filter: {before_count} -> {len(filtered)}")
 
