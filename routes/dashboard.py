@@ -114,6 +114,7 @@ def index():
     filter_date      = request.args.get("date", "").strip()
     filter_time_from = request.args.get("time_from", "").strip()
     filter_time_to   = request.args.get("time_to", "").strip()
+    filter_office    = request.args.get("office", "All")
 
     filtered = docs
 
@@ -164,6 +165,9 @@ def index():
         if filter_time_to:
             filtered = [d for d in filtered if _doc_time(d) <= filter_time_to]
 
+    if filter_office and filter_office != "All":
+        filtered = [d for d in filtered if (d.get("sender_org") or "").strip() == filter_office]
+
     try:
         per_page = int(request.args.get("per_page", 25))
     except ValueError:
@@ -202,6 +206,7 @@ def index():
         filter_type=filter_type, filter_source=filter_source,
         filter_date=filter_date,
         filter_time_from=filter_time_from, filter_time_to=filter_time_to,
+        filter_office=filter_office,
         status_options=["All"] + get_dropdown_options("status"),
         saved_offices=load_saved_offices(),
         page=page, total_pages=total_pages,

@@ -328,6 +328,16 @@ function setSource(val) {
   window.location.href = '/?' + params.toString();
 }
 
+function setOffice(val) {
+  saveSelectionsToLocalStorage();
+  var params = new URLSearchParams(window.location.search);
+  if (!val || val === 'All') { params.delete('office'); } else { params.set('office', val); }
+  params.delete('page');
+  var allIds = restoreSelectionsFromLocalStorage();
+  if (allIds.length > 0) params.set('selected_docs', allIds.join(','));
+  window.location.href = '/?' + params.toString();
+}
+
 function clearField(name, val) {
   if (val === undefined) val = '';
   var el = document.querySelector('[name="' + name + '"]');

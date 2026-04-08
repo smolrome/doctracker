@@ -275,7 +275,16 @@ var serverSessionData = {
             <button type="button" class="chip {% if filter_source=='Staff' %}src-active{% endif %}" onclick="setSource('Staff')">👤 Staff</button>
             <button type="button" class="chip {% if filter_source=='Client' %}src-active{% endif %}" onclick="setSource('Client')">🏢 Client</button>
 
-            {% set any_filter = search or filter_status != 'All' or filter_type != 'All' or filter_source != 'All' or filter_date or filter_time_from or filter_time_to %}
+            <span class="chip-sep">|</span>
+            <span class="chip-grp-label">Office</span>
+            <select class="chip-select" id="office-filter-select" onchange="setOffice(this.value)">
+              <option value="All" {% if filter_office=='All' or not filter_office or filter_office is not defined %}selected{% endif %}>All</option>
+              {% for office in saved_offices %}
+              <option value="{{ office.office_name }}" {% if filter_office==office.office_name %}selected{% endif %}>{{ office.office_name }}</option>
+              {% endfor %}
+            </select>
+
+            {% set any_filter = search or filter_status != 'All' or filter_type != 'All' or filter_source != 'All' or filter_date or filter_time_from or filter_time_to or filter_office != 'All' %}
             {% if any_filter %}
             <div class="active-pills" role="list">
               {% if filter_date %}<span class="f-pill">📅 {{ filter_date }}<button class="f-pill-x" type="button" onclick="clearField('date')">×</button></span>{% endif %}
@@ -284,6 +293,7 @@ var serverSessionData = {
               {% if search %}<span class="f-pill">🔍 "{{ search }}"<button class="f-pill-x" type="button" onclick="clearField('search','')">×</button></span>{% endif %}
               {% if filter_type != 'All' %}<span class="f-pill">{{ filter_type }}<button class="f-pill-x" type="button" onclick="clearField('type','All')">×</button></span>{% endif %}
               {% if filter_source != 'All' %}<span class="f-pill">{{ filter_source }}<button class="f-pill-x" type="button" onclick="clearField('source','All')">×</button></span>{% endif %}
+              {% if filter_office != 'All' %}<span class="f-pill">🏢 {{ filter_office }}<button class="f-pill-x" type="button" onclick="clearField('office','All')">×</button></span>{% endif %}
             </div>
             {% endif %}
           </div>
@@ -309,6 +319,7 @@ var serverSessionData = {
 
         <input type="hidden" name="type"   id="type-hidden"   value="{{ filter_type }}"/>
         <input type="hidden" name="source" id="source-hidden" value="{{ filter_source }}"/>
+        <input type="hidden" name="office" id="office-hidden" value="{{ filter_office }}"/>
         <input type="hidden" name="per_page"                  value="{{ per_page }}"/>
       </form>
       </div>

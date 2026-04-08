@@ -285,6 +285,13 @@ body {
 .chip.active { background: var(--teal); border-color: var(--teal); color: #fff; }
 .chip.src-active { background: var(--navy); border-color: var(--navy); color: #fff; }
 
+.chip-select {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
+  border: 1.5px solid var(--border); background: var(--surface); color: var(--muted);
+  cursor: pointer; white-space: nowrap; transition: all .13s; font-family: var(--font-ui); height: 28px;
+}
+
 .active-pills { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; margin-left: 3px; }
 .f-pill {
   display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px 3px 10px;
