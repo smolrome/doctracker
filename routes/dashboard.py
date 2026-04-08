@@ -252,7 +252,8 @@ def index():
         offices_dict=offices_dict,
         sorted_offices=sorted_offices,
         current_user_name=session.get('full_name', ''),
-        current_user_role=session.get('role', ''))
+        current_user_role=session.get('role', ''),
+        is_admin=session.get('role') == 'admin')
 
 
 @dashboard_bp.route("/dashboard")
