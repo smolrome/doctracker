@@ -13,7 +13,7 @@ from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
 )
 from services.misc import audit_log, get_activity_logs
-from services.documents import load_docs, save_doc, get_doc, delete_doc
+from services.documents import load_docs, save_doc, get_doc, delete_doc, backfill_logged_by_office
 from utils import admin_required, get_client_ip
 from config import ADMIN_USERNAME, MAIL_ENABLED, APP_URL
 
@@ -337,6 +337,18 @@ def activity_log():
         pass
     logs = get_activity_logs()
     return render_template("activity_log.html", logs=logs)
+
+
+@admin_bp.route("/backfill-office", methods=["POST"])
+@admin_required
+def run_backfill_office():
+    """One-time backfill to populate logged_by_office for existing docs."""
+    try:
+        count = backfill_logged_by_office()
+        flash(f"✅ Backfilled logged_by_office for {count} documents.", "success")
+    except Exception as e:
+        flash(f"❌ Backfill failed: {e}", "error")
+    return redirect(url_for("admin.activity_log"))
 
 
 @admin_bp.route("/pending-clients")

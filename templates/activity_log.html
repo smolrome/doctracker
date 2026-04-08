@@ -12,6 +12,13 @@
   Showing last 200 events — logins, logouts, deletions, and errors &nbsp;·&nbsp; Visible to admins only
 </div>
 
+<form method="POST" action="{{ url_for('admin.run_backfill_office') }}" style="margin:12px 0;">
+  <button type="submit" class="btn btn-sm" style="background:var(--blue);color:#fff;padding:6px 12px;border:none;border-radius:4px;cursor:pointer;"
+          onclick="return confirm('This will backfill logged_by_office for existing documents. Continue?')">
+    🔄 Backfill Office Data
+  </button>
+</form>
+
 {% if logs %}
 <div class="log-table-wrap">
 

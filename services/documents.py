@@ -9,6 +9,7 @@ from datetime import datetime
 
 from services.database import USE_DB, get_conn
 from config import DATA_FILE
+from services.auth import get_all_users
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -279,6 +280,31 @@ def get_stats(docs: list[dict]) -> dict:
         "staff":      sum(1 for d in docs if (d.get("original_logged_by") or d.get("logged_by")) and not d.get("submitted_by")),
         "client":     sum(1 for d in docs if d.get("submitted_by")),
     }
+
+
+def backfill_logged_by_office():
+    """
+    One-time backfill: for all docs missing logged_by_office,
+    look up the logged_by username and populate logged_by_office from users table.
+    """
+    docs = load_docs(include_deleted=True)
+    all_users = get_all_users()
+    user_office_map = {u["username"].lower(): u.get("office", "") for u in all_users}
+
+    updated = 0
+    for doc in docs:
+        if doc.get("logged_by_office"):
+            continue
+        logged_by = doc.get("logged_by", "").lower().strip()
+        if logged_by and logged_by in user_office_map:
+            doc["logged_by_office"] = user_office_map[logged_by]
+            updated += 1
+
+    if updated > 0:
+        batch_save_docs(docs)
+        print(f"[backfill_logged_by_office] Updated {updated} documents")
+
+    return updated
 
 
 # ── Private ───────────────────────────────────────────────────────────────────

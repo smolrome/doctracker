@@ -360,6 +360,7 @@ def add():
                         "travel_log":     [],
                         "logged_by":      session.get("username"),
                         "original_logged_by": session.get("username"),
+                        "logged_by_office": current_office,
                         "routing_cycle": 0,
                     }
                     doc["travel_log"].append({
