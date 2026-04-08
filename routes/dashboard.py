@@ -170,9 +170,19 @@ def index():
         office_lower = filter_office.lower().strip()
         print(f"[DEBUG] Office filter: '{filter_office}' -> '{office_lower}'")
         before_count = len(filtered)
+        
+        def _matches_office(doc):
+            doc_office = (doc.get("sender_org") or "").lower().strip()
+            doc_referred = (doc.get("referred_to") or "").lower().strip()
+            doc_target = (doc.get("target_office_name") or "").lower().strip()
+            return office_lower in doc_office or office_lower in doc_referred or office_lower in doc_target or doc_office == office_lower or doc_referred == office_lower or doc_target == office_lower
+        
         for d in filtered[:3]:
-            print(f"  Sample doc sender_org: '{(d.get('sender_org') or '').lower().strip()}'")
-        filtered = [d for d in filtered if (d.get("sender_org") or "").lower().strip() == office_lower]
+            sender = d.get("sender_org") or ""
+            referred = d.get("referred_to") or ""
+            target = d.get("target_office_name") or ""
+            print(f"  Sample - sender_org: '{sender}', referred_to: '{referred}', target_office: '{target}'")
+        filtered = [d for d in filtered if _matches_office(d)]
         print(f"[DEBUG] After office filter: {before_count} -> {len(filtered)}")
 
     try:
