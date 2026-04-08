@@ -156,6 +156,7 @@ def index():
         def _doc_date(d):
             return (d.get("date_received") or d.get("created_at", "") or "")[:10]
         filtered = [d for d in filtered if _doc_date(d) == filter_date]
+        print(f"[DEBUG] After date filter ({filter_date}): {len(filtered)} docs")
 
     if filter_time_from or filter_time_to:
         def _doc_time(d):
@@ -167,7 +168,12 @@ def index():
 
     if filter_office and filter_office != "All":
         office_lower = filter_office.lower().strip()
+        print(f"[DEBUG] Office filter: '{filter_office}' -> '{office_lower}'")
+        before_count = len(filtered)
+        for d in filtered[:3]:
+            print(f"  Sample doc sender_org: '{(d.get('sender_org') or '').lower().strip()}'")
         filtered = [d for d in filtered if (d.get("sender_org") or "").lower().strip() == office_lower]
+        print(f"[DEBUG] After office filter: {before_count} -> {len(filtered)}")
 
     try:
         per_page = int(request.args.get("per_page", 25))
