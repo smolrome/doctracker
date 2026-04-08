@@ -80,7 +80,6 @@ def index():
     user_role = session.get("role", "")
 
     docs = load_docs()
-    print(f"[DEBUG index] Total docs loaded: {len(docs)}, current_username: {current_username}, user_role: {user_role}")
     
     if user_role != "admin":
         docs = [
@@ -103,9 +102,6 @@ def index():
                 or d.get("transferred_by") == current_username
             )
         ]
-    print(f"[DEBUG index] Docs after filter for {current_username}: {len(docs)}")
-    for d in docs[:3]:
-        print(f"  -> doc: id={d.get('id')}, status={d.get('status')}, pending_at_staff={d.get('pending_at_staff')}, transfer_status={d.get('transfer_status')}")
 
     search           = request.args.get("search", "").lower()
     filter_status    = request.args.get("status", "All")
@@ -156,7 +152,6 @@ def index():
         def _doc_date(d):
             return (d.get("date_received") or d.get("created_at", "") or "")[:10]
         filtered = [d for d in filtered if _doc_date(d) == filter_date]
-        print(f"[DEBUG] After date filter ({filter_date}): {len(filtered)} docs")
 
     if filter_time_from or filter_time_to:
         def _doc_time(d):
@@ -168,8 +163,6 @@ def index():
 
     if filter_office and filter_office != "All":
         office_lower = filter_office.lower().strip()
-        print(f"[DEBUG] Office filter: '{filter_office}' -> '{office_lower}'")
-        before_count = len(filtered)
         
         def _matches_office(doc):
             doc_referred  = (doc.get("referred_to") or "").lower().strip()
@@ -193,16 +186,7 @@ def index():
                 office_lower in doc_logged_office
             )
         
-        for d in filtered[:3]:
-            referred = d.get("referred_to") or ""
-            forwarded = d.get("forwarded_to") or ""
-            pending = d.get("pending_at_office") or ""
-            transferred = d.get("transferred_to_office") or ""
-            routing = d.get("routing", [])
-            logged_office = d.get("logged_by_office") or ""
-            print(f"  Sample - referred: '{referred}', forwarded: '{forwarded}', pending: '{pending}', transferred: '{transferred}', routing: {routing}, logged_office: '{logged_office}'")
         filtered = [d for d in filtered if _matches_office(d)]
-        print(f"[DEBUG] After office filter: {before_count} -> {len(filtered)}")
 
     try:
         per_page = int(request.args.get("per_page", 25))
@@ -369,7 +353,7 @@ def add():
                         "routing_cycle": 0,
                     }
                     doc["travel_log"].append({
-                        "office":    item["sender_org"] or "Division Office",
+                        "office":    current_office,
                         "action":    "Document Logged by Staff",
                         "officer":   actor,
                         "timestamp": doc["created_at"],
@@ -729,8 +713,6 @@ def transfer_doc(doc_id):
         transfer_type = request.form.get("transfer_type", "").strip()
         new_staff     = request.form.get("new_staff", "").strip()
 
-        print(f"[DEBUG transfer_doc] doc_id: {doc_id}, transfer_type: {transfer_type}, new_staff: {new_staff}")
-
         if not new_staff:
             flash("Please select a staff member.", "error")
             return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
@@ -785,8 +767,6 @@ def transfer_doc(doc_id):
         doc["pending_at_office"]     = new_staff_office
         doc["pending_at_staff_name"] = new_staff_full_name
         doc["transfer_status"]       = "pending"
-
-        print(f"[DEBUG transfer_doc] Updated doc {doc_id}: status={new_status}, transferred_to={new_staff}, pending_at_staff={new_staff}")
 
         current_full_name = session.get("full_name") or session.get("username")
         current_office    = session.get("office") or "DepEd Leyte Division"
@@ -933,9 +913,6 @@ def transfer_batch():
 
     id_list = [d.strip() for d in doc_ids.split(",") if d.strip()]
 
-    print(f"[DEBUG transfer_batch] doc_ids: {id_list}")
-    print(f"[DEBUG transfer_batch] transfer_type: {transfer_type}, new_staff: {new_staff}, new_office: {new_office}")
-
     if not id_list:
         flash("No valid document IDs.", "error")
         return redirect(url_for("dashboard.index"))
@@ -975,7 +952,6 @@ def transfer_batch():
             doc.get("original_logged_by") == current_user or
             doc.get("accepted_by") == current_user
         )
-        print(f"[DEBUG transfer_batch] doc_id={doc_id}, current_user={current_user}, logged_by={doc.get('logged_by')}, original_logged_by={doc.get('original_logged_by')}, accepted_by={doc.get('accepted_by')}, can_transfer={can_transfer}")
         if not can_transfer:
             continue
 
@@ -1005,8 +981,6 @@ def transfer_batch():
         doc["pending_at_office"]     = new_staff_office
         doc["pending_at_staff_name"] = new_staff_full_name
         doc["transfer_status"]       = "pending"
-
-        print(f"[DEBUG transfer_batch] Updated doc {doc_id}: status={doc['status']}, transferred_to={doc['transferred_to']}, pending_at_staff={doc['pending_at_staff']}")
 
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",

@@ -149,7 +149,6 @@ def insert_doc(doc: dict):
 def save_doc(doc: dict):
     """Upsert an existing document."""
     doc = normalize_status_fields(doc)
-    print(f"[DEBUG save_doc] Saving doc id={doc.get('id')}, status={doc.get('status')}, transferred_to={doc.get('transferred_to')}, pending_at_staff={doc.get('pending_at_staff')}")
     if USE_DB:
         try:
             with get_conn() as conn:
