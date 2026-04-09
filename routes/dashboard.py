@@ -72,6 +72,7 @@ def _build_offices_dict_and_sorted(current_username: str, current_office: str):
 
 @dashboard_bp.route("/")
 def index():
+    print("[DEBUG] Rome is here!")
     role = session.get("role", "")
     if role not in ("staff", "admin"):
         return render_template("landing.html", saved_offices=load_saved_offices())
