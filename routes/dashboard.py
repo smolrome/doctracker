@@ -174,7 +174,7 @@ def index():
             doc_transferred = (doc.get("transferred_to_office") or "").lower().strip()
             doc_routing   = " ".join(doc.get("routing", [])).lower()
             
-            # Check both logged_by_office AND travel_log office
+            # Programmatic fields — exact match
             doc_logged_office = (doc.get("logged_by_office") or "").lower().strip()
             tl = doc.get("travel_log", [])
             tl_office = (tl[0].get("office") or "").lower().strip() if tl else ""
@@ -183,11 +183,11 @@ def index():
                 office_lower in doc_referred or
                 office_lower in doc_target or
                 office_lower in doc_forwarded or
-                office_lower in doc_pending or
-                office_lower in doc_transferred or
+                office_lower == doc_pending or
+                office_lower == doc_transferred or
                 office_lower in doc_routing or
-                office_lower in doc_logged_office or
-                office_lower in tl_office
+                office_lower == doc_logged_office or
+                office_lower == tl_office
             )
         
         for d in filtered[:3]:
