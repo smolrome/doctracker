@@ -170,9 +170,13 @@ def assign_doc(doc_id):
     staff_full_name = staff_user.get("full_name") or staff_username
     
     # Assign the document to staff
+    # Only set logged_by (current holder); preserve original_logged_by so the
+    # routing-back workflow (transfer → release by original logger) still works.
+    # Only seed original_logged_by if the document never had one.
     old_logged_by = doc.get("logged_by", "")
     doc["logged_by"] = staff_username
-    doc["original_logged_by"] = staff_username  # Set as original logger
+    if not doc.get("original_logged_by"):
+        doc["original_logged_by"] = staff_username
     
     save_doc(doc)
     
@@ -254,8 +258,9 @@ def assign_doc_batch():
         
         old_logged_by = doc.get("logged_by", "")
         doc["logged_by"] = staff_username
-        doc["original_logged_by"] = staff_username
-        
+        if not doc.get("original_logged_by"):
+            doc["original_logged_by"] = staff_username
+
         save_doc(doc)
         assigned_count += 1
     
