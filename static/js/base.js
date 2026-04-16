@@ -46,6 +46,37 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 
 
+/* ── Dark mode ── */
+(function () {
+  const stored = localStorage.getItem('theme');
+  if (stored === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
+
+function toggleTheme() {
+  const root = document.documentElement;
+  const btn  = document.getElementById('theme-toggle');
+  const isDark = root.getAttribute('data-theme') === 'dark';
+  if (isDark) {
+    root.removeAttribute('data-theme');
+    localStorage.setItem('theme', 'light');
+    if (btn) btn.textContent = '🌙';
+  } else {
+    root.setAttribute('data-theme', 'dark');
+    localStorage.setItem('theme', 'dark');
+    if (btn) btn.textContent = '☀️';
+  }
+}
+
+// Sync icon on page load
+document.addEventListener('DOMContentLoaded', function () {
+  const btn = document.getElementById('theme-toggle');
+  if (btn && document.documentElement.getAttribute('data-theme') === 'dark') {
+    btn.textContent = '☀️';
+  }
+});
+
 // ── Mobile drawer ─────────────────────────────────────────────────────────
 function toggleMenu() {
   const drawer  = document.getElementById('nav-drawer');
