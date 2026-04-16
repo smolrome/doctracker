@@ -1,23 +1,27 @@
 /* ── TOP HEADER ── */
 .doc-hero{border-radius:18px;padding:22px 24px;margin-bottom:20px;
-  background:linear-gradient(135deg,#0A2540 0%,#0A4D68 55%,#0E7490 100%);
+  background:#fff;
+  border:2px solid #BAE6FD;
+  border-left:5px solid #0E7490;
   display:flex;align-items:flex-start;justify-content:space-between;
-  gap:16px;flex-wrap:wrap;}
+  gap:16px;flex-wrap:wrap;
+  box-shadow:0 2px 12px rgba(14,116,144,.08);}
 .doc-hero-left{flex:1;min-width:0;}
-.doc-hero-eyebrow{font-size:13px;font-weight:700;color:rgba(255,255,255,.6);
+.doc-hero-eyebrow{font-size:12px;font-weight:700;color:var(--muted);
   text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;
   display:flex;align-items:center;gap:8px;}
 .doc-hero-name{font-family:'Outfit',sans-serif;font-size:24px;font-weight:900;
-  color:#fff;line-height:1.3;margin-bottom:8px;word-break:break-word;}
+  color:var(--navy);line-height:1.3;margin-bottom:8px;word-break:break-word;}
 .doc-hero-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
 .hero-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;
   border-radius:20px;font-size:13px;font-weight:700;
-  background:rgba(255,255,255,.15);color:rgba(255,255,255,.9);
-  border:1.5px solid rgba(255,255,255,.2);}
+  background:#F0F9FF;color:#0E7490;
+  border:1.5px solid #BAE6FD;}
 .hero-ref{font-family:monospace;font-size:15px;font-weight:700;
-  color:rgba(255,255,255,.9);background:rgba(255,255,255,.12);
-  padding:5px 12px;border-radius:8px;border:1.5px solid rgba(255,255,255,.2);}
+  color:#0E7490;background:#F0F9FF;
+  padding:5px 12px;border-radius:8px;border:1.5px solid #BAE6FD;}
 .doc-hero-status{flex-shrink:0;}
+.doc-hero-status .badge{font-size:15px;padding:8px 18px;}
 
 /* ── QUICK ACTIONS BAR ── */
 .actions-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;align-items:center;}
@@ -436,6 +440,36 @@
 }
 @media print{
   .actions-bar,.status-update-card,.page-header{display:none!important;}
-  .doc-hero{background:#0A2540!important;-webkit-print-color-adjust:exact;}
+  .doc-hero{background:#fff!important;border-left-color:#0E7490!important;-webkit-print-color-adjust:exact;}
   .info-grid{grid-template-columns:1fr 1fr;}
 }
+
+/* ── BUTTON VARIANTS ── */
+.btn-purple { background:#7C3AED; color:#fff; }
+.btn-purple:hover { background:#6D28D9; }
+.btn-teal   { background:#0E7490; color:#fff; }
+.btn-teal:hover { background:#0A5F75; }
+.btn-green  { background:#059669; color:#fff; }
+.btn-green:hover { background:#047857; }
+
+/* ── STATUS UPDATE ── */
+.status-update-form { display:flex; gap:10px; flex:1; flex-wrap:wrap; align-items:center; }
+.status-update-select {
+  flex:1; min-width:160px; padding:10px 12px;
+  border:2px solid var(--border); border-radius:10px; font-family:inherit;
+  font-size:15px; background:var(--surface); color:var(--text); outline:none; min-height:44px;
+}
+.pending-location { margin-top:8px; font-size:13px; color:var(--muted); }
+
+/* ── DARK MODE ── */
+[data-theme="dark"] .doc-hero {
+  background:#1E2A3A; border-color:#2E3D52; border-left-color:#22D3EE;
+  box-shadow:0 2px 12px rgba(0,0,0,.3);
+}
+[data-theme="dark"] .hero-tag { background:#0F2A3A; color:#22D3EE; border-color:#1E4A6A; }
+[data-theme="dark"] .hero-ref { background:#0F2A3A; color:#22D3EE; border-color:#1E4A6A; }
+[data-theme="dark"] .info-card,
+[data-theme="dark"] .route-card,
+[data-theme="dark"] .status-update-card { background:#1E2A3A; border-color:#2E3D52; }
+[data-theme="dark"] .field-val { color:#C8D8EA; }
+[data-theme="dark"] .status-update-card select { background:#1E2A3A; color:#E2EAF4; }
