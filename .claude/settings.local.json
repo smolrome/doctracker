@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"def.*view\\\\|def.*detail\\\\|def.*track\" ./routes/*.py)"
+    ]
+  }
+}
