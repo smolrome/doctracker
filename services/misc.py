@@ -35,18 +35,33 @@ def audit_log(action: str, detail: str = "", username: str = "anonymous",
         except Exception as e:
             print(f"[services.misc] audit_log DB error for action={action}: {e}")
     else:
+        import tempfile
         path = "activity_log.json"
         logs = []
         if os.path.exists(path):
-            with open(path) as f:
-                logs = json.load(f)
+            try:
+                with open(path) as f:
+                    logs = json.load(f)
+            except Exception:
+                logs = []
         logs.append({
             "username": username, "action": action, "ip": ip,
             "detail": detail, "ts": datetime.now().isoformat(),
         })
         logs = logs[-2000:]  # keep last 2000 in JSON fallback
-        with open(path, "w") as f:
-            json.dump(logs, f, indent=2)
+        data = json.dumps(logs, indent=2)
+        dir_ = os.path.dirname(os.path.abspath(path)) or '.'
+        fd, tmp = tempfile.mkstemp(dir=dir_, suffix='.tmp')
+        try:
+            with os.fdopen(fd, 'w') as f:
+                f.write(data)
+            os.replace(tmp, path)
+        except Exception:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
 
 
 def get_activity_logs(limit: int = 200) -> list[dict]:
@@ -426,8 +441,7 @@ def save_routing_slip(slip: dict):
                 conn.commit()
                 return True
         except Exception as e:
-            pass
-            # Fallback to JSON
+            # DB insert failed — fall back to JSON
             return save_routing_slip_json(slip)
     else:
         return save_routing_slip_json(slip)

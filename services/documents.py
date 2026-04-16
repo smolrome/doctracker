@@ -101,7 +101,7 @@ def get_doc(doc_id: str) -> dict | None:
         except Exception as e:
             print(f"[services.documents] get_doc DB error for id={doc_id}: {e}")
             return None
-    return next((d for d in load_docs() if d["id"] == doc_id), None)
+    return next((d for d in load_docs(include_deleted=True) if d["id"] == doc_id), None)
 
 
 def get_docs_by_ids(doc_ids: list[str]) -> dict[str, dict]:
@@ -137,7 +137,6 @@ def insert_doc(doc: dict):
                         "INSERT INTO documents (id, data, created_at) VALUES (%s, %s::jsonb, %s)",
                         (doc["id"], json.dumps(doc), doc.get("created_at", now_str()))
                     )
-                conn.commit()
         except Exception as e:
             print(f"[services.documents] insert_doc DB error for id={doc.get('id')}: {e}")
     else:
@@ -159,7 +158,6 @@ def save_doc(doc: dict):
                            ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data""",
                         (doc["id"], json.dumps(doc), doc.get("created_at", now_str()))
                     )
-                conn.commit()
         except Exception as e:
             print(f"[services.documents] save_doc DB error for id={doc.get('id')}: {e}")
             raise
@@ -190,7 +188,6 @@ def batch_save_docs(docs: list[dict]):
                                ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data""",
                             (ndoc["id"], json.dumps(ndoc), ndoc.get("created_at", now_str()))
                         )
-                conn.commit()
         except Exception as e:
             print(f"[services.documents] batch_save_docs DB error: {e}")
     else:
@@ -236,7 +233,6 @@ def delete_doc_forever(doc_id: str):
         with get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
-            conn.commit()
     else:
         # JSON file storage
         all_docs = load_docs(include_deleted=True)
@@ -309,5 +305,17 @@ def backfill_logged_by_office():
 # ── Private ───────────────────────────────────────────────────────────────────
 
 def _save_docs_json(docs: list[dict]):
-    with open(DATA_FILE, "w") as f:
-        json.dump(docs, f, indent=2)
+    import tempfile
+    data = json.dumps(docs, indent=2, default=str)
+    dir_ = os.path.dirname(os.path.abspath(DATA_FILE)) or '.'
+    fd, tmp = tempfile.mkstemp(dir=dir_, suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(data)
+        os.replace(tmp, DATA_FILE)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise

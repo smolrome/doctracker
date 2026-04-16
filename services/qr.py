@@ -139,7 +139,6 @@ def create_doc_token(doc_id: str, token_type: str) -> str:
                         "INSERT INTO doc_qr_tokens (token, doc_id, token_type) VALUES (%s,%s,%s)",
                         (token, doc_id, token_type)
                     )
-                conn.commit()
         except Exception as e:
             pass
     else:
@@ -167,9 +166,10 @@ def use_doc_token(token: str) -> tuple[str | None, str | None]:
                     row = cur.fetchone()
                     if not row:
                         return None, None
+                    doc_id_val = row["doc_id"]
+                    token_type_val = row["token_type"]
                     cur.execute("UPDATE doc_qr_tokens SET used=TRUE WHERE token=%s", (token,))
-                conn.commit()
-                return row["doc_id"], row["token_type"]
+            return doc_id_val, token_type_val
         except Exception as e:
             return None, None
     else:
@@ -466,7 +466,6 @@ def create_slip_token(slip_id: str, token_type: str) -> str:
                         "INSERT INTO doc_qr_tokens (token, doc_id, token_type) VALUES (%s,%s,%s)",
                         (token, f"SLIP:{slip_id}", token_type)
                     )
-                conn.commit()
         except Exception as e:
             pass
     else:
@@ -499,11 +498,11 @@ def use_slip_token(token: str):
                     row = cur.fetchone()
                     if not row:
                         return None, None
+                    raw = row["doc_id"]
+                    token_type_val = row["token_type"]
                     cur.execute("UPDATE doc_qr_tokens SET used=TRUE WHERE token=%s", (token,))
-                conn.commit()
-            raw = row["doc_id"]
             slip_id = raw.removeprefix("SLIP:") if raw.startswith("SLIP:") else None
-            return slip_id, row["token_type"]
+            return slip_id, token_type_val
         except Exception as e:
             return None, None
     else:
