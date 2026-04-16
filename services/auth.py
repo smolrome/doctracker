@@ -259,6 +259,7 @@ def verify_user(username: str, password: str) -> tuple[str | None, str | None, s
         if not pw_ok or not found.get("active", True):
             return None, None, ""
 
+        _upgrade_hash_if_needed(uname, password, found.get('password_hash', ''))
         return (
             found.get("full_name") or uname,
             found.get("role", "staff"),
@@ -272,7 +273,7 @@ def _upgrade_hash_if_needed(username: str, password: str, stored_hash: str):
     """Re-hash old SHA-256 passwords with bcrypt on first successful login."""
     if stored_hash.startswith("$2"):
         return  # Already bcrypt — nothing to do
-    if not BCRYPT_OK:
+    if not USE_DB:
         return
     try:
         with get_conn() as conn:
