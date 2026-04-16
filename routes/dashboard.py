@@ -72,7 +72,6 @@ def _build_offices_dict_and_sorted(current_username: str, current_office: str):
 
 @dashboard_bp.route("/")
 def index():
-    print("[DEBUG] Rome is here!")
     role = session.get("role", "")
     if role not in ("staff", "admin"):
         return render_template("landing.html", saved_offices=load_saved_offices())
@@ -164,8 +163,7 @@ def index():
 
     if filter_office and filter_office != "All":
         office_lower = filter_office.lower().strip()
-        before_count = len(filtered)
-        
+
         def _matches_office(doc):
             doc_referred  = (doc.get("referred_to") or "").lower().strip()
             doc_target    = (doc.get("target_office_name") or "").lower().strip()
@@ -190,14 +188,7 @@ def index():
                 office_lower == tl_office
             )
         
-        for d in filtered[:3]:
-            logged_office = d.get("logged_by_office") or ""
-            tl = d.get("travel_log", [])
-            tl_office = (tl[0].get("office") or "") if tl else ""
-            print(f"[DEBUG office filter] doc_id={d.get('id')}, logged_by_office='{logged_office}', tl_office='{tl_office}'")
-        
         filtered = [d for d in filtered if _matches_office(d)]
-        print(f"[DEBUG office filter] '{filter_office}' -> {before_count} docs -> {len(filtered)} docs")
 
     try:
         per_page = int(request.args.get("per_page", 25))

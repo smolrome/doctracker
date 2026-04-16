@@ -160,6 +160,13 @@ def _create_tables(cur):
             updated_at  TIMESTAMP DEFAULT NOW()
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS push_tokens (
+            username   TEXT PRIMARY KEY,
+            token      TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
     # Performance + audit query indexes
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(username)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(ts DESC)""")
