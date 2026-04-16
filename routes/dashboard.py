@@ -191,11 +191,7 @@ def index():
                 office_lower == tl_office or
                 office_lower in routing_offices
             )
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         filtered = [d for d in filtered if _matches_office(d)]
 
     try:
