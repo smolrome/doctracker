@@ -660,8 +660,8 @@ def submit():
         cart = session.get("submit_cart", [])
 
     if request.args.get("office_slug") and request.args.get("office_name"):
-        session["submit_office_slug"] = request.args["office_slug"]
-        session["submit_office_name"] = request.args["office_name"]
+        session["submit_office_slug"] = request.args.get("office_slug", "")
+        session["submit_office_name"] = request.args.get("office_name", "")
         session["submit_selected_staff"] = ""
         session.modified = True
 

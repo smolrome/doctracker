@@ -52,13 +52,12 @@
   <a href="/transfer/{{ doc.id }}" class="btn btn-secondary" style="background:#7C3AED;color:#fff;">🔄 Transfer</a>
   <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ QR Code</a>
   <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
-  {% if doc.routing_slip_id and (session.get('role') in ['admin', 'staff']) %}
+  {% if doc.routing_slip_id and slip_type == 'routing' and (session.get('role') in ['admin', 'staff']) %}
   <a href="/routing-slip/{{ doc.routing_slip_id }}" target="_blank" class="btn btn-secondary" style="background:#0E7490;color:#fff;">🖨️ Routing Slip</a>
   {% endif %}
   {% if doc.logged_by %}
-  {% set logging_slip_id = doc.routing_slip_id or '' %}
-  {% if logging_slip_id %}
-  <a href="/logging-slip/{{ logging_slip_id }}" target="_blank" class="btn btn-secondary" style="background:#059669;color:#fff;">🖨️ Logging Slip</a>
+  {% if doc.routing_slip_id and slip_type == 'logging' %}
+  <a href="/logging-slip/{{ doc.routing_slip_id }}" target="_blank" class="btn btn-secondary" style="background:#059669;color:#fff;">🖨️ Logging Slip</a>
   {% endif %}
   {% set orig = doc.original_logged_by or doc.logged_by %}
   {% if logged_in and current_user == orig and doc.logged_by == current_user
@@ -183,7 +182,7 @@
       {% set ns_tl.steps = ns_tl.steps + [(created_label, created_icon,
           doc.created_at[:10] if doc.created_at else '',
           doc.created_at[11:16] if doc.created_at else '')] %}
-    {% endif %}}
+    {% endif %}
 
     {# 2. Add steps from travel_log - each action becomes a timeline entry #}
     {% if doc.travel_log %}
@@ -225,12 +224,12 @@
     {# Render — last step is active, all before it are done #}
     {% set total_steps = ns_tl.steps | length %}
     
-    {# Count re-routed cycles from travel_log #}
-    {% set reroute_count = 0 %}
+    {# Count re-routed cycles from travel_log — must use namespace to escape loop scope #}
+    {% set ns_rc = namespace(reroute_count=0) %}
     {% if doc.travel_log %}
       {% for log_entry in doc.travel_log %}
         {% if 're-routed' in log_entry.get('action', '')|lower or 'rerouted' in log_entry.get('action', '')|lower %}
-          {% set reroute_count = reroute_count + 1 %}
+          {% set ns_rc.reroute_count = ns_rc.reroute_count + 1 %}
         {% endif %}
       {% endfor %}
     {% endif %}
@@ -243,8 +242,8 @@
         {% if date %}
         <div class="tl-date">{{ date }}<strong>{{ time }}</strong></div>
         {% endif %}
-        {% if label == 'Re-routed' and reroute_count > 0 %}
-        <div class="tl-cycle-badge">×{{ reroute_count }} cycles</div>
+        {% if label == 'Re-routed' and ns_rc.reroute_count > 0 %}
+        <div class="tl-cycle-badge">×{{ ns_rc.reroute_count }} cycles</div>
         {% endif %}
       </div>
     {% endfor %}

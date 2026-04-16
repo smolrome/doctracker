@@ -330,7 +330,6 @@ def create_app() -> Flask:
     @app.errorhandler(500)
     def internal_error(e):
         import traceback
-        print(f"500 ERROR:\n{traceback.format_exc()}")
         if request.path.startswith('/api/'):
             return jsonify(error='Internal server error'), 500
         if os.environ.get("FLASK_DEBUG") == "1":
@@ -349,7 +348,6 @@ def create_app() -> Flask:
 
     @app.errorhandler(400)
     def bad_request(e):
-        print(f"400 BAD REQUEST: {e} path={request.path}", flush=True)
         return f"Bad Request: {e}", 400
 
     @app.errorhandler(429)

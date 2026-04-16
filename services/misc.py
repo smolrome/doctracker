@@ -364,8 +364,10 @@ def get_existing_offices_without_qr() -> list[dict]:
 # ═══════════════════════════════════════════════════════════════════
 
 def generate_slip_no() -> str:
+    # 8 hex chars → ~4.3 billion combinations per year; collision probability
+    # is negligible even under concurrent load.
     yr     = datetime.now().year
-    suffix = uuid.uuid4().hex[:4].upper()
+    suffix = uuid.uuid4().hex[:8].upper()
     return f"SLIP-{yr}-{suffix}"
 
 

@@ -233,9 +233,9 @@ def restore_doc(doc_id: str):
 def delete_doc_forever(doc_id: str):
     """Permanently delete a document from the database."""
     if USE_DB:
-        conn = get_conn()
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
             conn.commit()
     else:
         # JSON file storage

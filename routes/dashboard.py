@@ -22,6 +22,9 @@ from services.dropdown_options import get_dropdown_options
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
+# Maximum documents allowed in a single bulk/batch operation.
+_MAX_BATCH = 50
+
 
 def _get_staff_by_office(current_username: str = ""):
     """Get staff members grouped by office for transfer modal."""
@@ -165,29 +168,34 @@ def index():
         office_lower = filter_office.lower().strip()
 
         def _matches_office(doc):
-            doc_referred  = (doc.get("referred_to") or "").lower().strip()
-            doc_target    = (doc.get("target_office_name") or "").lower().strip()
-            doc_forwarded = (doc.get("forwarded_to") or "").lower().strip()
-            doc_pending   = (doc.get("pending_at_office") or "").lower().strip()
+            # All comparisons are exact (case-insensitive) to prevent "Main"
+            # accidentally matching "MainOffice" or "Main Hall".
+            doc_referred    = (doc.get("referred_to") or "").lower().strip()
+            doc_target      = (doc.get("target_office_name") or "").lower().strip()
+            doc_forwarded   = (doc.get("forwarded_to") or "").lower().strip()
+            doc_pending     = (doc.get("pending_at_office") or "").lower().strip()
             doc_transferred = (doc.get("transferred_to_office") or "").lower().strip()
-            doc_routing   = " ".join(doc.get("routing", [])).lower()
-            
-            # Programmatic fields — exact match
             doc_logged_office = (doc.get("logged_by_office") or "").lower().strip()
             tl = doc.get("travel_log", [])
             tl_office = (tl[0].get("office") or "").lower().strip() if tl else ""
-            
+            # routing is a list — check membership, not substring
+            routing_offices = [r.lower().strip() for r in doc.get("routing", [])]
+
             return (
-                office_lower in doc_referred or
-                office_lower in doc_target or
-                office_lower in doc_forwarded or
+                office_lower == doc_referred or
+                office_lower == doc_target or
+                office_lower == doc_forwarded or
                 office_lower == doc_pending or
                 office_lower == doc_transferred or
-                office_lower in doc_routing or
                 office_lower == doc_logged_office or
-                office_lower == tl_office
+                office_lower == tl_office or
+                office_lower in routing_offices
             )
+<<<<<<< Updated upstream
         
+=======
+
+>>>>>>> Stashed changes
         filtered = [d for d in filtered if _matches_office(d)]
 
     try:
@@ -447,7 +455,19 @@ def view_doc(doc_id):
     if not doc:
         flash("Document not found.", "error")
         return redirect(url_for("dashboard.index"))
-    return render_template("detail.html", doc=doc, qr_b64=generate_qr_b64(doc, request.host_url))
+
+    # Resolve slip type so the template can show the correct button
+    slip_type = None
+    if doc.get("routing_slip_id"):
+        from services.misc import get_all_routing_slips
+        for s in get_all_routing_slips():
+            if s.get("id") == doc["routing_slip_id"]:
+                slip_type = s.get("type")
+                break
+
+    return render_template("detail.html", doc=doc,
+                           qr_b64=generate_qr_b64(doc, request.host_url),
+                           slip_type=slip_type)
 
 
 @dashboard_bp.route("/edit/<doc_id>", methods=["GET", "POST"])
@@ -639,16 +659,16 @@ def bulk_update_status():
         flash("Invalid status.", "error")
         return redirect(url_for("dashboard.index"))
     
-    doc_ids = [d.strip() for d in doc_ids_str.split(",") if d.strip()]
+    doc_ids = [d.strip() for d in doc_ids_str.split(",") if d.strip()][:_MAX_BATCH]
     if not doc_ids:
         flash("No valid document IDs provided.", "error")
         return redirect(url_for("dashboard.index"))
-    
+
     current_user = session.get("username", "")
     current_full_name = session.get("full_name", current_user)
     updated_count = 0
     failed_count = 0
-    
+
     for doc_id in doc_ids:
         doc = get_doc(doc_id)
         if not doc:
@@ -678,9 +698,8 @@ def bulk_update_status():
                       f"doc_id={doc_id} new_status={new_status} old_status={old_status}",
                       username=current_user, ip=get_client_ip())
             updated_count += 1
-        except Exception as e:
+        except Exception:
             failed_count += 1
-            print(f"Failed to update document {doc_id}: {e}")
     
     if failed_count > 0:
         flash(f"Updated {updated_count} document(s). Failed to update {failed_count} document(s).", "warning")
@@ -913,7 +932,7 @@ def transfer_batch():
         flash("Please select transfer type and staff member.", "error")
         return redirect(url_for("dashboard.index"))
 
-    id_list = [d.strip() for d in doc_ids.split(",") if d.strip()]
+    id_list = [d.strip() for d in doc_ids.split(",") if d.strip()][:_MAX_BATCH]
 
     if not id_list:
         flash("No valid document IDs.", "error")
@@ -1217,22 +1236,27 @@ def reject_document(doc_id):
         flash("This document has already been processed.", "error")
         return redirect(url_for("dashboard.index"))
     
-    # Store sender info before updating
-    original_sender = doc.get("original_logged_by") or doc.get("transferred_by", "")
-    
+    # Resolve the staff member who originally sent/owns this document.
+    # Fall back chain: original_logged_by → transferred_by → current rejector (safe fallback).
+    original_sender = (
+        doc.get("original_logged_by")
+        or doc.get("transferred_by")
+        or current_user
+    )
+
     rejecting_office = doc.get("pending_at_office", "")
-    
+
     # Update document status
     doc["transfer_status"] = "rejected"
     doc["rejected_by"] = current_user
     doc["rejected_by_name"] = current_full_name or current_user
     doc["rejected_at"] = now_str()
     doc["rejection_reason"] = rejection_reason
-    doc["status"] = "Rejected"  # Update main status to Rejected
-    
+    doc["status"] = "Rejected"
+
     # Return document to the sender
     doc["logged_by"] = original_sender
-    doc["pending_at_office"] = ""  # Clear pending office since it's going back to sender
+    doc["pending_at_office"] = ""
     doc["pending_at_staff"] = original_sender
     
     # Add to travel log
