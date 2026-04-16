@@ -34,6 +34,17 @@ from io import BytesIO
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 
+@api_bp.before_request
+def api_rate_limit():
+    """Apply per-IP rate limiting to all API endpoints."""
+    from flask import request as _req
+    from utils import get_client_ip
+    identifier = get_client_ip()
+    allowed, wait = check_rate_limit('api', identifier)
+    if not allowed:
+        return jsonify(error=f'Rate limit exceeded. Try again in {wait} seconds.'), 429
+
+
 def serialize(obj):
     """Ensure JSON-serializable output for API responses."""
     if isinstance(obj, datetime):
@@ -73,23 +84,13 @@ def get_user_by_username(username: str):
         return None
 
 
-def get_user_by_id(user_id):
-    """Fetch user by ID."""
-    if USE_DB:
-        try:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        """SELECT id, username, full_name, role,
-                                  COALESCE(office, '') AS office
-                           FROM users WHERE id = %s""",
-                        (int(user_id),),
-                    )
-                    return dict(cur.fetchone()) if cur.rowcount > 0 else None
-        except Exception:
-            return None
-    else:
-        return None
+def _is_admin_user(username: str) -> bool:
+    """Return True if the username is the env-var admin OR has role='admin' in the DB."""
+    admin_env = os.environ.get('ADMIN_USERNAME', '')
+    if admin_env and secrets.compare_digest(username.lower(), admin_env.lower()):
+        return True
+    user = get_user_by_username(username)
+    return bool(user and user.get('role') in ('admin', 'superadmin'))
 
 
 @api_bp.route('/auth/login', methods=['POST'])
@@ -165,15 +166,24 @@ def api_refresh():
 @api_bp.route('/auth/me', methods=['GET'])
 @jwt_required()
 def api_me():
-    user_id = get_jwt_identity()
-    user = get_user_by_id(user_id)
+    username = get_jwt_identity()
+    # Check env-var admin first (has no DB row)
+    admin_env = os.environ.get('ADMIN_USERNAME', '')
+    if admin_env and secrets.compare_digest(username.lower(), admin_env.lower()):
+        return jsonify(serialize({
+            "username": username,
+            "full_name": "Administrator",
+            "role": "admin",
+            "office": "IT Unit",
+        }))
+    user = get_user_by_username(username)
     if not user:
         return jsonify(error='User not found'), 404
     return jsonify(serialize({
-        "id": user['id'],
+        "username": user['username'],
         "full_name": user['full_name'],
         "role": user['role'],
-        "office": user['office']
+        "office": user['office'],
     }))
 
 
@@ -187,28 +197,15 @@ def api_get_documents():
     limit = int(request.args.get('limit', 20))
 
     user_id = get_jwt_identity()
-    print(f"[API] user_id from JWT: {user_id}")
-    
     user = get_user_by_username(user_id)
-    print(f"[API] user from DB: {user}")
-    
-    # Check if admin from env vars
-    admin_username = os.environ.get('ADMIN_USERNAME', '')
-    is_admin = secrets.compare_digest(user_id.lower(), admin_username.lower()) if admin_username else False
-    
-    user_role = user.get('role', '') if user else ''
-    if is_admin:
-        user_role = 'admin'
-    
+    user_role = 'admin' if _is_admin_user(user_id) else (user.get('role', '') if user else '')
     user_office = user.get('office', '') if user else ''
 
     docs = load_docs()
-    print(f"[API] Total docs loaded: {len(docs)}, user_role: {user_role}")
 
     # Filter documents based on user role
     if user_role not in ['admin', 'superadmin']:
         docs = [d for d in docs if d.get('logged_by') == user_id]
-        print(f"[API] Filtered docs for staff: {len(docs)}")
 
     if status:
         docs = [d for d in docs if d.get('status') == status]
@@ -234,7 +231,7 @@ def api_get_documents():
 @jwt_required()
 def api_get_document(doc_id):
     doc = get_doc(doc_id)
-    if not doc:
+    if not doc or doc.get('deleted'):
         return jsonify(error='Document not found'), 404
     return jsonify(serialize(doc))
 
@@ -315,18 +312,10 @@ def api_delete_document(doc_id):
 def api_stats():
     user_id = get_jwt_identity()
     user = get_user_by_username(user_id)
-    
-    # Check if admin from env vars
-    admin_username = os.environ.get('ADMIN_USERNAME', '')
-    is_admin = secrets.compare_digest(user_id.lower(), admin_username.lower()) if admin_username else False
-    
-    user_role = user.get('role', '') if user else ''
-    if is_admin:
-        user_role = 'admin'
+    user_role = 'admin' if _is_admin_user(user_id) else (user.get('role', '') if user else '')
 
     docs = load_docs()
 
-    # Filter documents based on user role
     if user_role not in ['admin', 'superadmin']:
         docs = [d for d in docs if d.get('logged_by') == user_id]
 
@@ -413,6 +402,23 @@ def api_dropdown_options():
 
 
 _push_tokens: dict = {}
+_push_tokens_loaded = False
+
+
+def _ensure_push_tokens_loaded():
+    """Load push tokens from DB into memory on first call (lazy load)."""
+    global _push_tokens_loaded
+    if _push_tokens_loaded or not USE_DB:
+        return
+    _push_tokens_loaded = True
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT username, token FROM push_tokens")
+                for row in cur.fetchall():
+                    _push_tokens[row['username']] = row['token']
+    except Exception:
+        pass
 
 
 @api_bp.route('/notifications/register-token', methods=['POST'])
@@ -426,7 +432,6 @@ def register_push_token():
         return jsonify(error='Token required'), 400
 
     _push_tokens[username] = token
-    print(f"[FCM] Registered token for {username}: {token[:20]}...")
 
     if USE_DB:
         try:
@@ -439,8 +444,8 @@ def register_push_token():
                         DO UPDATE SET token = EXCLUDED.token,
                                       updated_at = NOW()
                     """, (username, token))
-        except Exception as e:
-            print(f"[FCM] DB save failed (table may not exist yet): {e}")
+        except Exception:
+            pass
 
     return jsonify(message='Token registered')
 
@@ -449,9 +454,9 @@ def send_push_notification(username: str, title: str, body: str, data: dict = {}
     """Send push notification to a specific user via Expo Push API."""
     import requests as req
 
+    _ensure_push_tokens_loaded()
     token = _push_tokens.get(username)
     if not token:
-        print(f"[FCM] No token found for {username}")
         return False
 
     try:
@@ -469,8 +474,6 @@ def send_push_notification(username: str, title: str, body: str, data: dict = {}
             headers={'Content-Type': 'application/json'},
             timeout=10
         )
-        print(f"[FCM] Sent to {username}: {response.status_code}")
-        return True
-    except Exception as e:
-        print(f"[FCM] Send failed: {e}")
+        return response.status_code == 200
+    except Exception:
         return False
