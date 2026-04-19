@@ -5,6 +5,7 @@ Provides JWT-based authentication and document operations.
 
 import os
 import secrets
+import threading
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import (
@@ -68,7 +69,8 @@ def get_user_by_username(username: str):
                            FROM users WHERE username = %s""",
                         (username.lower().strip(),),
                     )
-                    return dict(cur.fetchone()) if cur.rowcount > 0 else None
+                    row = cur.fetchone()
+                    return dict(row) if row else None
         except Exception:
             return None
     else:
@@ -193,8 +195,14 @@ def api_get_documents():
     status = request.args.get('status')
     office = request.args.get('office')
     search = request.args.get('search')
-    page = int(request.args.get('page', 1))
-    limit = int(request.args.get('limit', 20))
+    try:
+        page = int(request.args.get('page', 1))
+    except (ValueError, TypeError):
+        page = 1
+    try:
+        limit = max(1, min(int(request.args.get('limit', 20)), 200))
+    except (ValueError, TypeError):
+        limit = 20
 
     user_id = get_jwt_identity()
     user = get_user_by_username(user_id)
@@ -271,6 +279,13 @@ def api_update_status(doc_id):
     if not doc:
         return jsonify(error='Document not found'), 404
 
+    # Only admin/staff or the document owner may update status
+    if not _is_admin_user(user_id):
+        user = get_user_by_username(user_id)
+        user_role = user.get('role', '') if user else ''
+        if user_role not in ('admin', 'staff') and doc.get('logged_by') != user_id:
+            return jsonify(error='Forbidden'), 403
+
     old_status = doc.get('status')
     doc['status'] = new_status
     if remarks:
@@ -303,6 +318,14 @@ def api_update_status(doc_id):
 @jwt_required()
 def api_delete_document(doc_id):
     user_id = get_jwt_identity()
+    doc = get_doc(doc_id)
+    if not doc:
+        return jsonify(error='Document not found'), 404
+    if not _is_admin_user(user_id):
+        user = get_user_by_username(user_id)
+        user_role = user.get('role', '') if user else ''
+        if user_role not in ('admin', 'staff') and doc.get('logged_by') != user_id:
+            return jsonify(error='Forbidden'), 403
     delete_doc(doc_id, deleted_by=user_id)
     return jsonify(message='Document deleted')
 
@@ -388,7 +411,10 @@ def api_get_routing_slips():
 @jwt_required()
 def api_activity_log():
     from services.misc import get_activity_logs
-    limit = int(request.args.get('limit', 200))
+    try:
+        limit = max(1, min(int(request.args.get('limit', 200)), 1000))
+    except (ValueError, TypeError):
+        limit = 200
     logs = get_activity_logs(limit=limit)
     return jsonify(serialize(logs))
 
@@ -403,22 +429,24 @@ def api_dropdown_options():
 
 _push_tokens: dict = {}
 _push_tokens_loaded = False
+_push_tokens_lock = threading.Lock()
 
 
 def _ensure_push_tokens_loaded():
     """Load push tokens from DB into memory on first call (lazy load)."""
     global _push_tokens_loaded
-    if _push_tokens_loaded or not USE_DB:
-        return
-    _push_tokens_loaded = True
-    try:
-        with get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT username, token FROM push_tokens")
-                for row in cur.fetchall():
-                    _push_tokens[row['username']] = row['token']
-    except Exception:
-        pass
+    with _push_tokens_lock:
+        if _push_tokens_loaded or not USE_DB:
+            return
+        _push_tokens_loaded = True
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT username, token FROM push_tokens")
+                    for row in cur.fetchall():
+                        _push_tokens[row['username']] = row['token']
+        except Exception:
+            pass
 
 
 @api_bp.route('/notifications/register-token', methods=['POST'])
@@ -431,7 +459,8 @@ def register_push_token():
     if not token:
         return jsonify(error='Token required'), 400
 
-    _push_tokens[username] = token
+    with _push_tokens_lock:
+        _push_tokens[username] = token
 
     if USE_DB:
         try:
@@ -450,12 +479,15 @@ def register_push_token():
     return jsonify(message='Token registered')
 
 
-def send_push_notification(username: str, title: str, body: str, data: dict = {}):
+def send_push_notification(username: str, title: str, body: str, data: dict = None):
     """Send push notification to a specific user via Expo Push API."""
+    if data is None:
+        data = {}
     import requests as req
 
     _ensure_push_tokens_loaded()
-    token = _push_tokens.get(username)
+    with _push_tokens_lock:
+        token = _push_tokens.get(username)
     if not token:
         return False
 

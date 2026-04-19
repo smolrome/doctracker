@@ -684,7 +684,6 @@ def clear_database():
                     row = cur.fetchone()
                     count = row["cnt"] if row else 0
                     cur.execute("DELETE FROM documents")
-                conn.commit()
         else:
             path = "documents.json"
             if os.path.exists(path):
