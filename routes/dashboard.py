@@ -18,7 +18,6 @@ from services.qr import generate_qr_b64, make_qr_png
 from services.dropdown_options import get_dropdown_options
 from utils import admin_required, get_client_ip, is_logged_in, login_required
 from config import STATUS_OPTIONS
-from services.dropdown_options import get_dropdown_options
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -397,7 +396,9 @@ def add():
                 try:
                     save_routing_slip(logging_slip)
                 except Exception as e:
-                    pass
+                    import traceback
+                    traceback.print_exc()
+                    flash(f'Warning: could not save logging slip — {e}', 'error')
                 
                 # Update each logged document with the slip ID
                 for doc_id in logged_doc_ids:
@@ -1038,6 +1039,7 @@ def qr_download(doc_id):
 # ── Debug / DB status ─────────────────────────────────────────────────────────
 
 @dashboard_bp.route("/db-status")
+@login_required
 def db_status():
     from services.database import USE_DB
     if not USE_DB:
@@ -1293,6 +1295,7 @@ def get_transferred_documents():
 
 
 @dashboard_bp.route("/api/dropdown-options")
+@login_required
 def get_dropdown_options_api():
     """
     API endpoint to get dropdown options for a specific field.

@@ -291,7 +291,8 @@ def create_app() -> Flask:
                     flash("Your account has been disabled. Contact the administrator.", "error")
                     return redirect(url_for("auth.login"))
             except Exception:
-                pass
+                import traceback
+                traceback.print_exc()
 
     # ── After-request hooks ────────────────────────────────────────────────────
 
