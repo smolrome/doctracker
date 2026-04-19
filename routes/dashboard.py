@@ -463,7 +463,8 @@ def view_doc(doc_id):
 
     return render_template("detail.html", doc=doc,
                            qr_b64=generate_qr_b64(doc, request.host_url),
-                           slip_type=slip_type)
+                           slip_type=slip_type,
+                           status_options=get_dropdown_options("status"))
 
 
 @dashboard_bp.route("/edit/<doc_id>", methods=["GET", "POST"])
