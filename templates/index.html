@@ -408,6 +408,7 @@ var serverSessionData = {
                 <th scope="col">Sender</th>
                 <th scope="col">Referred To</th>
                 <th scope="col" class="sortable" data-sort="created_at" aria-sort="descending">Date &amp; Time</th>
+                <th scope="col">Remarks</th>
                 <th scope="col">Status</th>
                 <th scope="col" class="actions-col">Actions</th>
               </tr>
@@ -452,6 +453,10 @@ var serverSessionData = {
                   {% else %}
                     <span class="td-empty">—</span>
                   {% endif %}
+                </td>
+
+                <td class="td-remarks">
+                  {% if doc.notes %}{{ doc.notes }}{% else %}<span class="td-empty">—</span>{% endif %}
                 </td>
 
                 <td class="td-status">
