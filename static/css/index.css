@@ -441,6 +441,7 @@ th.cb-cell { background: #F1F7FB; }
 .td-text  { font-size: 13px; color: #334155; min-width: 110px; max-width: 250px; word-break: break-word; white-space: normal; }
 .td-empty { color: #CBD5E1; font-family: var(--font-mono); }
 .td-date  { white-space: nowrap; min-width: 120px; }
+.td-remarks { font-size: 12px; color: #64748B; min-width: 100px; max-width: 200px; white-space: normal; word-break: break-word; }
 
 .date-main { display: block; font-size: 12.5px; font-weight: 600; color: #0F172A; font-family: var(--font-mono); }
 .date-time { display: block; font-size: 11.5px; color: #64748B; margin-top: 2px; font-family: var(--font-mono); }
