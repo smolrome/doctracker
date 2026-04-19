@@ -92,7 +92,7 @@
   <form method="post" action="/update-status/{{ doc.id }}" class="status-update-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <select name="status" class="status-update-select">
-      {% for s in ['Logged','Pending','Received','In Review','Routed','Transferred','Released','On Hold','Archived'] %}
+      {% for s in status_options %}
       <option value="{{ s }}" {% if doc.status==s %}selected{% endif %}>{{ s }}</option>
       {% endfor %}
     </select>
