@@ -456,7 +456,7 @@ var serverSessionData = {
                 </td>
 
                 <td class="td-remarks">
-                  {% if doc.notes %}{{ doc.notes }}{% else %}<span class="td-empty">—</span>{% endif %}
+                  {% set remarks = doc.notes or doc.description %}{% if remarks %}{{ remarks }}{% else %}<span class="td-empty">—</span>{% endif %}
                 </td>
 
                 <td class="td-status">
