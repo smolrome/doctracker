@@ -313,7 +313,7 @@ def add():
                     cart[i]["referred_to"] = request.form.get("referred_to", "").strip()
                     cart[i]["category"] = request.form.get("category", "").strip()
                     cart[i]["description"] = request.form.get("description", "").strip()
-                    cart[i]["notes"] = request.form.get("notes", "").strip()
+                    cart[i]["notes"] = request.form.get("notes", "") or request.form.get("description", "").strip()
                     session["staff_cart"] = cart
                     session.modified = True
                     flash(f"✅ Document updated successfully.", "success")
