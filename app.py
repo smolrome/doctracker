@@ -314,12 +314,13 @@ def create_app() -> Flask:
             "Content-Security-Policy": (
                 "default-src 'self'; "
                 # TODO: replace 'unsafe-inline' with nonces once templates support it
-                "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com "
+                "           https://static.cloudflareinsights.com; "
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com "
                 "           https://fonts.gstatic.com; "
                 "font-src 'self' https://fonts.gstatic.com; "
                 "img-src 'self' data: https:; "
-                "connect-src 'self'; "
+                "connect-src 'self' https://cloudflareinsights.com; "
                 "frame-ancestors 'none';"
             ),
             "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
