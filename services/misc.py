@@ -508,10 +508,8 @@ def get_all_routing_slips(filter_type=None) -> list[dict]:
                         r["created_at"] = str(r["created_at"]) if r.get("created_at") else ""
                         slips.append(r)
                     return slips
-        except Exception as e:
-            pass
-            # Fallback to JSON
-            return get_all_routing_slips_json(filter_type)
+        except Exception:
+            return []
     else:
         return get_all_routing_slips_json(filter_type)
 

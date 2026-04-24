@@ -678,12 +678,17 @@ def clear_database():
 
     try:
         if USE_DB:
+            # Delete documents
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute("SELECT COUNT(*) AS cnt FROM documents")
                     row = cur.fetchone()
                     count = row["cnt"] if row else 0
                     cur.execute("DELETE FROM documents")
+
+            # Delete routing slips in a separate committed transaction
+            with get_conn() as conn:
+                with conn.cursor() as cur:
                     cur.execute("DELETE FROM routing_slips")
         else:
             path = "documents.json"
@@ -697,6 +702,12 @@ def clear_database():
             if os.path.exists(slips_path):
                 with open(slips_path, "w") as f:
                     _json.dump({}, f)
+
+        # Also wipe JSON fallback files regardless of mode
+        for fpath, empty in [("documents.json", []), ("routing_slips.json", {})]:
+            if os.path.exists(fpath):
+                with open(fpath, "w") as f:
+                    _json.dump(empty, f)
 
         audit_log("database_cleared",
                   f"deleted_count={count}",
