@@ -37,540 +37,527 @@ var serverSessionData = {
 
   {# ── PAGE HEADER ── #}
   <div class="page-header">
-    <div>
-      <h1 class="page-title">
-        Document Records
+    <div class="page-header-left">
+      <div class="page-title-row">
+        <h1 class="page-title">Document Records</h1>
         <span class="page-title-badge">Personnel Unit</span>
-      </h1>
+      </div>
       <p class="page-subtitle">
         {{ actual_office }}{% if current_full_name %} · {{ current_full_name }}{% elif current_user %} · {{ current_user }}{% endif %}
       </p>
     </div>
     {% if logged_in %}
     <div class="page-header-actions">
-      <a href="/routed-documents" class="hdr-btn hdr-btn-ghost">🚌 Routed Docs</a>
+      <a href="/routed-documents" class="hdr-btn hdr-btn-ghost">Routed Docs</a>
       <button class="hdr-btn hdr-btn-ghost" onclick="showPendingDocumentsModal()" aria-label="Documents to receive">
-        📥 Receive <span class="cart-badge" id="pending-badge-header">0</span>
+        Receive <span class="cart-badge" id="pending-badge-header">0</span>
       </button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openCartModal()" aria-label="Open document cart">
-        🛒 Cart <span class="cart-badge" id="cart-badge-header">0</span>
+        Cart <span class="cart-badge" id="cart-badge-header">0</span>
       </button>
-      <a href="/add"              class="hdr-btn hdr-btn-primary">+ Add Document</a>
+      <a href="/add" class="hdr-btn hdr-btn-primary">+ Add Document</a>
     </div>
     {% endif %}
   </div>
 
 
+  {# ── KPI STRIP ── #}
+  <div class="kpi-strip">
+    <div class="kpi-card {% if (stats.pending or 0) > 0 %}kpi-card-warn{% endif %}">
+      <div class="kpi-label">NEEDS ACTION</div>
+      <div class="kpi-value">{{ stats.pending or 0 }}</div>
+      <div class="kpi-sub">pending documents</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">TOTAL RECORDS</div>
+      <div class="kpi-value">{{ stats.total or 0 }}</div>
+      <div class="kpi-sub">all documents</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">IN TRANSIT</div>
+      <div class="kpi-value">{{ stats.routed or 0 }}</div>
+      <div class="kpi-sub">routed documents</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">RECEIVED</div>
+      <div class="kpi-value">{{ stats.received or 0 }}</div>
+      <div class="kpi-sub">from other offices</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">LOGGED</div>
+      <div class="kpi-value">{{ stats.logged or 0 }}</div>
+      <div class="kpi-sub">on record</div>
+    </div>
+  </div>
+
+
+  {# ── INCOMING BANNER ── #}
+  {% if logged_in and session.get('role') in ('staff', 'admin') %}
+  <div id="incoming-banner" class="incoming-banner" style="display:none;"
+       role="alert" tabindex="0"
+       onclick="showPendingDocumentsModal()"
+       onkeydown="if(event.key==='Enter'||event.key===' ')showPendingDocumentsModal()">
+    <div class="ib-body">
+      <div class="ib-title">Documents awaiting your acceptance</div>
+      <div class="ib-sub" id="ib-sub-text">Click to review and accept</div>
+    </div>
+    <span class="ib-badge" id="ib-badge">0</span>
+    <span class="ib-cta">Review ›</span>
+  </div>
+  {% endif %}
+
+
+  {# ── FILTER BAR ── #}
+  <div class="filter-bar-wrap" id="filter-sticky-bar" role="search" aria-label="Filter documents">
+  <form method="get" action="/" id="filter-form">
+
+    <div class="filter-bar">
+
+      {# Search #}
+      <div class="fb-search-wrap">
+        <span class="fb-search-icon">⌕</span>
+        <input type="text" id="search-input" name="search"
+          class="fb-search-input{% if search %} has-value{% endif %}"
+          value="{{ search }}"
+          placeholder="Search by title, REF, sender, office…"
+          autocomplete="off"
+          oninput="onSearchInput(this)"/>
+        <button type="button" class="search-clear"
+                onclick="clearSearchField();this.form.submit();"
+                aria-label="Clear search"
+                {% if not search %}style="display:none"{% endif %}>✕</button>
+      </div>
+
+      <span class="fb-divider"></span>
+
+      {# Status filter chips #}
+      <div class="fb-group" role="group" aria-label="Filter by status">
+        <span class="fb-group-label">Status</span>
+        <button type="button" class="fb-chip{% if filter_status=='All' %} fb-chip-on{% endif %}"
+                onclick="statFilter('All')">All
+          <span class="fb-chip-count">{{ stats.total or 0 }}</span>
+        </button>
+        <button type="button" class="fb-chip{% if filter_status=='Pending' %} fb-chip-on{% endif %}"
+                onclick="statFilter('Pending')">
+          <span class="st-dot pending-dot"></span>Pending
+          {% if stats.pending %}<span class="fb-chip-count">{{ stats.pending }}</span>{% endif %}
+        </button>
+        <button type="button" class="fb-chip{% if filter_status=='Logged' %} fb-chip-on{% endif %}"
+                onclick="statFilter('Logged')">
+          <span class="st-dot logged-dot"></span>Logged
+          {% if stats.logged %}<span class="fb-chip-count">{{ stats.logged }}</span>{% endif %}
+        </button>
+        <button type="button" class="fb-chip{% if filter_status=='Received' %} fb-chip-on{% endif %}"
+                onclick="statFilter('Received')">
+          <span class="st-dot received-dot"></span>Received
+          {% if stats.received %}<span class="fb-chip-count">{{ stats.received }}</span>{% endif %}
+        </button>
+        <button type="button" class="fb-chip{% if filter_status=='In Review' %} fb-chip-on{% endif %}"
+                onclick="statFilter('In Review')">
+          <span class="st-dot review-dot"></span>In Review
+          {% if stats.in_review %}<span class="fb-chip-count">{{ stats.in_review }}</span>{% endif %}
+        </button>
+        <button type="button" class="fb-chip{% if filter_status=='Routed' %} fb-chip-on{% endif %}"
+                onclick="statFilter('Routed')">
+          <span class="st-dot routed-dot"></span>Routed
+          {% if stats.routed %}<span class="fb-chip-count">{{ stats.routed }}</span>{% endif %}
+        </button>
+        <button type="button" class="fb-chip{% if filter_status=='Transferred' %} fb-chip-on{% endif %}"
+                onclick="statFilter('Transferred')">
+          <span class="st-dot transferred-dot"></span>Transferred
+        </button>
+        <button type="button" class="fb-chip{% if filter_status=='Released' %} fb-chip-on{% endif %}"
+                onclick="statFilter('Released')">
+          <span class="st-dot released-dot"></span>Released
+        </button>
+        <button type="button" class="fb-chip{% if filter_status=='On Hold' %} fb-chip-on{% endif %}"
+                onclick="statFilter('On Hold')">
+          <span class="st-dot hold-dot"></span>On Hold
+          {% if stats.on_hold %}<span class="fb-chip-count">{{ stats.on_hold }}</span>{% endif %}
+        </button>
+        <button type="button" class="fb-chip{% if filter_status=='Archived' %} fb-chip-on{% endif %}"
+                onclick="statFilter('Archived')">Archived</button>
+      </div>
+
+      <span class="fb-divider"></span>
+
+      {# Source filter #}
+      <div class="fb-group" role="group" aria-label="Filter by source">
+        <span class="fb-group-label">Source</span>
+        <button type="button" class="fb-chip{% if filter_source=='All' or not filter_source %} fb-chip-on{% endif %}"
+                onclick="setSource('All')">All</button>
+        <button type="button" class="fb-chip{% if filter_source=='Staff' %} fb-chip-on{% endif %}"
+                onclick="setSource('Staff')">Staff
+          {% if stats.staff %}<span class="fb-chip-count">{{ stats.staff }}</span>{% endif %}
+        </button>
+        <button type="button" class="fb-chip{% if filter_source=='Client' %} fb-chip-on{% endif %}"
+                onclick="setSource('Client')">Client
+          {% if stats.client %}<span class="fb-chip-count">{{ stats.client }}</span>{% endif %}
+        </button>
+      </div>
+
+      {% if is_admin %}
+      <span class="fb-divider"></span>
+      <div class="fb-group">
+        <span class="fb-group-label">Office</span>
+        <select class="fb-select" id="office-filter-select" onchange="setOffice(this.value)">
+          <option value="All" {% if filter_office=='All' or not filter_office or filter_office is not defined %}selected{% endif %}>All</option>
+          {% for office in saved_offices %}
+          <option value="{{ office.office_name }}" {% if filter_office==office.office_name %}selected{% endif %}>{{ office.office_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <span class="fb-divider"></span>
+
+      {# Date + time range #}
+      <div class="fb-group">
+        <span class="fb-group-label">Date</span>
+        <input type="date" id="date-input" name="date"
+          class="fb-date-input{% if filter_date %} has-value{% endif %}"
+          value="{{ filter_date }}"
+          onchange="this.form.submit()"/>
+        <label class="fb-time-toggle" title="Filter by time range">
+          <input type="checkbox" id="toggle-time-range"
+            onchange="toggleTimeRange(this.checked)"
+            {% if filter_time_from or filter_time_to %}checked{% endif %}/>
+          Time
+        </label>
+        <div class="fb-time-row" id="time-range-row"
+             style="display:{% if filter_time_from or filter_time_to %}flex{% else %}none{% endif %};">
+          <input type="time" id="time-from-input" name="time_from" value="{{ filter_time_from }}"/>
+          <span class="fb-time-sep">–</span>
+          <input type="time" id="time-to-input" name="time_to" value="{{ filter_time_to }}"/>
+          <button type="submit" class="fb-apply">Apply</button>
+        </div>
+      </div>
+
+      {# Action buttons #}
+      <div class="fb-actions">
+        <button type="submit" class="fb-btn-primary">Search</button>
+        <a href="#" class="fb-btn-ghost" onclick="clearAllFilters(event)">Clear</a>
+      </div>
+
+    </div>{# /filter-bar #}
+
+    {# Active filter pills #}
+    {% set any_filter = search or filter_status != 'All' or filter_type != 'All' or filter_source != 'All' or filter_date or filter_time_from or filter_time_to or (is_admin and filter_office != 'All') %}
+    {% if any_filter %}
+    <div class="active-pills" role="list">
+      <span class="active-pills-label">Active:</span>
+      {% if filter_status != 'All' %}<span class="f-pill">Status: {{ filter_status }}<button class="f-pill-x" type="button" onclick="clearField('status','All')">×</button></span>{% endif %}
+      {% if search %}<span class="f-pill">"{{ search }}"<button class="f-pill-x" type="button" onclick="clearField('search','')">×</button></span>{% endif %}
+      {% if filter_date %}<span class="f-pill">{{ filter_date }}<button class="f-pill-x" type="button" onclick="clearField('date')">×</button></span>{% endif %}
+      {% if filter_time_from or filter_time_to %}<span class="f-pill">{{ filter_time_from or '00:00' }}–{{ filter_time_to or '23:59' }}<button class="f-pill-x" type="button" onclick="clearField('time_from');clearField('time_to');">×</button></span>{% endif %}
+      {% if filter_type != 'All' %}<span class="f-pill">{{ filter_type }}<button class="f-pill-x" type="button" onclick="clearField('type','All')">×</button></span>{% endif %}
+      {% if filter_source != 'All' %}<span class="f-pill">Source: {{ filter_source }}<button class="f-pill-x" type="button" onclick="clearField('source','All')">×</button></span>{% endif %}
+      {% if is_admin and filter_office != 'All' %}<span class="f-pill">{{ filter_office }}<button class="f-pill-x" type="button" onclick="clearField('office','All')">×</button></span>{% endif %}
+      <a href="#" class="f-pill-clear-all" onclick="clearAllFilters(event)">Clear all</a>
+    </div>
+    {% endif %}
+
+    <input type="hidden" name="type"   id="type-hidden"   value="{{ filter_type }}"/>
+    <input type="hidden" name="source" id="source-hidden" value="{{ filter_source }}"/>
+    <input type="hidden" name="office" id="office-hidden" value="{{ filter_office }}"/>
+    <input type="hidden" name="per_page"                  value="{{ per_page }}"/>
+  </form>
+  </div>{# /filter-bar-wrap #}
+
+
+  {# ── SELECTION BAR ── #}
+  {% if logged_in and session.get('role') in ['admin','staff'] %}
+  <div id="selection-bar" class="selection-bar" role="toolbar"
+       aria-label="Bulk actions" aria-hidden="true">
+    <span class="sel-info">
+      <span class="sel-count-label" id="sel-count-label">0</span> selected
+    </span>
+    <div class="sel-actions">
+      <button class="sel-btn sel-btn-purple" onclick="openRoutingModal()">Routing Slip</button>
+      <button class="sel-btn sel-btn-amber"  onclick="openTransferModal()">Transfer</button>
+      <button class="sel-btn sel-btn-teal"   onclick="openStatusModal()">Update Status</button>
+      <button class="sel-btn sel-btn-ghost"  onclick="deselectAll()">Deselect All</button>
+    </div>
+    <button class="sel-dismiss" onclick="deselectAll()" aria-label="Dismiss">✕</button>
+  </div>
+  {% endif %}
+
+
+  {# ── CART MODAL ── #}
+  {% if logged_in and session.get('role') in ['admin','staff'] %}
+  <div id="cart-modal" class="cart-modal" role="dialog" aria-labelledby="cart-modal-title" aria-modal="true">
+    <div class="cart-modal-overlay" onclick="closeCartModal()"></div>
+    <div class="cart-modal-content">
+      <div class="cart-modal-header">
+        <h2 id="cart-modal-title">Document Cart</h2>
+        <button class="cart-modal-close" onclick="closeCartModal()" aria-label="Close cart">✕</button>
+      </div>
+      <div class="cart-modal-body" id="cart-modal-body">
+        <p class="cart-empty-msg" id="cart-empty-msg">No documents selected</p>
+      </div>
+      <div class="cart-modal-footer">
+        <button class="cart-modal-btn cart-route-btn" onclick="openRoutingModalFromCart()">Route Documents</button>
+        <button class="cart-modal-btn cart-transfer-btn" onclick="openTransferModalFromCart()">Transfer Documents</button>
+        <button class="cart-modal-btn cart-clear-btn" onclick="clearCart()">Clear All</button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+
   {# ══════════════════════════════════════════════════════════
-     TWO COLUMN LAYOUT
+     MAIN TABLE
   ══════════════════════════════════════════════════════════ #}
-  <div class="doc-layout">
+  <main id="main-content">
+  <div class="table-outer">
 
-    {# ══════════════════════════════════
-       LEFT STAT RAIL
-    ══════════════════════════════════ #}
-    <aside class="stats-rail" role="navigation" aria-label="Filter by status">
-
-      <div class="rail-source-toggle" role="group" aria-label="Filter by source">
-        <button class="rst-btn {% if not filter_source or filter_source=='All' %}active{% endif %}"
-                onclick="setSource('All')">
-          All
-          <span class="rst-count">{{ (stats.staff or 0) + (stats.client or 0) }}</span>
-        </button>
-        <button class="rst-btn {% if filter_source=='Staff' %}active{% endif %}"
-                onclick="setSource('Staff')">
-          👤 Staff
-          <span class="rst-count">{{ stats.staff or 0 }}</span>
-        </button>
-        <button class="rst-btn {% if filter_source=='Client' %}active{% endif %}"
-                onclick="setSource('Client')">
-          🏢 Client
-          <span class="rst-count">{{ stats.client or 0 }}</span>
-        </button>
-      </div>
-
-      <div class="rail-label">Status</div>
-
-      <a class="stat-item si-default {% if filter_status=='All' %}active{% endif %}"
-         href="#" onclick="event.preventDefault();statFilter('All')"
-         aria-pressed="{{ 'true' if filter_status=='All' else 'false' }}">
-        <span class="stat-item-icon">📋</span>
-        <div class="stat-item-body">
-          <div class="stat-item-label">All</div>
-          <div class="stat-item-num">{{ stats.total }}</div>
-        </div>
-      </a>
-
-      <a class="stat-item si-pending {% if filter_status=='Pending' %}active{% endif %}"
-         href="#" onclick="event.preventDefault();statFilter('Pending')"
-         aria-pressed="{{ 'true' if filter_status=='Pending' else 'false' }}">
-        <span class="stat-item-icon">⏳</span>
-        <div class="stat-item-body">
-          <div class="stat-item-label">Pending</div>
-          <div class="stat-item-num">{{ stats.pending }}</div>
-        </div>
-      </a>
-
-      <a class="stat-item si-logged {% if filter_status=='Logged' %}active{% endif %}"
-         href="#" onclick="event.preventDefault();statFilter('Logged')"
-         aria-pressed="{{ 'true' if filter_status=='Logged' else 'false' }}">
-        <span class="stat-item-icon">📝</span>
-        <div class="stat-item-body">
-          <div class="stat-item-label">Logged</div>
-          <div class="stat-item-num">{{ stats.logged or 0 }}</div>
-        </div>
-      </a>
-
-      <a class="stat-item si-received {% if filter_status=='Received' %}active{% endif %}"
-         href="#" onclick="event.preventDefault();statFilter('Received')"
-         aria-pressed="{{ 'true' if filter_status=='Received' else 'false' }}">
-        <span class="stat-item-icon">✅</span>
-        <div class="stat-item-body">
-          <div class="stat-item-label">Received</div>
-          <div class="stat-item-num">{{ stats.received }}</div>
-        </div>
-      </a>
-
-      <a class="stat-item si-review {% if filter_status=='In Review' %}active{% endif %}"
-         href="#" onclick="event.preventDefault();statFilter('In Review')"
-         aria-pressed="{{ 'true' if filter_status=='In Review' else 'false' }}">
-        <span class="stat-item-icon">🔍</span>
-        <div class="stat-item-body">
-          <div class="stat-item-label">In Review</div>
-          <div class="stat-item-num">{{ stats.in_review }}</div>
-        </div>
-      </a>
-
-      <a class="stat-item si-routed {% if filter_status=='Routed' %}active{% endif %}"
-         href="#" onclick="event.preventDefault();statFilter('Routed')"
-         aria-pressed="{{ 'true' if filter_status=='Routed' else 'false' }}">
-        <span class="stat-item-icon">🚌</span>
-        <div class="stat-item-body">
-          <div class="stat-item-label">Routed</div>
-          <div class="stat-item-num">{{ stats.routed }}</div>
-        </div>
-      </a>
-
-      <a class="stat-item si-transferred {% if filter_status=='Transferred' %}active{% endif %}"
-         href="#" onclick="event.preventDefault();statFilter('Transferred')"
-         aria-pressed="{{ 'true' if filter_status=='Transferred' else 'false' }}">
-        <span class="stat-item-icon">🔄</span>
-        <div class="stat-item-body">
-          <div class="stat-item-label">Transferred</div>
-          <div class="stat-item-num">{{ stats.transferred }}</div>
-        </div>
-      </a>
-
-      <a class="stat-item si-released {% if filter_status=='Released' %}active{% endif %}"
-         href="#" onclick="event.preventDefault();statFilter('Released')"
-         aria-pressed="{{ 'true' if filter_status=='Released' else 'false' }}">
-        <span class="stat-item-icon">🟢</span>
-        <div class="stat-item-body">
-          <div class="stat-item-label">Released</div>
-          <div class="stat-item-num">{{ stats.released }}</div>
-        </div>
-      </a>
-
-      <a class="stat-item si-hold {% if filter_status=='On Hold' %}active{% endif %}"
-         href="#" onclick="event.preventDefault();statFilter('On Hold')"
-         aria-pressed="{{ 'true' if filter_status=='On Hold' else 'false' }}">
-        <span class="stat-item-icon">🔴</span>
-        <div class="stat-item-body">
-          <div class="stat-item-label">On Hold</div>
-          <div class="stat-item-num">{{ stats.on_hold }}</div>
-        </div>
-      </a>
-
-      <a class="stat-item si-archived {% if filter_status=='Archived' %}active{% endif %}"
-         href="#" onclick="event.preventDefault();statFilter('Archived')"
-         aria-pressed="{{ 'true' if filter_status=='Archived' else 'false' }}">
-        <span class="stat-item-icon">🗄️</span>
-        <div class="stat-item-body">
-          <div class="stat-item-label">Archived</div>
-          <div class="stat-item-num">{{ stats.archived }}</div>
-        </div>
-      </a>
-
-      {% if stats.unknown > 0 %}
-      <a class="stat-item si-default"
-         href="#" onclick="event.preventDefault();statFilter('Unknown')"
-         aria-pressed="false">
-        <span class="stat-item-icon">❓</span>
-        <div class="stat-item-body">
-          <div class="stat-item-label">Unknown</div>
-          <div class="stat-item-num">{{ stats.unknown }}</div>
-        </div>
-      </a>
-      {% endif %}
-
-    </aside>
-
-
-    {# ══════════════════════════════════
-       RIGHT COLUMN
-    ══════════════════════════════════ #}
-    <div class="right-col">
-
-      {# Incoming banner #}
-      {% if logged_in and session.get('role') in ('staff', 'admin') %}
-      <div id="incoming-banner" class="incoming-banner" style="display:none;"
-           role="alert" tabindex="0"
-           onclick="showPendingDocumentsModal()"
-           onkeydown="if(event.key==='Enter'||event.key===' ')showPendingDocumentsModal()">
-        <div class="ib-icon">📥</div>
-        <div class="ib-body">
-          <div class="ib-title">Documents awaiting your acceptance</div>
-          <div class="ib-sub" id="ib-sub-text">Click to review and accept</div>
-        </div>
-        <span class="ib-badge" id="ib-badge">0</span>
-        <span class="ib-cta">Review ›</span>
-      </div>
-      {% endif %}
-
-      {# Filter strip #}
-      <div class="filter-strip" id="filter-sticky-bar" role="search" aria-label="Filter documents">
-      <form method="get" action="/" id="filter-form">
-
-        <div class="filter-card">
-          {# Row 1: search + date + buttons #}
-          <div class="fc-row1">
-            <div class="fc-search-wrap">
-              <span class="fc-search-icon">🔍</span>
-              <input type="text" id="search-input" name="search"
-                class="{% if search %}has-value{% endif %}"
-                value="{{ search }}"
-                placeholder="Search documents, ID, sender, office…"
-                autocomplete="off"
-                oninput="onSearchInput(this)"/>
-              <button type="button" class="fc-clear-btn"
-                      onclick="clearSearchField()"
-                      aria-label="Clear search"
-                      {% if not search %}style="display:none"{% endif %}>✕</button>
-            </div>
-
-            <div class="fc-date">
-              <input type="date" id="date-input" name="date"
-                class="{% if filter_date %}has-value{% endif %}"
-                value="{{ filter_date }}"
-                onchange="this.form.submit()"/>
-            </div>
-
-            <div class="fc-btns">
-              <button type="submit" class="btn btn-primary btn-sm">Search</button>
-              <a href="#" class="btn btn-secondary btn-sm" onclick="clearAllFilters(event)">Clear</a>
-            </div>
-          </div>
-
-          {# Row 2: type + source chips + active pills #}
-          <div class="fc-chips">
-            <span class="chip-grp-label">Type</span>
-            <button type="button" class="chip {% if filter_type=='All' %}active{% endif %}" onclick="setType('All')">All</button>
-            <button type="button" class="chip {% if filter_type=='Received' %}active{% endif %}" onclick="setType('Received')">📥 Received</button>
-            <button type="button" class="chip {% if filter_type=='Released' %}active{% endif %}" onclick="setType('Released')">✅ Released</button>
-            <button type="button" class="chip" onclick="setToday()">📆 Today</button>
-
-            <span class="chip-sep">|</span>
-            <span class="chip-grp-label">Source</span>
-            <button type="button" class="chip {% if filter_source=='All' or not filter_source %}src-active{% endif %}" onclick="setSource('All')">All</button>
-            <button type="button" class="chip {% if filter_source=='Staff' %}src-active{% endif %}" onclick="setSource('Staff')">👤 Staff</button>
-            <button type="button" class="chip {% if filter_source=='Client' %}src-active{% endif %}" onclick="setSource('Client')">🏢 Client</button>
-
-            <span class="chip-sep">|</span>
-            {% if is_admin %}
-            <span class="chip-grp-label">Office</span>
-            <select class="chip-select" id="office-filter-select" onchange="setOffice(this.value)">
-              <option value="All" {% if filter_office=='All' or not filter_office or filter_office is not defined %}selected{% endif %}>All</option>
-              {% for office in saved_offices %}
-              <option value="{{ office.office_name }}" {% if filter_office==office.office_name %}selected{% endif %}>{{ office.office_name }}</option>
-              {% endfor %}
-            </select>
-            {% endif %}
-
-            {% set any_filter = search or filter_status != 'All' or filter_type != 'All' or filter_source != 'All' or filter_date or filter_time_from or filter_time_to or filter_office != 'All' %}
-            {% if any_filter %}
-            <div class="active-pills" role="list">
-              {% if filter_date %}<span class="f-pill">📅 {{ filter_date }}<button class="f-pill-x" type="button" onclick="clearField('date')">×</button></span>{% endif %}
-              {% if filter_time_from or filter_time_to %}<span class="f-pill">🕐 {{ filter_time_from or '00:00' }}–{{ filter_time_to or '23:59' }}<button class="f-pill-x" type="button" onclick="clearField('time_from');clearField('time_to');">×</button></span>{% endif %}
-              {% if filter_status != 'All' %}<span class="f-pill">{{ filter_status }}<button class="f-pill-x" type="button" onclick="clearField('status','All')">×</button></span>{% endif %}
-              {% if search %}<span class="f-pill">🔍 "{{ search }}"<button class="f-pill-x" type="button" onclick="clearField('search','')">×</button></span>{% endif %}
-              {% if filter_type != 'All' %}<span class="f-pill">{{ filter_type }}<button class="f-pill-x" type="button" onclick="clearField('type','All')">×</button></span>{% endif %}
-              {% if filter_source != 'All' %}<span class="f-pill">{{ filter_source }}<button class="f-pill-x" type="button" onclick="clearField('source','All')">×</button></span>{% endif %}
-              {% if is_admin and filter_office != 'All' %}<span class="f-pill">🏢 {{ filter_office }}<button class="f-pill-x" type="button" onclick="clearField('office','All')">×</button></span>{% endif %}
-            </div>
-            {% endif %}
-          </div>
-
-          {# Time range row #}
-          <div class="fc-time-row">
-            <label class="fc-time-label" for="toggle-time-range">
-              <input type="checkbox" id="toggle-time-range"
-                onchange="toggleTimeRange(this.checked)"
-                {% if filter_time_from or filter_time_to %}checked{% endif %}/>
-              🕐 Time range
-            </label>
-            <div class="fc-time-inputs" id="time-range-row"
-                 style="display:{% if filter_time_from or filter_time_to %}flex{% else %}none{% endif %};">
-              <input type="time" id="time-from-input" name="time_from" value="{{ filter_time_from }}" placeholder="From"/>
-              <span style="color:var(--muted);font-size:12px;">–</span>
-              <input type="time" id="time-to-input" name="time_to" value="{{ filter_time_to }}" placeholder="To"/>
-              <button type="submit" class="btn btn-primary btn-sm">Apply</button>
-            </div>
-          </div>
-
-        </div>
-
-        <input type="hidden" name="type"   id="type-hidden"   value="{{ filter_type }}"/>
-        <input type="hidden" name="source" id="source-hidden" value="{{ filter_source }}"/>
-        <input type="hidden" name="office" id="office-hidden" value="{{ filter_office }}"/>
-        <input type="hidden" name="per_page"                  value="{{ per_page }}"/>
-      </form>
-      </div>
-
-      {# Selection bar #}
-      {% if logged_in and session.get('role') in ['admin','staff'] %}
-      <div id="selection-bar" class="selection-bar" role="toolbar"
-           aria-label="Bulk actions" aria-hidden="true">
-        <span class="sel-info">
-          <span class="sel-count-label" id="sel-count-label">0</span> selected
-        </span>
-        <div class="sel-actions">
-          <button class="sel-btn sel-btn-purple" onclick="openRoutingModal()">📤 Routing Slip</button>
-          <button class="sel-btn sel-btn-amber"  onclick="openTransferModal()">🔄 Transfer</button>
-          <button class="sel-btn sel-btn-teal"   onclick="openStatusModal()">📋 Status</button>
-          <button class="sel-btn sel-btn-ghost"  onclick="deselectAll()">Deselect All</button>
-        </div>
-        <button class="sel-dismiss" onclick="deselectAll()" aria-label="Dismiss">✕</button>
-      </div>
-      {% endif %}
-
-      {# Cart Modal #}
-      {% if logged_in and session.get('role') in ['admin','staff'] %}
-      <div id="cart-modal" class="cart-modal" role="dialog" aria-labelledby="cart-modal-title" aria-modal="true">
-        <div class="cart-modal-overlay" onclick="closeCartModal()"></div>
-        <div class="cart-modal-content">
-          <div class="cart-modal-header">
-            <h2 id="cart-modal-title">📋 Document Cart</h2>
-            <button class="cart-modal-close" onclick="closeCartModal()" aria-label="Close cart">✕</button>
-          </div>
-          <div class="cart-modal-body" id="cart-modal-body">
-            <p class="cart-empty-msg" id="cart-empty-msg">No documents selected</p>
-          </div>
-          <div class="cart-modal-footer">
-            <button class="cart-modal-btn cart-route-btn" onclick="openRoutingModalFromCart()">📤 Route Documents</button>
-            <button class="cart-modal-btn cart-transfer-btn" onclick="openTransferModalFromCart()">🔄 Transfer Documents</button>
-            <button class="cart-modal-btn cart-clear-btn" onclick="clearCart()">Clear All</button>
-          </div>
-        </div>
-      </div>
-      {% endif %}
-
-      {# TABLE #}
-      <main id="main-content">
-      <div class="table-outer">
-
-        {% if logged_in %}
-        <div class="table-header-bar" id="table-action-bar" role="toolbar" aria-label="Table controls">
-          <div class="thb-title">
-            📋 Document Records
-            <span class="thb-count">
-              {% if total is defined %}
-                {{ total }} record{% if total != 1 %}s{% endif %}{% if total_pages > 1 %} · p{{ page }}/{{ total_pages }}{% endif %}
-              {% else %}
-                {{ docs|length }} record{% if docs|length != 1 %}s{% endif %}
-              {% endif %}
-            </span>
-          </div>
-          <div class="thb-right">
-            <div class="per-page-group">
-              <label class="per-page-label" for="per-page-select">Show</label>
-              <select id="per-page-select" class="per-page-select" onchange="changePerPage(this.value)">
-                {% for n in [10,25,50,100] %}
-                <option value="{{ n }}" {% if per_page is defined and per_page == n %}selected{% endif %}>{{ n }}</option>
-                {% endfor %}
-              </select>
-            </div>
-          </div>
-        </div>
-        {% endif %}
-
-        <div class="table-wrap">
-          {% if docs %}
-          <table id="docs-table" aria-rowcount="{{ total if total is defined else docs|length }}">
-            <thead>
-              <tr>
-                {% if logged_in %}
-                <th class="cb-cell" scope="col">
-                  <input type="checkbox" id="select-all" aria-label="Select all"/>
-                </th>
-                {% endif %}
-                <th scope="col" class="sortable" data-sort="doc_name" aria-sort="none">Document</th>
-                <th scope="col">Unit / Office</th>
-                <th scope="col">Sender</th>
-                <th scope="col">Referred To</th>
-                <th scope="col" class="sortable" data-sort="created_at" aria-sort="descending">Date &amp; Time</th>
-                <th scope="col">Remarks</th>
-                <th scope="col">Status</th>
-                <th scope="col" class="actions-col">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="docs-tbody">
-              {% for doc in docs %}
-              <tr class="doc-row"
-                  onclick="rowClick(event,'{{ doc.id }}')"
-                  onkeydown="if(event.key==='Enter')rowClick(event,'{{ doc.id }}')"
-                  data-created-at="{{ doc.created_at or '' }}"
-                  data-doc-id="{{ doc.id }}"
-                  data-referred-to="{{ doc.referred_to or '' }}"
-                  tabindex="0"
-                  aria-label="Document: {{ doc.doc_name }}">
-
-                {% if logged_in %}
-                <td class="cb-cell" onclick="event.stopPropagation()">
-                  <input type="checkbox" class="doc-checkbox"
-                         value="{{ doc.id }}"
-                         aria-label="Select {{ doc.doc_name }}"
-                         onchange="updateSelection()"/>
-                </td>
-                {% endif %}
-
-                <td class="td-doc">
-                  <div class="doc-name">{{ doc.doc_name }}</div>
-                  <div class="doc-meta-row">
-                    {% if doc.doc_id %}<span class="doc-id">{{ doc.doc_id }}</span>{% endif %}
-                    {% if doc.category %}<span class="doc-cat">{{ doc.category }}</span>{% endif %}
-                    {% if doc.submitted_by %}<span class="doc-client-badge">📱 Client</span>{% endif %}
-                  </div>
-                </td>
-
-                <td class="td-text">{{ doc.sender_org or '—' }}</td>
-                <td class="td-text">{{ doc.sender_name or '—' }}</td>
-                <td class="td-text">{{ doc.referred_to or '—' }}</td>
-
-                <td class="td-date">
-                  {% if doc.created_at %}
-                    <span class="date-main">{{ doc.created_at[:10] }}</span>
-                    <span class="date-time">{{ doc.created_at | time12 }}</span>
-                  {% else %}
-                    <span class="td-empty">—</span>
-                  {% endif %}
-                </td>
-
-                <td class="td-remarks">
-                  {% set remarks = doc.notes or doc.description %}{% if remarks %}{{ remarks }}{% else %}<span class="td-empty">—</span>{% endif %}
-                </td>
-
-                <td class="td-status">
-                  {% set s = doc.status %}
-                  {% if s == 'Logged' %}<span class="status-pill status-logged">{{ s }}</span>
-                  {% elif s == 'Pending' %}
-                    <span class="status-pill status-pending">{{ s }}</span>
-                    {% if doc.pending_at_staff %}
-                    <div class="status-sub">→ {% if doc.pending_at_staff_name %}{{ doc.pending_at_staff_name }}{% else %}{{ doc.pending_at_staff }}{% endif %}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</div>
-                    {% endif %}
-                    {% if doc.transfer_status == 'pending' %}<div class="status-sub">⏳ Awaiting Accept</div>{% endif %}
-                  {% elif s == 'Received' %}
-                    <span class="status-pill status-received">{{ s }}</span>
-                    {% if doc.transfer_status == 'accepted' %}<div class="status-sub">✓ Accepted</div>{% endif %}
-                  {% elif s == 'In Review' %}<span class="status-pill status-review">{{ s }}</span>
-                  {% elif s == 'Routed' %}
-                    <span class="status-pill status-transit">Routed</span>
-                    {% if doc.pending_at_staff %}<div class="status-sub">→ {{ doc.pending_at_staff }}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</div>
-                    {% elif doc.forwarded_to %}<div class="status-sub">→ {{ doc.forwarded_to }}</div>{% endif %}
-                  {% elif s == 'Transferred' %}
-                    <span class="status-pill status-transit">Transferred</span>
-                    {% if doc.transferred_to %}<div class="status-sub">→ {% if doc.transferred_to_office %}{{ doc.transferred_to_office }} · {% endif %}{{ doc.transferred_to }}</div>{% endif %}
-                    {% if doc.transfer_status == 'pending' %}<div class="status-sub">⏳ Awaiting Accept</div>{% endif %}
-                  {% elif s == 'Released' %}<span class="status-pill status-released">{{ s }}</span>
-                  {% elif s == 'On Hold' %}<span class="status-pill status-hold">{{ s }}</span>
-                  {% elif s == 'Rejected' %}
-                    <span class="status-pill status-rejected">{{ s }}</span>
-                    {% if doc.rejection_reason %}<div class="status-sub">{{ doc.rejection_reason }}</div>{% endif %}
-                  {% else %}<span class="status-pill status-archived">{{ s }}</span>
-                  {% endif %}
-                </td>
-                <td class="td-actions" onclick="event.stopPropagation()">
-                  <div class="kebab-menu">
-                    <button class="kebab-btn" aria-label="Document actions" onclick="toggleKebabMenu(this)">
-                      <span>⋮</span>
-                    </button>
-                    <div class="kebab-dropdown">
-                      <a href="/edit/{{ doc.id }}" class="kebab-item">✏️ Edit</a>
-                      <a href="/transfer/{{ doc.id }}" class="kebab-item">🔄 Transfer</a>
-                      <a href="/qr/{{ doc.id }}.png" class="kebab-item" target="_blank">📷 QR Code</a>
-                      {% if session.get('role') == 'admin' %}
-                      <form method="post" action="/delete/{{ doc.id }}" style="margin:0;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <button type="submit" class="kebab-item kebab-delete" onclick="return confirm('Move this document to Trash?')">🗑️ Delete</button>
-                      </form>
-                      {% endif %}
-                    </div>
-                  </div>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-
-          {# Pagination #}
-          {% if total_pages is defined and total_pages > 1 %}
-          {% set qs %}search={{ search }}&status={{ filter_status }}&type={{ filter_type }}&source={{ filter_source }}&date={{ filter_date }}&time_from={{ filter_time_from }}&time_to={{ filter_time_to }}&per_page={{ per_page }}{% endset %}
-          <div class="pagination-wrap" role="navigation" aria-label="Pagination">
-            <div class="pagination-info">
-              Showing <strong>{{ ((page-1)*per_page)+1 }}–{{ [page*per_page, total]|min }}</strong> of <strong>{{ total }}</strong>
-            </div>
-            <div class="pagination-controls">
-              {% if page > 1 %}<a href="/?{{ qs }}&page={{ page-1 }}" class="page-btn" aria-label="Previous">‹ Prev</a>
-              {% else %}<span class="page-btn disabled">‹ Prev</span>{% endif %}
-              {% set start_p = [1, page-2]|max %}
-              {% set end_p   = [total_pages, page+2]|min %}
-              {% if start_p > 1 %}<a href="/?{{ qs }}&page=1" class="page-btn">1</a>{% if start_p > 2 %}<span class="page-ellipsis">…</span>{% endif %}{% endif %}
-              {% for p in range(start_p, end_p+1) %}
-                {% if p == page %}<span class="page-btn active" aria-current="page">{{ p }}</span>
-                {% else %}<a href="/?{{ qs }}&page={{ p }}" class="page-btn">{{ p }}</a>{% endif %}
-              {% endfor %}
-              {% if end_p < total_pages %}{% if end_p < total_pages-1 %}<span class="page-ellipsis">…</span>{% endif %}<a href="/?{{ qs }}&page={{ total_pages }}" class="page-btn">{{ total_pages }}</a>{% endif %}
-              {% if page < total_pages %}<a href="/?{{ qs }}&page={{ page+1 }}" class="page-btn" aria-label="Next">Next ›</a>
-              {% else %}<span class="page-btn disabled">Next ›</span>{% endif %}
-            </div>
-            <div class="page-jump">
-              <label for="page-jump-input" class="page-jump-label">Go to</label>
-              <input type="number" id="page-jump-input" min="1" max="{{ total_pages }}" placeholder="{{ page }}"
-                     onkeydown="if(event.key==='Enter')jumpToPage(this.value,'{{ qs }}')"/>
-            </div>
-          </div>
-          {% endif %}
-
+    <div class="table-header-bar" id="table-action-bar" role="toolbar" aria-label="Table controls">
+      <div class="thb-title">
+        Document Records
+        <span class="thb-count">
+          {% if total is defined %}
+            {{ total }} record{% if total != 1 %}s{% endif %}{% if total_pages > 1 %} · p{{ page }}/{{ total_pages }}{% endif %}
           {% else %}
-          <div class="empty-state" role="status">
-            <div class="empty-illustration">📭</div>
-            <h3 class="empty-title">No documents found</h3>
-            <p class="empty-sub">
-              {% if search or filter_status != 'All' or filter_date %}
-                Try adjusting your filters or <a href="#" class="empty-link" onclick="clearAllFilters(event)">clear all filters</a>.
-              {% else %}
-                No documents yet. Add your first one to get started.
-              {% endif %}
-            </p>
-            <div class="empty-actions">
-              <a href="/add" class="empty-btn empty-btn-primary">➕ Add Document</a>
-              {% if search or filter_status != 'All' or filter_date %}
-              <a href="#" class="empty-btn empty-btn-ghost" onclick="clearAllFilters(event)">✕ Clear Filters</a>
-              {% endif %}
-            </div>
-          </div>
+            {{ docs|length }} record{% if docs|length != 1 %}s{% endif %}
           {% endif %}
-        </div>{# /table-wrap #}
-      </div>{# /table-outer #}
-      </main>
+        </span>
+      </div>
+      <div class="thb-right">
+        <div class="per-page-group">
+          <label class="per-page-label" for="per-page-select">Show</label>
+          <select id="per-page-select" class="per-page-select" onchange="changePerPage(this.value)">
+            {% for n in [10,25,50,100] %}
+            <option value="{{ n }}" {% if per_page is defined and per_page == n %}selected{% endif %}>{{ n }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
 
-    </div>{# /right-col #}
-  </div>{# /doc-layout #}
+    <div class="table-wrap">
+      {% if docs %}
+      <table id="docs-table" aria-rowcount="{{ total if total is defined else docs|length }}">
+        <thead>
+          <tr>
+            {% if logged_in %}
+            <th class="cb-cell" scope="col">
+              <input type="checkbox" id="select-all" aria-label="Select all"/>
+            </th>
+            {% endif %}
+            <th scope="col" class="col-status">Status</th>
+            <th scope="col" class="col-doc sortable" data-sort="doc_name" aria-sort="none">Document</th>
+            <th scope="col" class="col-type">Type</th>
+            <th scope="col" class="col-sender">Sender</th>
+            <th scope="col" class="col-referred">Referred To</th>
+            <th scope="col" class="col-unit">Unit</th>
+            <th scope="col" class="col-date sortable" data-sort="created_at" aria-sort="descending">Date</th>
+            <th scope="col" class="col-act actions-col">Act</th>
+          </tr>
+        </thead>
+        <tbody id="docs-tbody">
+          {% for doc in docs %}
+          <tr class="doc-row"
+              onclick="rowClick(event,'{{ doc.id }}')"
+              onkeydown="if(event.key==='Enter')rowClick(event,'{{ doc.id }}')"
+              data-created-at="{{ doc.created_at or '' }}"
+              data-doc-id="{{ doc.id }}"
+              data-referred-to="{{ doc.referred_to or '' }}"
+              tabindex="0"
+              aria-label="Document: {{ doc.doc_name }}">
+
+            {% if logged_in %}
+            <td class="cb-cell" onclick="event.stopPropagation()">
+              <input type="checkbox" class="doc-checkbox"
+                     value="{{ doc.id }}"
+                     aria-label="Select {{ doc.doc_name }}"
+                     onchange="updateSelection()"/>
+            </td>
+            {% endif %}
+
+            {# STATUS CELL — first column, dot pill #}
+            <td class="td-status" onclick="event.stopPropagation()">
+              {% set s = doc.status %}
+              {% if s == 'Logged' %}
+                <span class="st st-logged">LOGGED</span>
+              {% elif s == 'Pending' %}
+                <span class="st st-pending">PENDING</span>
+                {% if doc.transfer_status == 'pending' %}
+                <div class="st-sub">awaiting accept</div>
+                {% elif doc.pending_at_staff %}
+                <div class="st-sub">→ {% if doc.pending_at_staff_name %}{{ doc.pending_at_staff_name }}{% else %}{{ doc.pending_at_staff }}{% endif %}</div>
+                {% endif %}
+              {% elif s == 'Received' %}
+                <span class="st st-received">RECEIVED</span>
+              {% elif s == 'In Review' %}
+                <span class="st st-review">IN REVIEW</span>
+              {% elif s == 'Routed' %}
+                <span class="st st-routed">ROUTED</span>
+                {% if doc.pending_at_staff %}
+                <div class="st-sub">→ {{ doc.pending_at_staff }}</div>
+                {% elif doc.forwarded_to %}
+                <div class="st-sub">→ {{ doc.forwarded_to }}</div>
+                {% endif %}
+              {% elif s == 'Transferred' %}
+                <span class="st st-transferred">TRANSFERRED</span>
+                {% if doc.transferred_to %}
+                <div class="st-sub">→ {% if doc.transferred_to_office %}{{ doc.transferred_to_office }} · {% endif %}{{ doc.transferred_to }}</div>
+                {% endif %}
+                {% if doc.transfer_status == 'pending' %}
+                <div class="st-sub">awaiting accept</div>
+                {% endif %}
+              {% elif s == 'Released' %}
+                <span class="st st-released">RELEASED</span>
+              {% elif s == 'On Hold' %}
+                <span class="st st-hold">ON HOLD</span>
+              {% elif s == 'Rejected' %}
+                <span class="st st-hold">REJECTED</span>
+                {% if doc.rejection_reason %}
+                <div class="st-sub">{{ doc.rejection_reason[:40] }}</div>
+                {% endif %}
+              {% else %}
+                <span class="st st-archived">{{ s|upper }}</span>
+              {% endif %}
+            </td>
+
+            {# DOCUMENT CELL #}
+            <td class="td-doc">
+              <div class="doc-name">{{ doc.doc_name }}</div>
+              <div class="doc-meta-row">
+                {% if doc.doc_id %}<span class="doc-id">{{ doc.doc_id }}</span>{% endif %}
+                {% if doc.submitted_by %}<span class="doc-client-badge">Client</span>{% endif %}
+                {% if doc.notes or doc.description %}
+                <span class="doc-remark">{{ (doc.notes or doc.description)[:55] }}{% if (doc.notes or doc.description)|length > 55 %}…{% endif %}</span>
+                {% endif %}
+              </div>
+            </td>
+
+            {# TYPE CELL #}
+            <td class="td-type">
+              {% if doc.category %}
+              <span class="doc-tag">{{ doc.category }}</span>
+              {% else %}
+              <span class="td-empty">—</span>
+              {% endif %}
+            </td>
+
+            {# SENDER #}
+            <td class="td-text col-sender">{{ doc.sender_name or '—' }}</td>
+
+            {# REFERRED TO — with arrow #}
+            <td class="td-text col-referred">
+              {% if doc.referred_to %}
+              <span class="ref-arrow">→</span>{{ doc.referred_to }}
+              {% else %}<span class="td-empty">—</span>{% endif %}
+            </td>
+
+            {# UNIT #}
+            <td class="td-unit">{{ doc.sender_org or '—' }}</td>
+
+            {# DATE #}
+            <td class="td-date">
+              {% if doc.created_at %}
+                <span class="date-main">{{ doc.created_at[:10] }}</span>
+                <span class="date-time">{{ doc.created_at | time12 }}</span>
+              {% else %}
+                <span class="td-empty">—</span>
+              {% endif %}
+            </td>
+
+            {# ACTIONS #}
+            <td class="td-actions" onclick="event.stopPropagation()">
+              <div class="row-act-wrap">
+                <div class="row-kbd-hints" aria-hidden="true">
+                  <span class="kbd-hint">E</span>
+                  <span class="kbd-hint">T</span>
+                  <span class="kbd-hint">Q</span>
+                </div>
+                <div class="kebab-menu">
+                  <button class="kebab-btn" aria-label="Document actions" onclick="toggleKebabMenu(this)">
+                    <span>⋮</span>
+                  </button>
+                  <div class="kebab-dropdown">
+                    <a href="/edit/{{ doc.id }}" class="kebab-item">Edit</a>
+                    <a href="/transfer/{{ doc.id }}" class="kebab-item">Transfer</a>
+                    <a href="/qr/{{ doc.id }}.png" class="kebab-item" target="_blank">QR Code</a>
+                    {% if session.get('role') == 'admin' %}
+                    <form method="post" action="/delete/{{ doc.id }}" style="margin:0;">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <button type="submit" class="kebab-item kebab-delete"
+                              onclick="return confirm('Move this document to Trash?')">Delete</button>
+                    </form>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {# ── PAGINATION ── #}
+      {% if total_pages is defined and total_pages > 1 %}
+      {% set qs %}search={{ search }}&status={{ filter_status }}&type={{ filter_type }}&source={{ filter_source }}&date={{ filter_date }}&time_from={{ filter_time_from }}&time_to={{ filter_time_to }}&per_page={{ per_page }}{% endset %}
+      <div class="pagination-wrap" role="navigation" aria-label="Pagination">
+        <div class="pagination-info">
+          Showing <strong>{{ ((page-1)*per_page)+1 }}–{{ [page*per_page, total]|min }}</strong>
+          of <strong>{{ total }}</strong>
+        </div>
+        <div class="pagination-controls">
+          {% if page > 1 %}
+          <a href="/?{{ qs }}&page={{ page-1 }}" class="page-btn" aria-label="Previous">‹ Prev</a>
+          {% else %}<span class="page-btn disabled">‹ Prev</span>{% endif %}
+
+          {% set start_p = [1, page-2]|max %}
+          {% set end_p   = [total_pages, page+2]|min %}
+          {% if start_p > 1 %}<a href="/?{{ qs }}&page=1" class="page-btn">1</a>{% if start_p > 2 %}<span class="page-ellipsis">…</span>{% endif %}{% endif %}
+          {% for p in range(start_p, end_p+1) %}
+            {% if p == page %}<span class="page-btn active" aria-current="page">{{ p }}</span>
+            {% else %}<a href="/?{{ qs }}&page={{ p }}" class="page-btn">{{ p }}</a>{% endif %}
+          {% endfor %}
+          {% if end_p < total_pages %}{% if end_p < total_pages-1 %}<span class="page-ellipsis">…</span>{% endif %}<a href="/?{{ qs }}&page={{ total_pages }}" class="page-btn">{{ total_pages }}</a>{% endif %}
+
+          {% if page < total_pages %}
+          <a href="/?{{ qs }}&page={{ page+1 }}" class="page-btn" aria-label="Next">Next ›</a>
+          {% else %}<span class="page-btn disabled">Next ›</span>{% endif %}
+        </div>
+        <div class="page-jump">
+          <label for="page-jump-input" class="page-jump-label">Go to</label>
+          <input type="number" id="page-jump-input" min="1" max="{{ total_pages }}" placeholder="{{ page }}"
+                 onkeydown="if(event.key==='Enter')jumpToPage(this.value,'{{ qs }}')"/>
+        </div>
+      </div>
+      {% endif %}
+
+      {% else %}
+      <div class="empty-state" role="status">
+        <div class="empty-illustration">📭</div>
+        <h3 class="empty-title">No documents found</h3>
+        <p class="empty-sub">
+          {% if search or filter_status != 'All' or filter_date %}
+            Try adjusting your filters or
+            <a href="#" class="empty-link" onclick="clearAllFilters(event)">clear all filters</a>.
+          {% else %}
+            No documents yet. Add your first one to get started.
+          {% endif %}
+        </p>
+        <div class="empty-actions">
+          <a href="/add" class="empty-btn empty-btn-primary">Add Document</a>
+          {% if search or filter_status != 'All' or filter_date %}
+          <a href="#" class="empty-btn empty-btn-ghost" onclick="clearAllFilters(event)">Clear Filters</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+    </div>{# /table-wrap #}
+  </div>{# /table-outer #}
+  </main>
+
 </div>{# /doc-page #}
 
 
-
-
-{# Toast #}
+{# ── TOAST ── #}
 <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
 
 
@@ -583,7 +570,7 @@ var serverSessionData = {
   <div class="route-panel">
     <div class="rp-header">
       <div class="rp-title" id="routing-modal-title">
-        📤 Create Routing Slip
+        Create Routing Slip
         <span class="rp-count" id="sel-count">0 selected</span>
       </div>
       <button class="rp-close" onclick="closeRoutingModal()">✕ Close</button>
@@ -601,20 +588,20 @@ var serverSessionData = {
     </div>
     <div class="rp-fields">
       <div class="rp-field">
-        <label for="route-dest">📍 Destination Office *</label>
+        <label for="route-dest">Destination Office *</label>
         <input type="text" class="rp-input" id="route-dest"
           placeholder="e.g. Budget Section, HR Unit…"
           list="office-suggestions" autocomplete="off"
           oninput="document.getElementById('modal-dest-preview').textContent=this.value||'(enter below)'"/>
       </div>
       <div class="rp-field">
-        <label for="slip-date">📅 Slip Date</label>
+        <label for="slip-date">Slip Date</label>
         <input type="date" class="rp-input" id="slip-date"/>
       </div>
       <div class="rp-field rp-field-span2">
         <label class="rp-checkbox-label" for="use-time-range">
           <input type="checkbox" id="use-time-range" onchange="toggleModalTimeRange(this.checked)"/>
-          🕐 Include Time Range <span class="rp-optional">(optional)</span>
+          Include Time Range <span class="rp-optional">(optional)</span>
         </label>
       </div>
       <div class="rp-field" id="time-from-field" style="display:none">
@@ -626,14 +613,14 @@ var serverSessionData = {
         <input type="time" class="rp-input" id="time-to"/>
       </div>
       <div class="rp-field rp-field-full">
-        <label for="route-notes">📝 Notes (optional)</label>
+        <label for="route-notes">Notes (optional)</label>
         <textarea class="rp-notes" id="route-notes" rows="2" placeholder="e.g. For immediate action…"></textarea>
       </div>
     </div>
     <div class="rp-bottom">
-      <button class="btn-time-filter" id="btn-auto-select" onclick="autoSelectByTime()" style="display:none;">⏱️ Auto-select by Time</button>
-      <p class="rp-hint" id="routing-hint">💡 Documents will be grouped by "Referred To" to create multiple routing slips.</p>
-      <button class="btn-route" onclick="submitRouting()">🚀 Create Routing Slip</button>
+      <button class="btn-time-filter" id="btn-auto-select" onclick="autoSelectByTime()" style="display:none;">Auto-select by Time</button>
+      <p class="rp-hint" id="routing-hint">Documents will be grouped by "Referred To" to create multiple routing slips.</p>
+      <button class="btn-route" onclick="submitRouting()">Create Routing Slip</button>
     </div>
   </div>
 </div>
@@ -642,10 +629,10 @@ var serverSessionData = {
 <div id="transfer-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="transfer-modal-title">
   <div class="route-panel route-panel-sm">
     <div class="rp-header">
-      <div class="rp-title" id="transfer-modal-title">🔄 Transfer Documents <span class="rp-count" id="transfer-sel-count">0 selected</span></div>
+      <div class="rp-title" id="transfer-modal-title">Transfer Documents <span class="rp-count" id="transfer-sel-count">0 selected</span></div>
       <button class="rp-close" onclick="closeTransferModal()">✕ Close</button>
     </div>
-    <div class="rp-warning-box">⚠️ The document status will change to <strong>Pending</strong> after transfer.</div>
+    <div class="rp-warning-box">The document status will change to <strong>Pending</strong> after transfer.</div>
     <div class="rp-steps" aria-label="Transfer progress">
       <div class="rp-step active" id="step-1"><div class="rp-step-num">1</div><span>Type</span></div>
       <div class="rp-step-line"></div>
@@ -658,8 +645,8 @@ var serverSessionData = {
         <label for="transfer-type">Transfer Type *</label>
         <select class="rp-input" id="transfer-type" onchange="onTransferTypeChangeIndex()">
           <option value="">— Select Type —</option>
-          <option value="inside_office">🏢 Internal (same office)</option>
-          <option value="outside_office">🌐 External (different office)</option>
+          <option value="inside_office">Internal (same office)</option>
+          <option value="outside_office">External (different office)</option>
         </select>
       </div>
       <div class="rp-field" id="transfer-office-block" style="display:none;">
@@ -677,8 +664,8 @@ var serverSessionData = {
       </div>
     </div>
     <div class="rp-bottom" id="transfer-submit-block" style="display:none;">
-      <p class="rp-hint">💡 Select documents using checkboxes first.</p>
-      <button class="btn-route btn-route-amber" onclick="submitTransfer()" id="btn-do-transfer">🔄 Transfer Documents</button>
+      <p class="rp-hint">Select documents using checkboxes first.</p>
+      <button class="btn-route btn-route-amber" onclick="submitTransfer()" id="btn-do-transfer">Transfer Documents</button>
     </div>
   </div>
 </div>
@@ -687,7 +674,7 @@ var serverSessionData = {
 <div id="status-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="status-modal-title">
   <div class="route-panel route-panel-sm">
     <div class="rp-header">
-      <div class="rp-title" id="status-modal-title">📋 Update Status <span class="rp-count" id="status-sel-count">0 selected</span></div>
+      <div class="rp-title" id="status-modal-title">Update Status <span class="rp-count" id="status-sel-count">0 selected</span></div>
       <button class="rp-close" onclick="closeStatusModal()">✕ Close</button>
     </div>
     <div class="rp-fields rp-fields-single">
@@ -704,8 +691,9 @@ var serverSessionData = {
       </div>
     </div>
     <div class="rp-bottom">
-      <p class="rp-hint">💡 Updates status for all selected documents.</p>
-      <button class="btn-route btn-route-teal" onclick="submitBulkStatusUpdate()" id="btn-do-status-update" disabled>📋 Update Status</button>
+      <p class="rp-hint">Updates status for all selected documents.</p>
+      <button class="btn-route btn-route-teal" onclick="submitBulkStatusUpdate()"
+              id="btn-do-status-update" disabled>Update Status</button>
     </div>
   </div>
 </div>
