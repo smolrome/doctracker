@@ -749,49 +749,68 @@ def archive_routing_slip(slip_id):
 @offices_bp.route("/routing-slip/delete-all", methods=["POST"])
 @admin_required
 def delete_all_routing_slips():
-    """Delete all routing slips (PostgreSQL + JSON fallback)."""
+    """Delete all routing slips (PostgreSQL + JSON fallback).
+
+    Since save_routing_slip falls back to JSON on DB errors, slips may exist
+    in either/both storages — we wipe both unconditionally.
+    """
     from flask import jsonify
-    import traceback
+    import traceback, os, json as _json
+
+    deleted_db   = 0
+    deleted_json = 0
+    errors       = []
+
+    # --- wipe DB (best-effort) ---
     try:
         from services.database import USE_DB, get_conn
-        from services.misc import audit_log as _audit
-        from utils import get_client_ip
-        import os, json as _json
-
-        deleted = 0
         if USE_DB:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
+            with get_conn() as raw_conn:
+                with raw_conn.cursor() as cur:
                     cur.execute("SELECT COUNT(*) AS cnt FROM routing_slips")
-                    row = cur.fetchone()
-                    deleted = int(row["cnt"]) if row and row.get("cnt") is not None else 0
-                    cur.execute("TRUNCATE TABLE routing_slips")
-                conn.commit()
+                    r = cur.fetchone()
+                    if r:
+                        val = r["cnt"] if isinstance(r, dict) else r[0]
+                        deleted_db = int(val or 0)
+                    cur.execute("DELETE FROM routing_slips")
+    except Exception as e:
+        errors.append(f"DB: {type(e).__name__}: {e}")
+        print(f"[delete_all_routing_slips DB ERROR] {traceback.format_exc()}", flush=True)
 
+    # --- wipe JSON fallback (best-effort) ---
+    try:
         path = "routing_slips.json"
         if os.path.exists(path):
             try:
                 with open(path) as f:
-                    data = _json.load(f)
-                if not USE_DB:
-                    deleted = len(data)
+                    deleted_json = len(_json.load(f) or {})
             except Exception:
-                pass
+                deleted_json = 0
             with open(path, "w") as f:
                 _json.dump({}, f)
-
-        try:
-            _audit("delete_all_routing_slips",
-                   f"deleted {deleted} slips",
-                   username=session.get("username"), ip=get_client_ip())
-        except Exception:
-            pass
-
-        return jsonify({"success": True, "message": f"Deleted {deleted} routing slip(s)."})
     except Exception as e:
-        tb = traceback.format_exc()
-        print(f"[delete_all_routing_slips ERROR] {tb}", flush=True)
-        return jsonify({"success": False, "message": f"{type(e).__name__}: {e}"}), 500
+        errors.append(f"JSON: {type(e).__name__}: {e}")
+        print(f"[delete_all_routing_slips JSON ERROR] {traceback.format_exc()}", flush=True)
+
+    # --- audit (best-effort) ---
+    try:
+        from services.misc import audit_log as _audit
+        from utils import get_client_ip
+        _audit("delete_all_routing_slips",
+               f"deleted db={deleted_db} json={deleted_json}",
+               username=session.get("username", "admin"), ip=get_client_ip())
+    except Exception:
+        pass
+
+    total = max(deleted_db, deleted_json)
+    if errors and total == 0:
+        return jsonify({"success": False, "message": "; ".join(errors)}), 500
+    return jsonify({
+        "success": True,
+        "message": f"Deleted {total} routing slip(s).",
+        "db": deleted_db, "json": deleted_json,
+        "warnings": errors,
+    })
 
 
 @offices_bp.route("/routing-slip/<slip_id>/delete-all-docs", methods=["POST"])
