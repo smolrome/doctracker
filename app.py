@@ -294,6 +294,27 @@ def create_app() -> Flask:
                 import traceback
                 traceback.print_exc()
 
+    # ── Error handler ──────────────────────────────────────────────────────────
+    @app.errorhandler(Exception)
+    def handle_uncaught_exception(e):
+        """Return JSON for fetch/AJAX requests; log full traceback for all."""
+        import traceback
+        from flask import jsonify
+        tb = traceback.format_exc()
+        print(f"[UNHANDLED EXCEPTION] path={request.path}\n{tb}", flush=True)
+        wants_json = (
+            request.headers.get("X-Requested-With") == "XMLHttpRequest"
+            or "application/json" in (request.headers.get("Accept", ""))
+            or request.headers.get("X-CSRF-Token")
+            or request.is_json
+        )
+        if wants_json:
+            return jsonify({
+                "success": False,
+                "message": f"{type(e).__name__}: {e}",
+            }), 500
+        raise e  # let Flask render default HTML error for browser requests
+
     # ── After-request hooks ────────────────────────────────────────────────────
 
     @app.after_request
