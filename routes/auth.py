@@ -7,8 +7,8 @@ import time
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from services.auth import (
-    check_rate_limit, create_user, reset_rate_limit,
-    update_last_login, verify_user,
+    check_rate_limit, create_user, get_user, reset_rate_limit,
+    update_last_login, update_user, update_user_password, verify_password, verify_user,
 )
 from services.email import validate_invite_token, consume_invite_token
 from services.misc import audit_log, load_saved_offices, save_office
@@ -174,3 +174,85 @@ def logout():
     session.clear()
     flash("You have been logged out.", "success")
     return redirect(url_for("dashboard.index"))
+
+
+@auth_bp.route("/profile", methods=["GET", "POST"])
+def profile():
+    if not is_logged_in():
+        return redirect(url_for("auth.login"))
+
+    username = session.get("username")
+    user = get_user(username)
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("dashboard.index"))
+
+    errors = {}
+    success_msg = None
+
+    if request.method == "POST":
+        section = request.form.get("_section", "info")
+
+        if section == "info":
+            full_name = request.form.get("full_name", "").strip()
+            office    = request.form.get("office", "").strip()
+            if not full_name:
+                errors["full_name"] = "Display name is required."
+            if not office:
+                errors["office"] = "Office is required."
+            if not errors:
+                ok, err = update_user(username, full_name=full_name, office=office)
+                if ok:
+                    session["full_name"] = full_name
+                    session["office"]    = office
+                    session.modified     = True
+                    audit_log("profile_updated", f"full_name={full_name}",
+                              username=username, ip=get_client_ip())
+                    flash("Profile updated successfully.", "success")
+                else:
+                    errors["general"] = err or "Could not update profile."
+
+        elif section == "password":
+            current_pw  = request.form.get("current_password", "")
+            new_pw      = request.form.get("new_password", "").strip()
+            confirm_pw  = request.form.get("confirm_password", "").strip()
+            # re-fetch with hash for verification
+            from services.auth import _load_users_json, USE_DB
+            stored_hash = ""
+            if USE_DB:
+                from services.database import get_conn
+                try:
+                    with get_conn() as conn:
+                        with conn.cursor() as cur:
+                            cur.execute("SELECT password_hash FROM users WHERE username=%s", (username,))
+                            row = cur.fetchone()
+                            if row:
+                                stored_hash = row["password_hash"]
+                except Exception:
+                    pass
+            else:
+                for u in _load_users_json():
+                    if u["username"] == username:
+                        stored_hash = u.get("password_hash", "")
+                        break
+            if not verify_password(current_pw, stored_hash):
+                errors["current_password"] = "Current password is incorrect."
+            elif len(new_pw) < 8:
+                errors["new_password"] = "New password must be at least 8 characters."
+            elif not any(c.isdigit() for c in new_pw):
+                errors["new_password"] = "New password must contain at least one number."
+            elif new_pw != confirm_pw:
+                errors["confirm_password"] = "Passwords do not match."
+            if not errors:
+                ok, err = update_user_password(username, new_pw)
+                if ok:
+                    audit_log("password_changed", "", username=username, ip=get_client_ip())
+                    flash("Password changed successfully.", "success")
+                else:
+                    errors["new_password"] = err or "Could not change password."
+
+        user = get_user(username)
+        if not errors:
+            return redirect(url_for("auth.profile"))
+
+    return render_template("profile.html", user=user, errors=errors)
