@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DocTracker — DepEd Leyte Division Document Tracking System</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<title>Personnel Unit — DocTracker · DepEd Leyte Division</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}"/>
 </head>
 <body>
@@ -14,7 +14,7 @@
 <nav class="nav">
   <a href="/" class="nav-brand">
     <img src="{{ url_for('static', filename='logo.png') }}" alt="DepEd" class="nav-logo"/>
-    DocTracker
+    Personnel Unit — DocTracker
   </a>
   <div class="nav-sep"></div>
   <div class="nav-links">
@@ -50,8 +50,8 @@
   <div class="cover-particle" style="width:4px;height:4px;background:var(--gold);left:91%;animation-duration:17s;animation-delay:1s"></div>
 
   <div class="cover-seal"><img src="/static/logo.png" alt="DepEd Leyte Division"/></div>
-  <div class="cover-eyebrow">Schools Division of Leyte — Division Office</div>
-  <h1>Doc<em>Tracker</em></h1>
+  <div class="cover-eyebrow">Schools Division of Leyte — Personnel Unit</div>
+  <h1>Personnel Unit — <em>DocTracker</em></h1>
   <p class="cover-subtitle">The official document routing and tracking system of the DepEd Leyte Division. Submit, track, and receive your documents — entirely from your phone.</p>
 
   {% if logged_in %}
@@ -445,7 +445,7 @@
 
 <!-- ═══ FOOTER ═══ -->
 <footer class="footer">
-  <div class="footer-logo">Doc<span>Tracker</span></div>
+  <div class="footer-logo">Personnel Unit — <span>DocTracker</span></div>
   <div style="font-size:16px;color:rgba(255,255,255,.55);margin-top:8px;position:relative;z-index:1">DepEd Leyte Division — Document Routing &amp; Tracking System</div>
   <div class="footer-sub">Flask · PostgreSQL · Railway · Claude AI · Brevo · qrcode · jsQR · OpenCV</div>
 </footer>
