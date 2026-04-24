@@ -133,10 +133,10 @@
       {% endif %}
 
       <!-- ── User chip + logout ── -->
-      <div class="nav-user-chip">
+      <a href="/profile" class="nav-user-chip" title="Profile &amp; Settings">
         <div class="avatar">👤</div>
         {{ current_full_name.split()[0] if current_full_name else current_user }}
-      </div>
+      </a>
       <!-- Logout is styled distinctly from the "danger" Clear DB button -->
       <a href="/logout" class="nav-btn nav-btn-logout">⏻ Logout</a>
 

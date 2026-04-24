@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Profile &amp; Settings — DocTracker{% endblock %}
+
+{% block content %}
+<style>
+.profile-wrap { max-width: 640px; margin: 0 auto; padding: 32px 16px 64px; }
+
+.profile-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .875rem; font-weight: 600; color: var(--navy);
+  background: #f1f5f9; border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 14px; margin-bottom: 24px;
+  text-decoration: none; transition: background .15s;
+}
+.profile-back:hover { background: #e2e8f0; }
+
+.profile-header {
+  display: flex; align-items: center; gap: 18px;
+  background: linear-gradient(135deg, var(--navy), #1e3a5f);
+  color: #fff; border-radius: 16px; padding: 28px 32px; margin-bottom: 28px;
+}
+.profile-avatar {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: rgba(255,255,255,.2); border: 2px solid rgba(255,255,255,.35);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; flex-shrink: 0;
+}
+.profile-header-info h1 { font-size: 1.3rem; font-weight: 800; margin: 0 0 4px; }
+.profile-header-info p  { margin: 0; opacity: .75; font-size: .9rem; }
+.profile-role-badge {
+  display: inline-block; background: rgba(201,162,39,.3);
+  border: 1px solid rgba(201,162,39,.5); color: #f5d87a;
+  font-size: .72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; border-radius: 99px; padding: 2px 10px; margin-top: 6px;
+}
+
+.profile-card {
+  background: #fff; border: 1px solid var(--border);
+  border-radius: 14px; padding: 28px 32px; margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+}
+.profile-card-title {
+  font-size: 1rem; font-weight: 700; color: var(--navy);
+  margin: 0 0 20px; display: flex; align-items: center; gap: 8px;
+}
+
+.profile-field { margin-bottom: 16px; }
+.profile-field label {
+  display: block; font-size: .8rem; font-weight: 600;
+  color: #64748b; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px;
+}
+.profile-field input[type="text"],
+.profile-field input[type="password"] {
+  width: 100%; box-sizing: border-box;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 9px 12px; font-size: .95rem; font-family: inherit;
+  background: #f8fafc; transition: border-color .15s;
+}
+.profile-field input:focus { outline: none; border-color: var(--navy); background: #fff; }
+.profile-field input[readonly] { background: #f1f5f9; color: #64748b; cursor: default; }
+.profile-field .field-error { font-size: .82rem; color: #dc2626; margin-top: 4px; }
+
+.profile-save-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--navy); color: #fff; border: none;
+  border-radius: 8px; padding: 10px 22px; font-size: .9rem; font-weight: 700;
+  cursor: pointer; transition: opacity .15s; margin-top: 4px;
+}
+.profile-save-btn:hover { opacity: .88; }
+
+.profile-divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+</style>
+
+<div class="profile-wrap">
+  <a href="{{ url_for('dashboard.index') }}" class="profile-back">← Back to Dashboard</a>
+
+  <div class="profile-header">
+    <div class="profile-avatar">👤</div>
+    <div class="profile-header-info">
+      <h1>{{ user.full_name or user.username }}</h1>
+      <p>@{{ user.username }} &nbsp;·&nbsp; {{ user.office or 'No office set' }}</p>
+      <span class="profile-role-badge">{{ user.role | capitalize }}</span>
+    </div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="{{ 'flash-success' if cat=='success' else 'flash-error' }}" style="margin-bottom:16px;">
+        {{ '✅' if cat=='success' else '❌' }} {{ msg }}
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  <!-- ── Personal Info ── -->
+  <div class="profile-card">
+    <div class="profile-card-title">👤 Personal Information</div>
+    <form method="POST" action="/profile">
+      <input type="hidden" name="_section" value="info">
+
+      <div class="profile-field">
+        <label>Username</label>
+        <input type="text" value="{{ user.username }}" readonly>
+      </div>
+
+      <div class="profile-field">
+        <label>Display Name</label>
+        <input type="text" name="full_name" value="{{ user.full_name or '' }}"
+               placeholder="Your full name" required>
+        {% if errors.get('full_name') %}
+          <div class="field-error">{{ errors.full_name }}</div>
+        {% endif %}
+      </div>
+
+      <div class="profile-field">
+        <label>Office / Unit</label>
+        <input type="text" name="office" value="{{ user.office or '' }}"
+               placeholder="e.g. Personnel Unit" required>
+        {% if errors.get('office') %}
+          <div class="field-error">{{ errors.office }}</div>
+        {% endif %}
+      </div>
+
+      <div class="profile-field">
+        <label>Role</label>
+        <input type="text" value="{{ user.role | capitalize }}" readonly>
+      </div>
+
+      {% if errors.get('general') %}
+        <div class="field-error" style="margin-bottom:12px;">{{ errors.general }}</div>
+      {% endif %}
+      <button type="submit" class="profile-save-btn">Save Changes</button>
+    </form>
+  </div>
+
+  <!-- ── Change Password ── -->
+  <div class="profile-card">
+    <div class="profile-card-title">🔒 Change Password</div>
+    <form method="POST" action="/profile">
+      <input type="hidden" name="_section" value="password">
+
+      <div class="profile-field">
+        <label>Current Password</label>
+        <input type="password" name="current_password" placeholder="Enter current password" required>
+        {% if errors.get('current_password') %}
+          <div class="field-error">{{ errors.current_password }}</div>
+        {% endif %}
+      </div>
+
+      <hr class="profile-divider">
+
+      <div class="profile-field">
+        <label>New Password</label>
+        <input type="password" name="new_password"
+               placeholder="At least 8 characters, 1 number" required>
+        {% if errors.get('new_password') %}
+          <div class="field-error">{{ errors.new_password }}</div>
+        {% endif %}
+      </div>
+
+      <div class="profile-field">
+        <label>Confirm New Password</label>
+        <input type="password" name="confirm_password" placeholder="Repeat new password" required>
+        {% if errors.get('confirm_password') %}
+          <div class="field-error">{{ errors.confirm_password }}</div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="profile-save-btn">Change Password</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
