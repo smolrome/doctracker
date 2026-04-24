@@ -94,13 +94,23 @@ nav::after {
 
 /* Government seal circle */
 .nav-seal {
-  width: 56px; height: 56px; border-radius: 50%;
+  width: 42px; height: 42px; border-radius: 50%;
   border: 1.5px solid rgba(201,162,39,.55);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; position: relative; overflow: hidden;
   background: rgba(255,255,255,.06);
 }
-.nav-logo { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; display: block; }
+.nav-logo { width: 110%; height: 110%; object-fit: cover; display: block; }
+
+/* ── Global back-to-dashboard button ── */
+.btn-back-dashboard {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .875rem; font-weight: 600; color: var(--navy);
+  background: #f1f5f9; border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 14px; margin-bottom: 20px;
+  text-decoration: none; transition: background .15s;
+}
+.btn-back-dashboard:hover { background: #e2e8f0; }
 
 .nav-brand-text { display: flex; flex-direction: column; gap: 2px; }
 .nav-brand-main {
@@ -951,7 +961,7 @@ td { padding: 14px 16px; font-size: var(--fs-base); vertical-align: middle; }
   :root { --nav-h: 56px; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .nav-brand-sub { display: none; }
-  .nav-logo { width: 38px; height: 38px; }
+  .nav-logo { width: 110%; height: 110%; }
   .nav-brand-main { font-size: 15px; }
   .btn { padding: 12px 16px; min-height: 48px; }
   .form-group input,.form-group select,.form-group textarea { min-height: 50px; }
