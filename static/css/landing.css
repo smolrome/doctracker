@@ -27,7 +27,8 @@ body{font-family:'Inter','Source Sans 3',sans-serif;background:var(--paper);colo
 .cover-seal img{width:100%;height:100%;object-fit:cover}
 @keyframes sealPulse{0%,100%{box-shadow:0 0 0 6px rgba(200,146,42,.12),0 0 0 16px rgba(200,146,42,.05)}50%{box-shadow:0 0 0 10px rgba(200,146,42,.2),0 0 0 24px rgba(200,146,42,.04)}}
 .cover-eyebrow{font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--gold2);margin-bottom:18px}
-.cover h1{font-family:'Libre Baskerville',serif;font-size:clamp(48px,8vw,96px);font-weight:900;color:var(--white);line-height:.95;margin-bottom:14px;text-shadow:0 4px 32px rgba(0,0,0,.3)}
+.cover h1{font-family:'Libre Baskerville',serif;font-size:clamp(48px,8vw,96px);font-weight:900;color:var(--white);line-height:1;margin-bottom:14px;text-shadow:0 4px 32px rgba(0,0,0,.3);display:flex;flex-direction:column;align-items:center;gap:4px}
+.cover h1 .hero-pu{font-size:clamp(18px,2.8vw,32px);font-weight:400;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.6);font-style:normal}
 .cover h1 em{font-style:normal;color:var(--gold2)}
 .cover-subtitle{font-size:clamp(16px,2.2vw,20px);font-weight:400;color:rgba(255,255,255,.75);max-width:600px;line-height:1.8;margin-bottom:32px}
 /* Auth-aware CTAs */
