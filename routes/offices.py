@@ -749,37 +749,48 @@ def archive_routing_slip(slip_id):
 @offices_bp.route("/routing-slip/delete-all", methods=["POST"])
 @admin_required
 def delete_all_routing_slips():
-    """Delete all archived routing slips (PostgreSQL + JSON fallback)."""
+    """Delete all routing slips (PostgreSQL + JSON fallback)."""
     from flask import jsonify
-    from services.database import USE_DB, get_conn
-    from services.misc import audit_log as _audit, get_all_routing_slips_json
-    from utils import get_client_ip
-    import os, json as _json
-
+    import traceback
     try:
+        from services.database import USE_DB, get_conn
+        from services.misc import audit_log as _audit
+        from utils import get_client_ip
+        import os, json as _json
+
         deleted = 0
         if USE_DB:
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute("SELECT COUNT(*) AS cnt FROM routing_slips")
                     row = cur.fetchone()
-                    deleted = row["cnt"] if row else 0
+                    deleted = int(row["cnt"]) if row and row.get("cnt") is not None else 0
                     cur.execute("DELETE FROM routing_slips")
-        else:
-            path = "routing_slips.json"
-            if os.path.exists(path):
+
+        path = "routing_slips.json"
+        if os.path.exists(path):
+            try:
                 with open(path) as f:
                     data = _json.load(f)
-                deleted = len(data)
-                with open(path, "w") as f:
-                    _json.dump({}, f)
+                if not USE_DB:
+                    deleted = len(data)
+            except Exception:
+                pass
+            with open(path, "w") as f:
+                _json.dump({}, f)
 
-        _audit("delete_all_routing_slips",
-               f"deleted {deleted} slips",
-               username=session.get("username"), ip=get_client_ip())
+        try:
+            _audit("delete_all_routing_slips",
+                   f"deleted {deleted} slips",
+                   username=session.get("username"), ip=get_client_ip())
+        except Exception:
+            pass
+
         return jsonify({"success": True, "message": f"Deleted {deleted} routing slip(s)."})
     except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+        tb = traceback.format_exc()
+        print(f"[delete_all_routing_slips ERROR] {tb}", flush=True)
+        return jsonify({"success": False, "message": f"{type(e).__name__}: {e}"}), 500
 
 
 @offices_bp.route("/routing-slip/<slip_id>/delete-all-docs", methods=["POST"])
