@@ -765,7 +765,8 @@ def delete_all_routing_slips():
                     cur.execute("SELECT COUNT(*) AS cnt FROM routing_slips")
                     row = cur.fetchone()
                     deleted = int(row["cnt"]) if row and row.get("cnt") is not None else 0
-                    cur.execute("DELETE FROM routing_slips")
+                    cur.execute("TRUNCATE TABLE routing_slips")
+                conn.commit()
 
         path = "routing_slips.json"
         if os.path.exists(path):
