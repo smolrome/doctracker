@@ -749,29 +749,35 @@ def archive_routing_slip(slip_id):
 @offices_bp.route("/routing-slip/delete-all", methods=["POST"])
 @admin_required
 def delete_all_routing_slips():
-    """Delete all routing slips."""
+    """Delete all archived routing slips (PostgreSQL + JSON fallback)."""
     from flask import jsonify
-    from services.database import get_db
-    from services.misc import audit_log as _audit
+    from services.database import USE_DB, get_conn
+    from services.misc import audit_log as _audit, get_all_routing_slips_json
     from utils import get_client_ip
-    
+    import os, json as _json
+
     try:
-        db = get_db()
-        # Get all slip IDs before deletion
-        all_slips = list(db.routing_slips.find({}, {"_id": 1}))
-        slip_ids = [s["_id"] for s in all_slips]
-        
-        if not slip_ids:
-            return jsonify({"success": True, "message": "No routing slips to delete."})
-        
-        # Delete all routing slips and their documents
-        db.routing_slips.delete_many({})
-        db.documents.delete_many({"slip_id": {"$in": slip_ids}})
-        
+        deleted = 0
+        if USE_DB:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT COUNT(*) AS cnt FROM routing_slips")
+                    row = cur.fetchone()
+                    deleted = row["cnt"] if row else 0
+                    cur.execute("DELETE FROM routing_slips")
+        else:
+            path = "routing_slips.json"
+            if os.path.exists(path):
+                with open(path) as f:
+                    data = _json.load(f)
+                deleted = len(data)
+                with open(path, "w") as f:
+                    _json.dump({}, f)
+
         _audit("delete_all_routing_slips",
-               f"deleted {len(slip_ids)} slips",
+               f"deleted {deleted} slips",
                username=session.get("username"), ip=get_client_ip())
-        return jsonify({"success": True, "message": f"Deleted {len(slip_ids)} routing slips."})
+        return jsonify({"success": True, "message": f"Deleted {deleted} routing slip(s)."})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
