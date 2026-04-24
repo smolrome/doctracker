@@ -107,8 +107,7 @@ nav::after {
   border: 1px dashed rgba(201,162,39,.35); border-radius: 50%;
 }
 
-/* Keep .nav-logo class for backward compat — hidden in favor of seal */
-.nav-logo { display: none; }
+.nav-logo { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; display: block; }
 
 .nav-brand-text { display: flex; flex-direction: column; gap: 2px; }
 .nav-brand-main {

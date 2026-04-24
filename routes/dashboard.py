@@ -367,46 +367,41 @@ def add():
                     insert_doc(doc)
                     logged_doc_ids.append(doc["id"])
                 
-                # Create a logging slip for the logged documents
-                from services.misc import generate_slip_no
-                from services.qr import create_slip_token
-                slip_id = str(uuid.uuid4())[:8].upper()
-                slip_no = generate_slip_no()
-                
-                # Determine destination (where it's going)
-                destination = ""
-                if cart and cart[0].get("referred_to"):
-                    destination = cart[0]["referred_to"]
-                
-                logging_slip = {
-                    "id":            slip_id,
-                    "slip_no":       slip_no,
-                    "type":          "logging",
-                    "doc_ids":       logged_doc_ids,
-                    "from_office":   current_office,
-                    "destination":   destination,
-                    "prepared_by":   actor,
-                    "logged_at":     now_str(),
-                    "slip_date":     now_str()[:10],
-                    "status":        "Logged",
-                }
-                
-                # Save the logging slip using the existing function
-                from services.misc import save_routing_slip
-                try:
-                    save_routing_slip(logging_slip)
-                except Exception as e:
-                    import traceback
-                    traceback.print_exc()
-                    flash(f'Warning: could not save logging slip — {e}', 'error')
-                
-                # Update each logged document with the slip ID
-                for doc_id in logged_doc_ids:
-                    doc = get_doc(doc_id)
-                    if doc:
-                        doc["routing_slip_id"] = slip_id
-                        doc["routing_slip_no"] = slip_no
-                        save_doc(doc)
+                # Only create a logging slip if at least one document has a routing destination
+                destination = next((item["referred_to"] for item in cart if item.get("referred_to")), "")
+                if destination:
+                    from services.misc import generate_slip_no
+                    slip_id = str(uuid.uuid4())[:8].upper()
+                    slip_no = generate_slip_no()
+
+                    logging_slip = {
+                        "id":            slip_id,
+                        "slip_no":       slip_no,
+                        "type":          "logging",
+                        "doc_ids":       logged_doc_ids,
+                        "from_office":   current_office,
+                        "destination":   destination,
+                        "prepared_by":   actor,
+                        "logged_at":     now_str(),
+                        "slip_date":     now_str()[:10],
+                        "status":        "Logged",
+                    }
+
+                    from services.misc import save_routing_slip
+                    try:
+                        save_routing_slip(logging_slip)
+                    except Exception as e:
+                        import traceback
+                        traceback.print_exc()
+                        flash(f'Warning: could not save logging slip — {e}', 'error')
+
+                    # Update each logged document with the slip ID
+                    for doc_id in logged_doc_ids:
+                        doc = get_doc(doc_id)
+                        if doc:
+                            doc["routing_slip_id"] = slip_id
+                            doc["routing_slip_no"] = slip_no
+                            save_doc(doc)
                 
                 session.pop("staff_cart", None)
                 session.modified = True
