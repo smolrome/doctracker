@@ -8,7 +8,7 @@
   <link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png"/>
   <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png"/>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}"/>
 </head>
 <body>
@@ -18,11 +18,24 @@
 
 <!-- ═══ NAV ═══ -->
 <nav>
+  <!-- Republic strip -->
+  <div class="gov-strip">
+    <span>Republic of the Philippines</span>
+    <span class="gov-strip-sep">◆</span>
+    <span>Department of Education</span>
+    <span class="gov-strip-sep">◆</span>
+    <span>Region VIII · Schools Division of Leyte</span>
+    <span style="margin-left:auto;opacity:.45">FY 2026 · Official Use Only</span>
+  </div>
+
+  <!-- Main nav row -->
+  <div class="nav-inner">
   <a href="/" class="nav-brand">
-    <img src="/static/logo.png" alt="DepEd Leyte DocTracker Logo" class="nav-logo"/>
+    <div class="nav-seal">D</div>
+    <img src="/static/logo.png" alt="DepEd Leyte Logo" class="nav-logo"/>
     <div class="nav-brand-text">
-      <div class="nav-brand-main">DocTracker</div>
-      <div class="nav-brand-sub">DepEd Leyte Division - Personnel Unit</div>
+      <div class="nav-brand-main">Personnel Unit — DocTracker</div>
+      <div class="nav-brand-sub">DepEd · SDO Leyte Division</div>
     </div>
   </a>
 
@@ -135,6 +148,7 @@
   <button class="nav-hamburger" onclick="toggleMenu()" aria-label="Open navigation menu">
     <span></span><span></span><span></span>
   </button>
+  </div><!-- /nav-inner -->
 </nav>
 
 <!-- ═══ Pending Documents Modal (staff/admin only) ═══ -->
