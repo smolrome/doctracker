@@ -417,27 +417,40 @@ def routed_documents():
     
     # Get filter parameter (active, archived, or None for all)
     filter_type = request.args.get('filter', 'active')
-    
-    # Get search parameter
-    search = request.args.get('search', '').strip()
-    
+
+    # Get search and filter parameters
+    search      = request.args.get('search', '').strip()
+    dest_filter = request.args.get('destination', '').strip()
+    date_from   = request.args.get('date_from', '').strip()
+    date_to     = request.args.get('date_to', '').strip()
+
     slips = get_all_routing_slips(filter_type)
-    
+
+    # Build unique destination list before narrowing slips
+    all_destinations = sorted({s.get('destination', '') for s in slips if s.get('destination')})
+
     # Apply search filter
     if search:
         search_lower = search.lower()
-        filtered_slips = []
-        for slip in slips:
-            # Search in slip number, destination, prepared_by
-            if (search_lower in (slip.get('slip_no') or '').lower() or
-                search_lower in (slip.get('destination') or '').lower() or
-                search_lower in (slip.get('prepared_by') or '').lower() or
-                search_lower in (slip.get('from_office') or '').lower() or
-                search_lower in (slip.get('rerouted_to') or '').lower() or
-                search_lower in (slip.get('rerouted_from') or '').lower()):
-                filtered_slips.append(slip)
-        slips = filtered_slips
-    
+        slips = [s for s in slips if (
+            search_lower in (s.get('slip_no') or '').lower() or
+            search_lower in (s.get('destination') or '').lower() or
+            search_lower in (s.get('prepared_by') or '').lower() or
+            search_lower in (s.get('from_office') or '').lower() or
+            search_lower in (s.get('rerouted_to') or '').lower() or
+            search_lower in (s.get('rerouted_from') or '').lower()
+        )]
+
+    # Apply destination filter
+    if dest_filter:
+        slips = [s for s in slips if (s.get('destination') or '').lower() == dest_filter.lower()]
+
+    # Apply date range filter (compare against slip_date or created_at[:10])
+    if date_from:
+        slips = [s for s in slips if (s.get('slip_date') or (s.get('created_at') or '')[:10]) >= date_from]
+    if date_to:
+        slips = [s for s in slips if (s.get('slip_date') or (s.get('created_at') or '')[:10]) <= date_to]
+
     # Collect every doc_id needed across all slips, fetch in ONE query
     all_ids = [did for slip in slips for did in slip.get("doc_ids", [])]
     docs_map = get_docs_by_ids(all_ids)
@@ -465,7 +478,9 @@ def routed_documents():
     return render_template("routed_documents.html",
                            slips=paginated, total=total,
                            page=page, total_pages=total_pages, per_page=per_page,
-                           filter=filter_type, search=search)
+                           filter=filter_type, search=search,
+                           dest_filter=dest_filter, date_from=date_from, date_to=date_to,
+                           all_destinations=all_destinations)
 
 
 @offices_bp.route("/routing-slip/<slip_id>/batch-status", methods=["POST"])

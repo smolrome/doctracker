@@ -684,6 +684,7 @@ def clear_database():
                     row = cur.fetchone()
                     count = row["cnt"] if row else 0
                     cur.execute("DELETE FROM documents")
+                    cur.execute("DELETE FROM routing_slips")
         else:
             path = "documents.json"
             if os.path.exists(path):
@@ -692,12 +693,16 @@ def clear_database():
                 count = len(docs)
                 with open(path, "w") as f:
                     _json.dump([], f)
+            slips_path = "routing_slips.json"
+            if os.path.exists(slips_path):
+                with open(slips_path, "w") as f:
+                    _json.dump({}, f)
 
         audit_log("database_cleared",
                   f"deleted_count={count}",
                   username=username,
                   ip=get_client_ip())
-        flash(f"Database cleared — {count} document(s) permanently deleted.", "success")
+        flash(f"Database cleared — {count} document(s) and all routing slips permanently deleted.", "success")
 
     except Exception as e:
         flash(f"Clear failed: {e}", "error")
