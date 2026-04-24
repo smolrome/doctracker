@@ -24,14 +24,24 @@
     <div class="rd-subtitle">All routing slips — view documents and update statuses in bulk</div>
   </div>
 
-  <!-- Search form -->
+  <!-- Search + filter form -->
   <form method="GET" action="/routed-documents" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
     <input type="text" name="search" value="{{ search or '' }}" placeholder="Search slip no, destination, prepared by..."
            style="padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:.9rem;min-width:220px;"/>
+    <select name="destination" style="padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:.9rem;">
+      <option value="">All Destinations</option>
+      {% for d in all_destinations %}
+      <option value="{{ d }}" {% if dest_filter == d %}selected{% endif %}>{{ d }}</option>
+      {% endfor %}
+    </select>
+    <input type="date" name="date_from" value="{{ date_from or '' }}" title="From date"
+           style="padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:.9rem;"/>
+    <input type="date" name="date_to" value="{{ date_to or '' }}" title="To date"
+           style="padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:.9rem;"/>
     <input type="hidden" name="filter" value="{{ filter }}"/>
     <input type="hidden" name="per_page" value="{{ per_page }}"/>
     <button type="submit" class="btn" style="background:var(--teal);color:#fff;padding:10px 18px;">🔍 Search</button>
-    {% if search %}
+    {% if search or dest_filter or date_from or date_to %}
     <a href="/routed-documents?filter={{ filter }}&per_page={{ per_page }}" class="btn" style="background:#E2E8F0;color:var(--navy);padding:10px 14px;">✕ Clear</a>
     {% endif %}
   </form>

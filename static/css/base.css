@@ -201,7 +201,7 @@ nav::after {
   box-shadow: 0 12px 48px rgba(10,37,64,.25);
   border: 1px solid var(--border);
   min-width: 220px; z-index: 500;
-  overflow: hidden;
+  max-height: calc(100vh - 80px); overflow-y: auto;
   animation: dropIn .15s ease;
 }
 @keyframes dropIn {
