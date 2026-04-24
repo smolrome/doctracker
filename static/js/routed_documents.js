@@ -163,7 +163,7 @@ function deleteAllSlips() {
   if (!confirm('Are you sure you want to delete ALL routing slips? This action cannot be undone and will remove all documents.')) return;
   fetch('/routing-slip/delete-all', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.CSRF_TOKEN || '' }
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || '' }
   })
   .then(r => r.json())
   .then(data => {
@@ -178,7 +178,7 @@ function archiveAllSlips() {
   if (!confirm('Are you sure you want to archive ALL routing slips?')) return;
   fetch('/routing-slip/archive-all', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || '' }
   })
   .then(r => r.json())
   .then(data => {
