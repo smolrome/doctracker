@@ -506,7 +506,13 @@ def batch_update_slip_status(slip_id):
             continue
         doc["status"] = new_status
         tl = doc.get("travel_log") or []
-        tl.append({"ts": ts, "entry": log_entry, "actor": actor})
+        tl.append({
+            "office":    new_status,
+            "action":    f"Status Updated — {new_status}",
+            "officer":   actor,
+            "timestamp": ts,
+            "remarks":   log_entry,
+        })
         doc["travel_log"] = tl
         if new_status == "Received":
             doc["received_by"] = actor
