@@ -761,7 +761,7 @@ th.cb-cell { background: #F1F7FB; }
    ═══════════════════════════════════════════════════════════════ */
 .floating-cart {
   position: fixed;
-  top: 80px;
+  top: calc(var(--nav-h) + 14px);
   right: 24px;
   z-index: 1000;
   font-family: var(--font-ui);
@@ -1249,7 +1249,7 @@ th.cb-cell { background: #F1F7FB; }
 }
 
 @media (max-width: 600px) {
-  .floating-cart { top: 70px; right: 16px; }
+  .floating-cart { top: calc(var(--nav-h) + 10px); right: 16px; }
   .cart-modal-content {
     width: 95%;
     max-height: 90vh;

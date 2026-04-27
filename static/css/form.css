@@ -453,9 +453,9 @@
 ════════════════════════════════════ */
 .floating-cart {
   position: fixed;
-  top: 80px;
+  top: calc(var(--nav-h) + 14px);
   right: 20px;
-  z-index: 200;
+  z-index: 400;
   background: linear-gradient(135deg, #059669, #0E7490);
   color: #fff;
   border-radius: 50%;
@@ -582,7 +582,7 @@
   .add-form-card { padding: 16px; }
   .steps-indicator { display: none; }
   .cart-title { font-size: 18px; }
-  .floating-cart { top: 70px; right: 12px; width: 52px; height: 52px; }
+  .floating-cart { top: calc(var(--nav-h) + 10px); right: 12px; width: 52px; height: 52px; }
   .floating-cart-icon { font-size: 20px; }
 }
 @media (max-width: 380px) {
