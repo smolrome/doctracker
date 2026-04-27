@@ -167,6 +167,13 @@ def _create_tables(cur):
             updated_at TIMESTAMP DEFAULT NOW()
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_carts (
+            username   TEXT PRIMARY KEY,
+            cart_data  JSONB NOT NULL DEFAULT '[]',
+            saved_at   TIMESTAMPTZ DEFAULT NOW()
+        )
+    """)
     # Performance + audit query indexes
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(username)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(ts DESC)""")
