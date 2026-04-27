@@ -171,7 +171,12 @@ def register():
 def logout():
     audit_log("logout", "", username=session.get("username", "anonymous"),
               ip=get_client_ip())
+    # Preserve staff_cart across logout, clear everything else
+    staff_cart = session.get("staff_cart", [])
     session.clear()
+    if staff_cart:
+        session["staff_cart"] = staff_cart
+        session.modified = True
     flash("You have been logged out.", "success")
     return redirect(url_for("dashboard.index"))
 
