@@ -358,7 +358,7 @@ def create_selective_backup(export_items: list, filter_office: str = "", date_fr
     if "documents" in export_items:
         docs = _export_documents(date_from=date_from, date_to=date_to)
         if filter_office:
-            docs = [d for d in docs if d.get("sender_org", "").strip().lower() == filter_office.lower()]
+            docs = [d for d in docs if d.get("logged_by_office", "").strip().lower() == filter_office.lower()]
         backup["documents"] = docs
         counts["documents"] = len(backup["documents"])
     if "users" in export_items:
@@ -438,7 +438,7 @@ def create_selective_excel_backup(export_items: list, filter_office: str = "", d
     if "documents" in export_items:
         docs = _export_documents(date_from=date_from, date_to=date_to)
         if filter_office:
-            docs = [d for d in docs if d.get("sender_org", "").strip().lower() == filter_office.lower()]
+            docs = [d for d in docs if d.get("logged_by_office", "").strip().lower() == filter_office.lower()]
         wd = wb.create_sheet("Documents")
         wb.active = wd
         wd.sheet_view.showGridLines = False
