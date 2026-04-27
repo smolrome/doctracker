@@ -102,13 +102,36 @@ def backup_export():
     if export_traffic:
         export_items.append("office_traffic")
     
+    # Build filename based on filters chosen
+    import re
+    today = datetime.now().strftime("%Y-%m-%d")
+    has_filters = bool(filter_office or date_from or date_to)
+    if has_filters:
+        parts = ["DOCTRACKER"]
+        if filter_office:
+            safe_office = re.sub(r"[^\w\s-]", "", filter_office).strip().replace(" ", "_")
+            parts.append(safe_office)
+        if date_from and date_to and date_from == date_to:
+            parts.append(date_from)
+        elif date_from and date_to:
+            parts.append(f"{date_from}_to_{date_to}")
+        elif date_from:
+            parts.append(f"from_{date_from}")
+        elif date_to:
+            parts.append(f"until_{date_to}")
+        else:
+            parts.append(today)
+        base_filename = "_".join(parts)
+    else:
+        base_filename = f"DOCTRACKER_FULL_DATA_{today}"
+
     try:
         if file_type == "excel":
             from services.backup import create_selective_excel_backup
-            filename = f"doctracker_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            filename = f"{base_filename}.xlsx"
             buf = BytesIO(create_selective_excel_backup(export_items, filter_office=filter_office, date_from=date_from, date_to=date_to))
             buf.seek(0)
-            audit_log("backup_excel_downloaded", 
+            audit_log("backup_excel_downloaded",
                       f"type=selective items={','.join(export_items)}",
                       username=session.get("username", "admin"),
                       ip=get_client_ip())
@@ -117,7 +140,7 @@ def backup_export():
                              as_attachment=True, download_name=filename)
         else:
             data = create_selective_backup(export_items, filter_office=filter_office, date_from=date_from, date_to=date_to)
-            filename = f"doctracker_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            filename = f"{base_filename}.json"
             buf = BytesIO(json.dumps(data, indent=2, default=str).encode("utf-8"))
             buf.seek(0)
             audit_log("backup_downloaded",
