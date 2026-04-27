@@ -14,6 +14,7 @@ from services.documents import (
 )
 from services.auth import get_all_users
 from services.misc import audit_log, load_saved_offices
+from services.cart_store import clear_cart
 from services.qr import generate_qr_b64, make_qr_png
 from services.dropdown_options import get_dropdown_options
 from utils import admin_required, get_client_ip, is_logged_in, login_required
@@ -373,6 +374,7 @@ def add():
 
                 session.pop("staff_cart", None)
                 session.modified = True
+                clear_cart(session.get("username", ""))
                 flash(f"✅ {len(cart)} document{'s' if len(cart) != 1 else ''} logged successfully.", "success")
                 return redirect(url_for("dashboard.index"))
 

@@ -211,6 +211,11 @@ def create_app() -> Flask:
             return
         last_active = session.get("last_active", 0)
         if last_active and (time.time() - last_active) > SESSION_IDLE_TIMEOUT:
+            username = session.get("username", "")
+            staff_cart = session.get("staff_cart", [])
+            if staff_cart and username:
+                from services.cart_store import save_cart
+                save_cart(username, staff_cart)
             session.clear()
             flash("Your session expired. Please log in again.", "error")
             return redirect(url_for("auth.login"))

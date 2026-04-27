@@ -12,6 +12,7 @@ from services.auth import (
 )
 from services.email import validate_invite_token, consume_invite_token
 from services.misc import audit_log, load_saved_offices, save_office
+from services.cart_store import save_cart, load_cart, clear_cart
 from utils import get_client_ip, is_logged_in
 
 auth_bp = Blueprint("auth", __name__)
@@ -38,17 +39,21 @@ def login():
             full_name, role, office = verify_user(username, password)
             if full_name:
                 reset_rate_limit("login", f"{ip}:{username.lower()}")
+                clean_username = username.lower().strip()
+                saved_cart = load_cart(clean_username)
                 session.clear()
                 session.update({
                     "logged_in":   True,
-                    "username":    username.lower().strip(),
+                    "username":    clean_username,
                     "full_name":   full_name,
                     "role":        role,
                     "office":      office,
                     "last_active": time.time(),
                 })
+                if saved_cart:
+                    session["staff_cart"] = saved_cart
                 session.permanent = True
-                update_last_login(username.lower().strip())
+                update_last_login(clean_username)
                 audit_log("login_ok", f"role={role}",
                           username=username, ip=ip)
                 if role == "client":
@@ -61,6 +66,8 @@ def login():
                 else:
                     next_url = url_for("dashboard.index")
                 flash(f"Welcome, {full_name}!", "success")
+                if saved_cart:
+                    flash(f"📋 Your previous cart with {len(saved_cart)} unsaved document{'s' if len(saved_cart) != 1 else ''} has been restored.", "info")
                 return redirect(next_url)
             else:
                 error = "Invalid username or password."
@@ -169,14 +176,12 @@ def register():
 
 @auth_bp.route("/logout")
 def logout():
-    audit_log("logout", "", username=session.get("username", "anonymous"),
-              ip=get_client_ip())
-    # Preserve staff_cart across logout, clear everything else
+    username = session.get("username", "")
+    audit_log("logout", "", username=username or "anonymous", ip=get_client_ip())
     staff_cart = session.get("staff_cart", [])
+    if staff_cart and username:
+        save_cart(username, staff_cart)
     session.clear()
-    if staff_cart:
-        session["staff_cart"] = staff_cart
-        session.modified = True
     flash("You have been logged out.", "success")
     return redirect(url_for("dashboard.index"))
 
