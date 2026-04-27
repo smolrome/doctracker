@@ -6,7 +6,7 @@ Restore uploads that file and merges/replaces data back into the DB.
 
 Backup includes:
   - All documents (including deleted/trashed)
-  - All users (without password hashes for security)
+  - All users (with password hashes — JSON backups only; Excel exports omit hashes)
   - All routing slips
   - All saved offices
   - All office traffic logs
@@ -596,28 +596,85 @@ def restore_from_excel(excel_bytes: bytes, mode: str = "merge") -> dict:
     
     # Restore Documents
     if "Documents" in wb.sheetnames:
+        import uuid as _uuid
         ws = wb["Documents"]
-        docs = []
+
+        # Read header row (row 3) to detect column positions — handles both
+        # the full export (14 cols) and the selective export (10 cols).
+        col_map = {}
+        for hrow in ws.iter_rows(min_row=3, max_row=3, values_only=True):
+            col_map = {str(h).strip(): i for i, h in enumerate(hrow) if h is not None}
+
+        def _idx(*names):
+            for n in names:
+                if n in col_map:
+                    return col_map[n]
+            return None
+
+        def _cell(row, idx):
+            if idx is None or idx >= len(row) or row[idx] is None:
+                return ""
+            return str(row[idx]).strip()
+
+        idx_date     = _idx("Date Received")
+        idx_recv_by  = _idx("Received By")
+        idx_org      = _idx("Unit / Office", "Unit / Office / School / District")
+        idx_sender   = _idx("Source / Sender")
+        idx_docname  = _idx("Document / Content", "Document / Content Particulars")
+        idx_referred = _idx("Referred To")
+        idx_fwd      = _idx("Forwarded To")
+        idx_released = _idx("Date & Release Time")
+        idx_status   = _idx("Status")
+        idx_category = _idx("Category")
+        idx_docid    = _idx("Reference No.")
+        idx_notes    = _idx("Notes")
+
+        # Collect existing doc_ids so merge mode can skip duplicates
+        existing_doc_ids = set()
+        if mode == "merge":
+            if USE_DB:
+                try:
+                    with get_conn() as conn:
+                        with conn.cursor() as cur:
+                            cur.execute("SELECT data->>'doc_id' FROM documents WHERE data->>'doc_id' IS NOT NULL")
+                            existing_doc_ids = {r[0] for r in cur.fetchall()}
+                except Exception:
+                    pass
+            else:
+                existing_doc_ids = {d.get("doc_id", "") for d in load_docs(include_deleted=True) if d.get("doc_id")}
+
+        docs_to_restore = []
         for row in ws.iter_rows(min_row=4, values_only=True):
-            if row and row[0]:  # Has row number
-                doc = {
-                    "id": str(row[12]) if row[12] else None,  # Reference No.
-                    "date_received": str(row[1]) if row[1] else "",
-                    "received_by": str(row[2]) if row[2] else "",
-                    "sender_org": str(row[3]) if row[3] else "",
-                    "sender_name": str(row[4]) if row[4] else "",
-                    "doc_name": str(row[5]) if row[5] else "",
-                    "referred_to": str(row[6]) if row[6] else "",
-                    "forwarded_to": str(row[7]) if row[7] else "",
-                    "date_released": str(row[8]) if row[8] else "",
-                    "status": str(row[9]) if row[9] else "Pending",
-                    "category": str(row[10]) if row[10] else "",
-                    "doc_id": str(row[11]) if row[11] else "",
-                    "notes": str(row[12]) if row[12] else "",
-                }
-                if doc["id"]:
-                    docs.append(doc)
-        summary["documents"] = _restore_documents(docs, mode, summary)
+            if not (row and row[0]):
+                continue
+            doc_id_val = _cell(row, idx_docid)
+            if not doc_id_val:
+                continue
+            if mode == "merge" and doc_id_val in existing_doc_ids:
+                summary["skipped"] += 1
+                continue
+            docs_to_restore.append({
+                "id":            str(_uuid.uuid4()),
+                "doc_id":        doc_id_val,
+                "date_received": _cell(row, idx_date),
+                "received_by":   _cell(row, idx_recv_by),
+                "sender_org":    _cell(row, idx_org),
+                "sender_name":   _cell(row, idx_sender),
+                "doc_name":      _cell(row, idx_docname),
+                "referred_to":   _cell(row, idx_referred),
+                "forwarded_to":  _cell(row, idx_fwd),
+                "date_released": _cell(row, idx_released),
+                "status":        _cell(row, idx_status) or "Pending",
+                "category":      _cell(row, idx_category),
+                "notes":         _cell(row, idx_notes),
+            })
+
+        if docs_to_restore:
+            try:
+                batch_save_docs(docs_to_restore)
+                summary["documents"] = len(docs_to_restore)
+            except Exception as e:
+                summary["errors"].append(f"Excel document batch save error: {e}")
     
     # Restore Users
     if "Users" in wb.sheetnames:
@@ -635,24 +692,73 @@ def restore_from_excel(excel_bytes: bytes, mode: str = "merge") -> dict:
                 if user["username"]:
                     users.append(user)
         summary["users"] = _restore_users(users, mode, summary)
-    
+        if summary["users"] > 0:
+            summary["errors"].append(
+                f"Note: {summary['users']} user account(s) restored from Excel have no password — "
+                "they must use 'Forgot Password' or be reset by an admin before they can log in."
+            )
+
     # Restore Routing Slips
     if "Routing Slips" in wb.sheetnames:
         ws = wb["Routing Slips"]
-        slips = []
+
+        col_map = {}
+        for hrow in ws.iter_rows(min_row=3, max_row=3, values_only=True):
+            col_map = {str(h).strip(): i for i, h in enumerate(hrow) if h is not None}
+
+        def _idx(*names):
+            for n in names:
+                if n in col_map:
+                    return col_map[n]
+            return None
+
+        def _cell(row, idx):
+            if idx is None or idx >= len(row) or row[idx] is None:
+                return ""
+            return str(row[idx]).strip()
+
+        idx_slip_no  = _idx("Slip No.")
+        idx_date     = _idx("Date")
+        idx_dest     = _idx("Destination")
+        idx_prep     = _idx("Prepared By")
+        idx_tfrom    = _idx("Time From")
+        idx_tto      = _idx("Time To")
+        idx_notes    = _idx("Notes")
+
+        # Collect existing slip_nos for merge dedup
+        existing_slip_nos = set()
+        if mode == "merge" and USE_DB:
+            try:
+                with get_conn() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT slip_no FROM routing_slips WHERE slip_no IS NOT NULL AND slip_no <> ''")
+                        existing_slip_nos = {r[0] for r in cur.fetchall()}
+            except Exception:
+                pass
+
+        slips_to_restore = []
         for row in ws.iter_rows(min_row=4, values_only=True):
-            if row and row[0]:  # Has row number
-                slip = {
-                    "id": str(row[1]) if row[1] else None,  # Slip No.
-                    "slip_no": str(row[1]) if row[1] else "",
-                    "slip_date": str(row[2]) if row[2] else "",
-                    "destination": str(row[3]) if row[3] else "",
-                    "prepared_by": str(row[4]) if row[4] else "",
-                    "notes": str(row[5]) if row[5] else "",
-                }
-                if slip["id"]:
-                    slips.append(slip)
-        summary["routing_slips"] = _restore_routing_slips(slips, mode, summary)
+            if not (row and row[0]):
+                continue
+            slip_no_val = _cell(row, idx_slip_no)
+            if not slip_no_val:
+                continue
+            if mode == "merge" and slip_no_val in existing_slip_nos:
+                summary["skipped"] += 1
+                continue
+            slips_to_restore.append({
+                "id":          str(_uuid.uuid4()),
+                "slip_no":     slip_no_val,
+                "slip_date":   _cell(row, idx_date),
+                "destination": _cell(row, idx_dest),
+                "prepared_by": _cell(row, idx_prep),
+                "time_from":   _cell(row, idx_tfrom),
+                "time_to":     _cell(row, idx_tto),
+                "notes":       _cell(row, idx_notes),
+                "doc_ids":     [],
+            })
+        # Pass "replace" to skip the internal ID-based dedup since we use fresh UUIDs
+        summary["routing_slips"] = _restore_routing_slips(slips_to_restore, "replace", summary)
     
     # Restore Saved Offices
     if "Saved Offices" in wb.sheetnames:
@@ -713,6 +819,7 @@ def _export_documents(date_from: str = "", date_to: str = "") -> list[dict]:
         for d in docs:
             doc_date_str = d.get("date_received") or d.get("created_at", "")
             if not doc_date_str:
+                filtered.append(d)
                 continue
             try:
                 doc_date = datetime.strptime(str(doc_date_str)[:10], "%Y-%m-%d")
@@ -867,7 +974,7 @@ def _wipe_tables():
                 # Note: we do NOT wipe users in replace mode for safety
             conn.commit()
     except Exception as e:
-        pass
+        raise RuntimeError(f"Failed to clear tables before replace — restore aborted: {e}") from e
 
 
 def _restore_documents(docs: list, mode: str, summary: dict) -> int:
@@ -922,23 +1029,39 @@ def _restore_users(users: list, mode: str, summary: dict) -> int:
                         if mode == "merge" and u["username"] in existing_usernames:
                             summary["skipped"] += 1
                             continue
-                        cur.execute(
-                            """INSERT INTO users
-                                   (username, password_hash, full_name, role, active, office)
-                               VALUES (%s,%s,%s,%s,%s,%s)
-                               ON CONFLICT (username) DO UPDATE SET
-                                   full_name = EXCLUDED.full_name,
-                                   role      = EXCLUDED.role,
-                                   office    = EXCLUDED.office""",
-                            (
-                                u["username"],
-                                u.get("password_hash", ""),
-                                u.get("full_name", ""),
-                                u.get("role", "staff"),
-                                u.get("active", True),
-                                u.get("office", ""),
+                        if mode == "replace":
+                            cur.execute(
+                                """INSERT INTO users
+                                       (username, password_hash, full_name, role, active, office)
+                                   VALUES (%s,%s,%s,%s,%s,%s)
+                                   ON CONFLICT (username) DO UPDATE SET
+                                       full_name = EXCLUDED.full_name,
+                                       role      = EXCLUDED.role,
+                                       office    = EXCLUDED.office""",
+                                (
+                                    u["username"],
+                                    u.get("password_hash", ""),
+                                    u.get("full_name", ""),
+                                    u.get("role", "staff"),
+                                    u.get("active", True),
+                                    u.get("office", ""),
+                                )
                             )
-                        )
+                        else:
+                            cur.execute(
+                                """INSERT INTO users
+                                       (username, password_hash, full_name, role, active, office)
+                                   VALUES (%s,%s,%s,%s,%s,%s)
+                                   ON CONFLICT (username) DO NOTHING""",
+                                (
+                                    u["username"],
+                                    u.get("password_hash", ""),
+                                    u.get("full_name", ""),
+                                    u.get("role", "staff"),
+                                    u.get("active", True),
+                                    u.get("office", ""),
+                                )
+                            )
                         count += 1
                 conn.commit()
         except Exception as e:
@@ -1136,7 +1259,7 @@ def _restore_office_traffic(traffic: list, mode: str, summary: dict) -> int:
                             t.get("scanned_at", ""),
                         )
                     )
-                    count += 1
+                    count += cur.rowcount
             conn.commit()
     except Exception as e:
         summary["errors"].append(f"Traffic batch error: {e}")
