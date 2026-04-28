@@ -812,12 +812,14 @@ def bulk_create_users():
         base = _base_url(request.host_url.rstrip("/"))
         results = []
 
-        roles = request.form.getlist("role")
+        roles   = request.form.getlist("role")
+        offices = request.form.getlist("office")
 
         for i, full_name in enumerate(full_names):
             full_name = full_name.strip()
-            email     = emails[i].strip() if i < len(emails) else ""
-            role      = roles[i].strip() if i < len(roles) else "staff"
+            email     = emails[i].strip()  if i < len(emails)  else ""
+            role      = roles[i].strip()   if i < len(roles)   else "staff"
+            office    = offices[i].strip() if i < len(offices) else ""
             if role not in ("admin", "staff", "client"):
                 role = "staff"
 
@@ -828,7 +830,7 @@ def bulk_create_users():
             taken.add(uname)
             temp_pw = _make_password()
 
-            ok, err = create_user(uname, temp_pw, full_name, role=role, email=email)
+            ok, err = create_user(uname, temp_pw, full_name, role=role, email=email, office=office)
             if not ok:
                 results.append({
                     "username": uname, "full_name": full_name, "email": email,
@@ -847,6 +849,7 @@ def bulk_create_users():
                 "full_name":  full_name,
                 "email":      email,
                 "role":       role,
+                "office":     office,
                 "ok":         True,
                 "password":   temp_pw if not email_sent else None,
                 "email_sent": email_sent,
@@ -861,10 +864,14 @@ def bulk_create_users():
             ip=get_client_ip(),
         )
 
+    from services.misc import load_saved_offices
+    saved_offices = load_saved_offices()
+
     return render_template(
         "bulk_create_users.html",
         results=results,
         mail_enabled=MAIL_ENABLED,
+        saved_offices=saved_offices,
     )
 
     return redirect(url_for("dashboard.index"))
