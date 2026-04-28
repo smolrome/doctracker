@@ -768,9 +768,14 @@ def bulk_create_users():
         base = _base_url(request.host_url.rstrip("/"))
         results = []
 
+        roles = request.form.getlist("role")
+
         for i, full_name in enumerate(full_names):
             full_name = full_name.strip()
             email     = emails[i].strip() if i < len(emails) else ""
+            role      = roles[i].strip() if i < len(roles) else "staff"
+            if role not in ("admin", "staff", "client"):
+                role = "staff"
 
             if not full_name and not email:
                 continue
@@ -779,7 +784,7 @@ def bulk_create_users():
             taken.add(uname)
             temp_pw = _make_password()
 
-            ok, err = create_user(uname, temp_pw, full_name, role="staff")
+            ok, err = create_user(uname, temp_pw, full_name, role=role)
             if not ok:
                 results.append({
                     "username": uname, "full_name": full_name, "email": email,
@@ -797,6 +802,7 @@ def bulk_create_users():
                 "username":   uname,
                 "full_name":  full_name,
                 "email":      email,
+                "role":       role,
                 "ok":         True,
                 "password":   temp_pw if not email_sent else None,
                 "email_sent": email_sent,

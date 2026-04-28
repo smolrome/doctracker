@@ -118,7 +118,8 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
             <span style="font-weight:400;color:#64748B;"> · @{{ r.username }}</span>
           </div>
           <div class="result-sub">
-            {% if r.email %}📧 {{ r.email }}{% endif %}
+            {% if r.role %}<span style="text-transform:capitalize;font-weight:600;">{{ r.role }}</span>{% endif %}
+            {% if r.email %} · 📧 {{ r.email }}{% endif %}
             {% if r.ok and r.email_sent %} · ✉️ Credentials emailed{% endif %}
           </div>
 
@@ -169,8 +170,9 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
           <table class="bcu-table">
             <thead>
               <tr>
-                <th style="width:46%;">Full Name</th>
-                <th style="width:46%;">Email Address</th>
+                <th style="width:38%;">Full Name</th>
+                <th style="width:38%;">Email Address</th>
+                <th style="width:16%;">Role</th>
                 <th style="width:40px;"></th>
               </tr>
             </thead>
@@ -181,6 +183,13 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
                            placeholder="e.g. Juan Dela Cruz"></td>
                 <td><input class="bcu-input" type="email" name="email"
                            placeholder="e.g. juan@deped.ph"></td>
+                <td>
+                  <select class="bcu-input" name="role" style="padding:9px 8px;cursor:pointer;">
+                    <option value="staff">Staff</option>
+                    <option value="admin">Admin</option>
+                    <option value="client">Client</option>
+                  </select>
+                </td>
                 <td><button type="button" class="btn-remove-row"
                             onclick="removeRow(this)" title="Remove">✕</button></td>
               </tr>
@@ -213,6 +222,13 @@ function addRow() {
   tr.innerHTML = `
     <td><input class="bcu-input" type="text" name="full_name" placeholder="e.g. Juan Dela Cruz"></td>
     <td><input class="bcu-input" type="email" name="email" placeholder="e.g. juan@deped.ph"></td>
+    <td>
+      <select class="bcu-input" name="role" style="padding:9px 8px;cursor:pointer;">
+        <option value="staff">Staff</option>
+        <option value="admin">Admin</option>
+        <option value="client">Client</option>
+      </select>
+    </td>
     <td><button type="button" class="btn-remove-row" onclick="removeRow(this)" title="Remove">✕</button></td>`;
   document.getElementById('rows-body').appendChild(tr);
   tr.querySelector('input').focus();
