@@ -753,7 +753,7 @@ def parse_excel_users():
         for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
             name  = str(row[name_col - 1]  or "").strip()
             email = str(row[email_col - 1] or "").strip()
-            if name or email:
+            if email:
                 rows.append({"name": name, "email": email})
 
         if not rows:
@@ -821,7 +821,7 @@ def bulk_create_users():
             full_name = full_name.strip()
             email     = emails[i].strip() if i < len(emails) else ""
 
-            if not full_name and not email:
+            if not email:
                 continue
 
             uname   = _make_username(full_name or email.split("@")[0], taken)
