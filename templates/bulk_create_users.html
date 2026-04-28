@@ -54,6 +54,31 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
 }
 .btn-submit:hover { opacity: .88; }
 
+/* Import zone */
+.bcu-import-zone {
+  border: 2px dashed #BFDBFE; border-radius: 12px; padding: 22px 24px;
+  background: #F0F9FF; text-align: center; cursor: pointer;
+  transition: border-color .2s, background .2s; margin-bottom: 18px;
+}
+.bcu-import-zone:hover, .bcu-import-zone.drag-over {
+  border-color: #3B82F6; background: #EFF6FF;
+}
+.bcu-import-zone input[type=file] { display: none; }
+.bcu-import-label { font-size: 14px; color: #1D4ED8; font-weight: 700; margin-bottom: 4px; }
+.bcu-import-sub   { font-size: 12px; color: #64748B; }
+.bcu-import-btn {
+  display: inline-block; margin-top: 10px; background: #1D4ED8; color: #fff;
+  border: none; padding: 8px 20px; border-radius: 8px; font-size: 13px;
+  font-weight: 700; cursor: pointer; transition: opacity .15s;
+}
+.bcu-import-btn:hover { opacity: .85; }
+.bcu-import-status {
+  font-size: 13px; margin-top: 10px; padding: 8px 14px;
+  border-radius: 8px; display: none;
+}
+.bcu-import-status.ok   { background: #F0FDF4; color: #065F46; border: 1px solid #6EE7B7; display: block; }
+.bcu-import-status.err  { background: #FFF1F2; color: #9B1C1C; border: 1px solid #FCA5A5; display: block; }
+
 /* Info banners */
 .bcu-info {
   display: flex; gap: 12px; padding: 14px 18px; border-radius: 10px;
@@ -163,6 +188,23 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
         then email the credentials directly to each address.</div>
       </div>
 
+      <!-- Excel Import Zone -->
+      <div class="bcu-import-zone" id="import-zone"
+           onclick="document.getElementById('excel-file-input').click()"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handleExcelDrop(event)">
+        <input type="file" id="excel-file-input" accept=".xlsx,.xls"
+               onchange="handleExcelFile(this.files[0])">
+        <div class="bcu-import-label">📂 Import from Excel</div>
+        <div class="bcu-import-sub">Click to browse or drag &amp; drop an .xlsx file<br>
+          Needs a <strong>Fullname</strong> column and an <strong>Email</strong> column (any order, any sheet)</div>
+        <button type="button" class="bcu-import-btn" onclick="event.stopPropagation();document.getElementById('excel-file-input').click()">
+          Choose File
+        </button>
+      </div>
+      <div id="import-status" class="bcu-import-status"></div>
+
       <form method="post" id="bulk-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
@@ -215,21 +257,101 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
   {% endif %}
 </div>
 
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
-function addRow() {
-  const tr = document.createElement('tr');
+function handleExcelDrop(e) {
+  e.preventDefault();
+  document.getElementById('import-zone').classList.remove('drag-over');
+  var file = e.dataTransfer.files[0];
+  if (file) handleExcelFile(file);
+}
+
+function handleExcelFile(file) {
+  var status = document.getElementById('import-status');
+  if (!file) return;
+  if (!file.name.match(/\.(xlsx|xls)$/i)) {
+    showImportStatus('err', '❌ Please upload an .xlsx or .xls file.');
+    return;
+  }
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var wb   = XLSX.read(e.target.result, { type: 'array' });
+      var ws   = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      if (!rows.length) { showImportStatus('err', '❌ The file appears to be empty.'); return; }
+
+      // Find header row — first row where we can detect name+email columns
+      var headerIdx = -1, nameCol = -1, emailCol = -1;
+      for (var r = 0; r < Math.min(rows.length, 5); r++) {
+        var row = rows[r];
+        var ni = -1, ei = -1;
+        for (var c = 0; c < row.length; c++) {
+          var h = String(row[c] || '').toLowerCase().trim();
+          if (ni === -1 && (h.includes('name') || h.includes('full'))) ni = c;
+          if (ei === -1 && (h.includes('email') || h.includes('mail'))) ei = c;
+        }
+        if (ni !== -1 && ei !== -1) { headerIdx = r; nameCol = ni; emailCol = ei; break; }
+      }
+
+      if (headerIdx === -1) {
+        showImportStatus('err', '❌ Could not find a <strong>Name</strong> and <strong>Email</strong> column. Check your file headers.');
+        return;
+      }
+
+      // Collect data rows
+      var data = [];
+      for (var i = headerIdx + 1; i < rows.length; i++) {
+        var name  = String(rows[i][nameCol]  || '').trim();
+        var email = String(rows[i][emailCol] || '').trim();
+        if (name || email) data.push({ name: name, email: email });
+      }
+
+      if (!data.length) { showImportStatus('err', '❌ No data rows found after the header.'); return; }
+
+      // Populate form rows
+      var tbody = document.getElementById('rows-body');
+      tbody.innerHTML = '';
+      data.forEach(function(d) {
+        var tr = buildRow(d.name, d.email);
+        tbody.appendChild(tr);
+      });
+
+      showImportStatus('ok', '✅ Imported <strong>' + data.length + ' row' + (data.length !== 1 ? 's' : '') + '</strong> from <em>' + file.name + '</em>. Review below and click Create Accounts.');
+    } catch(err) {
+      showImportStatus('err', '❌ Could not read the file: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showImportStatus(type, msg) {
+  var el = document.getElementById('import-status');
+  el.className = 'bcu-import-status ' + type;
+  el.innerHTML = msg;
+}
+
+function buildRow(name, email) {
+  var tr = document.createElement('tr');
   tr.className = 'bcu-row';
-  tr.innerHTML = `
-    <td><input class="bcu-input" type="text" name="full_name" placeholder="e.g. Juan Dela Cruz"></td>
-    <td><input class="bcu-input" type="email" name="email" placeholder="e.g. juan@deped.ph"></td>
-    <td>
-      <select class="bcu-input" name="role" style="padding:9px 8px;cursor:pointer;">
-        <option value="staff">Staff</option>
-        <option value="admin">Admin</option>
-        <option value="client">Client</option>
-      </select>
-    </td>
-    <td><button type="button" class="btn-remove-row" onclick="removeRow(this)" title="Remove">✕</button></td>`;
+  tr.innerHTML =
+    '<td><input class="bcu-input" type="text" name="full_name" placeholder="e.g. Juan Dela Cruz" value="' + escAttr(name) + '"></td>' +
+    '<td><input class="bcu-input" type="email" name="email" placeholder="e.g. juan@deped.ph" value="' + escAttr(email) + '"></td>' +
+    '<td><select class="bcu-input" name="role" style="padding:9px 8px;cursor:pointer;">' +
+      '<option value="staff">Staff</option><option value="admin">Admin</option><option value="client">Client</option>' +
+    '</select></td>' +
+    '<td><button type="button" class="btn-remove-row" onclick="removeRow(this)" title="Remove">✕</button></td>';
+  return tr;
+}
+
+function escAttr(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function addRow() {
+  var tr = buildRow('', '');
   document.getElementById('rows-body').appendChild(tr);
   tr.querySelector('input').focus();
 }
