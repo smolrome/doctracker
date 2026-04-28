@@ -114,6 +114,7 @@ def index():
     filter_time_from = request.args.get("time_from", "").strip()
     filter_time_to   = request.args.get("time_to", "").strip()
     filter_office    = request.args.get("office", "All")
+    filter_cat       = request.args.get("cat", "All")
 
     filtered = docs
 
@@ -194,6 +195,10 @@ def index():
 
         filtered = [d for d in filtered if _matches_office(d)]
 
+    if filter_cat and filter_cat != "All":
+        filtered = [d for d in filtered
+                    if (d.get("category") or "").strip().lower() == filter_cat.strip().lower()]
+
     try:
         per_page = int(request.args.get("per_page", 25))
     except ValueError:
@@ -227,13 +232,15 @@ def index():
     staff_in_office = offices_dict.get(current_office, [])
 
     return render_template("index.html",
-        docs=paginated, stats=get_stats(docs),
+        docs=paginated, stats=get_stats(filtered),
         search=search, filter_status=filter_status,
         filter_type=filter_type, filter_source=filter_source,
         filter_date=filter_date,
         filter_time_from=filter_time_from, filter_time_to=filter_time_to,
         filter_office=filter_office,
+        filter_cat=filter_cat,
         status_options=["All"] + get_dropdown_options("status"),
+        cat_options=get_dropdown_options("category"),
         saved_offices=load_saved_offices(),
         page=page, total_pages=total_pages,
         per_page=per_page, total=total,
