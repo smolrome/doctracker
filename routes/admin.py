@@ -812,16 +812,14 @@ def bulk_create_users():
         base = _base_url(request.host_url.rstrip("/"))
         results = []
 
-        roles   = request.form.getlist("role")
-        offices = request.form.getlist("office")
+        role   = request.form.get("role", "staff").strip()
+        office = request.form.get("office", "").strip()
+        if role not in ("admin", "staff", "client"):
+            role = "staff"
 
         for i, full_name in enumerate(full_names):
             full_name = full_name.strip()
-            email     = emails[i].strip()  if i < len(emails)  else ""
-            role      = roles[i].strip()   if i < len(roles)   else "staff"
-            office    = offices[i].strip() if i < len(offices) else ""
-            if role not in ("admin", "staff", "client"):
-                role = "staff"
+            email     = emails[i].strip() if i < len(emails) else ""
 
             if not full_name and not email:
                 continue

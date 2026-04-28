@@ -209,23 +209,35 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
       <form method="post" id="bulk-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-        <!-- office names for JS -->
-        <script type="application/json" id="offices-json">{{ saved_offices | map(attribute='office_name') | list | tojson | safe }}</script>
-
         <datalist id="office-list">
           {% for off in saved_offices %}
           <option value="{{ off.office_name }}">
           {% endfor %}
         </datalist>
 
+        <!-- Global office + role selectors -->
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;padding:16px 18px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;">
+          <div style="flex:1;min-width:200px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">🏢 Office <span style="color:#94A3B8;font-weight:400;text-transform:none;">(applies to all)</span></label>
+            <input class="bcu-input" type="text" name="office" id="global-office"
+                   placeholder="e.g. Personnel Unit" list="office-list" autocomplete="off">
+          </div>
+          <div style="min-width:160px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">👤 Role <span style="color:#94A3B8;font-weight:400;text-transform:none;">(applies to all)</span></label>
+            <select class="bcu-input" name="role" id="global-role" style="padding:9px 8px;cursor:pointer;">
+              <option value="staff" selected>🏢 Staff</option>
+              <option value="admin">🔐 Admin</option>
+              <option value="client">👤 Client</option>
+            </select>
+          </div>
+        </div>
+
         <div class="bcu-table-wrap">
           <table class="bcu-table">
             <thead>
               <tr>
-                <th style="width:28%;">Full Name</th>
-                <th style="width:26%;">Email Address</th>
-                <th style="width:26%;">Office</th>
-                <th style="width:12%;">Role</th>
+                <th style="width:46%;">Full Name</th>
+                <th style="width:46%;">Email Address</th>
                 <th style="width:40px;"></th>
               </tr>
             </thead>
@@ -236,15 +248,6 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
                            placeholder="e.g. Juan Dela Cruz"></td>
                 <td><input class="bcu-input" type="email" name="email"
                            placeholder="e.g. juan@deped.ph"></td>
-                <td><input class="bcu-input" type="text" name="office"
-                           placeholder="Office" list="office-list" autocomplete="off"></td>
-                <td>
-                  <select class="bcu-input" name="role" style="padding:9px 8px;cursor:pointer;">
-                    <option value="staff" selected>Staff</option>
-                    <option value="admin">Admin</option>
-                    <option value="client">Client</option>
-                  </select>
-                </td>
                 <td><button type="button" class="btn-remove-row"
                             onclick="removeRow(this)" title="Remove">✕</button></td>
               </tr>
@@ -313,17 +316,12 @@ function showImportStatus(type, msg) {
   el.innerHTML = msg;
 }
 
-function buildRow(name, email, office) {
-  office = office || '';
+function buildRow(name, email) {
   var tr = document.createElement('tr');
   tr.className = 'bcu-row';
   tr.innerHTML =
     '<td><input class="bcu-input" type="text" name="full_name" placeholder="e.g. Juan Dela Cruz" value="' + escAttr(name) + '"></td>' +
     '<td><input class="bcu-input" type="email" name="email" placeholder="e.g. juan@deped.ph" value="' + escAttr(email) + '"></td>' +
-    '<td><input class="bcu-input" type="text" name="office" placeholder="Office" list="office-list" autocomplete="off" value="' + escAttr(office) + '"></td>' +
-    '<td><select class="bcu-input" name="role" style="padding:9px 8px;cursor:pointer;">' +
-      '<option value="staff" selected>Staff</option><option value="admin">Admin</option><option value="client">Client</option>' +
-    '</select></td>' +
     '<td><button type="button" class="btn-remove-row" onclick="removeRow(this)" title="Remove">✕</button></td>';
   return tr;
 }
