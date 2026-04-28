@@ -3,7 +3,7 @@ routes/admin.py — Admin-only routes: user management, activity log, invites.
 """
 from datetime import datetime
 
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from services.auth import (
     create_user, delete_user, get_all_users, set_user_active,
@@ -718,6 +718,50 @@ def clear_database():
 
     except Exception as e:
         flash(f"Clear failed: {e}", "error")
+
+
+@admin_bp.route("/api/parse-excel-users", methods=["POST"])
+@admin_required
+def parse_excel_users():
+    """Parse an uploaded Excel file and return name+email rows as JSON."""
+    import openpyxl, io
+    f = request.files.get("file")
+    if not f:
+        return jsonify({"error": "No file uploaded."}), 400
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(f.read()), data_only=True)
+        ws = wb.active
+
+        # Find header row (scan first 5 rows for name+email columns)
+        name_col = email_col = header_row = None
+        for row in ws.iter_rows(min_row=1, max_row=5):
+            ni = ei = None
+            for cell in row:
+                h = str(cell.value or "").strip().lower()
+                if ni is None and ("name" in h or "full" in h):
+                    ni = cell.column
+                if ei is None and ("email" in h or "mail" in h):
+                    ei = cell.column
+            if ni and ei:
+                name_col, email_col, header_row = ni, ei, cell.row
+                break
+
+        if not header_row:
+            return jsonify({"error": "Could not find a Name and Email column in the file."}), 422
+
+        rows = []
+        for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+            name  = str(row[name_col - 1]  or "").strip()
+            email = str(row[email_col - 1] or "").strip()
+            if name or email:
+                rows.append({"name": name, "email": email})
+
+        if not rows:
+            return jsonify({"error": "No data rows found after the header."}), 422
+
+        return jsonify({"rows": rows})
+    except Exception as e:
+        return jsonify({"error": f"Could not read file: {e}"}), 400
 
 
 @admin_bp.route("/bulk-create-users", methods=["GET", "POST"])

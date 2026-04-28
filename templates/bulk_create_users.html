@@ -257,7 +257,6 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
   {% endif %}
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 function handleExcelDrop(e) {
   e.preventDefault();
@@ -267,64 +266,32 @@ function handleExcelDrop(e) {
 }
 
 function handleExcelFile(file) {
-  var status = document.getElementById('import-status');
   if (!file) return;
   if (!file.name.match(/\.(xlsx|xls)$/i)) {
     showImportStatus('err', '❌ Please upload an .xlsx or .xls file.');
     return;
   }
 
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      var wb   = XLSX.read(e.target.result, { type: 'array' });
-      var ws   = wb.Sheets[wb.SheetNames[0]];
-      var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  showImportStatus('ok', '⏳ Reading file…');
 
-      if (!rows.length) { showImportStatus('err', '❌ The file appears to be empty.'); return; }
+  var fd = new FormData();
+  fd.append('file', file);
+  fd.append('csrf_token', document.querySelector('[name="csrf_token"]').value);
 
-      // Find header row — first row where we can detect name+email columns
-      var headerIdx = -1, nameCol = -1, emailCol = -1;
-      for (var r = 0; r < Math.min(rows.length, 5); r++) {
-        var row = rows[r];
-        var ni = -1, ei = -1;
-        for (var c = 0; c < row.length; c++) {
-          var h = String(row[c] || '').toLowerCase().trim();
-          if (ni === -1 && (h.includes('name') || h.includes('full'))) ni = c;
-          if (ei === -1 && (h.includes('email') || h.includes('mail'))) ei = c;
-        }
-        if (ni !== -1 && ei !== -1) { headerIdx = r; nameCol = ni; emailCol = ei; break; }
-      }
+  fetch('/api/parse-excel-users', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) { showImportStatus('err', '❌ ' + data.error); return; }
 
-      if (headerIdx === -1) {
-        showImportStatus('err', '❌ Could not find a <strong>Name</strong> and <strong>Email</strong> column. Check your file headers.');
-        return;
-      }
-
-      // Collect data rows
-      var data = [];
-      for (var i = headerIdx + 1; i < rows.length; i++) {
-        var name  = String(rows[i][nameCol]  || '').trim();
-        var email = String(rows[i][emailCol] || '').trim();
-        if (name || email) data.push({ name: name, email: email });
-      }
-
-      if (!data.length) { showImportStatus('err', '❌ No data rows found after the header.'); return; }
-
-      // Populate form rows
       var tbody = document.getElementById('rows-body');
       tbody.innerHTML = '';
-      data.forEach(function(d) {
-        var tr = buildRow(d.name, d.email);
-        tbody.appendChild(tr);
-      });
+      data.rows.forEach(function(d) { tbody.appendChild(buildRow(d.name, d.email)); });
 
-      showImportStatus('ok', '✅ Imported <strong>' + data.length + ' row' + (data.length !== 1 ? 's' : '') + '</strong> from <em>' + file.name + '</em>. Review below and click Create Accounts.');
-    } catch(err) {
-      showImportStatus('err', '❌ Could not read the file: ' + err.message);
-    }
-  };
-  reader.readAsArrayBuffer(file);
+      showImportStatus('ok', '✅ Imported <strong>' + data.rows.length + ' row' +
+        (data.rows.length !== 1 ? 's' : '') + '</strong> from <em>' + escAttr(file.name) +
+        '</em>. Review below and click Create Accounts.');
+    })
+    .catch(function(err) { showImportStatus('err', '❌ Upload failed: ' + err.message); });
 }
 
 function showImportStatus(type, msg) {
