@@ -189,6 +189,7 @@ def _run_migrations(cur):
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS office     TEXT DEFAULT ''",
         # Client approval - clients must be approved by admin before using their account
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS approved   BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS email      TEXT DEFAULT ''",
         # invite_tokens — add expires_at if missing
         """
         DO $$
