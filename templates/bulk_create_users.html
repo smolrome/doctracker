@@ -344,13 +344,9 @@ function removeRow(btn) {
 
 function confirmSubmit() {
   const filled = [...document.querySelectorAll('.bcu-row')]
-    .filter(r => {
-      const name  = r.querySelector('[name="full_name"]').value.trim();
-      const email = r.querySelector('[name="email"]').value.trim();
-      return name || email;
-    }).length;
-  if (!filled) { alert('Fill in at least one row.'); return false; }
-  return confirm(`Create ${filled} account${filled !== 1 ? 's' : ''}?`);
+    .filter(r => r.querySelector('[name="email"]').value.trim()).length;
+  if (!filled) { alert('Add at least one email address.'); return false; }
+  return confirm(`Create ${filled} account${filled !== 1 ? 's' : ''}? Rows without an email will be skipped.`);
 }
 </script>
 {% endblock %}
