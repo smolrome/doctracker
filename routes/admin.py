@@ -11,6 +11,7 @@ from services.auth import (
 )
 from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
+    send_credentials_email,
 )
 from services.misc import audit_log, get_activity_logs
 from services.documents import load_docs, save_doc, get_doc, delete_doc, backfill_logged_by_office
@@ -717,5 +718,103 @@ def clear_database():
 
     except Exception as e:
         flash(f"Clear failed: {e}", "error")
+
+
+@admin_bp.route("/bulk-create-users", methods=["GET", "POST"])
+@admin_required
+def bulk_create_users():
+    """Create multiple user accounts from just name + email. Auto-generates username and password."""
+    import re
+    import secrets
+    import string
+
+    def _make_username(full_name: str, existing: set) -> str:
+        """Derive a username from a full name, avoiding collisions in existing set."""
+        base = re.sub(r"[^a-z0-9]", ".", full_name.strip().lower())
+        base = re.sub(r"\.{2,}", ".", base).strip(".")
+        if not base:
+            base = "user"
+        candidate = base
+        suffix = 2
+        while candidate in existing:
+            candidate = f"{base}{suffix}"
+            suffix += 1
+        return candidate
+
+    def _make_password() -> str:
+        """Generate a 12-char password with at least one digit and one uppercase letter."""
+        alphabet = string.ascii_letters + string.digits
+        pw = [
+            secrets.choice(string.digits),
+            secrets.choice(string.ascii_uppercase),
+            *[secrets.choice(alphabet) for _ in range(10)],
+        ]
+        # Fisher-Yates shuffle
+        for j in range(len(pw) - 1, 0, -1):
+            k = secrets.randbelow(j + 1)
+            pw[j], pw[k] = pw[k], pw[j]
+        return "".join(pw)
+
+    results = None
+
+    if request.method == "POST":
+        full_names = request.form.getlist("full_name")
+        emails     = request.form.getlist("email")
+
+        # Collect all existing usernames so we can avoid collisions
+        all_users = get_all_users()
+        taken = {u["username"].lower() for u in all_users} | {ADMIN_USERNAME.lower()}
+
+        base = _base_url(request.host_url.rstrip("/"))
+        results = []
+
+        for i, full_name in enumerate(full_names):
+            full_name = full_name.strip()
+            email     = emails[i].strip() if i < len(emails) else ""
+
+            if not full_name and not email:
+                continue
+
+            uname   = _make_username(full_name or email.split("@")[0], taken)
+            taken.add(uname)
+            temp_pw = _make_password()
+
+            ok, err = create_user(uname, temp_pw, full_name, role="staff")
+            if not ok:
+                results.append({
+                    "username": uname, "full_name": full_name, "email": email,
+                    "ok": False, "msg": err, "password": None, "email_sent": False,
+                })
+                continue
+
+            email_sent, email_err = False, "No email provided"
+            if email:
+                email_sent, email_err = send_credentials_email(
+                    email, full_name, uname, temp_pw, base
+                )
+
+            results.append({
+                "username":   uname,
+                "full_name":  full_name,
+                "email":      email,
+                "ok":         True,
+                "password":   temp_pw if not email_sent else None,
+                "email_sent": email_sent,
+                "email_err":  email_err if not email_sent else "",
+            })
+
+        ok_count = sum(1 for r in results if r["ok"])
+        audit_log(
+            "bulk_users_created",
+            f"total={len(results)} ok={ok_count}",
+            username=session.get("username", "admin"),
+            ip=get_client_ip(),
+        )
+
+    return render_template(
+        "bulk_create_users.html",
+        results=results,
+        mail_enabled=MAIL_ENABLED,
+    )
 
     return redirect(url_for("dashboard.index"))
