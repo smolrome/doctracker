@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.bcu-page { max-width: 720px; margin: 0 auto; }
+
+.bcu-card {
+  background: #fff; border-radius: 16px; border: 1px solid #E2E8F0;
+  box-shadow: 0 2px 12px rgba(14,42,71,.07); margin-bottom: 24px; overflow: hidden;
+}
+.bcu-card-head {
+  padding: 20px 24px; border-bottom: 1px solid #E2E8F0;
+  display: flex; align-items: center; gap: 12px;
+}
+.bcu-card-head h2 {
+  font-family: 'Outfit', sans-serif; font-size: 18px;
+  font-weight: 800; color: #0E2A47; margin: 0;
+}
+.bcu-card-body { padding: 24px; }
+
+/* Two-column entry table */
+.bcu-table-wrap { overflow-x: auto; margin-bottom: 14px; }
+table.bcu-table { width: 100%; border-collapse: collapse; }
+table.bcu-table th {
+  background: #0E2A47; color: #fff; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em; padding: 10px 14px; text-align: left;
+}
+table.bcu-table td { padding: 6px 6px; vertical-align: middle; }
+table.bcu-table tbody tr:hover td { background: #F8FAFC; }
+
+.bcu-input {
+  width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 8px;
+  font-size: 14px; font-family: inherit; box-sizing: border-box; transition: border-color .15s;
+}
+.bcu-input:focus { outline: none; border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+
+.btn-remove-row {
+  background: none; border: none; color: #CBD5E1; font-size: 20px;
+  cursor: pointer; padding: 4px 8px; border-radius: 6px; line-height: 1;
+  transition: color .15s, background .15s;
+}
+.btn-remove-row:hover { color: #DC2626; background: #FEE2E2; }
+
+.btn-add-row {
+  background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE;
+  padding: 9px 20px; border-radius: 8px; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.btn-add-row:hover { background: #DBEAFE; }
+
+.btn-submit {
+  background: linear-gradient(135deg, #0E2A47, #1D4ED8); color: #fff;
+  border: none; padding: 12px 32px; border-radius: 10px; font-size: 15px;
+  font-weight: 700; cursor: pointer; transition: opacity .15s;
+}
+.btn-submit:hover { opacity: .88; }
+
+/* Info banners */
+.bcu-info {
+  display: flex; gap: 12px; padding: 14px 18px; border-radius: 10px;
+  margin-bottom: 18px; font-size: 13px; line-height: 1.5;
+}
+.bcu-info-blue   { background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; }
+.bcu-info-amber  { background: #FFFBEB; border: 1px solid #FCD34D; color: #92400E; }
+.bcu-info-icon   { font-size: 20px; flex-shrink: 0; }
+
+/* Results */
+.result-card {
+  border-radius: 10px; padding: 14px 18px; margin-bottom: 10px;
+  display: flex; align-items: flex-start; gap: 14px;
+}
+.result-ok   { border-left: 4px solid #10B981; background: #F0FDF4; }
+.result-fail { border-left: 4px solid #EF4444; background: #FFF1F2; }
+.result-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+.result-body { flex: 1; min-width: 0; }
+.result-name { font-weight: 700; font-size: 14px; color: #0E2A47; }
+.result-sub  { font-size: 13px; color: #475569; margin-top: 2px; }
+.result-err  { font-size: 12px; color: #DC2626; margin-top: 4px; }
+
+.cred-box {
+  margin-top: 8px; background: #FFFBEB; border: 1px solid #FCD34D;
+  border-radius: 8px; padding: 10px 14px; display: inline-block;
+}
+.cred-label { font-size: 11px; color: #92400E; font-weight: 700;
+              text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+.cred-row   { font-family: monospace; font-size: 13px; color: #0E2A47; font-weight: 700; }
+.cred-key   { color: #64748B; font-weight: 400; margin-right: 6px; }
+</style>
+
+<div class="bcu-page">
+  <div class="page-header">
+    <a href="/manage-users" class="page-back">← Manage Users</a>
+    <div class="page-title">👥 Bulk Create Accounts</div>
+  </div>
+
+  {% if not mail_enabled %}
+  <div class="bcu-info bcu-info-amber">
+    <span class="bcu-info-icon">⚠️</span>
+    <div>Email is not configured — accounts will still be created but credentials
+    won't be sent automatically. <strong>Copy the temporary passwords from the results
+    and share them manually.</strong></div>
+  </div>
+  {% endif %}
+
+  <!-- ── Results ─────────────────────────────────────────── -->
+  {% if results is not none %}
+  <div class="bcu-card">
+    <div class="bcu-card-head">
+      <span style="font-size:24px;">📋</span>
+      <h2>Results — {{ results|selectattr('ok')|list|length }} / {{ results|length }} Created</h2>
+    </div>
+    <div class="bcu-card-body">
+      {% for r in results %}
+      <div class="result-card {{ 'result-ok' if r.ok else 'result-fail' }}">
+        <div class="result-icon">{{ '✅' if r.ok else '❌' }}</div>
+        <div class="result-body">
+          <div class="result-name">
+            {{ r.full_name or '(no name)' }}
+            <span style="font-weight:400;color:#64748B;"> · @{{ r.username }}</span>
+          </div>
+          <div class="result-sub">
+            {% if r.email %}📧 {{ r.email }}{% endif %}
+            {% if r.ok and r.email_sent %} · ✉️ Credentials emailed{% endif %}
+          </div>
+
+          {% if r.ok and not r.email_sent %}
+          <div class="cred-box">
+            <div class="cred-label">⚠️ Email not sent — save these credentials</div>
+            <div class="cred-row"><span class="cred-key">Username</span>{{ r.username }}</div>
+            <div class="cred-row"><span class="cred-key">Password</span>{{ r.password }}</div>
+            {% if r.email_err and r.email %}
+            <div style="font-size:11px;color:#94A3B8;margin-top:4px;">{{ r.email_err }}</div>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          {% if not r.ok %}
+          <div class="result-err">{{ r.msg }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <a href="/manage-users" class="btn btn-primary">👥 Back to Users</a>
+        <a href="/bulk-create-users" class="btn btn-secondary">➕ Create More</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Create form ─────────────────────────────────────── -->
+  {% else %}
+  <div class="bcu-card">
+    <div class="bcu-card-head">
+      <span style="font-size:24px;">➕</span>
+      <h2>Enter Names &amp; Emails</h2>
+    </div>
+    <div class="bcu-card-body">
+      <div class="bcu-info bcu-info-blue">
+        <span class="bcu-info-icon">💡</span>
+        <div>Enter a <strong>full name</strong> and <strong>email</strong> for each person.
+        The system will automatically generate a username and a secure temporary password,
+        then email the credentials directly to each address.</div>
+      </div>
+
+      <form method="post" id="bulk-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <div class="bcu-table-wrap">
+          <table class="bcu-table">
+            <thead>
+              <tr>
+                <th style="width:46%;">Full Name</th>
+                <th style="width:46%;">Email Address</th>
+                <th style="width:40px;"></th>
+              </tr>
+            </thead>
+            <tbody id="rows-body">
+              {% for _ in range(5) %}
+              <tr class="bcu-row">
+                <td><input class="bcu-input" type="text" name="full_name"
+                           placeholder="e.g. Juan Dela Cruz"></td>
+                <td><input class="bcu-input" type="email" name="email"
+                           placeholder="e.g. juan@deped.ph"></td>
+                <td><button type="button" class="btn-remove-row"
+                            onclick="removeRow(this)" title="Remove">✕</button></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px;">
+          <button type="button" class="btn-add-row" onclick="addRow()">+ Add Row</button>
+          <span style="font-size:13px;color:#94A3B8;">Rows left blank are skipped.</span>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center;">
+          <button type="submit" class="btn-submit" onclick="return confirmSubmit()">
+            🚀 Create Accounts &amp; Send Emails
+          </button>
+          <a href="/manage-users" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function addRow() {
+  const tr = document.createElement('tr');
+  tr.className = 'bcu-row';
+  tr.innerHTML = `
+    <td><input class="bcu-input" type="text" name="full_name" placeholder="e.g. Juan Dela Cruz"></td>
+    <td><input class="bcu-input" type="email" name="email" placeholder="e.g. juan@deped.ph"></td>
+    <td><button type="button" class="btn-remove-row" onclick="removeRow(this)" title="Remove">✕</button></td>`;
+  document.getElementById('rows-body').appendChild(tr);
+  tr.querySelector('input').focus();
+}
+
+function removeRow(btn) {
+  const rows = document.querySelectorAll('.bcu-row');
+  if (rows.length <= 1) { alert('Keep at least one row.'); return; }
+  btn.closest('tr').remove();
+}
+
+function confirmSubmit() {
+  const filled = [...document.querySelectorAll('.bcu-row')]
+    .filter(r => {
+      const name  = r.querySelector('[name="full_name"]').value.trim();
+      const email = r.querySelector('[name="email"]').value.trim();
+      return name || email;
+    }).length;
+  if (!filled) { alert('Fill in at least one row.'); return false; }
+  return confirm(`Create ${filled} account${filled !== 1 ? 's' : ''}?`);
+}
+</script>
+{% endblock %}
