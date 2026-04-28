@@ -784,7 +784,7 @@ def bulk_create_users():
             taken.add(uname)
             temp_pw = _make_password()
 
-            ok, err = create_user(uname, temp_pw, full_name, role=role)
+            ok, err = create_user(uname, temp_pw, full_name, role=role, email=email)
             if not ok:
                 results.append({
                     "username": uname, "full_name": full_name, "email": email,

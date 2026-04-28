@@ -60,6 +60,9 @@
         <div>
           <div class="user-name">{{ user.full_name or user.username }}</div>
           <div class="user-username">@{{ user.username }}</div>
+          {% if user.email %}
+          <div style="font-size:13px;color:#475569;margin-top:1px;">📧 {{ user.email }}</div>
+          {% endif %}
           {% if user.office %}
           <div style="font-size:13px;color:#0E7490;font-weight:700;margin-top:2px;">
             🏢 {{ user.office }}

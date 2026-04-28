@@ -142,7 +142,8 @@ def hmac_safe_compare(a: str, b: str) -> bool:
 # ── User CRUD ──────────────────────────────────────────────────────────────────
 
 def create_user(username: str, password: str, full_name: str = "",
-                role: str = "staff", office: str = "") -> tuple[bool, str | None]:
+                role: str = "staff", office: str = "",
+                email: str = "") -> tuple[bool, str | None]:
     """Create a new user. Returns (success, error_message)."""
     uname = username.lower().strip()
 
@@ -159,10 +160,10 @@ def create_user(username: str, password: str, full_name: str = "",
                 with conn.cursor() as cur:
                     cur.execute(
                         """INSERT INTO users
-                               (username, password_hash, full_name, role, office, approved)
-                           VALUES (%s, %s, %s, %s, %s, %s)""",
+                               (username, password_hash, full_name, role, office, approved, email)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
                         (uname, hash_password(password),
-                         full_name.strip(), role, office.strip(), approved),
+                         full_name.strip(), role, office.strip(), approved, email.strip()),
                     )
             return True, None
         except Exception as e:
@@ -180,6 +181,7 @@ def create_user(username: str, password: str, full_name: str = "",
             "role":          role,
             "office":        office.strip(),
             "approved":      approved,
+            "email":         email.strip(),
         })
         _save_users_json(users)
         return True, None
@@ -296,7 +298,8 @@ def get_all_users() -> list[dict]:
                         """SELECT username, full_name, role, active, last_login,
                                   created_at,
                                   COALESCE(office, '') AS office,
-                                  COALESCE(approved, TRUE) AS approved
+                                  COALESCE(approved, TRUE) AS approved,
+                                  COALESCE(email, '') AS email
                            FROM users ORDER BY created_at DESC"""
                     )
                     return [dict(r) for r in cur.fetchall()]
@@ -321,7 +324,8 @@ def get_user(username: str) -> dict | None:
                         """SELECT username, full_name, role, active, last_login,
                                   created_at,
                                   COALESCE(office, '') AS office,
-                                  COALESCE(approved, TRUE) AS approved
+                                  COALESCE(approved, TRUE) AS approved,
+                                  COALESCE(email, '') AS email
                            FROM users WHERE username = %s""",
                         (uname,),
                     )
