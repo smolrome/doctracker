@@ -244,7 +244,7 @@ def delete_doc_forever(doc_id: str):
 
 def get_stats(docs: list[dict]) -> dict:
     # Define all known statuses
-    known_statuses = {"Logged", "Pending", "Received", "In Review", "Routed", "Transferred", "Released", "On Hold", "Archived"}
+    known_statuses = {"Logged", "Pending", "Received", "In Review", "Routed", "Transferred", "Released", "On Hold", "Archived", "Returned"}
     
     # Count documents by status
     status_counts = {}
@@ -269,6 +269,7 @@ def get_stats(docs: list[dict]) -> dict:
         "released":   status_counts.get("Released", 0),
         "on_hold":    status_counts.get("On Hold", 0),
         "archived":   status_counts.get("Archived", 0),
+        "returned":   status_counts.get("Returned", 0),
         "unknown":    unknown_count,  # Documents with unknown/empty status
         # Source-based stats - use original_logged_by to track who originally added the document
         # (logged_by changes when documents are transferred to other staff)
