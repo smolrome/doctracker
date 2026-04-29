@@ -111,6 +111,12 @@
         <input type="date" name="date_released" value="{{ doc.get('date_released','') }}"/>
       </div>
       <div class="form-group">
+        <label>Due Date</label>
+        <input type="date" name="due_date" value="{{ doc.get('due_date','') }}"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
         <label>Current Status</label>
         <select name="status">
           {% for s in status_options %}
@@ -205,6 +211,12 @@
       <div class="form-group">
         <label>Notes</label>
         <textarea name="notes">{{ edit_item.notes or '' }}</textarea>
+      </div>
+
+      <!-- Due Date -->
+      <div class="form-group">
+        <label>Due Date <small style="font-weight:400;color:#6B7280;">(optional)</small></label>
+        <input type="date" name="due_date" value="{{ edit_item.due_date or '' }}"/>
       </div>
 
       <div class="edit-cart-modal-actions">
@@ -430,8 +442,13 @@ document.addEventListener('keydown', function(e) {
     </div>
     <div class="form-group">
       <label>Content / Particulars <span class="req">*</span></label>
-      <input type="text" name="doc_name"
-             placeholder="e.g. Plantilla of Personnel, Leave Application, Memo No. 001" required/>
+      <input type="text" name="doc_name" id="doc-name-input"
+             placeholder="e.g. Plantilla of Personnel, Leave Application, Memo No. 001" required
+             autocomplete="off" oninput="checkDuplicate(this.value)"/>
+      <div id="dup-warning" class="dup-warning">
+        <div class="dup-warning-title">⚠ Similar document already logged recently:</div>
+        <div id="dup-list"></div>
+      </div>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -453,10 +470,16 @@ document.addEventListener('keydown', function(e) {
         </div>
       </div>
     </div>
-    <div class="form-group">
-      <label>Description / Remarks</label>
-      <textarea name="description"
-                placeholder="Additional details, purpose, or instructions..."></textarea>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Description / Remarks</label>
+        <textarea name="description"
+                  placeholder="Additional details, purpose, or instructions..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Due Date <small style="font-weight:400;color:#6B7280;">(optional)</small></label>
+        <input type="date" name="due_date"/>
+      </div>
     </div>
     <button type="submit" class="btn-add">
       ➕ Add to Log List
@@ -476,6 +499,38 @@ document.addEventListener('keydown', function(e) {
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}"/>
 <script src="{{ url_for('static', filename='js/form.js') }}"></script>
+
+<script>
+/* ── Duplicate detection ── */
+var _dupTimer = null;
+function checkDuplicate(val) {
+  clearTimeout(_dupTimer);
+  var warn = document.getElementById('dup-warning');
+  if (!val || val.length < 5) { if (warn) warn.classList.remove('show'); return; }
+  _dupTimer = setTimeout(function() {
+    fetch('/check-duplicate?q=' + encodeURIComponent(val))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var list = document.getElementById('dup-list');
+        if (!warn || !list) return;
+        if (data.duplicates && data.duplicates.length) {
+          list.innerHTML = data.duplicates.map(function(d) {
+            return '<div class="dup-item">• <a href="/view/' + d.id + '" target="_blank">'
+              + escHtmlForm(d.doc_name) + '</a>'
+              + ' <span style="color:#9CA3AF;">(' + d.status + ' · ' + d.date + ')</span></div>';
+          }).join('');
+          warn.classList.add('show');
+        } else {
+          warn.classList.remove('show');
+        }
+      })
+      .catch(function() {});
+  }, 600);
+}
+function escHtmlForm(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
 
 <style>
 .staff-combobox { position: relative; }

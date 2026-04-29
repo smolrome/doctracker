@@ -1306,4 +1306,131 @@ th.cb-cell { background: #F1F7FB; }
 [data-theme="dark"] .filter-select,
 [data-theme="dark"] .filter-input  { background:#1E2A3A; color:#E2EAF4; border-color:#2E3D52; }
 [data-theme="dark"] .stat-num      { color:#22D3EE; }
+
+
+/* ════════════════════════════════════════════════════════════
+   FEATURE ADDITIONS — aging, overdue, sort, office stats,
+   quick-note modal, audit trail modal
+════════════════════════════════════════════════════════════ */
+
+/* ── Aging badge ── */
+.age-badge {
+  display:inline-block; font-size:10px; font-weight:700;
+  padding:1px 6px; border-radius:4px; margin-left:5px;
+  font-family:var(--font-mono); white-space:nowrap; vertical-align:middle;
+}
+.age-fresh   { background:#E3F0E8; color:#1F6E4A; }
+.age-warn    { background:#FEF3C7; color:#92400E; }
+.age-old     { background:#FBEAEC; color:#C8102E; }
+
+/* ── Due date badge ── */
+.due-badge {
+  display:inline-block; font-size:10px; font-weight:700;
+  padding:1px 6px; border-radius:4px; margin-top:3px;
+  font-family:var(--font-mono);
+}
+.due-ok      { background:#E3F0E8; color:#1F6E4A; }
+.due-soon    { background:#FEF3C7; color:#92400E; }
+.due-overdue { background:#FBEAEC; color:#C8102E; }
+
+/* ── Overdue row highlight ── */
+tr.row-overdue td { background:#FFF8F8 !important; }
+tr.row-overdue:hover td { background:#FFEAEA !important; }
+
+/* ── Sort column headers ── */
+th.sortable { cursor:pointer; user-select:none; }
+th.sortable:hover { background:#EEF2F7 !important; }
+.sort-icon { font-size:10px; margin-left:4px; opacity:.5; }
+th.sort-active .sort-icon { opacity:1; color:var(--navy); }
+
+/* ── Export button in table bar ── */
+.btn-export {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:5px 12px; border-radius:6px; font-size:12px; font-weight:600;
+  background:#fff; border:1.5px solid var(--border); color:var(--navy);
+  cursor:pointer; text-decoration:none; transition:all .14s;
+}
+.btn-export:hover { border-color:var(--navy); background:#F0F4FA; }
+
+/* ── Office stats table (admin rail) ── */
+.office-stats-wrap { margin-top:8px; }
+.office-stats-title { font-size:10px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; padding:6px 0 4px; }
+.office-stats-table { width:100%; border-collapse:collapse; font-size:11px; }
+.office-stats-table th { font-size:9.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; padding:2px 4px; border-bottom:1px solid var(--border); }
+.office-stats-table td { padding:3px 4px; border-bottom:1px solid #F0EDE5; color:var(--text); font-family:var(--font-mono); font-size:11px; }
+.office-stats-table tr:last-child td { border-bottom:none; }
+.ost-office { max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; font-family:var(--font-ui); font-size:10.5px; }
+.ost-num { text-align:right; font-weight:700; }
+.ost-overdue { color:var(--red); font-weight:700; }
+
+/* ── Quick-note & audit-trail modal (shared base) ── */
+.dash-modal-overlay {
+  display:none; position:fixed; inset:0; background:rgba(14,42,71,.45);
+  z-index:1200; align-items:center; justify-content:center;
+}
+.dash-modal-overlay.open { display:flex; }
+.dash-modal {
+  background:#fff; border-radius:12px; width:min(520px,94vw);
+  box-shadow:0 8px 40px rgba(14,42,71,.22); display:flex; flex-direction:column;
+  max-height:80vh; overflow:hidden;
+}
+.dash-modal-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 18px; border-bottom:1.5px solid var(--border);
+}
+.dash-modal-title { font-size:15px; font-weight:700; color:var(--navy); }
+.dash-modal-close {
+  background:none; border:none; cursor:pointer; font-size:18px; color:var(--muted);
+  line-height:1; padding:2px 6px; border-radius:4px;
+}
+.dash-modal-close:hover { background:#F0F4FA; color:var(--navy); }
+.dash-modal-body { padding:16px 18px; overflow-y:auto; flex:1; }
+.dash-modal-footer { padding:12px 18px; border-top:1.5px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
+.dash-modal-footer .btn-save { background:var(--navy); color:#fff; border:none; padding:7px 18px; border-radius:6px; font-weight:700; font-size:13px; cursor:pointer; }
+.dash-modal-footer .btn-save:hover { background:#1B3A6B; }
+.dash-modal-footer .btn-cancel { background:#fff; color:var(--muted); border:1.5px solid var(--border); padding:7px 14px; border-radius:6px; font-weight:600; font-size:13px; cursor:pointer; }
+.dash-modal-footer .btn-cancel:hover { border-color:var(--navy); color:var(--navy); }
+
+/* quick note textarea */
+.qn-textarea { width:100%; min-height:100px; resize:vertical; padding:10px; border:1.5px solid var(--border); border-radius:6px; font-size:13px; font-family:var(--font-ui); }
+.qn-textarea:focus { outline:none; border-color:var(--navy); }
+
+/* audit trail in modal */
+.audit-log-list { display:flex; flex-direction:column; gap:8px; }
+.audit-entry {
+  border-left:3px solid var(--border); padding:6px 10px;
+  background:#FAF8F3; border-radius:0 6px 6px 0;
+}
+.audit-entry-action { font-size:12.5px; font-weight:700; color:var(--navy); }
+.audit-entry-meta { font-size:11px; color:var(--muted); margin-top:2px; font-family:var(--font-mono); }
+.audit-entry-remarks { font-size:12px; color:#374151; margin-top:3px; }
+
+/* inline status select */
+.inline-status-form { display:inline-block; }
+.inline-status-select {
+  font-size:11.5px; font-weight:700; border:none; background:transparent;
+  cursor:pointer; font-family:var(--font-mono); padding:0 2px;
+  color:inherit;
+}
+.inline-status-select:focus { outline:1px solid var(--navy); border-radius:3px; }
+
+/* filter-memory restore bar */
+.filter-restore-bar {
+  display:none; align-items:center; gap:8px; padding:7px 14px;
+  background:#EEF4FF; border:1px solid #C7D8F8; border-radius:7px;
+  font-size:12.5px; color:#1B3A6B; margin-bottom:8px;
+}
+.filter-restore-bar.show { display:flex; }
+.frb-btn { font-size:12px; font-weight:700; cursor:pointer; background:var(--navy); color:#fff; border:none; padding:3px 10px; border-radius:5px; }
+.frb-dismiss { font-size:12px; color:var(--muted); cursor:pointer; margin-left:auto; }
+
+/* duplicate warning in form */
+.dup-warning {
+  display:none; background:#FFF8E7; border:1.5px solid #FCD34D;
+  border-radius:8px; padding:10px 14px; margin-top:8px; font-size:13px;
+}
+.dup-warning.show { display:block; }
+.dup-warning-title { font-weight:700; color:#92400E; margin-bottom:6px; }
+.dup-item { font-size:12px; color:#374151; padding:2px 0; }
+.dup-item a { color:var(--navy); font-weight:600; }
 [data-theme="dark"] .empty-state   { background:#1E2A3A; border-color:#2E3D52; }

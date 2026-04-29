@@ -213,6 +213,25 @@ var serverSessionData = {
       </a>
       {% endif %}
 
+      {% if is_admin and office_stats %}
+      <div class="office-stats-wrap">
+        <div class="office-stats-title">By Office</div>
+        <table class="office-stats-table">
+          <thead><tr><th>Office</th><th>Total</th><th>Active</th><th>Overdue</th></tr></thead>
+          <tbody>
+            {% for row in office_stats %}
+            <tr>
+              <td class="ost-office" title="{{ row.office }}">{{ row.office }}</td>
+              <td class="ost-num">{{ row.total }}</td>
+              <td class="ost-num">{{ row.pending }}</td>
+              <td class="ost-num {% if row.overdue > 0 %}ost-overdue{% endif %}">{{ row.overdue or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
     </aside>
 
 
@@ -351,11 +370,13 @@ var serverSessionData = {
 
         </div>
 
-        <input type="hidden" name="source" id="source-hidden" value="{{ filter_source }}"/>
-        <input type="hidden" name="office" id="office-hidden" value="{{ filter_office }}"/>
-        <input type="hidden" name="cat"    id="cat-hidden"    value="{{ filter_cat }}"/>
-        <input type="hidden" name="staff"  id="staff-hidden"  value="{{ filter_staff }}"/>
-        <input type="hidden" name="per_page"                  value="{{ per_page }}"/>
+        <input type="hidden" name="source"   id="source-hidden"   value="{{ filter_source }}"/>
+        <input type="hidden" name="office"   id="office-hidden"   value="{{ filter_office }}"/>
+        <input type="hidden" name="cat"      id="cat-hidden"      value="{{ filter_cat }}"/>
+        <input type="hidden" name="staff"    id="staff-hidden"    value="{{ filter_staff }}"/>
+        <input type="hidden" name="sort"     id="sort-hidden"     value="{{ sort_col }}"/>
+        <input type="hidden" name="sort_dir" id="sort-dir-hidden" value="{{ sort_dir }}"/>
+        <input type="hidden" name="per_page"                      value="{{ per_page }}"/>
       </form>
       </div>
 
@@ -401,6 +422,13 @@ var serverSessionData = {
       <main id="main-content">
       <div class="table-outer">
 
+        {# Filter restore bar #}
+        <div id="filter-restore-bar" class="filter-restore-bar">
+          <span class="frb-msg"></span>
+          <button class="frb-btn">Restore</button>
+          <span class="frb-dismiss">✕ Dismiss</span>
+        </div>
+
         {% if logged_in %}
         <div class="table-header-bar" id="table-action-bar" role="toolbar" aria-label="Table controls">
           <div class="thb-title">
@@ -413,7 +441,8 @@ var serverSessionData = {
               {% endif %}
             </span>
           </div>
-          <div class="thb-right">
+          <div class="thb-right" style="display:flex;align-items:center;gap:8px;">
+            <a href="/export-csv?{{ request.query_string.decode() }}" class="btn-export" title="Export current view to CSV">⬇ CSV</a>
             <div class="per-page-group">
               <label class="per-page-label" for="per-page-select">Show</label>
               <select id="per-page-select" class="per-page-select" onchange="changePerPage(this.value)">
@@ -436,19 +465,21 @@ var serverSessionData = {
                   <input type="checkbox" id="select-all" aria-label="Select all"/>
                 </th>
                 {% endif %}
-                <th scope="col" class="sortable" data-sort="doc_name" aria-sort="none">Document</th>
+                <th scope="col" class="sortable {% if sort_col=='doc_name' %}sort-active{% endif %}" onclick="sortBy('doc_name')">Document <span class="sort-icon">{% if sort_col=='doc_name' %}{{ '↑' if sort_dir=='asc' else '↓' }}{% else %}↕{% endif %}</span></th>
                 <th scope="col">Unit / Office</th>
-                <th scope="col">Sender</th>
+                <th scope="col" class="sortable {% if sort_col=='sender' %}sort-active{% endif %}" onclick="sortBy('sender')">Sender <span class="sort-icon">{% if sort_col=='sender' %}{{ '↑' if sort_dir=='asc' else '↓' }}{% else %}↕{% endif %}</span></th>
                 <th scope="col">Referred To</th>
-                <th scope="col" class="sortable" data-sort="created_at" aria-sort="descending">Date &amp; Time</th>
+                <th scope="col" class="sortable {% if sort_col=='created_at' %}sort-active{% endif %}" onclick="sortBy('created_at')">Date &amp; Time <span class="sort-icon">{% if sort_col=='created_at' %}{{ '↑' if sort_dir=='asc' else '↓' }}{% else %}↕{% endif %}</span></th>
                 <th scope="col">Remarks</th>
-                <th scope="col">Status</th>
+                <th scope="col" class="sortable {% if sort_col=='status' %}sort-active{% endif %}" onclick="sortBy('status')">Status <span class="sort-icon">{% if sort_col=='status' %}{{ '↑' if sort_dir=='asc' else '↓' }}{% else %}↕{% endif %}</span></th>
+                <th scope="col" class="sortable {% if sort_col=='due_date' %}sort-active{% endif %}" onclick="sortBy('due_date')">Due <span class="sort-icon">{% if sort_col=='due_date' %}{{ '↑' if sort_dir=='asc' else '↓' }}{% else %}↕{% endif %}</span></th>
                 <th scope="col" class="actions-col">Actions</th>
               </tr>
             </thead>
             <tbody id="docs-tbody">
               {% for doc in docs %}
-              <tr class="doc-row"
+              {% set _is_overdue = doc.due_date and doc.due_date < today and doc.status not in ('Released','Archived','Returned') %}
+              <tr class="doc-row {% if _is_overdue %}row-overdue{% endif %}"
                   onclick="rowClick(event,'{{ doc.id }}')"
                   onkeydown="if(event.key==='Enter')rowClick(event,'{{ doc.id }}')"
                   data-created-at="{{ doc.created_at or '' }}"
@@ -467,7 +498,9 @@ var serverSessionData = {
                 {% endif %}
 
                 <td class="td-doc">
-                  <div class="doc-name">{{ doc.doc_name }}</div>
+                  <div class="doc-name">{{ doc.doc_name }}
+                    <span class="age-badge" data-created="{{ doc.created_at or '' }}"></span>
+                  </div>
                   <div class="doc-meta-row">
                     {% if doc.doc_id %}<span class="doc-id">{{ doc.doc_id }}</span>{% endif %}
                     {% if doc.category %}<span class="doc-cat">{{ doc.category }}</span>{% endif %}
@@ -494,34 +527,49 @@ var serverSessionData = {
 
                 <td class="td-status">
                   {% set s = doc.status %}
-                  {% if s == 'Logged' %}<span class="status-pill status-logged">{{ s }}</span>
-                  {% elif s == 'Pending' %}
-                    <span class="status-pill status-pending">{{ s }}</span>
+                  {% if logged_in %}
+                  <form class="inline-status-form" onclick="event.stopPropagation()">
+                    <select class="inline-status-select" data-prev="{{ s }}"
+                            onchange="inlineStatusChange(this,'{{ doc.id }}')"
+                            title="Change status">
+                      {% for opt in status_options %}{% if opt != 'All' %}
+                      <option value="{{ opt }}" {% if opt == s %}selected{% endif %}>{{ opt }}</option>
+                      {% endif %}{% endfor %}
+                    </select>
+                  </form>
+                  {% endif %}
+                  {% if s == 'Pending' %}
                     {% if doc.pending_at_staff %}
                     <div class="status-sub">→ {% if doc.pending_at_staff_name %}{{ doc.pending_at_staff_name }}{% else %}{{ doc.pending_at_staff }}{% endif %}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</div>
                     {% endif %}
                     {% if doc.transfer_status == 'pending' %}<div class="status-sub">⏳ Awaiting Accept</div>{% endif %}
                   {% elif s == 'Received' %}
-                    <span class="status-pill status-received">{{ s }}</span>
                     {% if doc.transfer_status == 'accepted' %}<div class="status-sub">✓ Accepted</div>{% endif %}
-                  {% elif s == 'In Review' %}<span class="status-pill status-review">{{ s }}</span>
                   {% elif s == 'Routed' %}
-                    <span class="status-pill status-transit">Routed</span>
                     {% if doc.pending_at_staff %}<div class="status-sub">→ {{ doc.pending_at_staff }}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</div>
                     {% elif doc.forwarded_to %}<div class="status-sub">→ {{ doc.forwarded_to }}</div>{% endif %}
                   {% elif s == 'Transferred' %}
-                    <span class="status-pill status-transit">Transferred</span>
                     {% if doc.transferred_to %}<div class="status-sub">→ {% if doc.transferred_to_office %}{{ doc.transferred_to_office }} · {% endif %}{{ doc.transferred_to }}</div>{% endif %}
                     {% if doc.transfer_status == 'pending' %}<div class="status-sub">⏳ Awaiting Accept</div>{% endif %}
-                  {% elif s == 'Released' %}<span class="status-pill status-released">{{ s }}</span>
-                  {% elif s == 'On Hold' %}<span class="status-pill status-hold">{{ s }}</span>
-                  {% elif s == 'Returned' %}<span class="status-pill status-returned">{{ s }}</span>
                   {% elif s == 'Rejected' %}
-                    <span class="status-pill status-rejected">{{ s }}</span>
                     {% if doc.rejection_reason %}<div class="status-sub">{{ doc.rejection_reason }}</div>{% endif %}
-                  {% else %}<span class="status-pill status-archived">{{ s }}</span>
                   {% endif %}
                 </td>
+
+                <td class="td-date" onclick="event.stopPropagation()">
+                  {% if doc.due_date %}
+                    {% if doc.due_date < today and doc.status not in ('Released','Archived','Returned') %}
+                      <span class="due-badge due-overdue">⚠ {{ doc.due_date }}</span>
+                    {% elif doc.due_date <= today_plus3 and doc.status not in ('Released','Archived','Returned') %}
+                      <span class="due-badge due-soon">{{ doc.due_date }}</span>
+                    {% else %}
+                      <span class="due-badge due-ok">{{ doc.due_date }}</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="td-empty">—</span>
+                  {% endif %}
+                </td>
+
                 <td class="td-actions" onclick="event.stopPropagation()">
                   <div class="kebab-menu">
                     <button class="kebab-btn" aria-label="Document actions" onclick="toggleKebabMenu(this)">
@@ -530,6 +578,8 @@ var serverSessionData = {
                     <div class="kebab-dropdown">
                       <a href="/edit/{{ doc.id }}" class="kebab-item">✏️ Edit</a>
                       <a href="/transfer/{{ doc.id }}" class="kebab-item">🔄 Transfer</a>
+                      <button type="button" class="kebab-item" onclick="openQuickNote('{{ doc.id }}', {{ (doc.notes or doc.description or '') | tojson }})">📝 Quick Note</button>
+                      <button type="button" class="kebab-item" onclick="openAuditTrail('{{ doc.id }}')">🗺️ Travel Log</button>
                       <a href="/qr/{{ doc.id }}.png" class="kebab-item" target="_blank">📷 QR Code</a>
                       {% if session.get('role') == 'admin' %}
                       <form method="post" action="/delete/{{ doc.id }}" style="margin:0;">
@@ -754,5 +804,53 @@ var serverSessionData = {
   <input type="hidden" name="time_to"     id="routing-time-to"/>
   <input type="hidden" name="csrf_token"  value="{{ csrf_token }}"/>
 </form>
+
+{# ── Quick Note Modal ── #}
+<div id="quick-note-modal" class="dash-modal-overlay" onclick="if(event.target===this)closeQuickNote()">
+  <div class="dash-modal" role="dialog" aria-modal="true" aria-labelledby="qn-title">
+    <div class="dash-modal-header">
+      <span class="dash-modal-title" id="qn-title">📝 Quick Note</span>
+      <button class="dash-modal-close" onclick="closeQuickNote()" aria-label="Close">✕</button>
+    </div>
+    <div class="dash-modal-body">
+      <textarea id="qn-textarea" class="qn-textarea" placeholder="Add a note or remark for this document…"></textarea>
+    </div>
+    <div class="dash-modal-footer">
+      <button class="btn-cancel" onclick="closeQuickNote()">Cancel</button>
+      <button class="btn-save" id="qn-save-btn" onclick="saveQuickNote()">Save</button>
+    </div>
+  </div>
+</div>
+
+{# ── Audit Trail Modal ── #}
+<div id="audit-trail-modal" class="dash-modal-overlay" onclick="if(event.target===this)closeAuditTrail()">
+  <div class="dash-modal" role="dialog" aria-modal="true" aria-labelledby="at-title">
+    <div class="dash-modal-header">
+      <span class="dash-modal-title" id="at-title">🗺️ Travel Log — <span id="audit-trail-doc-name"></span></span>
+      <button class="dash-modal-close" onclick="closeAuditTrail()" aria-label="Close">✕</button>
+    </div>
+    <div class="dash-modal-body" id="audit-trail-body"></div>
+    <div class="dash-modal-footer">
+      <button class="btn-cancel" onclick="closeAuditTrail()">Close</button>
+    </div>
+  </div>
+</div>
+
+{# ── Aging badge JS ── #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var today = new Date(); today.setHours(0,0,0,0);
+  document.querySelectorAll('.age-badge[data-created]').forEach(function(el) {
+    var raw = el.dataset.created;
+    if (!raw) return;
+    var created = new Date(raw.replace(' ','T').slice(0,10));
+    created.setHours(0,0,0,0);
+    var days = Math.round((today - created) / 86400000);
+    if (days < 1) return;
+    el.textContent = days === 1 ? '1d' : days + 'd';
+    el.className = 'age-badge ' + (days <= 3 ? 'age-fresh' : days <= 7 ? 'age-warn' : 'age-old');
+  });
+});
+</script>
 
 {% endblock %}
