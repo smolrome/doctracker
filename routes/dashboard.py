@@ -305,11 +305,22 @@ def add():
                     edit_item = item
                     break
             if edit_item:
+                _cu = session.get("username", "")
+                _co = session.get("office", "")
+                _office_staff = sorted([
+                    u.get("full_name") or u.get("username")
+                    for u in get_all_users()
+                    if u.get("office") == _co
+                    and u.get("username") != _cu
+                    and u.get("role") != "client"
+                    and u.get("active", True)
+                ])
                 return render_template("form.html", doc={}, action="edit_cart",
                                        edit_item=edit_item, cart=cart, error=None,
                                        auto_ref=generate_ref(),
                                        status_options=get_dropdown_options("status"),
-                                       category_options=get_dropdown_options("category"))
+                                       category_options=get_dropdown_options("category"),
+                                       office_staff=_office_staff)
 
         elif action == "update":
             tmp_id = request.form.get("tmp_id", "")
@@ -387,11 +398,24 @@ def add():
 
         cart = session.get("staff_cart", [])
 
+    current_username = session.get("username", "")
+    current_office = session.get("office", "")
+    all_users = get_all_users()
+    office_staff = sorted([
+        u.get("full_name") or u.get("username")
+        for u in all_users
+        if u.get("office") == current_office
+        and u.get("username") != current_username
+        and u.get("role") != "client"
+        and u.get("active", True)
+    ])
+
     return render_template("form.html", doc={}, action="add",
                            cart=cart, error=error,
                            auto_ref=generate_ref(),
                            status_options=get_dropdown_options("status"),
-                           category_options=get_dropdown_options("category"))
+                           category_options=get_dropdown_options("category"),
+                           office_staff=office_staff)
 
 
 # ── View Logging Slip ─────────────────────────────────────────────────────────────

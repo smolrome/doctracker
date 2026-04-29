@@ -85,8 +85,13 @@
     <div class="form-row">
       <div class="form-group">
         <label>Referred To</label>
-        <input type="text" name="referred_to" value="{{ doc.get('referred_to','') }}"
-          placeholder="e.g. SDS, Budget Officer"/>
+        <div class="staff-combobox" id="referred-to-combo-edit">
+          <input type="text" name="referred_to" autocomplete="off"
+                 value="{{ doc.get('referred_to','') }}"
+                 placeholder="Search staff name..."
+                 class="staff-combo-input"/>
+          <div class="staff-combo-dropdown"></div>
+        </div>
       </div>
       <div class="form-group">
         <label>Forwarded To</label>
@@ -180,8 +185,13 @@
         </div>
         <div class="form-group">
           <label>Referred To</label>
-          <input type="text" name="referred_to" value="{{ edit_item.referred_to or '' }}"
-                 placeholder="e.g. SDS, Budget Officer"/>
+          <div class="staff-combobox" id="referred-to-combo-edit-cart">
+            <input type="text" name="referred_to" autocomplete="off"
+                   value="{{ edit_item.referred_to or '' }}"
+                   placeholder="Search staff name..."
+                   class="staff-combo-input"/>
+            <div class="staff-combo-dropdown"></div>
+          </div>
         </div>
       </div>
 
@@ -435,8 +445,12 @@ document.addEventListener('keydown', function(e) {
       </div>
       <div class="form-group">
         <label>Referred To</label>
-        <input type="text" name="referred_to"
-               placeholder="e.g. SDS, Budget Officer"/>
+        <div class="staff-combobox" id="referred-to-combo-add">
+          <input type="text" name="referred_to" autocomplete="off"
+                 placeholder="Search staff name..."
+                 class="staff-combo-input"/>
+          <div class="staff-combo-dropdown"></div>
+        </div>
       </div>
     </div>
     <div class="form-group">
@@ -462,4 +476,145 @@ document.addEventListener('keydown', function(e) {
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}"/>
 <script src="{{ url_for('static', filename='js/form.js') }}"></script>
+
+<style>
+.staff-combobox { position: relative; }
+.staff-combobox .staff-combo-input { width: 100%; box-sizing: border-box; }
+.staff-combo-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 9999;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+.staff-combo-dropdown.open { display: block; }
+.staff-combo-option {
+  padding: 9px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1f2937;
+  border-bottom: 1px solid #f3f4f6;
+}
+.staff-combo-option:last-child { border-bottom: none; }
+.staff-combo-option:hover,
+.staff-combo-option.active { background: #eff6ff; color: #1d4ed8; }
+.staff-combo-empty {
+  padding: 9px 14px;
+  font-size: 13px;
+  color: #9ca3af;
+  font-style: italic;
+}
+</style>
+
+<script>
+(function () {
+  var STAFF = {{ (office_staff or []) | tojson }};
+
+  function initCombobox(wrapper) {
+    if (!wrapper) return;
+    var input = wrapper.querySelector('.staff-combo-input');
+    var dropdown = wrapper.querySelector('.staff-combo-dropdown');
+    if (!input || !dropdown) return;
+
+    var activeIdx = -1;
+
+    function renderOptions(query) {
+      var q = (query || '').toLowerCase().trim();
+      var matches = q
+        ? STAFF.filter(function (s) {
+            return s.toLowerCase().split(/\s+/).some(function (w) { return w.startsWith(q); })
+                || s.toLowerCase().includes(q);
+          })
+        : STAFF.slice();
+
+      dropdown.innerHTML = '';
+      activeIdx = -1;
+
+      if (!matches.length) {
+        var empty = document.createElement('div');
+        empty.className = 'staff-combo-empty';
+        empty.textContent = q ? 'No matching staff found' : 'No staff in your office';
+        dropdown.appendChild(empty);
+      } else {
+        matches.forEach(function (name, i) {
+          var opt = document.createElement('div');
+          opt.className = 'staff-combo-option';
+          opt.textContent = name;
+          opt.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            input.value = name;
+            closeDropdown();
+          });
+          dropdown.appendChild(opt);
+        });
+      }
+    }
+
+    function openDropdown() {
+      if (!STAFF.length) return;
+      renderOptions(input.value);
+      dropdown.classList.add('open');
+    }
+
+    function closeDropdown() {
+      dropdown.classList.remove('open');
+      activeIdx = -1;
+    }
+
+    function highlightOption(idx) {
+      var opts = dropdown.querySelectorAll('.staff-combo-option');
+      opts.forEach(function (o) { o.classList.remove('active'); });
+      if (idx >= 0 && idx < opts.length) {
+        opts[idx].classList.add('active');
+        opts[idx].scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    input.addEventListener('focus', function () { openDropdown(); });
+    input.addEventListener('input', function () { openDropdown(); });
+    input.addEventListener('blur', function () { setTimeout(closeDropdown, 150); });
+
+    input.addEventListener('keydown', function (e) {
+      var opts = dropdown.querySelectorAll('.staff-combo-option');
+      if (!dropdown.classList.contains('open')) {
+        if (e.key === 'ArrowDown' || e.key === 'Enter') openDropdown();
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeIdx = Math.min(activeIdx + 1, opts.length - 1);
+        highlightOption(activeIdx);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeIdx = Math.max(activeIdx - 1, 0);
+        highlightOption(activeIdx);
+      } else if (e.key === 'Enter') {
+        if (activeIdx >= 0 && opts[activeIdx]) {
+          e.preventDefault();
+          input.value = opts[activeIdx].textContent;
+          closeDropdown();
+        }
+      } else if (e.key === 'Escape') {
+        closeDropdown();
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    ['referred-to-combo-add',
+     'referred-to-combo-edit-cart',
+     'referred-to-combo-edit'].forEach(function (id) {
+      initCombobox(document.getElementById(id));
+    });
+  });
+})();
+</script>
 {% endblock %}
