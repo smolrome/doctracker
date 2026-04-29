@@ -213,6 +213,7 @@ body {
 .si-transferred { --si-color: #7A3B2B; }
 .si-released    { --si-color: #1F6E4A; }
 .si-hold        { --si-color: #C8102E; }
+.si-returned    { --si-color: #B45309; }
 .si-archived    { --si-color: #5B6B7F; }
 
 
@@ -480,6 +481,7 @@ th.cb-cell { background: #F1F7FB; }
 .status-released    { background:#E3F0E8; color:#1F6E4A; border-color:#BFD8C9; } .status-released::before    { background:#1F6E4A; }
 .status-hold        { background:#FBEAEC; color:#C8102E; border-color:#ECC0C6; } .status-hold::before        { background:#C8102E; }
 .status-rejected    { background:#FBEAEC; color:#9B0B23; border-color:#ECC0C6; } .status-rejected::before    { background:#9B0B23; }
+.status-returned    { background:#FFF3E0; color:#B45309; border-color:#FBBF24; } .status-returned::before    { background:#B45309; }
 .status-archived    { background:#EEECE6; color:#5B6B7F; border-color:#D5CFC2; } .status-archived::before    { background:#5B6B7F; }
 .status-sub { margin-top: 4px; font-size: 11px; color: #64748B; font-weight: 500; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); }
 

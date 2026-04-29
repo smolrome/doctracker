@@ -115,6 +115,7 @@ def index():
     filter_time_to   = request.args.get("time_to", "").strip()
     filter_office    = request.args.get("office", "All")
     filter_cat       = request.args.get("cat", "All")
+    filter_staff     = request.args.get("staff", "All")
 
     filtered = docs
 
@@ -136,7 +137,7 @@ def index():
     if filter_status != "All":
         if filter_status == "Unknown":
             # Filter for documents with empty or unknown status
-            known_statuses = {"Logged", "Pending", "Received", "In Review", "Routed", "Transferred", "Released", "On Hold", "Archived"}
+            known_statuses = {"Logged", "Pending", "Received", "In Review", "Routed", "Transferred", "Released", "On Hold", "Returned", "Archived"}
             filtered = [d for d in filtered if (d.get("status") or "").strip() not in known_statuses]
         else:
             filtered = [d for d in filtered if d.get("status") == filter_status]
@@ -199,6 +200,29 @@ def index():
         filtered = [d for d in filtered
                     if (d.get("category") or "").strip().lower() == filter_cat.strip().lower()]
 
+    # Build office staff list for current user (used for staff filter dropdown)
+    _cu_office = session.get("office", "")
+    _all_users = get_all_users()
+    office_staff_list = [
+        {"username": u.get("username", ""), "full_name": u.get("full_name") or u.get("username", "")}
+        for u in _all_users
+        if u.get("office") == _cu_office
+        and u.get("role") != "client"
+        and u.get("active", True)
+    ]
+    office_staff_names = sorted(s["full_name"] for s in office_staff_list)
+
+    if filter_staff and filter_staff != "All":
+        # Match by full_name (received_by stores full_name; logged_by stores username)
+        staff_username = next(
+            (s["username"] for s in office_staff_list if s["full_name"] == filter_staff), None
+        )
+        filtered = [
+            d for d in filtered
+            if d.get("received_by") == filter_staff
+            or (staff_username and d.get("logged_by") == staff_username)
+        ]
+
     try:
         per_page = int(request.args.get("per_page", 25))
     except ValueError:
@@ -239,8 +263,10 @@ def index():
         filter_time_from=filter_time_from, filter_time_to=filter_time_to,
         filter_office=filter_office,
         filter_cat=filter_cat,
+        filter_staff=filter_staff,
         status_options=["All"] + get_dropdown_options("status"),
         cat_options=get_dropdown_options("category"),
+        office_staff_names=office_staff_names,
         saved_offices=load_saved_offices(),
         page=page, total_pages=total_pages,
         per_page=per_page, total=total,

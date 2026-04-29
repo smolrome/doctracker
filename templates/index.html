@@ -181,6 +181,16 @@ var serverSessionData = {
         </div>
       </a>
 
+      <a class="stat-item si-returned {% if filter_status=='Returned' %}active{% endif %}"
+         href="#" onclick="event.preventDefault();statFilter('Returned')"
+         aria-pressed="{{ 'true' if filter_status=='Returned' else 'false' }}">
+        <span class="stat-item-icon">↩️</span>
+        <div class="stat-item-body">
+          <div class="stat-item-label">Returned</div>
+          <div class="stat-item-num">{{ stats.returned or 0 }}</div>
+        </div>
+      </a>
+
       <a class="stat-item si-archived {% if filter_status=='Archived' %}active{% endif %}"
          href="#" onclick="event.preventDefault();statFilter('Archived')"
          aria-pressed="{{ 'true' if filter_status=='Archived' else 'false' }}">
@@ -257,16 +267,15 @@ var serverSessionData = {
 
             <div class="fc-btns">
               <button type="submit" class="btn btn-primary btn-sm">Search</button>
+              {% set _any = search or filter_status != 'All' or filter_source != 'All' or filter_date or filter_time_from or filter_time_to or (filter_office and filter_office != 'All') or (filter_cat and filter_cat != 'All') or (filter_staff and filter_staff != 'All') %}
+              {% if _any %}
               <a href="#" class="btn btn-secondary btn-sm" onclick="clearAllFilters(event)">Clear</a>
+              {% endif %}
             </div>
           </div>
 
-          {# Row 2: type + source chips + active pills #}
+          {# Row 2: source chips + active pills #}
           <div class="fc-chips">
-            <span class="chip-grp-label">Type</span>
-            <button type="button" class="chip {% if filter_type=='All' %}active{% endif %}" onclick="setType('All')">All</button>
-            <button type="button" class="chip {% if filter_type=='Received' %}active{% endif %}" onclick="setType('Received')">📥 Received</button>
-            <button type="button" class="chip {% if filter_type=='Released' %}active{% endif %}" onclick="setType('Released')">✅ Released</button>
             <button type="button" class="chip" onclick="setToday()">📆 Today</button>
 
             <span class="chip-sep">|</span>
@@ -297,17 +306,28 @@ var serverSessionData = {
             </select>
             {% endif %}
 
-            {% set any_filter = search or filter_status != 'All' or filter_type != 'All' or filter_source != 'All' or filter_date or filter_time_from or filter_time_to or filter_office != 'All' or (filter_cat and filter_cat != 'All') %}
+            {% if office_staff_names %}
+            <span class="chip-sep">|</span>
+            <span class="chip-grp-label">Staff</span>
+            <select class="chip-select" id="staff-filter-select" onchange="setStaff(this.value)">
+              <option value="All" {% if not filter_staff or filter_staff=='All' %}selected{% endif %}>All</option>
+              {% for name in office_staff_names %}
+              <option value="{{ name }}" {% if filter_staff==name %}selected{% endif %}>{{ name }}</option>
+              {% endfor %}
+            </select>
+            {% endif %}
+
+            {% set any_filter = search or filter_status != 'All' or filter_source != 'All' or filter_date or filter_time_from or filter_time_to or (filter_office and filter_office != 'All') or (filter_cat and filter_cat != 'All') or (filter_staff and filter_staff != 'All') %}
             {% if any_filter %}
             <div class="active-pills" role="list">
               {% if filter_date %}<span class="f-pill">📅 {{ filter_date }}<button class="f-pill-x" type="button" onclick="clearField('date')">×</button></span>{% endif %}
               {% if filter_time_from or filter_time_to %}<span class="f-pill">🕐 {{ filter_time_from or '00:00' }}–{{ filter_time_to or '23:59' }}<button class="f-pill-x" type="button" onclick="clearField('time_from');clearField('time_to');">×</button></span>{% endif %}
               {% if filter_status != 'All' %}<span class="f-pill">{{ filter_status }}<button class="f-pill-x" type="button" onclick="clearField('status','All')">×</button></span>{% endif %}
               {% if search %}<span class="f-pill">🔍 "{{ search }}"<button class="f-pill-x" type="button" onclick="clearField('search','')">×</button></span>{% endif %}
-              {% if filter_type != 'All' %}<span class="f-pill">{{ filter_type }}<button class="f-pill-x" type="button" onclick="clearField('type','All')">×</button></span>{% endif %}
               {% if filter_source != 'All' %}<span class="f-pill">{{ filter_source }}<button class="f-pill-x" type="button" onclick="clearField('source','All')">×</button></span>{% endif %}
-              {% if is_admin and filter_office != 'All' %}<span class="f-pill">🏢 {{ filter_office }}<button class="f-pill-x" type="button" onclick="clearField('office','All')">×</button></span>{% endif %}
+              {% if is_admin and filter_office and filter_office != 'All' %}<span class="f-pill">🏢 {{ filter_office }}<button class="f-pill-x" type="button" onclick="clearField('office','All')">×</button></span>{% endif %}
               {% if filter_cat and filter_cat != 'All' %}<span class="f-pill">🗂️ {{ filter_cat }}<button class="f-pill-x" type="button" onclick="clearField('cat','All')">×</button></span>{% endif %}
+              {% if filter_staff and filter_staff != 'All' %}<span class="f-pill">👤 {{ filter_staff }}<button class="f-pill-x" type="button" onclick="clearField('staff','All')">×</button></span>{% endif %}
             </div>
             {% endif %}
           </div>
@@ -331,10 +351,10 @@ var serverSessionData = {
 
         </div>
 
-        <input type="hidden" name="type"   id="type-hidden"   value="{{ filter_type }}"/>
         <input type="hidden" name="source" id="source-hidden" value="{{ filter_source }}"/>
         <input type="hidden" name="office" id="office-hidden" value="{{ filter_office }}"/>
         <input type="hidden" name="cat"    id="cat-hidden"    value="{{ filter_cat }}"/>
+        <input type="hidden" name="staff"  id="staff-hidden"  value="{{ filter_staff }}"/>
         <input type="hidden" name="per_page"                  value="{{ per_page }}"/>
       </form>
       </div>
@@ -495,6 +515,7 @@ var serverSessionData = {
                     {% if doc.transfer_status == 'pending' %}<div class="status-sub">⏳ Awaiting Accept</div>{% endif %}
                   {% elif s == 'Released' %}<span class="status-pill status-released">{{ s }}</span>
                   {% elif s == 'On Hold' %}<span class="status-pill status-hold">{{ s }}</span>
+                  {% elif s == 'Returned' %}<span class="status-pill status-returned">{{ s }}</span>
                   {% elif s == 'Rejected' %}
                     <span class="status-pill status-rejected">{{ s }}</span>
                     {% if doc.rejection_reason %}<div class="status-sub">{{ doc.rejection_reason }}</div>{% endif %}
