@@ -1343,7 +1343,7 @@ document.addEventListener('contextmenu', function(e) {
       dropdown.classList.add('show');
     }
   }
-}
+});
 
 
 // ─────────────────────────────────────────────────────────────
@@ -1523,4 +1523,3 @@ function inlineStatusChange(selectEl, docId) {
     .catch(function() { showToast('Network error.', 'error'); });
   selectEl.dataset.prev = newStatus;
 }
-});
