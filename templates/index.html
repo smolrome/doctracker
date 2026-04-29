@@ -525,34 +525,43 @@ var serverSessionData = {
                   {% set remarks = doc.notes or doc.description %}{% if remarks %}{{ remarks }}{% else %}<span class="td-empty">—</span>{% endif %}
                 </td>
 
-                <td class="td-status">
+                <td class="td-status" onclick="event.stopPropagation()">
                   {% set s = doc.status %}
-                  {% if logged_in %}
-                  <form class="inline-status-form" onclick="event.stopPropagation()">
-                    <select class="inline-status-select" data-prev="{{ s }}"
-                            onchange="inlineStatusChange(this,'{{ doc.id }}')"
-                            title="Change status">
-                      {% for opt in status_options %}{% if opt != 'All' %}
-                      <option value="{{ opt }}" {% if opt == s %}selected{% endif %}>{{ opt }}</option>
-                      {% endif %}{% endfor %}
-                    </select>
-                  </form>
-                  {% endif %}
-                  {% if s == 'Pending' %}
+                  {% if s == 'Logged' %}<span class="status-pill status-logged">{{ s }}</span>
+                  {% elif s == 'Pending' %}
+                    <span class="status-pill status-pending">{{ s }}</span>
                     {% if doc.pending_at_staff %}
                     <div class="status-sub">→ {% if doc.pending_at_staff_name %}{{ doc.pending_at_staff_name }}{% else %}{{ doc.pending_at_staff }}{% endif %}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</div>
                     {% endif %}
                     {% if doc.transfer_status == 'pending' %}<div class="status-sub">⏳ Awaiting Accept</div>{% endif %}
                   {% elif s == 'Received' %}
+                    <span class="status-pill status-received">{{ s }}</span>
                     {% if doc.transfer_status == 'accepted' %}<div class="status-sub">✓ Accepted</div>{% endif %}
+                  {% elif s == 'In Review' %}<span class="status-pill status-review">{{ s }}</span>
                   {% elif s == 'Routed' %}
+                    <span class="status-pill status-transit">Routed</span>
                     {% if doc.pending_at_staff %}<div class="status-sub">→ {{ doc.pending_at_staff }}{% if doc.pending_at_office %} · {{ doc.pending_at_office }}{% endif %}</div>
                     {% elif doc.forwarded_to %}<div class="status-sub">→ {{ doc.forwarded_to }}</div>{% endif %}
                   {% elif s == 'Transferred' %}
+                    <span class="status-pill status-transit">Transferred</span>
                     {% if doc.transferred_to %}<div class="status-sub">→ {% if doc.transferred_to_office %}{{ doc.transferred_to_office }} · {% endif %}{{ doc.transferred_to }}</div>{% endif %}
                     {% if doc.transfer_status == 'pending' %}<div class="status-sub">⏳ Awaiting Accept</div>{% endif %}
+                  {% elif s == 'Released' %}<span class="status-pill status-released">{{ s }}</span>
+                  {% elif s == 'On Hold' %}<span class="status-pill status-hold">{{ s }}</span>
+                  {% elif s == 'Returned' %}<span class="status-pill status-returned">{{ s }}</span>
                   {% elif s == 'Rejected' %}
+                    <span class="status-pill status-rejected">{{ s }}</span>
                     {% if doc.rejection_reason %}<div class="status-sub">{{ doc.rejection_reason }}</div>{% endif %}
+                  {% else %}<span class="status-pill status-archived">{{ s }}</span>
+                  {% endif %}
+                  {% if logged_in %}
+                  <select class="inline-status-select" data-prev="{{ s }}"
+                          onchange="inlineStatusChange(this,'{{ doc.id }}')"
+                          title="Quick-change status">
+                    {% for opt in status_options %}{% if opt != 'All' %}
+                    <option value="{{ opt }}" {% if opt == s %}selected{% endif %}>{{ opt }}</option>
+                    {% endif %}{% endfor %}
+                  </select>
                   {% endif %}
                 </td>
 
