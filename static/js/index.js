@@ -1343,4 +1343,184 @@ document.addEventListener('contextmenu', function(e) {
       dropdown.classList.add('show');
     }
   }
+}
+
+
+// ─────────────────────────────────────────────────────────────
+//  COLUMN SORT
+// ─────────────────────────────────────────────────────────────
+function sortBy(col) {
+  var params = new URLSearchParams(window.location.search);
+  var curCol = params.get('sort') || 'created_at';
+  var curDir = params.get('sort_dir') || 'desc';
+  var newDir = (curCol === col && curDir === 'desc') ? 'asc' : 'desc';
+  params.set('sort', col);
+  params.set('sort_dir', newDir);
+  params.delete('page');
+  saveSelectionsToLocalStorage();
+  var allIds = restoreSelectionsFromLocalStorage();
+  if (allIds.length > 0) params.set('selected_docs', allIds.join(','));
+  window.location.href = '/?' + params.toString();
+}
+
+
+// ─────────────────────────────────────────────────────────────
+//  FILTER MEMORY  (save/restore last used filter URL)
+// ─────────────────────────────────────────────────────────────
+var _FM_KEY = 'doctracker_last_filters';
+
+function saveLastFilters() {
+  var qs = window.location.search;
+  if (qs && qs !== '?') localStorage.setItem(_FM_KEY, qs);
+}
+
+function offerRestoreFilters() {
+  var saved = localStorage.getItem(_FM_KEY);
+  if (!saved || saved === '?' || window.location.search) return;
+  var bar = document.getElementById('filter-restore-bar');
+  if (!bar) return;
+  bar.querySelector('.frb-msg').textContent = 'Restore your last filters?';
+  bar.classList.add('show');
+  bar.querySelector('.frb-btn').onclick = function() {
+    window.location.href = '/?' + saved.replace(/^\?/,'');
+  };
+  bar.querySelector('.frb-dismiss').onclick = function() {
+    bar.classList.remove('show');
+    localStorage.removeItem(_FM_KEY);
+  };
+}
+
+// Save on every filter-changing navigation (patch existing setSource/setCat etc.)
+(function() {
+  var _orig = window.location.__proto__;
+  document.addEventListener('DOMContentLoaded', function() {
+    var hasFilters = !!(window.location.search && window.location.search !== '?');
+    if (hasFilters) saveLastFilters();
+    else offerRestoreFilters();
+  });
+})();
+
+
+// ─────────────────────────────────────────────────────────────
+//  QUICK-NOTE MODAL
+// ─────────────────────────────────────────────────────────────
+var _qnDocId = null;
+var _csrfToken = null;
+
+function getCsrf() {
+  if (!_csrfToken) _csrfToken = (document.getElementById('csrf-token-value') || {}).value || '';
+  return _csrfToken;
+}
+
+function openQuickNote(docId, currentNote) {
+  _qnDocId = docId;
+  var overlay = document.getElementById('quick-note-modal');
+  var textarea = document.getElementById('qn-textarea');
+  if (!overlay || !textarea) return;
+  textarea.value = currentNote || '';
+  overlay.classList.add('open');
+  setTimeout(function() { textarea.focus(); }, 80);
+}
+
+function closeQuickNote() {
+  var overlay = document.getElementById('quick-note-modal');
+  if (overlay) overlay.classList.remove('open');
+  _qnDocId = null;
+}
+
+function saveQuickNote() {
+  if (!_qnDocId) return;
+  var textarea = document.getElementById('qn-textarea');
+  var note = textarea ? textarea.value : '';
+  var btn = document.getElementById('qn-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  var fd = new FormData();
+  fd.append('note', note);
+  fd.append('csrf_token', getCsrf());
+  fetch('/quick-note/' + _qnDocId, { method: 'POST', headers: {'X-Requested-With':'XMLHttpRequest'}, body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        showToast('Note saved.', 'success');
+        closeQuickNote();
+      } else {
+        showToast('Failed to save: ' + (data.msg || 'error'), 'error');
+      }
+    })
+    .catch(function() { showToast('Network error.', 'error'); })
+    .finally(function() { if (btn) { btn.disabled = false; btn.textContent = 'Save'; } });
+}
+
+
+// ─────────────────────────────────────────────────────────────
+//  AUDIT TRAIL MODAL
+// ─────────────────────────────────────────────────────────────
+function openAuditTrail(docId) {
+  var overlay = document.getElementById('audit-trail-modal');
+  var body    = document.getElementById('audit-trail-body');
+  if (!overlay || !body) return;
+  body.innerHTML = '<p style="color:#6B7280;font-size:13px;">Loading…</p>';
+  overlay.classList.add('open');
+
+  fetch('/travel-log/' + docId, { headers: {'X-Requested-With':'XMLHttpRequest'} })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.ok || !data.travel_log.length) {
+        body.innerHTML = '<p style="color:#6B7280;font-size:13px;">No travel log entries.</p>';
+        return;
+      }
+      document.getElementById('audit-trail-doc-name').textContent = data.doc_name || '';
+      var html = '<div class="audit-log-list">';
+      data.travel_log.forEach(function(e, i) {
+        var ts = (e.timestamp || '').replace('T',' ').slice(0,16);
+        html += '<div class="audit-entry">'
+          + '<div class="audit-entry-action">' + (i+1) + '. ' + escHtml(e.action || '—') + '</div>'
+          + '<div class="audit-entry-meta">'
+            + escHtml(e.office || '—') + ' · ' + escHtml(e.officer || '—') + ' · ' + escHtml(ts)
+          + '</div>'
+          + (e.remarks ? '<div class="audit-entry-remarks">' + escHtml(e.remarks) + '</div>' : '')
+          + '</div>';
+      });
+      html += '</div>';
+      body.innerHTML = html;
+    })
+    .catch(function() { body.innerHTML = '<p style="color:#C8102E;">Failed to load.</p>'; });
+}
+
+function closeAuditTrail() {
+  var overlay = document.getElementById('audit-trail-modal');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+
+// ─────────────────────────────────────────────────────────────
+//  INLINE STATUS CHANGE (AJAX from table)
+// ─────────────────────────────────────────────────────────────
+function inlineStatusChange(selectEl, docId) {
+  var newStatus = selectEl.value;
+  var fd = new FormData();
+  fd.append('status', newStatus);
+  fd.append('csrf_token', getCsrf());
+  fetch('/update-status/' + docId, { method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        showToast('Status updated to ' + newStatus, 'success');
+        // Refresh the row's status pill text area
+        var pill = selectEl.closest('td').querySelector('.inline-status-label');
+        if (pill) pill.textContent = newStatus;
+      } else {
+        showToast('Failed: ' + (data.msg||'error'), 'error');
+        // Revert select
+        selectEl.value = selectEl.dataset.prev || newStatus;
+      }
+    })
+    .catch(function() { showToast('Network error.', 'error'); });
+  selectEl.dataset.prev = newStatus;
+}
 });

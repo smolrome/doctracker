@@ -2,6 +2,10 @@
 routes/dashboard.py — Main staff/admin document dashboard and document CRUD.
 """
 import uuid
+import csv
+import io as _io
+import difflib
+from datetime import date as _date, timedelta as _timedelta
 
 from flask import (Blueprint, flash, jsonify, redirect,
                    render_template, request, send_file, session, url_for)
@@ -111,6 +115,8 @@ def index():
     filter_type      = request.args.get("type", "All")
     filter_source    = request.args.get("source", "All")  # Staff/Client/All
     filter_date      = request.args.get("date", "").strip()
+    sort_col         = request.args.get("sort", "created_at")
+    sort_dir         = request.args.get("sort_dir", "desc")
     filter_time_from = request.args.get("time_from", "").strip()
     filter_time_to   = request.args.get("time_to", "").strip()
     filter_office    = request.args.get("office", "All")
@@ -200,16 +206,25 @@ def index():
         filtered = [d for d in filtered
                     if (d.get("category") or "").strip().lower() == filter_cat.strip().lower()]
 
-    # Build office staff list for current user (used for staff filter dropdown)
+    # Build staff list for the filter dropdown.
+    # Admins see all staff system-wide; regular staff see only their own office.
     _cu_office = session.get("office", "")
     _all_users = get_all_users()
-    office_staff_list = [
-        {"username": u.get("username", ""), "full_name": u.get("full_name") or u.get("username", "")}
-        for u in _all_users
-        if u.get("office") == _cu_office
-        and u.get("role") != "client"
-        and u.get("active", True)
-    ]
+    if user_role == "admin":
+        office_staff_list = [
+            {"username": u.get("username", ""), "full_name": u.get("full_name") or u.get("username", "")}
+            for u in _all_users
+            if u.get("role") != "client"
+            and u.get("active", True)
+        ]
+    else:
+        office_staff_list = [
+            {"username": u.get("username", ""), "full_name": u.get("full_name") or u.get("username", "")}
+            for u in _all_users
+            if u.get("office") == _cu_office
+            and u.get("role") != "client"
+            and u.get("active", True)
+        ]
     office_staff_names = sorted(s["full_name"] for s in office_staff_list)
 
     if filter_staff and filter_staff != "All":
@@ -222,6 +237,33 @@ def index():
             if d.get("received_by") == filter_staff
             or (staff_username and d.get("logged_by") == staff_username)
         ]
+
+    # ── Sorting ──────────────────────────────────────────────────────────────────
+    _SORT_KEYS = {
+        "doc_name":   lambda d: (d.get("doc_name") or "").lower(),
+        "created_at": lambda d: d.get("created_at") or "",
+        "status":     lambda d: (d.get("status") or "").lower(),
+        "sender":     lambda d: (d.get("sender_name") or d.get("sender_org") or "").lower(),
+        "due_date":   lambda d: d.get("due_date") or "9999-12-31",
+    }
+    _sort_key = _SORT_KEYS.get(sort_col, _SORT_KEYS["created_at"])
+    filtered = sorted(filtered, key=_sort_key, reverse=(sort_dir != "asc"))
+
+    # ── Office-level stats (admin only) ──────────────────────────────────────────
+    office_stats = []
+    if user_role == "admin":
+        _office_map = {}
+        for d in filtered:
+            _off = d.get("logged_by_office") or "Unknown"
+            if _off not in _office_map:
+                _office_map[_off] = {"office": _off, "total": 0, "pending": 0, "overdue": 0}
+            _office_map[_off]["total"] += 1
+            if d.get("status") in ("Pending", "Logged", "In Review"):
+                _office_map[_off]["pending"] += 1
+            _today = now_str()[:10]
+            if d.get("due_date") and d["due_date"] < _today and d.get("status") not in ("Released", "Archived", "Returned"):
+                _office_map[_off]["overdue"] += 1
+        office_stats = sorted(_office_map.values(), key=lambda x: -x["total"])[:10]
 
     try:
         per_page = int(request.args.get("per_page", 25))
@@ -264,9 +306,13 @@ def index():
         filter_office=filter_office,
         filter_cat=filter_cat,
         filter_staff=filter_staff,
+        sort_col=sort_col, sort_dir=sort_dir,
         status_options=["All"] + get_dropdown_options("status"),
         cat_options=get_dropdown_options("category"),
         office_staff_names=office_staff_names,
+        office_stats=office_stats,
+        today=now_str()[:10],
+        today_plus3=(_date.today() + _timedelta(days=3)).strftime('%Y-%m-%d'),
         saved_offices=load_saved_offices(),
         page=page, total_pages=total_pages,
         per_page=per_page, total=total,
@@ -312,6 +358,7 @@ def add():
                     "category":    request.form.get("category", "").strip(),
                     "description": request.form.get("description", "").strip(),
                     "notes":       request.form.get("notes", "").strip(),
+                    "due_date":    request.form.get("due_date", "").strip(),
                 })
                 session["staff_cart"] = cart
                 session.modified = True
@@ -359,6 +406,7 @@ def add():
                     cart[i]["category"] = request.form.get("category", "").strip()
                     cart[i]["description"] = request.form.get("description", "").strip()
                     cart[i]["notes"] = request.form.get("notes", "") or request.form.get("description", "").strip()
+                    cart[i]["due_date"] = request.form.get("due_date", "").strip()
                     session["staff_cart"] = cart
                     session.modified = True
                     flash(f"✅ Document updated successfully.", "success")
@@ -386,6 +434,7 @@ def add():
                         "sender_org":     item["sender_org"],
                         "sender_contact": "",
                         "referred_to":    item["referred_to"],
+                        "due_date":       item.get("due_date", ""),
                         "forwarded_to":   "",
                         "recipient_name": "", "recipient_org": "", "recipient_contact": "",
                         "received_by":    actor,
@@ -628,18 +677,23 @@ def permanent_delete_all():
 def update_status(doc_id):
     doc = get_doc(doc_id)
     if not doc:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"ok": False, "msg": "Not found"}), 404
         return jsonify({"ok": False, "msg": "Not found"}), 404
     new_status = request.form.get("status", "").strip()
     allowed_statuses = get_dropdown_options("status")
     if new_status not in allowed_statuses:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"ok": False, "msg": "Invalid status"}), 400
         return jsonify({"ok": False, "msg": "Invalid status"}), 400
     doc["status"] = new_status
     if new_status == "Received" and not doc.get("date_received"):
         doc["date_received"] = now_str()[:16].replace('T', ' ')
     if new_status == "Released" and not doc.get("date_released"):
         doc["date_released"] = now_str()[:16].replace('T', ' ')
+    current_office = session.get("office") or "DepEd Leyte Division Office"
     doc.setdefault("travel_log", []).append({
-        "office":    "DepEd Leyte Division Office",
+        "office":    current_office,
         "action":    f"Status Updated to {new_status}",
         "officer":   session.get("full_name") or session.get("username"),
         "timestamp": now_str(),
@@ -648,11 +702,15 @@ def update_status(doc_id):
     try:
         save_doc(doc)
     except Exception as e:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"ok": False, "msg": str(e)}), 500
         flash(f"Failed to update status: {str(e)}", "error")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
     audit_log("status_updated",
               f"doc_id={doc_id} new_status={new_status} doc_name={doc.get('doc_name','')[:60]}",
               username=session.get("username","?"), ip=get_client_ip())
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({"ok": True, "status": new_status})
     flash(f"Status updated to {new_status}.", "success")
     return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
 
@@ -1476,3 +1534,131 @@ def backfill_logged_office():
                 updated += 1
     
     return jsonify({"updated": updated, "total": len(docs)})
+
+
+# ── Export current filtered view to CSV ──────────────────────────────────────
+
+@dashboard_bp.route("/export-csv")
+@login_required
+def export_csv():
+    """Export the current filtered document list as a CSV download."""
+    current_username = session.get("username", "")
+    user_role        = session.get("role", "")
+    docs = load_docs()
+    if user_role != "admin":
+        docs = [
+            d for d in docs
+            if d.get("original_logged_by") == current_username
+            or d.get("logged_by") == current_username
+            or d.get("received_by") == current_username
+            or d.get("accepted_by") == current_username
+            or d.get("transferred_by") == current_username
+        ]
+
+    search        = request.args.get("search", "").lower()
+    filter_status = request.args.get("status", "All")
+    filter_source = request.args.get("source", "All")
+    filter_date   = request.args.get("date", "").strip()
+    filter_cat    = request.args.get("cat", "All")
+    filter_staff  = request.args.get("staff", "All")
+
+    if search:
+        docs = [d for d in docs if search in " ".join([
+            d.get("doc_name",""), d.get("doc_id",""), d.get("sender_name",""),
+            d.get("sender_org",""), d.get("referred_to",""), d.get("notes",""),
+        ]).lower()]
+    if filter_status != "All":
+        docs = [d for d in docs if d.get("status") == filter_status]
+    if filter_source == "Staff":
+        docs = [d for d in docs if d.get("logged_by") and not d.get("submitted_by")]
+    elif filter_source == "Client":
+        docs = [d for d in docs if d.get("submitted_by")]
+    if filter_date:
+        docs = [d for d in docs if (d.get("date_received") or d.get("created_at",""))[:10] == filter_date]
+    if filter_cat and filter_cat != "All":
+        docs = [d for d in docs if (d.get("category") or "").lower() == filter_cat.lower()]
+    if filter_staff and filter_staff != "All":
+        docs = [d for d in docs if d.get("received_by") == filter_staff or d.get("logged_by") == filter_staff]
+
+    output = _io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Ref No.", "Document", "Category", "Sender", "Sender Org",
+                     "Referred To", "Status", "Due Date", "Date Logged", "Remarks"])
+    for d in docs:
+        writer.writerow([
+            d.get("doc_id",""), d.get("doc_name",""), d.get("category",""),
+            d.get("sender_name",""), d.get("sender_org",""), d.get("referred_to",""),
+            d.get("status",""), d.get("due_date",""),
+            (d.get("created_at") or "")[:10], d.get("notes","") or d.get("description",""),
+        ])
+    output.seek(0)
+    return send_file(
+        BytesIO(output.getvalue().encode("utf-8-sig")),
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name="documents_export.csv",
+    )
+
+
+# ── Quick note update ─────────────────────────────────────────────────────────
+
+@dashboard_bp.route("/quick-note/<doc_id>", methods=["POST"])
+@login_required
+def quick_note(doc_id):
+    doc = get_doc(doc_id)
+    if not doc:
+        return jsonify({"ok": False, "msg": "Not found"}), 404
+    note = request.form.get("note", "").strip()
+    doc["notes"] = note
+    try:
+        save_doc(doc)
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+    audit_log("note_updated", f"doc_id={doc_id}", username=session.get("username","?"), ip=get_client_ip())
+    return jsonify({"ok": True})
+
+
+# ── Travel log quick-view ─────────────────────────────────────────────────────
+
+@dashboard_bp.route("/travel-log/<doc_id>")
+@login_required
+def travel_log_json(doc_id):
+    doc = get_doc(doc_id)
+    if not doc:
+        return jsonify({"ok": False, "msg": "Not found"}), 404
+    return jsonify({"ok": True, "doc_name": doc.get("doc_name",""), "travel_log": doc.get("travel_log", [])})
+
+
+# ── Duplicate document check ──────────────────────────────────────────────────
+
+@dashboard_bp.route("/check-duplicate")
+@login_required
+def check_duplicate():
+    q = request.args.get("q", "").strip().lower()
+    if len(q) < 5:
+        return jsonify({"duplicates": []})
+    current_username = session.get("username", "")
+    cutoff = now_str()[:10]  # today
+    # Look at docs logged in the past 14 days by this office
+    current_office = session.get("office", "")
+    docs = load_docs()
+    recent = [
+        d for d in docs
+        if (d.get("logged_by_office") == current_office or d.get("logged_by") == current_username)
+        and (d.get("created_at") or "")[:10] >= cutoff[:7] + "-01"  # within current month-ish
+    ]
+    matches = []
+    for d in recent:
+        name = (d.get("doc_name") or "").lower()
+        ratio = difflib.SequenceMatcher(None, q, name).ratio()
+        if ratio >= 0.75 or q in name:
+            matches.append({
+                "id":       d["id"],
+                "doc_name": d.get("doc_name",""),
+                "doc_id":   d.get("doc_id",""),
+                "status":   d.get("status",""),
+                "date":     (d.get("created_at") or "")[:10],
+            })
+        if len(matches) >= 5:
+            break
+    return jsonify({"duplicates": matches})
