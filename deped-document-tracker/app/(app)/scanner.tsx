@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: 48,
+    paddingBottom: 112, // tab bar is at bottom:28, height:64 → 28+64+20 clearance
     paddingTop: 20,
     backgroundColor: 'rgba(0,0,0,0.6)',
     flexDirection: 'row',

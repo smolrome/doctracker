@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { authStorage } from './auth';
 
-export const BASE_URL = 'https://docktracker.up.railway.app';
+export const BASE_URL = 'https://doctracker.depedleytepersonnelunit.com';
 console.log('API connecting to:', BASE_URL);
 
 const api = axios.create({
@@ -21,7 +21,11 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    console.log('API ERROR:', error.message, error.config?.url);
+    const status = error.response?.status;
+    // Only log unexpected errors — 404s on optional endpoints are handled by each hook
+    if (status !== 404 && status !== 401) {
+      console.log('API ERROR:', error.message, error.config?.url);
+    }
     const original = error.config;
 
     if (error.response?.status === 401 && !original._retry) {
