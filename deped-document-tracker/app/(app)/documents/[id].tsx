@@ -17,7 +17,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, QrCode, Clock, CheckCircle, XCircle,
-  AlertCircle, ArrowRightLeft, X,
+  AlertCircle, ArrowRightLeft, X, Pencil, Trash2,
 } from 'lucide-react-native';
 import api from '../../../lib/api';
 import { useAuthStore } from '../../../lib/store';
@@ -84,6 +84,12 @@ export default function DocumentDetail() {
   // Reject modal
   const [rejectModal, setRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+
+  // Edit document modal (admin only)
+  const [editModal, setEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    doc_name: '', category: '', from_office: '', sender_name: '', referred_to: '', remarks: '',
+  });
 
   // Transfer modal
   const [transferModal, setTransferModal] = useState(false);
@@ -164,6 +170,37 @@ export default function DocumentDetail() {
     onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to transfer document.'),
   });
 
+  const editDocMutation = useMutation({
+    mutationFn: (body: typeof editForm) => api.patch(`/documents/${id}`, body),
+    onSuccess: () => {
+      invalidate();
+      setEditModal(false);
+      Alert.alert('Saved', 'Document updated successfully.');
+    },
+    onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to update document.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.delete(`/documents/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      router.back();
+    },
+    onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to delete document.'),
+  });
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Document',
+      `Permanently delete "${doc?.doc_name || 'this document'}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate() },
+      ],
+    );
+  };
+
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const openStatusModal = (status: string) => {
@@ -217,6 +254,26 @@ export default function DocumentDetail() {
     transferMutation.mutate({ to_staff, to_office, remarks: transferRemarks.trim() });
   };
 
+  const openEditDoc = () => {
+    setEditForm({
+      doc_name: doc?.doc_name || '',
+      category: doc?.category || '',
+      from_office: doc?.from_office || '',
+      sender_name: doc?.sender_name || '',
+      referred_to: doc?.referred_to || '',
+      remarks: doc?.remarks || '',
+    });
+    setEditModal(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editForm.doc_name.trim()) {
+      Alert.alert('Required', 'Document name is required.');
+      return;
+    }
+    editDocMutation.mutate(editForm);
+  };
+
   // ── Pending transfer authorization ────────────────────────────────────────
 
   const isTransferPending = doc?.transfer_status === 'pending';
@@ -231,6 +288,7 @@ export default function DocumentDetail() {
   );
 
   const canTransfer = user?.role === 'admin' || user?.role === 'staff';
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
   // ── Loading / not found ───────────────────────────────────────────────────
 
@@ -445,6 +503,40 @@ export default function DocumentDetail() {
           </View>
         )}
 
+        {/* ── Edit Document (Admin) ─────────────────────────────────────── */}
+        {isAdmin && (
+          <TouchableOpacity
+            onPress={openEditDoc}
+            activeOpacity={0.8}
+            style={{
+              backgroundColor: '#FFFBEB',
+              borderRadius: 14,
+              padding: 16,
+              marginBottom: 12,
+              borderWidth: 1,
+              borderColor: '#FDE68A',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <View style={{
+              width: 40, height: 40, borderRadius: 20,
+              backgroundColor: '#D97706',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Pencil size={18} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: '800', color: '#92400E', fontSize: 14 }}>Edit Document</Text>
+              <Text style={{ color: '#B45309', fontSize: 12.5, marginTop: 2 }}>
+                Modify document fields (admin only)
+              </Text>
+            </View>
+            <Text style={{ color: '#FCD34D', fontSize: 20 }}>›</Text>
+          </TouchableOpacity>
+        )}
+
         {/* ── Transfer Document ─────────────────────────────────────────── */}
         {canTransfer && (
           <TouchableOpacity
@@ -480,7 +572,7 @@ export default function DocumentDetail() {
         )}
 
         {/* ── Update Status ─────────────────────────────────────────────── */}
-        <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 24, borderWidth: 0.5, borderColor: '#E2E8F0' }}>
+        <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: isAdmin ? 12 : 24, borderWidth: 0.5, borderColor: '#E2E8F0' }}>
           <Text style={{ fontWeight: '800', color: '#0038A8', marginBottom: 14, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.8 }}>
             Update Status
           </Text>
@@ -511,6 +603,43 @@ export default function DocumentDetail() {
             })}
           </View>
         </View>
+
+        {/* ── Delete Document (Admin) ───────────────────────────────────── */}
+        {isAdmin && (
+          <TouchableOpacity
+            onPress={handleDelete}
+            disabled={deleteMutation.isPending}
+            activeOpacity={0.8}
+            style={{
+              backgroundColor: '#FEF2F2',
+              borderRadius: 14,
+              padding: 16,
+              marginBottom: 24,
+              borderWidth: 1,
+              borderColor: '#FECACA',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <View style={{
+              width: 40, height: 40, borderRadius: 20,
+              backgroundColor: '#EF4444',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              {deleteMutation.isPending
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Trash2 size={18} color="#fff" />
+              }
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: '800', color: '#991B1B', fontSize: 14 }}>Delete Document</Text>
+              <Text style={{ color: '#B91C1C', fontSize: 12.5, marginTop: 2 }}>
+                Permanently remove this document
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
       </ScrollView>
 
@@ -596,6 +725,95 @@ export default function DocumentDetail() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* ── Edit Document Modal (Admin) ────────────────────────────────── */}
+      <Modal visible={editModal} animationType="slide" transparent onRequestClose={() => setEditModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+            <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => setEditModal(false)} activeOpacity={1} />
+
+            <View style={{ backgroundColor: '#F8FAFC', borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '92%', overflow: 'hidden' }}>
+              {/* Header */}
+              <View style={{ backgroundColor: '#D97706', paddingTop: 20, paddingBottom: 16, paddingHorizontal: 20 }}>
+                <View style={{ position: 'absolute', top: 10, left: 0, right: 0, alignItems: 'center' }}>
+                  <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.30)' }} />
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                  <View>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff' }}>Edit Document</Text>
+                    <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.70)', marginTop: 2 }}>Admin override — changes are permanent</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setEditModal(false)} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                    <X size={18} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 8 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                {[
+                  { key: 'doc_name', label: 'Content / Particulars', required: true, placeholder: 'e.g. Plantilla of Personnel' },
+                  { key: 'from_office', label: 'Unit / Office / School', required: false, placeholder: 'e.g. Palo Central School' },
+                  { key: 'sender_name', label: 'Sender Name & Designation', required: false, placeholder: 'e.g. Juan dela Cruz, Principal II' },
+                  { key: 'referred_to', label: 'Referred To', required: false, placeholder: 'e.g. Maria Santos' },
+                  { key: 'remarks', label: 'Remarks', required: false, placeholder: 'Additional details…' },
+                ].map(({ key, label, required, placeholder }) => (
+                  <View key={key}>
+                    <Text style={{
+                      fontSize: 11, fontWeight: '700', color: required ? '#92400E' : '#475569',
+                      marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8,
+                    }}>
+                      {label}{required && <Text style={{ color: '#EF4444' }}> *</Text>}
+                    </Text>
+                    <TextInput
+                      value={(editForm as any)[key]}
+                      onChangeText={(v) => setEditForm((f) => ({ ...f, [key]: v }))}
+                      placeholder={placeholder}
+                      placeholderTextColor="#CBD5E1"
+                      multiline={key === 'remarks'}
+                      style={{
+                        backgroundColor: '#fff', borderRadius: 12,
+                        paddingHorizontal: 14, paddingVertical: 13, marginBottom: 16,
+                        borderWidth: 1.5, borderColor: '#E2E8F0', fontSize: 14.5, color: '#1E293B',
+                        ...(key === 'remarks' ? { height: 80, textAlignVertical: 'top' } : {}),
+                      }}
+                    />
+                  </View>
+                ))}
+
+                {/* Category */}
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                  Document Type
+                </Text>
+                <SelectField
+                  value={editForm.category}
+                  onChange={(v) => setEditForm((f) => ({ ...f, category: v }))}
+                  options={['Letter', 'Memorandum', 'Report', 'Application', 'Voucher', 'Plantilla', 'Payroll', 'Memo', 'Request', 'Endorsement', 'Order', 'Notice', 'Circular', 'Certificate', 'Other']}
+                  placeholder="Select document type…"
+                  label="Document Type"
+                />
+              </ScrollView>
+
+              {/* Footer */}
+              <View style={{ padding: 16, paddingBottom: Platform.OS === 'ios' ? 32 : 20, borderTopWidth: 0.5, borderTopColor: '#E2E8F0', backgroundColor: '#F8FAFC', gap: 10 }}>
+                <TouchableOpacity
+                  onPress={handleSaveEdit}
+                  disabled={editDocMutation.isPending}
+                  activeOpacity={0.85}
+                  style={{ backgroundColor: editDocMutation.isPending ? '#FCD34D' : '#D97706', borderRadius: 13, paddingVertical: 15, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                >
+                  {editDocMutation.isPending
+                    ? <><ActivityIndicator color="#fff" size="small" /><Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Saving…</Text></>
+                    : <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Save Changes</Text>
+                  }
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setEditModal(false)} style={{ borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 13, paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff' }}>
+                  <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── Transfer Modal ─────────────────────────────────────────────── */}

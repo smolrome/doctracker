@@ -236,6 +236,20 @@ export default function Profile() {
             </TouchableOpacity>
           )}
 
+          {(user?.role === 'admin' || user?.role === 'superadmin') && (
+            <TouchableOpacity
+              onPress={() => router.push('/(app)/admin-users')}
+              style={styles.actionRow}
+            >
+              <Text style={{ fontSize: 20 }}>🛡️</Text>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={{ fontWeight: '600', color: '#111', fontSize: 14 }}>Manage Users</Text>
+                <Text style={{ color: '#6B7280', fontSize: 12 }}>Create, edit, and manage accounts</Text>
+              </View>
+              <Text style={{ color: '#9CA3AF' }}>›</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             onPress={() => router.push('/(app)/dashboard')}
             style={[styles.actionRow, { borderBottomWidth: 0 }]}
