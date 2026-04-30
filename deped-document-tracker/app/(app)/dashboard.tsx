@@ -19,12 +19,13 @@ const { width } = Dimensions.get('window');
 
 // Status badge config
 const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
-  pending:    { bg: '#FEF3C7', text: '#B45309', label: 'Pending' },
-  approved:   { bg: '#D1FAE5', text: '#065F46', label: 'Approved' },
-  rejected:   { bg: '#FEE2E2', text: '#991B1B', label: 'Rejected' },
-  forwarded:  { bg: '#EDE9FE', text: '#5B21B6', label: 'Forwarded' },
-  received:   { bg: '#DBEAFE', text: '#1E40AF', label: 'Received' },
-  released:   { bg: '#D1FAE5', text: '#065F46', label: 'Released' },
+  pending:     { bg: '#FEF3C7', text: '#B45309', label: 'Pending' },
+  received:    { bg: '#DBEAFE', text: '#1E40AF', label: 'Received' },
+  released:    { bg: '#D1FAE5', text: '#065F46', label: 'Released' },
+  routed:      { bg: '#EDE9FE', text: '#5B21B6', label: 'Routed' },
+  'in review': { bg: '#E0E7FF', text: '#3730A3', label: 'In Review' },
+  transferred: { bg: '#CFFAFE', text: '#155E75', label: 'Transferred' },
+  'on hold':   { bg: '#FEE2E2', text: '#991B1B', label: 'On Hold' },
 };
 
 // Stat card accent colors (blue-first, PH palette-aware)

@@ -180,12 +180,8 @@ export default function Profile() {
           >
             <Text style={{ fontSize: 20 }}>📄</Text>
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={{ fontWeight: '600', color: '#111', fontSize: 14 }}>
-                All Documents
-              </Text>
-              <Text style={{ color: '#6B7280', fontSize: 12 }}>
-                Browse and search documents
-              </Text>
+              <Text style={{ fontWeight: '600', color: '#111', fontSize: 14 }}>All Documents</Text>
+              <Text style={{ color: '#6B7280', fontSize: 12 }}>Browse and search documents</Text>
             </View>
             <Text style={{ color: '#9CA3AF' }}>›</Text>
           </TouchableOpacity>
@@ -196,15 +192,49 @@ export default function Profile() {
           >
             <Text style={{ fontSize: 20 }}>📷</Text>
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={{ fontWeight: '600', color: '#111', fontSize: 14 }}>
-                Scan QR Code
-              </Text>
-              <Text style={{ color: '#6B7280', fontSize: 12 }}>
-                Quick document lookup
-              </Text>
+              <Text style={{ fontWeight: '600', color: '#111', fontSize: 14 }}>Scan QR Code</Text>
+              <Text style={{ color: '#6B7280', fontSize: 12 }}>Quick document lookup</Text>
             </View>
             <Text style={{ color: '#9CA3AF' }}>›</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push('/(app)/routing-slips')}
+            style={styles.actionRow}
+          >
+            <Text style={{ fontSize: 20 }}>📋</Text>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={{ fontWeight: '600', color: '#111', fontSize: 14 }}>Routing Slips</Text>
+              <Text style={{ color: '#6B7280', fontSize: 12 }}>View document routing history</Text>
+            </View>
+            <Text style={{ color: '#9CA3AF' }}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push('/(app)/activity-log')}
+            style={styles.actionRow}
+          >
+            <Text style={{ fontSize: 20 }}>🕐</Text>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={{ fontWeight: '600', color: '#111', fontSize: 14 }}>Activity Log</Text>
+              <Text style={{ color: '#6B7280', fontSize: 12 }}>Full system event history</Text>
+            </View>
+            <Text style={{ color: '#9CA3AF' }}>›</Text>
+          </TouchableOpacity>
+
+          {(user?.role === 'admin' || user?.role === 'superadmin') && (
+            <TouchableOpacity
+              onPress={() => router.push('/(app)/staff-stats')}
+              style={styles.actionRow}
+            >
+              <Text style={{ fontSize: 20 }}>👥</Text>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={{ fontWeight: '600', color: '#111', fontSize: 14 }}>Staff Statistics</Text>
+                <Text style={{ color: '#6B7280', fontSize: 12 }}>Per-staff document breakdown</Text>
+              </View>
+              <Text style={{ color: '#9CA3AF' }}>›</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             onPress={() => router.push('/(app)/dashboard')}
@@ -212,12 +242,8 @@ export default function Profile() {
           >
             <Text style={{ fontSize: 20 }}>📊</Text>
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={{ fontWeight: '600', color: '#111', fontSize: 14 }}>
-                Dashboard
-              </Text>
-              <Text style={{ color: '#6B7280', fontSize: 12 }}>
-                View stats overview
-              </Text>
+              <Text style={{ fontWeight: '600', color: '#111', fontSize: 14 }}>Dashboard</Text>
+              <Text style={{ color: '#6B7280', fontSize: 12 }}>View stats overview</Text>
             </View>
             <Text style={{ color: '#9CA3AF' }}>›</Text>
           </TouchableOpacity>
