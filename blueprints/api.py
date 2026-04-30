@@ -900,6 +900,118 @@ def api_staff_stats():
     return jsonify(serialize(result))
 
 
+# ── Admin: User CRUD ──────────────────────────────────────────────────────────
+
+@api_bp.route('/admin/users', methods=['GET'])
+@jwt_required()
+def api_admin_get_users():
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        return jsonify(error='Admin access required'), 403
+    from services.auth import get_all_users
+    return jsonify(serialize(get_all_users()))
+
+
+@api_bp.route('/admin/users', methods=['POST'])
+@jwt_required()
+def api_admin_create_user():
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        return jsonify(error='Admin access required'), 403
+    data = request.get_json(force=True, silent=True) or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+    full_name = data.get('full_name', '').strip()
+    role = data.get('role', 'staff').strip()
+    office = data.get('office', '').strip()
+    email = data.get('email', '').strip()
+    if not username or not password:
+        return jsonify(error='Username and password are required'), 400
+    if len(password) < 8:
+        return jsonify(error='Password must be at least 8 characters'), 400
+    from services.auth import create_user
+    ok, err = create_user(username, password, full_name=full_name, role=role, office=office, email=email)
+    if not ok:
+        return jsonify(error=err), 400
+    return jsonify(message='User created', username=username), 201
+
+
+@api_bp.route('/admin/users/<username>', methods=['PATCH'])
+@jwt_required()
+def api_admin_update_user(username):
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        return jsonify(error='Admin access required'), 403
+    data = request.get_json(force=True, silent=True) or {}
+    from services.auth import update_user, set_user_active, update_user_password, approve_user, get_user
+
+    full_name = data.get('full_name')
+    role = data.get('role')
+    office = data.get('office')
+    active = data.get('active')
+    approved = data.get('approved')
+    new_password = data.get('password')
+
+    if full_name is not None or role is not None or office is not None:
+        ok, err = update_user(
+            username,
+            full_name=full_name if full_name is not None else None,
+            role=role if role is not None else None,
+            office=office if office is not None else None,
+        )
+        if not ok:
+            return jsonify(error=err), 400
+
+    if active is not None:
+        set_user_active(username, bool(active))
+
+    if approved is True:
+        approve_user(username)
+
+    if new_password:
+        ok, err = update_user_password(username, new_password)
+        if not ok:
+            return jsonify(error=err), 400
+
+    updated = get_user(username)
+    return jsonify(serialize(updated or {'username': username}))
+
+
+@api_bp.route('/admin/users/<username>', methods=['DELETE'])
+@jwt_required()
+def api_admin_delete_user(username):
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        return jsonify(error='Admin access required'), 403
+    if username.lower() == user_id.lower():
+        return jsonify(error='Cannot delete your own account'), 400
+    from services.auth import delete_user
+    delete_user(username)
+    return jsonify(message='User deleted')
+
+
+# ── Admin: Document full edit ──────────────────────────────────────────────────
+
+@api_bp.route('/documents/<doc_id>', methods=['PATCH'])
+@jwt_required()
+def api_edit_document(doc_id):
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        return jsonify(error='Admin access required'), 403
+    data = request.get_json(force=True, silent=True) or {}
+    doc = get_doc(doc_id)
+    if not doc:
+        return jsonify(error='Document not found'), 404
+
+    for field in ('doc_name', 'category', 'from_office', 'sender_org', 'sender_name', 'referred_to', 'remarks'):
+        if field in data:
+            doc[field] = data[field]
+    doc['updated_at'] = now_str()
+    doc['updated_by'] = user_id
+    save_doc(doc)
+    return jsonify(serialize(doc))
+
+
 def send_push_notification(username: str, title: str, body: str, data: dict = None):
     """Send push notification to a specific user via Expo Push API."""
     if data is None:

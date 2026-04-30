@@ -11,8 +11,10 @@ import {
 import { useRef, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../lib/store';
+import { useModalStore } from '../../lib/modalStore';
 import { useStats, useDocuments } from '../../hooks/useDocuments';
 import { useNetwork } from '../../hooks/useNetwork';
+import { usePendingCount } from '../../hooks/useDropdownOptions';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 
 const { width } = Dimensions.get('window');
@@ -29,6 +31,14 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string }>
 };
 
 // Stat card accent colors (blue-first, PH palette-aware)
+const quickBtn: any = {
+  flex: 1, alignItems: 'center', gap: 5,
+  backgroundColor: 'rgba(255,255,255,0.15)',
+  borderRadius: 12, paddingVertical: 10,
+  borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)',
+};
+const quickBtnText: any = { color: '#fff', fontSize: 11, fontWeight: '700' };
+
 const STAT_ACCENTS = [
   '#0038A8', '#10B981', '#F59E0B', '#8B5CF6',
   '#3B82F6', '#EC4899', '#06B6D4', '#EF4444',
@@ -43,6 +53,8 @@ export default function Dashboard() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const { isOnline } = useNetwork();
+  const { triggerAddModal, openCart, cartCount } = useModalStore();
+  const { data: pendingCount = 0 } = usePendingCount();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
@@ -177,6 +189,79 @@ export default function Dashboard() {
             </Text>
           </View>
         )}
+
+        {/* Quick-action row */}
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+          {/* Routed Docs */}
+          <TouchableOpacity
+            onPress={() => router.push('/(app)/routing-slips')}
+            activeOpacity={0.8}
+            style={quickBtn}
+          >
+            <Text style={{ fontSize: 14 }}>🚌</Text>
+            <Text style={quickBtnText}>Routed</Text>
+          </TouchableOpacity>
+
+          {/* Receive Docs */}
+          <TouchableOpacity
+            onPress={() => router.push('/(app)/receive-docs')}
+            activeOpacity={0.8}
+            style={quickBtn}
+          >
+            <View>
+              <Text style={{ fontSize: 14 }}>📥</Text>
+              {pendingCount > 0 && (
+                <View style={{
+                  position: 'absolute', top: -4, right: -6,
+                  backgroundColor: '#EF4444', borderRadius: 8,
+                  minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+                  borderWidth: 1.5, borderColor: '#0038A8',
+                  paddingHorizontal: 3,
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 8, fontWeight: '800' }}>
+                    {pendingCount > 9 ? '9+' : pendingCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={quickBtnText}>Receive</Text>
+          </TouchableOpacity>
+
+          {/* Cart / Add Doc */}
+          <TouchableOpacity
+            onPress={() => cartCount > 0 ? openCart() : triggerAddModal()}
+            activeOpacity={0.8}
+            style={quickBtn}
+          >
+            <View>
+              <Text style={{ fontSize: 14 }}>🛒</Text>
+              {cartCount > 0 && (
+                <View style={{
+                  position: 'absolute', top: -4, right: -6,
+                  backgroundColor: '#10B981', borderRadius: 8,
+                  minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+                  borderWidth: 1.5, borderColor: '#0038A8',
+                  paddingHorizontal: 3,
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 8, fontWeight: '800' }}>
+                    {cartCount > 9 ? '9+' : cartCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={quickBtnText}>Cart</Text>
+          </TouchableOpacity>
+
+          {/* Add Document */}
+          <TouchableOpacity
+            onPress={() => triggerAddModal()}
+            activeOpacity={0.8}
+            style={[quickBtn, { backgroundColor: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.40)' }]}
+          >
+            <Text style={{ fontSize: 14 }}>➕</Text>
+            <Text style={quickBtnText}>Log Doc</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ── Content zone ── */}
