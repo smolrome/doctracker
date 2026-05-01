@@ -1744,49 +1744,129 @@ def api_client_documents():
 @api_bp.route('/client/submit', methods=['POST'])
 @jwt_required()
 def api_client_submit():
-    """Client: submit a new document for tracking."""
+    """Client: submit one or more documents (cart-based). Accepts either a
+    single doc object or a list under the key 'documents'. Max 50 items."""
     user_id = get_jwt_identity()
     user = get_user_by_username(user_id)
     if not user or user.get('role') != 'client':
         return jsonify(error='Client access required'), 403
-    data     = request.get_json(force=True, silent=True) or {}
-    doc_name = data.get('doc_name', '').strip()
-    category = data.get('category', '').strip()
-    remarks  = data.get('remarks', '').strip()
-    if not doc_name:
-        return jsonify(error='doc_name is required'), 400
-    ts  = now_str()
-    doc = {
-        'id':          str(uuid.uuid4()),
-        'doc_id':      generate_ref(),
-        'doc_name':    doc_name,
-        'category':    category or 'Request',
-        'from_office': user.get('full_name', user_id),
-        'sender_name': user.get('full_name', user_id),
-        'sender_org':  '',
-        'referred_to': '',
-        'remarks':     remarks,
-        'status':      'Pending',
-        'logged_by':   user_id,
-        'created_at':  ts,
-        'updated_at':  ts,
-        'deleted':     False,
-        'travel_log':  [{
-            'office':    '',
-            'action':    'Submitted by client',
-            'officer':   user_id,
-            'timestamp': ts,
-            'remarks':   f'Document submitted by {user.get("full_name", user_id)}.',
-        }],
-    }
-    save_doc(doc)
-    return jsonify(serialize({'id': doc['id'], 'doc_id': doc['doc_id'], 'status': 'Pending'})), 201
+    data = request.get_json(force=True, silent=True) or {}
+
+    # Support both single-doc and cart (list) payloads
+    raw_items = data.get('documents')
+    if raw_items is None:
+        # single-doc legacy format
+        raw_items = [data]
+
+    if not isinstance(raw_items, list) or len(raw_items) == 0:
+        return jsonify(error='No documents provided'), 400
+    if len(raw_items) > 50:
+        return jsonify(error='Maximum 50 documents per submission'), 400
+
+    # Top-level office / staff context (same for all docs in the cart)
+    office_name     = (data.get('office_name') or '').strip()
+    office_slug     = (data.get('office_slug') or '').strip()
+    selected_staff  = (data.get('selected_staff') or '').strip()
+
+    # Resolve assigned staff: explicit selection → primary_recipient → auto-find
+    assigned_staff      = ''
+    assigned_staff_name = ''
+    if selected_staff:
+        from services.auth import get_all_users
+        for u in get_all_users():
+            if u.get('username') == selected_staff:
+                assigned_staff      = selected_staff
+                assigned_staff_name = u.get('full_name') or selected_staff
+                break
+    if not assigned_staff and office_name:
+        from services.auth import get_all_users
+        from services.misc import load_saved_offices
+        # Try primary_recipient from saved offices
+        for off in load_saved_offices():
+            if (off.get('office_slug') == office_slug or
+                    off.get('office_name', '').strip().lower() == office_name.lower()):
+                pr = off.get('primary_recipient', '')
+                if pr:
+                    for u in get_all_users():
+                        if u.get('username') == pr:
+                            assigned_staff      = pr
+                            assigned_staff_name = u.get('full_name') or pr
+                            break
+                break
+        # Fallback: any staff in that office
+        if not assigned_staff:
+            for u in get_all_users():
+                if (u.get('office', '').strip().lower() == office_name.lower()
+                        and u.get('role') in ('staff', 'admin')):
+                    assigned_staff      = u.get('username', '')
+                    assigned_staff_name = u.get('full_name') or assigned_staff
+                    break
+        # Final fallback: any staff/admin
+        if not assigned_staff:
+            for u in get_all_users():
+                if u.get('role') in ('staff', 'admin'):
+                    assigned_staff      = u.get('username', '')
+                    assigned_staff_name = u.get('full_name') or assigned_staff
+                    break
+
+    sender_name = user.get('full_name') or user_id
+
+    submitted = []
+    ts = now_str()
+    for item in raw_items:
+        doc_name    = (item.get('doc_name') or '').strip()
+        referred_to = (item.get('referred_to') or '').strip()
+        category    = (item.get('category') or '').strip()
+        unit_office = (item.get('unit_office') or '').strip()
+        remarks     = (item.get('remarks') or item.get('description') or '').strip()
+
+        if not doc_name:
+            return jsonify(error='doc_name is required for every document'), 400
+        if not referred_to:
+            return jsonify(error='referred_to is required for every document'), 400
+
+        doc = {
+            'id':                   str(uuid.uuid4()),
+            'doc_id':               generate_ref(),
+            'doc_name':             doc_name,
+            'category':             category or 'Request',
+            'description':          remarks,
+            'from_office':          sender_name,
+            'sender_name':          sender_name,
+            'sender_org':           unit_office,
+            'referred_to':          referred_to or office_name,
+            'remarks':              remarks,
+            'status':               'Pending',
+            'logged_by':            user_id,
+            'submitted_by':         user_id,
+            'submitted_by_name':    sender_name,
+            'target_office_slug':   office_slug,
+            'target_office_name':   office_name,
+            'pending_at_staff':     assigned_staff,
+            'pending_at_staff_name': assigned_staff_name,
+            'pending_at_office':    office_name,
+            'transfer_status':      'pending' if (assigned_staff or office_name) else '',
+            'created_at':           ts,
+            'updated_at':           ts,
+            'deleted':              False,
+            'travel_log':           [{
+                'office':    office_name or unit_office or '',
+                'action':    f'Document Submitted by Client — Pending at {assigned_staff_name or office_name or "office"}',
+                'officer':   sender_name,
+                'timestamp': ts,
+                'remarks':   f'Submitted via mobile client portal. Target office: {office_name}. Assigned to: {assigned_staff_name}.',
+            }],
+        }
+        save_doc(doc)
+        submitted.append({'id': doc['id'], 'doc_id': doc['doc_id'], 'doc_name': doc_name, 'status': 'Pending'})
+
+    return jsonify(serialize({'submitted': submitted, 'count': len(submitted)})), 201
 
 
 @api_bp.route('/client/documents/<doc_id>', methods=['DELETE'])
 @jwt_required()
 def api_client_delete_document(doc_id):
-    """Client: soft-delete their own document."""
+    """Client: soft-delete their own REJECTED document (moves to trash)."""
     user_id = get_jwt_identity()
     user = get_user_by_username(user_id)
     if not user or user.get('role') != 'client':
@@ -1794,8 +1874,10 @@ def api_client_delete_document(doc_id):
     doc = get_doc(doc_id)
     if not doc:
         return jsonify(error='Document not found'), 404
-    if doc.get('logged_by') != user_id:
+    if doc.get('logged_by') != user_id and doc.get('submitted_by') != user_id:
         return jsonify(error='You can only delete your own documents'), 403
+    if (doc.get('status') or '').lower() != 'rejected':
+        return jsonify(error='You can only delete rejected documents'), 400
     from services.documents import delete_doc
     delete_doc(doc_id, user_id)
     return jsonify(message='Document moved to trash')
@@ -1854,6 +1936,29 @@ def api_client_permanent_delete(doc_id):
         return jsonify(error='You can only permanently delete your own documents'), 403
     delete_doc_forever(doc_id)
     return jsonify(message='Document permanently deleted')
+
+
+@api_bp.route('/client/trash/empty', methods=['DELETE'])
+@jwt_required()
+def api_client_empty_trash():
+    """Client: permanently delete ALL documents in their own trash."""
+    user_id = get_jwt_identity()
+    user = get_user_by_username(user_id)
+    if not user or user.get('role') != 'client':
+        return jsonify(error='Client access required'), 403
+    from services.documents import load_docs, delete_doc_forever
+    all_docs = load_docs(include_deleted=True)
+    my_deleted = [d for d in all_docs
+                  if d.get('deleted') and
+                  (d.get('logged_by') == user_id or d.get('submitted_by') == user_id)]
+    count = 0
+    for doc in my_deleted:
+        try:
+            delete_doc_forever(doc.get('id', ''))
+            count += 1
+        except Exception:
+            pass
+    return jsonify(message=f'Permanently deleted {count} document(s)', count=count)
 
 
 def send_push_notification(username: str, title: str, body: str, data: dict = None):
