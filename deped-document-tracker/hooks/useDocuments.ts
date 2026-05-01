@@ -22,12 +22,32 @@ export function useDocuments(search = '', status = 'All') {
     }
 
     try {
-      const params: any = { limit: 50 };
+      const PAGE_SIZE = 200;
+      const params: any = { limit: PAGE_SIZE, page: 1 };
       if (search) params.search = search;
       if (status !== 'All') params.status = status;
 
-      const res = await api.get('/documents', { params });
-      const data = res.data;
+      const firstRes = await api.get('/documents', { params });
+      const firstData = firstRes.data;
+      const total = firstData.total ?? 0;
+      const allDocs = [...(firstData.documents ?? [])];
+
+      // Fetch remaining pages in parallel
+      if (allDocs.length < total) {
+        const totalPages = Math.ceil(total / PAGE_SIZE);
+        const pagePromises = [];
+        for (let p = 2; p <= totalPages; p++) {
+          pagePromises.push(
+            api.get('/documents', { params: { ...params, page: p } })
+          );
+        }
+        const results = await Promise.all(pagePromises);
+        for (const r of results) {
+          allDocs.push(...(r.data.documents ?? []));
+        }
+      }
+
+      const data = { documents: allDocs, total, page: 1, limit: total };
 
       await cache.set(cache.KEYS.DOCUMENTS, data);
       await cache.updateLastSync();

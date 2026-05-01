@@ -164,9 +164,9 @@ export default function RootLayout() {
             // with "dehydrated as pending ended up rejecting" console errors)
             if (query.state.status !== 'success') return false;
             const key = query.queryKey[0] as string;
-            // Exclude ephemeral / auth / one-shot queries that don't make
-            // sense to cache across sessions
-            const exclude = ['auth', 'login', 'refresh', 'qr'];
+            // Exclude ephemeral queries AND large datasets that are
+            // persisted separately via the file-system cache
+            const exclude = ['auth', 'login', 'refresh', 'qr', 'documents', 'client-docs', 'client-docs-all'];
             return !exclude.includes(key);
           },
         },
