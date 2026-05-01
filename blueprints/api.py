@@ -422,56 +422,54 @@ def api_get_offices():
 @jwt_required()
 def api_get_office_staff(office_slug: str):
     """Return staff list for a specific office (used by client submission form).
-    Priority: 1) primary_recipient first, 2) staff matching office name,
-    3) all staff as fallback. Mirrors web app office_staff_list logic."""
+    Mirrors web app client.py office_staff_list logic exactly:
+      1. Filter by user.office == office_name (case-insensitive)
+      2. If nothing matches, return ALL staff (fallback)
+      primary_recipient is always sorted first with is_primary=True."""
     from services.misc import load_saved_offices
     from services.auth import get_all_users
 
-    # Resolve slug → office record
+    # Resolve slug → office name and primary_recipient
     office_name = ''
     primary_recipient = ''
     for off in load_saved_offices():
         if off.get('office_slug') == office_slug:
             office_name = off.get('office_name', '')
-            primary_recipient = off.get('primary_recipient', '')
+            # primary_recipient may be NULL in DB → coerce to str
+            primary_recipient = off.get('primary_recipient') or ''
             break
 
     all_users = get_all_users()
-    user_map = {u['username']: u for u in all_users}
-
-    # Build staff list: users whose office field matches
     office_name_lower = office_name.strip().lower()
-    staff_usernames_ordered = []
 
-    # 1. Primary recipient goes first (if set and exists)
-    if primary_recipient and primary_recipient in user_map:
-        staff_usernames_ordered.append(primary_recipient)
-
-    # 2. Staff matching by office name
-    for u in all_users:
-        if u.get('username') == primary_recipient:
-            continue  # already added
-        if u.get('role') in ('staff', 'admin') and office_name_lower and \
-                (u.get('office') or '').strip().lower() == office_name_lower:
-            staff_usernames_ordered.append(u['username'])
-
-    # 3. Fallback: all staff when no office match (and primary_recipient not set)
-    if len(staff_usernames_ordered) <= (1 if primary_recipient else 0):
-        for u in all_users:
-            if u.get('username') in staff_usernames_ordered:
-                continue
-            if u.get('role') in ('staff', 'admin'):
-                staff_usernames_ordered.append(u['username'])
-
-    staff = [
-        {
-            'username': uname,
-            'full_name': user_map[uname].get('full_name') or uname,
+    def _make_entry(u):
+        uname = u.get('username', '')
+        return {
+            'username':   uname,
+            'full_name':  u.get('full_name') or uname,
             'is_primary': uname == primary_recipient,
         }
-        for uname in staff_usernames_ordered
-        if uname in user_map
+
+    # Step 1: staff whose office field matches the office name (same as web app)
+    staff = [
+        _make_entry(u)
+        for u in all_users
+        if u.get('role') in ('staff', 'admin')
+        and office_name_lower
+        and (u.get('office') or '').strip().lower() == office_name_lower
     ]
+
+    # Step 2: fallback — return all staff/admin when no office match (same as web app)
+    if not staff:
+        staff = [
+            _make_entry(u)
+            for u in all_users
+            if u.get('role') in ('staff', 'admin')
+        ]
+
+    # Sort: primary_recipient first, then by full_name alphabetically
+    staff.sort(key=lambda s: (not s['is_primary'], (s['full_name'] or '').lower()))
+
     return jsonify(serialize(staff))
 
 
