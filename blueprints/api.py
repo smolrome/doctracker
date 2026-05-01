@@ -1730,7 +1730,8 @@ def api_client_documents():
     from services.documents import load_docs
     search        = request.args.get('search', '').strip().lower()
     status_filter = request.args.get('status', '').strip()
-    docs = [d for d in load_docs() if not d.get('deleted') and d.get('logged_by') == user_id]
+    docs = [d for d in load_docs() if not d.get('deleted') and
+            (d.get('submitted_by') == user_id or d.get('logged_by') == user_id)]
     if search:
         docs = [d for d in docs if
                 search in (d.get('doc_name') or '').lower() or
@@ -1893,7 +1894,8 @@ def api_client_trash():
         return jsonify(error='Client access required'), 403
     from services.documents import load_docs
     all_docs = load_docs(include_deleted=True)
-    deleted  = [d for d in all_docs if d.get('deleted') and d.get('logged_by') == user_id]
+    deleted  = [d for d in all_docs if d.get('deleted') and
+                (d.get('submitted_by') == user_id or d.get('logged_by') == user_id)]
     deleted.sort(key=lambda d: d.get('deleted_at', ''), reverse=True)
     return jsonify(serialize(deleted))
 
@@ -1932,7 +1934,7 @@ def api_client_permanent_delete(doc_id):
     doc = next((d for d in all_docs if d.get('id') == doc_id), None)
     if not doc:
         return jsonify(error='Document not found'), 404
-    if doc.get('logged_by') != user_id:
+    if doc.get('submitted_by') != user_id and doc.get('logged_by') != user_id:
         return jsonify(error='You can only permanently delete your own documents'), 403
     delete_doc_forever(doc_id)
     return jsonify(message='Document permanently deleted')
