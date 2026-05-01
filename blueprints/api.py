@@ -408,8 +408,45 @@ def api_scan_qr():
 @jwt_required()
 def api_get_offices():
     from services.misc import load_saved_offices
+    from services.auth import get_all_users
     offices = load_saved_offices()
+    # Resolve primary_recipient username → full name for display
+    user_map = {u['username']: u.get('full_name') or u['username'] for u in get_all_users()}
+    for off in offices:
+        pr = off.get('primary_recipient', '')
+        off['primary_recipient_name'] = user_map.get(pr, pr) if pr else ''
     return jsonify(serialize(offices))
+
+
+@api_bp.route('/offices/<office_slug>/staff', methods=['GET'])
+@jwt_required()
+def api_get_office_staff(office_slug: str):
+    """Return staff list for a specific office (used by client submission form).
+    Matches web app logic: staff whose office matches, falling back to all staff."""
+    from services.misc import load_saved_offices
+    from services.auth import get_all_users
+
+    # Resolve slug → office_name
+    office_name = ''
+    for off in load_saved_offices():
+        if off.get('office_slug') == office_slug:
+            office_name = off.get('office_name', '')
+            break
+
+    all_users = get_all_users()
+    staff = [
+        {'username': u['username'], 'full_name': u.get('full_name') or u['username']}
+        for u in all_users
+        if u.get('role') in ('staff', 'admin')
+        and (u.get('office') or '').strip().lower() == office_name.strip().lower()
+    ]
+    if not staff:
+        staff = [
+            {'username': u['username'], 'full_name': u.get('full_name') or u['username']}
+            for u in all_users
+            if u.get('role') in ('staff', 'admin')
+        ]
+    return jsonify(serialize(staff))
 
 
 @api_bp.route('/routing-slips', methods=['GET'])
