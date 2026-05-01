@@ -422,30 +422,56 @@ def api_get_offices():
 @jwt_required()
 def api_get_office_staff(office_slug: str):
     """Return staff list for a specific office (used by client submission form).
-    Matches web app logic: staff whose office matches, falling back to all staff."""
+    Priority: 1) primary_recipient first, 2) staff matching office name,
+    3) all staff as fallback. Mirrors web app office_staff_list logic."""
     from services.misc import load_saved_offices
     from services.auth import get_all_users
 
-    # Resolve slug → office_name
+    # Resolve slug → office record
     office_name = ''
+    primary_recipient = ''
     for off in load_saved_offices():
         if off.get('office_slug') == office_slug:
             office_name = off.get('office_name', '')
+            primary_recipient = off.get('primary_recipient', '')
             break
 
     all_users = get_all_users()
+    user_map = {u['username']: u for u in all_users}
+
+    # Build staff list: users whose office field matches
+    office_name_lower = office_name.strip().lower()
+    staff_usernames_ordered = []
+
+    # 1. Primary recipient goes first (if set and exists)
+    if primary_recipient and primary_recipient in user_map:
+        staff_usernames_ordered.append(primary_recipient)
+
+    # 2. Staff matching by office name
+    for u in all_users:
+        if u.get('username') == primary_recipient:
+            continue  # already added
+        if u.get('role') in ('staff', 'admin') and office_name_lower and \
+                (u.get('office') or '').strip().lower() == office_name_lower:
+            staff_usernames_ordered.append(u['username'])
+
+    # 3. Fallback: all staff when no office match (and primary_recipient not set)
+    if len(staff_usernames_ordered) <= (1 if primary_recipient else 0):
+        for u in all_users:
+            if u.get('username') in staff_usernames_ordered:
+                continue
+            if u.get('role') in ('staff', 'admin'):
+                staff_usernames_ordered.append(u['username'])
+
     staff = [
-        {'username': u['username'], 'full_name': u.get('full_name') or u['username']}
-        for u in all_users
-        if u.get('role') in ('staff', 'admin')
-        and (u.get('office') or '').strip().lower() == office_name.strip().lower()
+        {
+            'username': uname,
+            'full_name': user_map[uname].get('full_name') or uname,
+            'is_primary': uname == primary_recipient,
+        }
+        for uname in staff_usernames_ordered
+        if uname in user_map
     ]
-    if not staff:
-        staff = [
-            {'username': u['username'], 'full_name': u.get('full_name') or u['username']}
-            for u in all_users
-            if u.get('role') in ('staff', 'admin')
-        ]
     return jsonify(serialize(staff))
 
 
@@ -1535,10 +1561,13 @@ def api_reject_client(username):
 
 # ── Dropdown Options ──────────────────────────────────────────────────────────
 
-@api_bp.route('/dropdown-options', methods=['GET'])
+@api_bp.route('/dropdown-options/admin', methods=['GET'])
 @jwt_required()
 def api_get_dropdown_options():
-    """Admin: get all dropdown field configurations."""
+    """Admin: get all dropdown field configurations (full nested structure)."""
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        return jsonify(error='Admin access required'), 403
     from services.dropdown_options import get_all_dropdown_configs
     return jsonify(get_all_dropdown_configs())
 
@@ -1950,7 +1979,7 @@ def api_client_restore_document(doc_id):
     doc = next((d for d in all_docs if d.get('id') == doc_id), None)
     if not doc:
         return jsonify(error='Document not found'), 404
-    if doc.get('logged_by') != user_id:
+    if doc.get('submitted_by') != user_id and doc.get('logged_by') != user_id:
         return jsonify(error='You can only restore your own documents'), 403
     if not doc.get('deleted'):
         return jsonify(error='Document is not deleted'), 400
