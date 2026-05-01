@@ -12,12 +12,15 @@ import {
   StatusBar,
   Platform,
   KeyboardAvoidingView,
+  Share,
 } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, QrCode, Clock, CheckCircle, XCircle,
-  AlertCircle, ArrowRightLeft, X, Pencil, Trash2,
+  AlertCircle, ArrowRightLeft, X, Pencil, Trash2, Download, FileText,
 } from 'lucide-react-native';
 import api from '../../../lib/api';
 import { useAuthStore } from '../../../lib/store';
@@ -98,6 +101,15 @@ export default function DocumentDetail() {
   const [transferOffice, setTransferOffice] = useState('');
   const [transferRemarks, setTransferRemarks] = useState('');
 
+  // Create Routing Slip modal
+  const [slipModal, setSlipModal] = useState(false);
+  const [slipDestination, setSlipDestination] = useState('');
+  const [slipNotes, setSlipNotes] = useState('');
+
+  // Assign to staff modal
+  const [assignModal, setAssignModal] = useState(false);
+  const [assignStaff, setAssignStaff] = useState('');
+
   // ── Data for transfer ─────────────────────────────────────────────────────
 
   const { data: staffList } = useStaff();
@@ -170,6 +182,42 @@ export default function DocumentDetail() {
     onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to transfer document.'),
   });
 
+  const createSlipMutation = useMutation({
+    mutationFn: ({ destination, notes }: { destination: string; notes: string }) =>
+      api.post('/routing-slips', { doc_ids: [id], destination, notes }),
+    onSuccess: (res) => {
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: ['routing-slips'] });
+      setSlipModal(false);
+      setSlipDestination('');
+      setSlipNotes('');
+      const slipNo = res.data?.slip_no || '';
+      Alert.alert('Slip Created', `Routing slip ${slipNo} created. Document status set to Routed.`);
+    },
+    onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to create routing slip.'),
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: (staff_username: string) =>
+      api.post(`/documents/${id}/assign`, { staff_username }),
+    onSuccess: () => {
+      invalidate();
+      setAssignModal(false);
+      setAssignStaff('');
+      Alert.alert('Assigned', 'Document has been assigned.');
+    },
+    onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to assign.'),
+  });
+
+  const unassignMutation = useMutation({
+    mutationFn: () => api.post(`/documents/${id}/unassign`),
+    onSuccess: () => {
+      invalidate();
+      Alert.alert('Unassigned', 'Document assignment removed.');
+    },
+    onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to unassign.'),
+  });
+
   const editDocMutation = useMutation({
     mutationFn: (body: typeof editForm) => api.patch(`/documents/${id}`, body),
     onSuccess: () => {
@@ -199,6 +247,56 @@ export default function DocumentDetail() {
         { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate() },
       ],
     );
+  };
+
+  const handleDownloadQR = async () => {
+    if (!qrData?.qr_base64) {
+      Alert.alert('Not Ready', 'QR code image is not loaded yet. Please wait a moment and try again.');
+      return;
+    }
+    try {
+      // Strip data URI prefix if present
+      const base64 = qrData.qr_base64.replace(/^data:image\/\w+;base64,/, '');
+
+      if (!base64 || base64.length < 10) {
+        Alert.alert('Error', 'QR code data appears to be empty.');
+        return;
+      }
+
+      const filename = `QR_${doc?.doc_id || id}.png`;
+      // cacheDirectory can be null on some configurations — fall back to documentDirectory
+      const dir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory ?? '';
+      const path = `${dir}${filename}`;
+
+      await FileSystem.writeAsStringAsync(path, base64, {
+        encoding: 'base64' as any,
+      });
+
+      // Verify the file was actually written
+      const info = await FileSystem.getInfoAsync(path);
+      if (!info.exists) {
+        Alert.alert('Error', 'File could not be saved to device.');
+        return;
+      }
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(path, {
+          mimeType: 'image/png',
+          dialogTitle: `Save QR Code — ${filename}`,
+          UTI: 'public.png',
+        });
+      } else {
+        // Sharing not available — inform user where the file is
+        Alert.alert(
+          'Saved',
+          `QR code saved to your device.\n\nFilename: ${filename}\n\nYou can access it from your file manager.`,
+        );
+      }
+    } catch (err: any) {
+      const msg = err?.message || 'Unknown error';
+      Alert.alert('Download Failed', `Could not save QR code.\n\nReason: ${msg}`);
+    }
   };
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -289,6 +387,7 @@ export default function DocumentDetail() {
 
   const canTransfer = user?.role === 'admin' || user?.role === 'staff';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  const canEdit = isAdmin || user?.role === 'staff';
 
   // ── Loading / not found ───────────────────────────────────────────────────
 
@@ -443,9 +542,24 @@ export default function DocumentDetail() {
                 style={{ width: 200, height: 200, borderRadius: 8 }}
                 resizeMode="contain"
               />
-              <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 10, textAlign: 'center' }}>
+              <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 10, marginBottom: 14, textAlign: 'center' }}>
                 Scan to look up this document
               </Text>
+              <TouchableOpacity
+                onPress={handleDownloadQR}
+                activeOpacity={0.8}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 7,
+                  backgroundColor: '#EFF6FF', borderRadius: 10,
+                  paddingHorizontal: 18, paddingVertical: 10,
+                  borderWidth: 1, borderColor: '#BFDBFE',
+                }}
+              >
+                <Download size={15} color="#0038A8" />
+                <Text style={{ color: '#0038A8', fontSize: 13, fontWeight: '700' }}>
+                  Download QR Code
+                </Text>
+              </TouchableOpacity>
             </>
           ) : (
             <Text style={{ color: '#94A3B8', fontSize: 13 }}>QR unavailable</Text>
@@ -503,8 +617,8 @@ export default function DocumentDetail() {
           </View>
         )}
 
-        {/* ── Edit Document (Admin) ─────────────────────────────────────── */}
-        {isAdmin && (
+        {/* ── Edit Document (Admin + Staff) ────────────────────────────── */}
+        {canEdit && (
           <TouchableOpacity
             onPress={openEditDoc}
             activeOpacity={0.8}
@@ -530,7 +644,7 @@ export default function DocumentDetail() {
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '800', color: '#92400E', fontSize: 14 }}>Edit Document</Text>
               <Text style={{ color: '#B45309', fontSize: 12.5, marginTop: 2 }}>
-                Modify document fields (admin only)
+                Modify document fields
               </Text>
             </View>
             <Text style={{ color: '#FCD34D', fontSize: 20 }}>›</Text>
@@ -571,6 +685,34 @@ export default function DocumentDetail() {
           </TouchableOpacity>
         )}
 
+        {/* ── Create Routing Slip ───────────────────────────────────────── */}
+        {canTransfer && (
+          <TouchableOpacity
+            onPress={() => setSlipModal(true)}
+            activeOpacity={0.8}
+            style={{
+              backgroundColor: '#F0FDF4',
+              borderRadius: 14, padding: 16, marginBottom: 12,
+              borderWidth: 1, borderColor: '#BBF7D0',
+              flexDirection: 'row', alignItems: 'center', gap: 12,
+            }}
+          >
+            <View style={{
+              width: 40, height: 40, borderRadius: 20,
+              backgroundColor: '#16A34A', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <FileText size={18} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: '800', color: '#14532D', fontSize: 14 }}>Create Routing Slip</Text>
+              <Text style={{ color: '#16A34A', fontSize: 12.5, marginTop: 2 }}>
+                Generate a routing slip for this document
+              </Text>
+            </View>
+            <Text style={{ color: '#86EFAC', fontSize: 20 }}>›</Text>
+          </TouchableOpacity>
+        )}
+
         {/* ── Update Status ─────────────────────────────────────────────── */}
         <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: isAdmin ? 12 : 24, borderWidth: 0.5, borderColor: '#E2E8F0' }}>
           <Text style={{ fontWeight: '800', color: '#0038A8', marginBottom: 14, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.8 }}>
@@ -603,6 +745,56 @@ export default function DocumentDetail() {
             })}
           </View>
         </View>
+
+        {/* ── Assign to Staff (Admin) ──────────────────────────────────── */}
+        {isAdmin && (
+          <View style={{
+            backgroundColor: '#fff', borderRadius: 14, padding: 16,
+            marginBottom: 12, borderWidth: 0.5, borderColor: '#E2E8F0',
+          }}>
+            <Text style={{ fontWeight: '700', color: '#0038A8', fontSize: 13, marginBottom: 10 }}>
+              Staff Assignment
+            </Text>
+            {doc?.assigned_to ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View>
+                  <Text style={{ color: '#64748B', fontSize: 12 }}>Currently assigned to</Text>
+                  <Text style={{ color: '#1E293B', fontWeight: '700', fontSize: 14 }}>@{doc.assigned_to}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => { setAssignStaff(doc.assigned_to || ''); setAssignModal(true); }}
+                    style={{ backgroundColor: '#EFF6FF', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}
+                  >
+                    <Text style={{ color: '#0038A8', fontWeight: '700', fontSize: 12 }}>Reassign</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Alert.alert('Remove Assignment', 'Remove staff assignment from this document?', [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Remove', style: 'destructive', onPress: () => unassignMutation.mutate() },
+                      ]);
+                    }}
+                    disabled={unassignMutation.isPending}
+                    style={{ backgroundColor: '#FEF2F2', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}
+                  >
+                    <Text style={{ color: '#DC2626', fontWeight: '700', fontSize: 12 }}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => { setAssignStaff(''); setAssignModal(true); }}
+                style={{
+                  backgroundColor: '#EFF6FF', borderRadius: 10, paddingVertical: 12,
+                  alignItems: 'center', borderWidth: 1, borderColor: '#BFDBFE',
+                }}
+              >
+                <Text style={{ color: '#0038A8', fontWeight: '700', fontSize: 13 }}>Assign to Staff Member</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         {/* ── Delete Document (Admin) ───────────────────────────────────── */}
         {isAdmin && (
@@ -927,6 +1119,161 @@ export default function DocumentDetail() {
                 <TouchableOpacity
                   onPress={closeTransferModal}
                   disabled={transferMutation.isPending}
+                  style={{ borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 13, paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff' }}
+                >
+                  <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Create Routing Slip Modal ──────────────────────────────────── */}
+      <Modal visible={slipModal} transparent animationType="slide" onRequestClose={() => setSlipModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+            <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => setSlipModal(false)} activeOpacity={1} />
+            <View style={{ backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' }}>
+
+              {/* Header */}
+              <View style={{ backgroundColor: '#16A34A', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 20, paddingBottom: 16, paddingHorizontal: 20 }}>
+                <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.30)', alignSelf: 'center', marginBottom: 12 }} />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View>
+                    <Text style={{ fontSize: 17, fontWeight: '800', color: '#fff' }}>Create Routing Slip</Text>
+                    <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.70)', marginTop: 2 }}>
+                      {doc?.doc_name ? doc.doc_name.slice(0, 40) : 'This document'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setSlipModal(false)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                    <X size={16} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
+
+                {/* Destination */}
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#16A34A', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
+                  Destination Office <Text style={{ color: '#EF4444' }}>*</Text>
+                </Text>
+                <SelectField
+                  value={slipDestination}
+                  onChange={setSlipDestination}
+                  options={officeNames}
+                  placeholder="Select destination office…"
+                  label="Destination"
+                  allowFreeText
+                  disabled={createSlipMutation.isPending}
+                />
+
+                {/* Notes */}
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6, marginTop: 4 }}>
+                  Notes <Text style={{ color: '#94A3B8', fontWeight: '400', textTransform: 'none' }}>(optional)</Text>
+                </Text>
+                <TextInput
+                  value={slipNotes}
+                  onChangeText={setSlipNotes}
+                  placeholder="Instructions or notes for the recipient…"
+                  placeholderTextColor="#CBD5E1"
+                  multiline
+                  editable={!createSlipMutation.isPending}
+                  style={{
+                    backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: '#E2E8F0',
+                    paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: '#1E293B',
+                    height: 90, textAlignVertical: 'top', marginBottom: 16,
+                  }}
+                />
+              </ScrollView>
+
+              {/* Footer */}
+              <View style={{ padding: 16, paddingBottom: Platform.OS === 'ios' ? 32 : 20, borderTopWidth: 0.5, borderTopColor: '#E2E8F0', gap: 10 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (!slipDestination.trim()) {
+                      Alert.alert('Required', 'Please select a destination office.');
+                      return;
+                    }
+                    createSlipMutation.mutate({ destination: slipDestination, notes: slipNotes });
+                  }}
+                  disabled={createSlipMutation.isPending}
+                  style={{
+                    backgroundColor: createSlipMutation.isPending ? '#86EFAC' : '#16A34A',
+                    borderRadius: 13, paddingVertical: 15, alignItems: 'center',
+                    flexDirection: 'row', justifyContent: 'center', gap: 8,
+                  }}
+                >
+                  {createSlipMutation.isPending
+                    ? <><ActivityIndicator color="#fff" size="small" /><Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Creating…</Text></>
+                    : <><FileText size={18} color="#fff" /><Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Create Slip</Text></>
+                  }
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setSlipModal(false)}
+                  disabled={createSlipMutation.isPending}
+                  style={{ borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 13, paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff' }}
+                >
+                  <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Assign to Staff Modal ─────────────────────────────────────── */}
+      <Modal visible={assignModal} transparent animationType="slide" onRequestClose={() => setAssignModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+            <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => setAssignModal(false)} activeOpacity={1} />
+            <View style={{ backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '70%' }}>
+              {/* Header */}
+              <View style={{ backgroundColor: '#0038A8', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 20, paddingBottom: 16, paddingHorizontal: 20 }}>
+                <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.30)', alignSelf: 'center', marginBottom: 12 }} />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 17, fontWeight: '800', color: '#fff' }}>Assign to Staff</Text>
+                  <TouchableOpacity onPress={() => setAssignModal(false)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                    <X size={16} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#0038A8', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
+                  Staff Member <Text style={{ color: '#EF4444' }}>*</Text>
+                </Text>
+                <SelectField
+                  value={assignStaff}
+                  onChange={setAssignStaff}
+                  options={staffNames}
+                  placeholder="Select or type staff username…"
+                  label="Staff"
+                  allowFreeText
+                  disabled={assignMutation.isPending}
+                />
+              </ScrollView>
+
+              <View style={{ padding: 16, paddingBottom: Platform.OS === 'ios' ? 32 : 20, borderTopWidth: 0.5, borderTopColor: '#E2E8F0', gap: 10 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (!assignStaff.trim()) { Alert.alert('Required', 'Please select a staff member.'); return; }
+                    const staffRecord = staffList?.find((s) => s.full_name === assignStaff);
+                    const username = staffRecord?.username || assignStaff;
+                    assignMutation.mutate(username);
+                  }}
+                  disabled={assignMutation.isPending}
+                  style={{
+                    backgroundColor: assignMutation.isPending ? '#93C5FD' : '#0038A8',
+                    borderRadius: 13, paddingVertical: 15, alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
+                    {assignMutation.isPending ? 'Assigning…' : 'Assign Document'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setAssignModal(false)}
                   style={{ borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 13, paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff' }}
                 >
                   <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600' }}>Cancel</Text>

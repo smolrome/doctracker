@@ -129,7 +129,12 @@ export default function Login() {
       await authStorage.saveTokens(access_token, refresh_token);
       await authStorage.saveUser(user);
       setUser(user);
-      router.replace('/(app)/dashboard');
+      // Route based on role: clients go to client portal, staff/admin to dashboard
+      if (user?.role === 'client') {
+        router.replace('/(client)/my-docs');
+      } else {
+        router.replace('/(app)/dashboard');
+      }
     } catch (err) {
       // FIX 6: Use the typed ApiError cast instead of `any`
       const msg = parseError(err as ApiError);
@@ -367,25 +372,25 @@ export default function Login() {
             <View style={{ flex: 1, height: 1, backgroundColor: '#E2E8F0' }} />
           </View>
 
-          {/* FIX 4: Staff Login now shows "Coming soon" to avoid a silent dead button */}
+          {/* Register as Client */}
           <TouchableOpacity
-            activeOpacity={0.75}
-            disabled
+            onPress={() => router.push('/(auth)/register')}
+            activeOpacity={0.8}
             style={{
               borderWidth: 1.5,
-              borderColor: '#CBD5E1',
+              borderColor: '#BFDBFE',
               borderRadius: 13,
               paddingVertical: 13,
               alignItems: 'center',
               flexDirection: 'row',
               justifyContent: 'center',
-              backgroundColor: '#F8FAFC',
+              backgroundColor: '#EFF6FF',
               marginBottom: 32,
             }}
           >
-            <Fingerprint color="#CBD5E1" size={18} />
-            <Text style={{ color: '#CBD5E1', fontSize: 15, fontWeight: '700', marginLeft: 8 }}>
-              Staff Login (coming soon)
+            <Fingerprint color="#0038A8" size={18} />
+            <Text style={{ color: '#0038A8', fontSize: 15, fontWeight: '700', marginLeft: 8 }}>
+              Register as Client
             </Text>
           </TouchableOpacity>
 

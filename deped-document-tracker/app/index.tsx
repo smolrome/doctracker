@@ -4,7 +4,7 @@ import { useAuthStore } from '../lib/store';
 import SplashScreen from './splash';
 
 export default function Index() {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, user } = useAuthStore();
   const [showSplash, setShowSplash] = useState(true);
 
   // Resolves when Zustand finishes its auth check.
@@ -35,6 +35,9 @@ export default function Index() {
   }
 
   if (isAuthenticated) {
+    if (user?.role === 'client') {
+      return <Redirect href="/(client)/my-docs" />;
+    }
     return <Redirect href="/(app)/dashboard" />;
   }
 
