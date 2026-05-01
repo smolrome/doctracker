@@ -11,76 +11,150 @@ import {
   Animated,
   StatusBar,
   Image,
-  // FIX 1: useWindowDimensions updates on rotation; Dimensions.get is static
+  Alert,
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { User, Lock, Eye, EyeOff, LogIn, Fingerprint, AlertCircle } from 'lucide-react-native';
+import { User, Lock, Eye, EyeOff, LogIn, UserPlus, AlertCircle } from 'lucide-react-native';
+import * as Biometrics from '../../lib/biometrics';
 import api from '../../lib/api';
 import { authStorage } from '../../lib/auth';
 import { useAuthStore } from '../../lib/store';
 
+// ── Types ──────────────────────────────────────────────────────────────────────
+
 interface ApiError {
-  response?: {
-    data?: { error?: string };
-    status?: number;
-  };
+  response?: { data?: { error?: string }; status?: number };
   message?: string;
   code?: string;
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+/** Check whether this device has biometric hardware AND enrolled credentials. */
+async function deviceSupportsBiometrics(): Promise<boolean> {
+  try {
+    const hasHardware = await Biometrics.hasHardwareAsync();
+    if (!hasHardware) return false;
+    const isEnrolled = await Biometrics.isEnrolledAsync();
+    return isEnrolled;
+  } catch {
+    return false;
+  }
+}
+
+/** Fingerprint SVG-style icon rendered with View shapes (no external dep needed). */
+function FingerprintIcon({ color = '#0038A8', size = 26 }: { color?: string; size?: number }) {
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      {/* Simple fingerprint icon using concentric arcs approximated with Views */}
+      <View style={{
+        width: size, height: size, borderRadius: size / 2,
+        borderWidth: 2.5, borderColor: color, opacity: 0.9,
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        <View style={{
+          width: size * 0.65, height: size * 0.65, borderRadius: (size * 0.65) / 2,
+          borderWidth: 2, borderColor: color, opacity: 0.8,
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <View style={{
+            width: size * 0.30, height: size * 0.30, borderRadius: (size * 0.30) / 2,
+            backgroundColor: color, opacity: 0.7,
+          }} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
 export default function Login() {
-  const router = useRouter();
+  const router  = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
-  // FIX 1: Dynamic dimensions — updates on orientation change
   const { width, height } = useWindowDimensions();
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  // Form state
+  const [username, setUsername]         = useState('');
+  const [password, setPassword]         = useState('');
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [usernameFocused, setUsernameFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  // FIX 2: Track logo load failure for initials fallback
-  const [logoError, setLogoError] = useState(false);
+  const [logoError, setLogoError]       = useState(false);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const logoScale = useRef(new Animated.Value(0.85)).current;
-  const shakeAnim = useRef(new Animated.Value(0)).current;
-  const errorFade = useRef(new Animated.Value(0)).current;
+  // Biometric state
+  const [bioAvailable, setBioAvailable] = useState(false);   // device supports + enrolled
+  const [bioEnabled, setBioEnabled]     = useState(false);   // user opted in
+  const [bioLoading, setBioLoading]     = useState(false);
+  const [bioReady, setBioReady]         = useState(false);   // done checking
+
+  // Animation refs
+  const fadeAnim   = useRef(new Animated.Value(0)).current;
+  const slideAnim  = useRef(new Animated.Value(30)).current;
+  const logoScale  = useRef(new Animated.Value(0.85)).current;
+  const shakeAnim  = useRef(new Animated.Value(0)).current;
+  const errorFade  = useRef(new Animated.Value(0)).current;
   const accentScale1 = useRef(new Animated.Value(1)).current;
   const accentScale2 = useRef(new Animated.Value(1)).current;
+  const bioPulse   = useRef(new Animated.Value(1)).current;
+
+  // ── Mount ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
+    // Entrance animations
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(fadeAnim,  { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }),
-      Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 8, useNativeDriver: true }),
+      Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 8,  useNativeDriver: true }),
     ]).start();
 
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(accentScale1, { toValue: 1.12, duration: 4000, useNativeDriver: true }),
-        Animated.timing(accentScale1, { toValue: 1, duration: 4000, useNativeDriver: true }),
-      ])
-    ).start();
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(accentScale2, { toValue: 1.08, duration: 5000, useNativeDriver: true }),
-        Animated.timing(accentScale2, { toValue: 1, duration: 5000, useNativeDriver: true }),
-      ])
-    ).start();
+    Animated.loop(Animated.sequence([
+      Animated.timing(accentScale1, { toValue: 1.12, duration: 4000, useNativeDriver: true }),
+      Animated.timing(accentScale1, { toValue: 1,    duration: 4000, useNativeDriver: true }),
+    ])).start();
+    Animated.loop(Animated.sequence([
+      Animated.timing(accentScale2, { toValue: 1.08, duration: 5000, useNativeDriver: true }),
+      Animated.timing(accentScale2, { toValue: 1,    duration: 5000, useNativeDriver: true }),
+    ])).start();
+
+    // Check biometric availability
+    checkBiometrics();
   }, []);
+
+  const checkBiometrics = async () => {
+    const supported = await deviceSupportsBiometrics();
+    const enabled   = await authStorage.isBiometricEnabled();
+    setBioAvailable(supported);
+    setBioEnabled(supported && enabled);
+    setBioReady(true);
+
+    // If biometric is set up, auto-prompt on load (like a banking app)
+    if (supported && enabled) {
+      // Short delay so the screen finishes animating in first
+      setTimeout(() => triggerBiometricLogin(true), 700);
+    }
+  };
+
+  // Pulse animation for the fingerprint button
+  const startBioPulse = () => {
+    Animated.loop(Animated.sequence([
+      Animated.timing(bioPulse, { toValue: 1.08, duration: 700, useNativeDriver: true }),
+      Animated.timing(bioPulse, { toValue: 1,    duration: 700, useNativeDriver: true }),
+    ])).start();
+  };
+
+  // ── Error helpers ──────────────────────────────────────────────────────────
 
   const shakeError = () => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10,  duration: 60, useNativeDriver: true }),
       Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 8, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 8,   duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -8,  duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0,   duration: 60, useNativeDriver: true }),
     ]).start();
     Animated.timing(errorFade, { toValue: 1, duration: 300, useNativeDriver: true }).start();
   };
@@ -92,7 +166,7 @@ export default function Login() {
 
   const parseError = (err: ApiError): string => {
     if (err.response) {
-      const status = err.response.status;
+      const status    = err.response.status;
       const serverMsg = err.response.data?.error;
       if (status === 401) return 'Invalid username or password';
       if (status === 403) return 'Account is locked or inactive';
@@ -106,10 +180,30 @@ export default function Login() {
     return 'Login failed. Please try again';
   };
 
-  const handleLogin = async () => {
-    // FIX 3: Only trim username — never trim password (spaces may be intentional)
-    const trimmedUsername = username.trim();
+  // ── Login logic (shared by password + biometric paths) ──────────────────────
 
+  const performLogin = async (u: string, p: string): Promise<boolean> => {
+    try {
+      const response = await api.post('/auth/login', { username: u, password: p });
+      const { access_token, refresh_token, user } = response.data;
+      await authStorage.saveTokens(access_token, refresh_token);
+      await authStorage.saveUser(user);
+      setUser(user);
+      if (user?.role === 'client') {
+        router.replace('/(client)/my-docs');
+      } else {
+        router.replace('/(app)/dashboard');
+      }
+      return true;
+    } catch (err) {
+      return false;
+    }
+  };
+
+  // ── Password login ─────────────────────────────────────────────────────────
+
+  const handleLogin = async () => {
+    const trimmedUsername = username.trim();
     if (!trimmedUsername || !password) {
       setError('Please enter username and password');
       shakeError();
@@ -122,21 +216,43 @@ export default function Login() {
     try {
       const response = await api.post('/auth/login', {
         username: trimmedUsername,
-        password, // raw, untrimmed
+        password,
       });
 
       const { access_token, refresh_token, user } = response.data;
       await authStorage.saveTokens(access_token, refresh_token);
       await authStorage.saveUser(user);
       setUser(user);
-      // Route based on role: clients go to client portal, staff/admin to dashboard
-      if (user?.role === 'client') {
-        router.replace('/(client)/my-docs');
-      } else {
-        router.replace('/(app)/dashboard');
+
+      // ── Offer biometric registration after successful password login ────────
+      if (bioAvailable && !bioEnabled) {
+        // Ask on next tick so navigation doesn't interfere
+        setTimeout(() => {
+          Alert.alert(
+            '🔐 Enable Fingerprint Login?',
+            'Would you like to use your fingerprint to sign in faster next time?',
+            [
+              {
+                text: 'Not Now',
+                style: 'cancel',
+                onPress: () => navigateAfterLogin(user),
+              },
+              {
+                text: 'Enable Fingerprint',
+                onPress: async () => {
+                  await authStorage.saveBiometricCredentials(trimmedUsername, password);
+                  setBioEnabled(true);
+                  navigateAfterLogin(user);
+                },
+              },
+            ],
+          );
+        }, 200);
+        return; // Navigation is deferred to the Alert handler
       }
+
+      navigateAfterLogin(user);
     } catch (err) {
-      // FIX 6: Use the typed ApiError cast instead of `any`
       const msg = parseError(err as ApiError);
       setError(msg);
       shakeError();
@@ -144,6 +260,87 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  const navigateAfterLogin = (user: any) => {
+    if (user?.role === 'client') {
+      router.replace('/(client)/my-docs');
+    } else {
+      router.replace('/(app)/dashboard');
+    }
+  };
+
+  // ── Biometric login ────────────────────────────────────────────────────────
+
+  const triggerBiometricLogin = async (silent = false) => {
+    if (bioLoading) return;
+    setBioLoading(true);
+    setError('');
+
+    try {
+      // Get the saved credentials first — if none, can't proceed
+      const creds = await authStorage.getBiometricCredentials();
+      if (!creds) {
+        if (!silent) Alert.alert('Not Set Up', 'No fingerprint credentials saved. Please sign in with your password first.');
+        setBioLoading(false);
+        return;
+      }
+
+      // Trigger OS biometric prompt
+      const result = await Biometrics.authenticateAsync({
+        promptMessage: 'Sign in to DepEd Document Tracker',
+        fallbackLabel:  'Use Password',
+        cancelLabel:    'Cancel',
+      });
+
+      if (result.success) {
+        // Biometric passed — use stored credentials to get a fresh token
+        setLoading(true);
+        const ok = await performLogin(creds.username, creds.password);
+        if (!ok) {
+          // Credentials may have changed — disable biometric and ask for password
+          await authStorage.clearBiometricCredentials();
+          setBioEnabled(false);
+          setError('Saved credentials are outdated. Please sign in with your password.');
+          shakeError();
+        }
+      } else if (result.error === 'user_cancel' || result.error === 'system_cancel') {
+        // User cancelled — do nothing silently
+      } else if (result.error === 'lockout' || result.error === 'lockout_permanent') {
+        setError('Too many failed attempts. Use your password instead.');
+        shakeError();
+      }
+    } catch {
+      if (!silent) {
+        setError('Biometric authentication failed. Use your password.');
+        shakeError();
+      }
+    } finally {
+      setBioLoading(false);
+      setLoading(false);
+    }
+  };
+
+  // ── Disable biometric ──────────────────────────────────────────────────────
+
+  const handleDisableBiometric = () => {
+    Alert.alert(
+      'Disable Fingerprint Login',
+      'Remove fingerprint sign-in from this device?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            await authStorage.clearBiometricCredentials();
+            setBioEnabled(false);
+          },
+        },
+      ],
+    );
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   const HERO_HEIGHT = height * 0.42;
 
@@ -154,7 +351,7 @@ export default function Login() {
     >
       <StatusBar barStyle="light-content" backgroundColor="#0038A8" />
 
-      {/* Hero zone */}
+      {/* ── Hero zone ─────────────────────────────────────────────────────── */}
       <View style={{ height: HERO_HEIGHT, backgroundColor: '#0038A8', overflow: 'hidden' }}>
         <Animated.View style={{
           position: 'absolute', top: -48, right: -48,
@@ -191,14 +388,11 @@ export default function Login() {
           <View style={{
             width: 108, height: 108, borderRadius: 54,
             backgroundColor: 'rgba(255,255,255,0.12)',
-            alignItems: 'center', justifyContent: 'center',
-            marginBottom: 14,
+            alignItems: 'center', justifyContent: 'center', marginBottom: 14,
           }}>
             <View style={{
-              width: 108, height: 108, borderRadius: 54,
-              backgroundColor: '#fff',
-              alignItems: 'center', justifyContent: 'center',
-              overflow: 'hidden',
+              width: 108, height: 108, borderRadius: 54, backgroundColor: '#fff',
+              alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
             }}>
               {logoError ? (
                 <Text style={{ fontSize: 28, fontWeight: '700', color: '#0038A8' }}>DL</Text>
@@ -211,31 +405,20 @@ export default function Login() {
               )}
             </View>
           </View>
-
-          <Text style={{
-            fontSize: 26, fontWeight: '900', color: '#fff',
-            letterSpacing: -0.5, textAlign: 'center',
-          }}>
+          <Text style={{ fontSize: 26, fontWeight: '900', color: '#fff', letterSpacing: -0.5, textAlign: 'center' }}>
             DepEd Leyte
           </Text>
-          <Text style={{
-            fontSize: 12.5, color: 'rgba(255,255,255,0.72)',
-            marginTop: 5, textAlign: 'center', letterSpacing: 0.3,
-          }}>
+          <Text style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.72)', marginTop: 5, textAlign: 'center', letterSpacing: 0.3 }}>
             Document Tracker — Personnel Unit
           </Text>
         </Animated.View>
       </View>
 
-      {/* Form zone */}
+      {/* ── Form zone ─────────────────────────────────────────────────────── */}
       <Animated.View style={{
-        flex: 1,
-        backgroundColor: '#F8FAFC',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        marginTop: -20,
-        opacity: fadeAnim,
-        transform: [{ translateY: slideAnim }],
+        flex: 1, backgroundColor: '#F8FAFC',
+        borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20,
+        opacity: fadeAnim, transform: [{ translateY: slideAnim }],
       }}>
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 40 }}
@@ -249,6 +432,7 @@ export default function Login() {
             Sign in to your Personnel Unit account.
           </Text>
 
+          {/* ── Error banner ──────────────────────────────────────────────── */}
           {error ? (
             <Animated.View style={{ opacity: errorFade, transform: [{ translateX: shakeAnim }] }}>
               <TouchableOpacity
@@ -260,9 +444,7 @@ export default function Login() {
                   flexDirection: 'row', alignItems: 'flex-start',
                 }}
               >
-                <View style={{ marginRight: 8 }}>
-                  <AlertCircle color="#DC2626" size={18} />
-                </View>
+                <AlertCircle color="#DC2626" size={18} style={{ marginRight: 8, marginTop: 1 }} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: '#DC2626', fontSize: 13, fontWeight: '600' }}>{error}</Text>
                   <Text style={{ color: '#EF4444', fontSize: 11, marginTop: 2 }}>Tap to dismiss</Text>
@@ -271,7 +453,54 @@ export default function Login() {
             </Animated.View>
           ) : null}
 
-          {/* FIX 5: Both labels now use the same color — #475569 */}
+          {/* ── BIOMETRIC SHORTCUT (shown when fingerprint is set up) ─────── */}
+          {bioReady && bioEnabled && (
+            <View style={{
+              backgroundColor: '#EFF6FF', borderRadius: 14, padding: 16,
+              marginBottom: 24, borderWidth: 1.5, borderColor: '#BFDBFE',
+              alignItems: 'center',
+            }}>
+              <Text style={{ color: '#0038A8', fontSize: 13, fontWeight: '700', marginBottom: 14 }}>
+                Sign in with your fingerprint
+              </Text>
+
+              {/* Fingerprint button */}
+              <TouchableOpacity
+                onPress={() => triggerBiometricLogin(false)}
+                disabled={bioLoading || loading}
+                activeOpacity={0.75}
+              >
+                <Animated.View style={{
+                  transform: [{ scale: bioPulse }],
+                  width: 72, height: 72, borderRadius: 36,
+                  backgroundColor: '#0038A8',
+                  alignItems: 'center', justifyContent: 'center',
+                  shadowColor: '#0038A8',
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
+                }}>
+                  {bioLoading ? (
+                    <ActivityIndicator color="#fff" size="large" />
+                  ) : (
+                    <FingerprintIcon color="#fff" size={36} />
+                  )}
+                </Animated.View>
+              </TouchableOpacity>
+
+              <Text style={{ color: '#64748B', fontSize: 12, marginTop: 10, textAlign: 'center' }}>
+                {bioLoading ? 'Verifying…' : 'Tap to sign in with fingerprint'}
+              </Text>
+
+              {/* Divider with "or use password" */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, width: '100%' }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: '#BFDBFE' }} />
+                <Text style={{ color: '#93C5FD', fontSize: 12, marginHorizontal: 10 }}>or use password below</Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: '#BFDBFE' }} />
+              </View>
+            </View>
+          )}
+
+          {/* ── Username field ────────────────────────────────────────────── */}
           <Text style={{
             fontSize: 11, fontWeight: '700', color: '#475569',
             marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8,
@@ -281,9 +510,7 @@ export default function Login() {
           <View style={{
             borderWidth: 1.5,
             borderColor: usernameFocused ? '#0038A8' : error ? '#FCA5A5' : '#E2E8F0',
-            borderRadius: 12,
-            backgroundColor: '#fff',
-            marginBottom: 18,
+            borderRadius: 12, backgroundColor: '#fff', marginBottom: 18,
             flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14,
           }}>
             <User color={usernameFocused ? '#0038A8' : '#94A3B8'} size={18} style={{ marginRight: 10 }} />
@@ -296,11 +523,12 @@ export default function Login() {
               placeholderTextColor="#CBD5E1"
               autoCapitalize="none"
               autoCorrect={false}
-              editable={!loading}
+              editable={!loading && !bioLoading}
               style={{ flex: 1, paddingVertical: 13, fontSize: 15, color: '#1E293B' }}
             />
           </View>
 
+          {/* ── Password field ────────────────────────────────────────────── */}
           <Text style={{
             fontSize: 11, fontWeight: '700', color: '#475569',
             marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8,
@@ -310,9 +538,7 @@ export default function Login() {
           <View style={{
             borderWidth: 1.5,
             borderColor: passwordFocused ? '#0038A8' : error ? '#FCA5A5' : '#E2E8F0',
-            borderRadius: 12,
-            backgroundColor: '#fff',
-            marginBottom: 28,
+            borderRadius: 12, backgroundColor: '#fff', marginBottom: 28,
             flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14,
           }}>
             <Lock color={passwordFocused ? '#0038A8' : '#94A3B8'} size={18} style={{ marginRight: 10 }} />
@@ -324,7 +550,7 @@ export default function Login() {
               placeholder="Enter your password"
               placeholderTextColor="#CBD5E1"
               secureTextEntry={!showPassword}
-              editable={!loading}
+              editable={!loading && !bioLoading}
               style={{ flex: 1, paddingVertical: 13, fontSize: 15, color: '#1E293B' }}
             />
             <TouchableOpacity
@@ -337,16 +563,15 @@ export default function Login() {
             </TouchableOpacity>
           </View>
 
+          {/* ── Sign In button ────────────────────────────────────────────── */}
           <TouchableOpacity
             onPress={handleLogin}
-            disabled={loading}
+            disabled={loading || bioLoading}
             activeOpacity={0.85}
             style={{
-              backgroundColor: loading ? '#93C5FD' : '#0038A8',
-              borderRadius: 13,
-              paddingVertical: 15,
-              alignItems: 'center',
-              marginBottom: 20,
+              backgroundColor: (loading || bioLoading) ? '#93C5FD' : '#0038A8',
+              borderRadius: 13, paddingVertical: 15,
+              alignItems: 'center', marginBottom: 20,
             }}
           >
             {loading ? (
@@ -366,47 +591,77 @@ export default function Login() {
             )}
           </TouchableOpacity>
 
+          {/* ── Divider ───────────────────────────────────────────────────── */}
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
             <View style={{ flex: 1, height: 1, backgroundColor: '#E2E8F0' }} />
             <Text style={{ color: '#CBD5E1', fontSize: 12, marginHorizontal: 12 }}>or</Text>
             <View style={{ flex: 1, height: 1, backgroundColor: '#E2E8F0' }} />
           </View>
 
-          {/* Register as Client */}
+          {/* ── Register as Client button ─────────────────────────────────── */}
           <TouchableOpacity
             onPress={() => router.push('/(auth)/register')}
             activeOpacity={0.8}
             style={{
-              borderWidth: 1.5,
-              borderColor: '#BFDBFE',
-              borderRadius: 13,
-              paddingVertical: 13,
-              alignItems: 'center',
-              flexDirection: 'row',
-              justifyContent: 'center',
+              borderWidth: 1.5, borderColor: '#BFDBFE', borderRadius: 13,
+              paddingVertical: 13, alignItems: 'center',
+              flexDirection: 'row', justifyContent: 'center',
               backgroundColor: '#EFF6FF',
-              marginBottom: 32,
+              marginBottom: bioAvailable && !bioEnabled ? 16 : 28,
             }}
           >
-            <Fingerprint color="#0038A8" size={18} />
+            <UserPlus color="#0038A8" size={18} />
             <Text style={{ color: '#0038A8', fontSize: 15, fontWeight: '700', marginLeft: 8 }}>
               Register as Client
             </Text>
           </TouchableOpacity>
 
+          {/* ── Set up fingerprint (when available but not yet enabled) ────── */}
+          {bioReady && bioAvailable && !bioEnabled && (
+            <TouchableOpacity
+              onPress={() => {
+                Alert.alert(
+                  'Set Up Fingerprint Login',
+                  'Sign in with your username and password first. After a successful login, you\'ll be asked to enable fingerprint authentication.',
+                  [{ text: 'Got it', style: 'cancel' }],
+                );
+              }}
+              style={{
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                marginBottom: 28, paddingVertical: 10,
+              }}
+            >
+              <FingerprintIcon color="#94A3B8" size={18} />
+              <Text style={{ color: '#94A3B8', fontSize: 13, fontWeight: '600' }}>
+                Fingerprint login available — sign in to enable
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* ── Disable fingerprint (when already enabled) ────────────────── */}
+          {bioReady && bioEnabled && (
+            <TouchableOpacity
+              onPress={handleDisableBiometric}
+              style={{ alignItems: 'center', marginBottom: 20, paddingVertical: 6 }}
+            >
+              <Text style={{ color: '#CBD5E1', fontSize: 12, fontWeight: '600' }}>
+                Remove fingerprint login from this device
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* ── Footer ───────────────────────────────────────────────────── */}
           <Text style={{
             textAlign: 'center', color: '#94A3B8',
             fontSize: 11, marginBottom: 10, letterSpacing: 0.3,
           }}>
             DepEd Division of Leyte — Personnel Unit
           </Text>
-
           <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
             <View style={{ width: 20, height: 3, backgroundColor: '#0038A8', borderRadius: 1 }} />
             <View style={{ width: 20, height: 3, backgroundColor: '#CE1126' }} />
             <View style={{ width: 20, height: 3, backgroundColor: '#FCD116', borderRadius: 1 }} />
           </View>
-
         </ScrollView>
       </Animated.View>
     </KeyboardAvoidingView>

@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Alert,
-  TextInput, ActivityIndicator, StatusBar,
+  TextInput, ActivityIndicator, StatusBar, Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { useAuthStore } from '../../lib/store';
 import { cache } from '../../lib/cache';
 import api from '../../lib/api';
-import { User, Lock, ChevronRight, Eye, EyeOff } from 'lucide-react-native';
+import { authStorage } from '../../lib/auth';
+import * as Biometrics from '../../lib/biometrics';
+import { User, Lock, ChevronRight, Eye, EyeOff, Fingerprint } from 'lucide-react-native';
+import PasswordPrompt from '../../components/ui/PasswordPrompt';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -67,9 +70,62 @@ export default function Profile() {
   // Expanded section
   const [expanded, setExpanded] = useState<Section>(null);
 
+  // Biometric state
+  const [bioAvailable, setBioAvailable]       = useState(false);
+  const [bioEnabled, setBioEnabled]           = useState(false);
+  const [bioLoading, setBioLoading]           = useState(false);
+  const [bioPromptVisible, setBioPromptVisible] = useState(false);
+
   useEffect(() => {
     cache.getLastSync().then(setLastSync);
+    initBiometrics();
   }, []);
+
+  const initBiometrics = async () => {
+    try {
+      const hasHardware = await Biometrics.hasHardwareAsync();
+      const isEnrolled  = await Biometrics.isEnrolledAsync();
+      const enabled     = await authStorage.isBiometricEnabled();
+      setBioAvailable(hasHardware && isEnrolled);
+      setBioEnabled(hasHardware && isEnrolled && enabled);
+    } catch {}
+  };
+
+  const handleToggleBiometric = async (value: boolean) => {
+    if (value) {
+      // First verify their biometric identity
+      const result = await Biometrics.authenticateAsync({
+        promptMessage: 'Confirm your identity to enable fingerprint login',
+        cancelLabel: 'Cancel',
+      });
+      if (!result.success) return;
+      // Then ask for their password via the cross-platform modal
+      setBioPromptVisible(true);
+    } else {
+      Alert.alert(
+        'Disable Fingerprint Login',
+        'Remove fingerprint sign-in from this device?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Remove', style: 'destructive',
+            onPress: async () => {
+              await authStorage.clearBiometricCredentials();
+              setBioEnabled(false);
+            },
+          },
+        ],
+      );
+    }
+  };
+
+  const handleBioPasswordConfirm = async (pw: string) => {
+    setBioPromptVisible(false);
+    if (!pw) return;
+    await authStorage.saveBiometricCredentials(user?.username || '', pw);
+    setBioEnabled(true);
+    Alert.alert('✅ Fingerprint Login Enabled', 'You can now sign in with your fingerprint.');
+  };
 
   // Sync form when user changes
   useEffect(() => {
@@ -481,6 +537,35 @@ export default function Profile() {
           ))}
         </SectionCard>
 
+        {/* ── Fingerprint / Biometric Login ─────────────────────────────── */}
+        {bioAvailable && (
+          <SectionCard>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{
+                width: 36, height: 36, borderRadius: 18,
+                backgroundColor: bioEnabled ? '#EFF6FF' : '#F1F5F9',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Fingerprint size={18} color={bioEnabled ? '#0038A8' : '#94A3B8'} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: '700', color: '#1E293B', fontSize: 15 }}>
+                  Fingerprint Login
+                </Text>
+                <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 2 }}>
+                  {bioEnabled ? 'Enabled — sign in with your fingerprint' : 'Sign in faster with your fingerprint'}
+                </Text>
+              </View>
+              <Switch
+                value={bioEnabled}
+                onValueChange={handleToggleBiometric}
+                trackColor={{ false: '#E2E8F0', true: '#BFDBFE' }}
+                thumbColor={bioEnabled ? '#0038A8' : '#94A3B8'}
+              />
+            </View>
+          </SectionCard>
+        )}
+
         {/* ── Offline Cache ──────────────────────────────────────────────── */}
         <SectionCard>
           <Text style={sectionTitle}>Offline Cache</Text>
@@ -507,6 +592,15 @@ export default function Profile() {
         </TouchableOpacity>
 
       </ScrollView>
+
+      {/* Cross-platform password prompt for biometric setup */}
+      <PasswordPrompt
+        visible={bioPromptVisible}
+        title="Enter Your Password"
+        message="Your password is stored securely on this device so fingerprint can sign you in automatically next time."
+        onConfirm={handleBioPasswordConfirm}
+        onCancel={() => setBioPromptVisible(false)}
+      />
     </View>
   );
 }
