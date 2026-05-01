@@ -397,6 +397,12 @@ export default function AppLayout() {
         <Tabs.Screen name="staff-stats" options={{ href: null }} />
         <Tabs.Screen name="admin-users" options={{ href: null }} />
         <Tabs.Screen name="receive-docs" options={{ href: null }} />
+        <Tabs.Screen name="trash" options={{ href: null }} />
+        <Tabs.Screen name="routing-slip-detail" options={{ href: null }} />
+        <Tabs.Screen name="pending-clients" options={{ href: null }} />
+        <Tabs.Screen name="dropdown-options" options={{ href: null }} />
+        <Tabs.Screen name="office-docs" options={{ href: null }} />
+        <Tabs.Screen name="db-status" options={{ href: null }} />
       </Tabs>
 
       {/* ══════════════════════════════════════════════════════════════════
