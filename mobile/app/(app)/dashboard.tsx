@@ -1,0 +1,786 @@
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+  Animated,
+  StatusBar,
+  Dimensions,
+  Modal,
+  TextInput,
+} from 'react-native';
+import { useRef, useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useAuthStore } from '../../lib/store';
+import { useModalStore } from '../../lib/modalStore';
+import { useStats, useDocuments } from '../../hooks/useDocuments';
+import { useNetwork } from '../../hooks/useNetwork';
+import { usePendingCount, useDropdownOptions, useOffices, useStaff } from '../../hooks/useDropdownOptions';
+import { OfflineBanner } from '../../components/ui/OfflineBanner';
+import { SelectField } from '../../components/ui/SelectField';
+import { Search, SlidersHorizontal, X } from 'lucide-react-native';
+
+const { width } = Dimensions.get('window');
+
+// ── Status badge config ────────────────────────────────────────────────────────
+const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
+  pending:     { bg: '#FEF3C7', text: '#B45309', label: 'Pending' },
+  received:    { bg: '#DBEAFE', text: '#1E40AF', label: 'Received' },
+  released:    { bg: '#D1FAE5', text: '#065F46', label: 'Released' },
+  routed:      { bg: '#EDE9FE', text: '#5B21B6', label: 'Routed' },
+  'in review': { bg: '#E0E7FF', text: '#3730A3', label: 'In Review' },
+  transferred: { bg: '#CFFAFE', text: '#155E75', label: 'Transferred' },
+  'on hold':   { bg: '#FEE2E2', text: '#991B1B', label: 'On Hold' },
+  returned:    { bg: '#FFE4E6', text: '#BE123C', label: 'Returned' },
+  archived:    { bg: '#F1F5F9', text: '#475569', label: 'Archived' },
+};
+
+const STATUS_FILTER_OPTIONS = [
+  'All', 'Pending', 'Received', 'Released', 'Routed',
+  'In Review', 'Transferred', 'On Hold', 'Returned', 'Archived',
+];
+
+const STAT_ACCENTS = [
+  '#0038A8', '#10B981', '#F59E0B', '#8B5CF6',
+  '#3B82F6', '#EC4899', '#06B6D4', '#EF4444',
+];
+
+const quickBtn: any = {
+  flex: 1, alignItems: 'center', gap: 5,
+  backgroundColor: 'rgba(255,255,255,0.15)',
+  borderRadius: 12, paddingVertical: 10,
+  borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)',
+};
+const quickBtnText: any = { color: '#fff', fontSize: 11, fontWeight: '700' };
+
+function getStatusStyle(status: string) {
+  const key = status?.toLowerCase();
+  return STATUS_CONFIG[key] ?? { bg: '#F1F5F9', text: '#475569', label: status };
+}
+
+// ── Active filter chip ─────────────────────────────────────────────────────────
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <View style={{
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: '#EFF6FF', borderRadius: 20,
+      paddingHorizontal: 10, paddingVertical: 5, gap: 5,
+      borderWidth: 1, borderColor: '#BFDBFE',
+      maxWidth: 180,
+    }}>
+      <Text style={{ color: '#1E40AF', fontSize: 12, fontWeight: '600', flexShrink: 1 }} numberOfLines={1}>
+        {label}
+      </Text>
+      <TouchableOpacity onPress={onClear} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+        <X size={12} color="#1E40AF" />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+export default function Dashboard() {
+  const router = useRouter();
+  const { user, logout } = useAuthStore();
+  const { isOnline } = useNetwork();
+  const { triggerAddModal, openCart, cartCount } = useModalStore();
+  const { data: pendingCount = 0 } = usePendingCount();
+
+  const isAdmin = user?.role === 'admin';
+
+  // ── Entrance animation ───────────────────────────────────────────────────────
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(16)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 12, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  // ── Filter state ─────────────────────────────────────────────────────────────
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [filterSearchInput, setFilterSearchInput] = useState(''); // live input value
+  const [filterSearch, setFilterSearch] = useState('');           // committed value
+  const [filterStatus, setFilterStatus] = useState('All');
+  const [filterSource, setFilterSource] = useState('All');        // All | Staff | Client
+  const [filterOffice, setFilterOffice] = useState('All');        // admin only
+  const [filterCat, setFilterCat] = useState('All');
+  const [filterStaff, setFilterStaff] = useState('All');
+  const [filterDate, setFilterDate] = useState('');
+
+  // ── Dropdown data ────────────────────────────────────────────────────────────
+  const { data: dropdownOpts } = useDropdownOptions();
+  const { data: officesList = [] } = useOffices();
+  const { data: staffList = [] } = useStaff();
+
+  const categoryOptions = dropdownOpts?.category ?? [];
+  const officeOptions = officesList.map((o) => o.office_name);
+  // Admin sees all staff; staff sees only own-office staff
+  const staffOptions = isAdmin
+    ? staffList.map((s) => s.full_name)
+    : staffList.filter((s) => s.office === user?.office).map((s) => s.full_name);
+
+  // ── Active filter count (for badge) ─────────────────────────────────────────
+  const activeFilterCount = [
+    filterSearch !== '',
+    filterStatus !== 'All',
+    filterSource !== 'All',
+    filterOffice !== 'All',
+    filterCat !== 'All',
+    filterStaff !== 'All',
+    filterDate !== '',
+  ].filter(Boolean).length;
+
+  const clearAllFilters = () => {
+    setFilterSearch('');
+    setFilterSearchInput('');
+    setFilterStatus('All');
+    setFilterSource('All');
+    setFilterOffice('All');
+    setFilterCat('All');
+    setFilterStaff('All');
+    setFilterDate('');
+  };
+
+  // ── Data fetching ─────────────────────────────────────────────────────────────
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    refetch: refetchStats,
+    isFromCache: statsFromCache,
+  } = useStats();
+
+  const {
+    data: docsData,
+    isLoading: docsLoading,
+    refetch: refetchDocs,
+    isFromCache: docsFromCache,
+  } = useDocuments(filterSearch, filterStatus, {
+    office: filterOffice,
+    cat: filterCat,
+    staff: filterStaff,
+    source: filterSource,
+    date: filterDate,
+  });
+
+  // Show more results when filters are active
+  const recentDocs = docsData?.documents?.slice(0, activeFilterCount > 0 ? 10 : 5) ?? [];
+  const totalFiltered = docsData?.total ?? 0;
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/(auth)/login');
+  };
+
+  const handleRefresh = () => {
+    refetchStats();
+    refetchDocs();
+  };
+
+  const statEntries = stats ? Object.entries(stats) : [];
+
+  // ── Apply filters from sheet ──────────────────────────────────────────────────
+  const applyFilters = () => {
+    setFilterSearch(filterSearchInput);
+    setShowFilterSheet(false);
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────────
+  return (
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+      <StatusBar barStyle="light-content" backgroundColor="#0038A8" />
+      <OfflineBanner />
+
+      {/* ── Hero header ─────────────────────────────────────────────────────── */}
+      <View style={{
+        backgroundColor: '#0038A8',
+        paddingTop: 56, paddingBottom: 28, paddingHorizontal: 20,
+        overflow: 'hidden',
+      }}>
+        {/* Subtle grid texture */}
+        {[...Array(4)].map((_, i) => (
+          <View key={`h${i}`} style={{
+            position: 'absolute', top: (i + 1) * 28,
+            left: 0, right: 0, height: 1,
+            backgroundColor: '#fff', opacity: 0.05,
+          }} />
+        ))}
+        {[...Array(4)].map((_, i) => (
+          <View key={`v${i}`} style={{
+            position: 'absolute', left: (i + 1) * (width / 5),
+            top: 0, bottom: 0, width: 1,
+            backgroundColor: '#fff', opacity: 0.05,
+          }} />
+        ))}
+        {/* Yellow accent circle */}
+        <View style={{
+          position: 'absolute', top: -36, right: -36,
+          width: 140, height: 140, borderRadius: 70,
+          backgroundColor: '#FCD116', opacity: 0.10,
+        }} />
+
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.60)', fontSize: 12.5, marginBottom: 3 }}>
+              Welcome back,
+            </Text>
+            <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', letterSpacing: -0.3 }}>
+              {user?.full_name || user?.username || 'User'}
+            </Text>
+            <Text style={{ color: 'rgba(255,255,255,0.60)', fontSize: 12.5, marginTop: 3 }}>
+              {user?.office || '—'}
+            </Text>
+          </View>
+
+          <View style={{ alignItems: 'flex-end', gap: 8 }}>
+            {/* Online / offline pill */}
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 5,
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5,
+            }}>
+              <View style={{
+                width: 7, height: 7, borderRadius: 4,
+                backgroundColor: isOnline ? '#34D399' : '#F87171',
+              }} />
+              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '500' }}>
+                {isOnline ? 'Online' : 'Offline'}
+              </Text>
+            </View>
+
+            {/* Logout */}
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={{
+                borderWidth: 1, borderColor: 'rgba(255,255,255,0.30)',
+                borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7,
+              }}
+            >
+              <Text style={{ color: '#fff', fontSize: 12.5, fontWeight: '600' }}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Cached data notice */}
+        {(statsFromCache || docsFromCache) && (
+          <View style={{
+            marginTop: 14,
+            backgroundColor: 'rgba(255,255,255,0.10)',
+            borderRadius: 10, padding: 10,
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+          }}>
+            <Text style={{ fontSize: 13 }}>💾</Text>
+            <Text style={{ color: '#FCD34D', fontSize: 12, flex: 1 }}>
+              Showing cached data — pull to refresh when online
+            </Text>
+          </View>
+        )}
+
+        {/* Quick-action row */}
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+          <TouchableOpacity onPress={() => router.push('/(app)/routing-slips')} activeOpacity={0.8} style={quickBtn}>
+            <Text style={{ fontSize: 14 }}>🚌</Text>
+            <Text style={quickBtnText}>Routed</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => router.push('/(app)/receive-docs')} activeOpacity={0.8} style={quickBtn}>
+            <View>
+              <Text style={{ fontSize: 14 }}>📥</Text>
+              {pendingCount > 0 && (
+                <View style={{
+                  position: 'absolute', top: -4, right: -6,
+                  backgroundColor: '#EF4444', borderRadius: 8,
+                  minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+                  borderWidth: 1.5, borderColor: '#0038A8', paddingHorizontal: 3,
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 8, fontWeight: '800' }}>
+                    {pendingCount > 9 ? '9+' : pendingCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={quickBtnText}>Receive</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => cartCount > 0 ? openCart() : triggerAddModal()}
+            activeOpacity={0.8}
+            style={quickBtn}
+          >
+            <View>
+              <Text style={{ fontSize: 14 }}>🛒</Text>
+              {cartCount > 0 && (
+                <View style={{
+                  position: 'absolute', top: -4, right: -6,
+                  backgroundColor: '#10B981', borderRadius: 8,
+                  minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+                  borderWidth: 1.5, borderColor: '#0038A8', paddingHorizontal: 3,
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 8, fontWeight: '800' }}>
+                    {cartCount > 9 ? '9+' : cartCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={quickBtnText}>Cart</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => triggerAddModal()}
+            activeOpacity={0.8}
+            style={[quickBtn, { backgroundColor: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.40)' }]}
+          >
+            <Text style={{ fontSize: 14 }}>➕</Text>
+            <Text style={quickBtnText}>Log Doc</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ── Content zone ─────────────────────────────────────────────────────── */}
+      <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 120 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={statsLoading || docsLoading}
+              onRefresh={handleRefresh}
+              tintColor="#0038A8"
+            />
+          }
+        >
+          {/* ── Overview stats ─────────────────────────────────────────────── */}
+          <Text style={{
+            fontSize: 13, fontWeight: '700', color: '#0038A8',
+            textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 14,
+          }}>
+            Overview
+          </Text>
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 28, gap: 10 }}>
+            {statEntries.map(([key, value], index) => (
+              <View key={key} style={{
+                backgroundColor: '#fff', borderRadius: 14, padding: 16,
+                width: (width - 50) / 2,
+                borderLeftWidth: 4,
+                borderLeftColor: STAT_ACCENTS[index % STAT_ACCENTS.length],
+                borderWidth: 0.5, borderColor: '#E2E8F0',
+              }}>
+                <Text style={{
+                  fontSize: 30, fontWeight: '800',
+                  color: STAT_ACCENTS[index % STAT_ACCENTS.length],
+                  letterSpacing: -1,
+                }}>
+                  {String(value)}
+                </Text>
+                <Text style={{ color: '#64748B', fontSize: 12.5, marginTop: 4, textTransform: 'capitalize' }}>
+                  {key.replace(/_/g, ' ')}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* ── Recent / Filtered documents header ─────────────────────────── */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#0038A8', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              {activeFilterCount > 0 ? `Filtered Documents` : 'Recent Documents'}
+            </Text>
+
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              {/* Filter button with badge */}
+              <TouchableOpacity
+                onPress={() => setShowFilterSheet(true)}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 5,
+                  backgroundColor: activeFilterCount > 0 ? '#EFF6FF' : '#F1F5F9',
+                  borderRadius: 20, paddingHorizontal: 11, paddingVertical: 6,
+                  borderWidth: 1, borderColor: activeFilterCount > 0 ? '#BFDBFE' : '#E2E8F0',
+                }}
+              >
+                <SlidersHorizontal size={13} color={activeFilterCount > 0 ? '#1E40AF' : '#64748B'} />
+                <Text style={{
+                  color: activeFilterCount > 0 ? '#1E40AF' : '#64748B',
+                  fontWeight: '700', fontSize: 12.5,
+                }}>
+                  {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filter'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* View All */}
+              <TouchableOpacity onPress={() => router.push('/(app)/documents')}>
+                <Text style={{ color: '#0038A8', fontSize: 13, fontWeight: '700' }}>
+                  View All →
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Filtered result count */}
+          {activeFilterCount > 0 && (
+            <Text style={{ color: '#64748B', fontSize: 12.5, marginBottom: 10 }}>
+              {docsLoading ? 'Loading…' : `${totalFiltered} document${totalFiltered !== 1 ? 's' : ''} matched`}
+            </Text>
+          )}
+
+          {/* ── Active filter chips ─────────────────────────────────────────── */}
+          {activeFilterCount > 0 && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+              {filterSearch !== '' && (
+                <FilterChip label={`"${filterSearch}"`} onClear={() => { setFilterSearch(''); setFilterSearchInput(''); }} />
+              )}
+              {filterStatus !== 'All' && (
+                <FilterChip label={filterStatus} onClear={() => setFilterStatus('All')} />
+              )}
+              {filterSource !== 'All' && (
+                <FilterChip label={`Source: ${filterSource}`} onClear={() => setFilterSource('All')} />
+              )}
+              {filterOffice !== 'All' && (
+                <FilterChip label={`Office: ${filterOffice}`} onClear={() => setFilterOffice('All')} />
+              )}
+              {filterCat !== 'All' && (
+                <FilterChip label={`Cat: ${filterCat}`} onClear={() => setFilterCat('All')} />
+              )}
+              {filterStaff !== 'All' && (
+                <FilterChip label={`Staff: ${filterStaff}`} onClear={() => setFilterStaff('All')} />
+              )}
+              {filterDate !== '' && (
+                <FilterChip label={`Date: ${filterDate}`} onClear={() => setFilterDate('')} />
+              )}
+
+              {/* Clear all chip */}
+              <TouchableOpacity
+                onPress={clearAllFilters}
+                style={{
+                  flexDirection: 'row', alignItems: 'center',
+                  backgroundColor: '#FEE2E2', borderRadius: 20,
+                  paddingHorizontal: 10, paddingVertical: 5, gap: 4,
+                  borderWidth: 1, borderColor: '#FECACA',
+                }}
+              >
+                <X size={11} color="#DC2626" />
+                <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>Clear all</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ── Document list ───────────────────────────────────────────────── */}
+          {docsLoading ? (
+            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+              <Text style={{ color: '#94A3B8', fontSize: 13 }}>Loading documents…</Text>
+            </View>
+          ) : recentDocs.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+              <Text style={{ fontSize: 32, marginBottom: 12 }}>📄</Text>
+              <Text style={{ color: '#1E293B', fontSize: 15, fontWeight: '700', marginBottom: 6 }}>
+                No documents found
+              </Text>
+              <Text style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', paddingHorizontal: 24 }}>
+                {activeFilterCount > 0
+                  ? 'Try adjusting your filters to find matching documents.'
+                  : 'No documents available yet.'}
+              </Text>
+              {activeFilterCount > 0 && (
+                <TouchableOpacity
+                  onPress={clearAllFilters}
+                  style={{
+                    marginTop: 16, backgroundColor: '#EFF6FF',
+                    borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8,
+                  }}
+                >
+                  <Text style={{ color: '#1E40AF', fontWeight: '700', fontSize: 13 }}>Clear Filters</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            recentDocs.map((doc: any) => (
+              <TouchableOpacity
+                key={doc.id}
+                onPress={() => router.push(`/(app)/documents/${doc.id}`)}
+                activeOpacity={0.75}
+                style={{
+                  backgroundColor: '#fff', borderRadius: 14, padding: 16,
+                  marginBottom: 10, borderWidth: 0.5, borderColor: '#E2E8F0',
+                  flexDirection: 'row', alignItems: 'center', gap: 12,
+                }}
+              >
+                {/* Left accent bar */}
+                <View style={{
+                  width: 3, height: 40, borderRadius: 2,
+                  backgroundColor: getStatusStyle(doc.status).text, opacity: 0.5,
+                }} />
+
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <Text style={{ fontWeight: '700', color: '#1E293B', fontSize: 13.5 }}>
+                      {doc.doc_id || doc.id}
+                    </Text>
+                    <View style={{
+                      backgroundColor: getStatusStyle(doc.status).bg,
+                      borderRadius: 20, paddingHorizontal: 9, paddingVertical: 3,
+                    }}>
+                      <Text style={{ color: getStatusStyle(doc.status).text, fontSize: 11, fontWeight: '700' }}>
+                        {getStatusStyle(doc.status).label}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={{ color: '#475569', fontSize: 12.5, marginBottom: 2 }} numberOfLines={1}>
+                    {doc.doc_name || '—'}
+                  </Text>
+                  <Text style={{ color: '#94A3B8', fontSize: 11.5 }}>
+                    {doc.from_office || doc.sender_org || '—'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+
+          {/* Show "view more" hint if results are clipped */}
+          {activeFilterCount > 0 && totalFiltered > 10 && (
+            <TouchableOpacity
+              onPress={() => router.push('/(app)/documents')}
+              style={{
+                alignItems: 'center', paddingVertical: 14,
+                backgroundColor: '#fff', borderRadius: 14,
+                borderWidth: 0.5, borderColor: '#E2E8F0',
+              }}
+            >
+              <Text style={{ color: '#0038A8', fontWeight: '700', fontSize: 13 }}>
+                See all {totalFiltered} results in Documents →
+              </Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      </Animated.View>
+
+      {/* ════════════════════════════════════════════════════════════════════════
+          Filter Bottom Sheet
+      ════════════════════════════════════════════════════════════════════════ */}
+      <Modal
+        visible={showFilterSheet}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowFilterSheet(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+          {/* Backdrop */}
+          <TouchableOpacity
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            onPress={() => setShowFilterSheet(false)}
+            activeOpacity={1}
+          />
+
+          <View style={{
+            backgroundColor: '#F8FAFC',
+            borderTopLeftRadius: 24, borderTopRightRadius: 24,
+            maxHeight: '92%',
+          }}>
+            {/* Handle bar */}
+            <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 4 }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1' }} />
+            </View>
+
+            {/* Sheet header */}
+            <View style={{
+              flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+              paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14,
+            }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#1E293B' }}>
+                Filter Documents
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                {activeFilterCount > 0 && (
+                  <TouchableOpacity onPress={clearAllFilters}>
+                    <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '700' }}>Clear All</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => setShowFilterSheet(false)}>
+                  <X size={22} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={{ height: 0.5, backgroundColor: '#E2E8F0' }} />
+
+            {/* Scrollable filter content */}
+            <ScrollView
+              contentContainerStyle={{ padding: 20, paddingBottom: 16 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {/* ── Search ─────────────────────────────────────────────────── */}
+              <Text style={sheetSectionLabel}>Search</Text>
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', gap: 10,
+                backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 4,
+                borderWidth: 1.5, borderColor: '#E2E8F0', marginBottom: 20,
+              }}>
+                <Search size={15} color="#94A3B8" />
+                <TextInput
+                  value={filterSearchInput}
+                  onChangeText={setFilterSearchInput}
+                  onSubmitEditing={applyFilters}
+                  placeholder="Search by name, ID, sender…"
+                  placeholderTextColor="#CBD5E1"
+                  returnKeyType="search"
+                  style={{ flex: 1, color: '#1E293B', fontSize: 14, paddingVertical: 10 }}
+                />
+                {filterSearchInput !== '' && (
+                  <TouchableOpacity onPress={() => { setFilterSearchInput(''); setFilterSearch(''); }}>
+                    <X size={15} color="#94A3B8" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* ── Status ─────────────────────────────────────────────────── */}
+              <Text style={sheetSectionLabel}>Status</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginBottom: 20 }}
+                contentContainerStyle={{ gap: 8, paddingRight: 4 }}
+              >
+                {STATUS_FILTER_OPTIONS.map((s) => (
+                  <TouchableOpacity
+                    key={s}
+                    onPress={() => setFilterStatus(s)}
+                    style={{
+                      paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+                      backgroundColor: filterStatus === s ? '#0038A8' : '#F1F5F9',
+                      borderWidth: filterStatus === s ? 0 : 0.5,
+                      borderColor: '#E2E8F0',
+                    }}
+                  >
+                    <Text style={{
+                      color: filterStatus === s ? '#fff' : '#64748B',
+                      fontWeight: '700', fontSize: 12.5,
+                    }}>
+                      {s}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* ── Source ─────────────────────────────────────────────────── */}
+              <Text style={sheetSectionLabel}>Source</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
+                {['All', 'Staff', 'Client'].map((s) => (
+                  <TouchableOpacity
+                    key={s}
+                    onPress={() => setFilterSource(s)}
+                    style={{
+                      flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center',
+                      backgroundColor: filterSource === s ? '#0038A8' : '#F1F5F9',
+                      borderWidth: filterSource === s ? 0 : 0.5,
+                      borderColor: '#E2E8F0',
+                    }}
+                  >
+                    <Text style={{
+                      color: filterSource === s ? '#fff' : '#64748B',
+                      fontWeight: '700', fontSize: 13,
+                    }}>
+                      {s}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* ── Date ───────────────────────────────────────────────────── */}
+              <Text style={sheetSectionLabel}>Date</Text>
+              <View style={{
+                flexDirection: 'row', alignItems: 'center',
+                backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 4,
+                borderWidth: 1.5, borderColor: '#E2E8F0', marginBottom: 20,
+              }}>
+                <TextInput
+                  value={filterDate}
+                  onChangeText={setFilterDate}
+                  placeholder="YYYY-MM-DD  (e.g. 2025-01-15)"
+                  placeholderTextColor="#CBD5E1"
+                  keyboardType="numeric"
+                  style={{ flex: 1, color: '#1E293B', fontSize: 14, paddingVertical: 10 }}
+                />
+                {filterDate !== '' && (
+                  <TouchableOpacity onPress={() => setFilterDate('')}>
+                    <X size={15} color="#94A3B8" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* ── Category ───────────────────────────────────────────────── */}
+              <Text style={sheetSectionLabel}>Category</Text>
+              <SelectField
+                value={filterCat === 'All' ? '' : filterCat}
+                onChange={(v) => setFilterCat(v || 'All')}
+                options={categoryOptions}
+                placeholder="All categories"
+                label="Select Category"
+              />
+
+              {/* ── Office (admin only) ─────────────────────────────────────── */}
+              {isAdmin && (
+                <>
+                  <Text style={sheetSectionLabel}>Office</Text>
+                  <SelectField
+                    value={filterOffice === 'All' ? '' : filterOffice}
+                    onChange={(v) => setFilterOffice(v || 'All')}
+                    options={officeOptions}
+                    placeholder="All offices"
+                    label="Select Office"
+                  />
+                </>
+              )}
+
+              {/* ── Staff member ────────────────────────────────────────────── */}
+              {staffOptions.length > 0 && (
+                <>
+                  <Text style={sheetSectionLabel}>
+                    Staff Member{!isAdmin ? ` · ${user?.office ?? ''}` : ''}
+                  </Text>
+                  <SelectField
+                    value={filterStaff === 'All' ? '' : filterStaff}
+                    onChange={(v) => setFilterStaff(v || 'All')}
+                    options={staffOptions}
+                    placeholder="All staff"
+                    label="Select Staff Member"
+                  />
+                </>
+              )}
+            </ScrollView>
+
+            {/* ── Apply button (fixed at bottom) ─────────────────────────── */}
+            <View style={{
+              padding: 16, paddingBottom: 32,
+              borderTopWidth: 0.5, borderTopColor: '#E2E8F0',
+              backgroundColor: '#F8FAFC',
+            }}>
+              <TouchableOpacity
+                onPress={applyFilters}
+                style={{
+                  backgroundColor: '#0038A8', borderRadius: 14,
+                  paddingVertical: 14, alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>
+                  {activeFilterCount > 0 || filterSearchInput
+                    ? `Apply Filters${activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}`
+                    : 'Apply'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+// ── Style helpers ──────────────────────────────────────────────────────────────
+const sheetSectionLabel: any = {
+  fontSize: 11, fontWeight: '700', color: '#64748B',
+  textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10,
+};
