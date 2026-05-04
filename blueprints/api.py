@@ -1931,7 +1931,7 @@ def api_client_submit():
 @api_bp.route('/client/documents/<doc_id>', methods=['DELETE'])
 @jwt_required()
 def api_client_delete_document(doc_id):
-    """Client: soft-delete their own REJECTED document (moves to trash)."""
+    """Client: soft-delete their own PENDING or REJECTED document (moves to trash)."""
     user_id = get_jwt_identity()
     user = get_user_by_username(user_id)
     if not user or user.get('role') != 'client':
@@ -1941,11 +1941,13 @@ def api_client_delete_document(doc_id):
         return jsonify(error='Document not found'), 404
     if doc.get('logged_by') != user_id and doc.get('submitted_by') != user_id:
         return jsonify(error='You can only delete your own documents'), 403
-    if (doc.get('status') or '').lower() != 'rejected':
-        return jsonify(error='You can only delete rejected documents'), 400
+    status = (doc.get('status') or '').lower()
+    if status not in ('rejected', 'pending'):
+        return jsonify(error='You can only cancel pending documents or delete rejected documents'), 400
     from services.documents import delete_doc
     delete_doc(doc_id, user_id)
-    return jsonify(message='Document moved to trash')
+    message = 'Submission cancelled' if status == 'pending' else 'Document moved to trash'
+    return jsonify(message=message)
 
 
 @api_bp.route('/client/trash', methods=['GET'])

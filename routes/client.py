@@ -348,8 +348,8 @@ def delete(doc_id):
         flash("Document not found or you don't have permission.", "error")
         return redirect(url_for("client.portal"))
 
-    if doc.get("status") != "Rejected":
-        flash("You can only delete rejected documents.", "error")
+    if doc.get("status") not in ("Rejected", "Pending"):
+        flash("You can only cancel pending documents or delete rejected documents.", "error")
         return redirect(url_for("client.track", doc_id=doc_id))
 
     from services.documents import delete_doc
