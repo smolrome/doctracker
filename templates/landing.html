@@ -25,6 +25,7 @@
     <a href="#tech" class="nav-a">Tech Stack</a>
   </div>
   <div class="nav-actions">
+    <a href="/download" class="nav-btn-ghost" style="display:flex;align-items:center;gap:6px;">📱 Get the App</a>
     {% if logged_in %}
       <div class="nav-user-chip"><div class="nav-dot"></div>{{ current_full_name or current_user }}</div>
       {% if current_role in ('admin','staff') %}
@@ -81,6 +82,23 @@
       <a href="/client/login" class="cover-btn glass">🔑 Sign In</a>
     </div>
   {% endif %}
+
+  <!-- Mobile app download strip -->
+  <div style="display:inline-flex;align-items:center;gap:12px;margin-bottom:28px;
+              padding:12px 20px;border-radius:14px;
+              background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
+              text-decoration:none;color:inherit;flex-wrap:wrap;justify-content:center;">
+    <span style="font-size:24px;">📱</span>
+    <span style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.85);">
+      The mobile app is now available!
+    </span>
+    <a href="/download"
+       style="padding:8px 18px;border-radius:10px;background:#16A34A;color:#fff;
+              font-weight:700;font-size:13px;text-decoration:none;white-space:nowrap;
+              box-shadow:0 4px 12px rgba(22,163,74,0.4);">
+      ⬇ Download APK
+    </a>
+  </div>
 
   <div class="cover-chips">
     <span class="chip">📱 Mobile-First</span>

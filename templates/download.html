@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Download — DepEd DocTracker Mobile</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<!-- QR code generator (no build step needed) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue:   #0038A8;
+    --gold:   #FCD116;
+    --dark:   #0A0F1E;
+    --card:   #111827;
+    --border: rgba(255,255,255,0.08);
+    --muted:  rgba(255,255,255,0.50);
+    --text:   rgba(255,255,255,0.90);
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--dark);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Nav ─────────────────────────────────────────────────────────── */
+  .nav {
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 32px; height: 64px;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-logo { height: 32px; }
+  .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none;
+               font-weight: 800; font-size: 15px; color: #fff; }
+  .nav-sep { flex: 1; }
+  .nav-back { color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600;
+              padding: 7px 16px; border-radius: 8px; border: 1px solid var(--border);
+              transition: all .2s; }
+  .nav-back:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
+
+  /* ── Hero ────────────────────────────────────────────────────────── */
+  .hero {
+    position: relative; overflow: hidden;
+    padding: 80px 32px 64px;
+    text-align: center;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,56,168,0.35) 0%, transparent 70%);
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230038A8' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+
+  .app-icon {
+    width: 96px; height: 96px; border-radius: 22px; margin: 0 auto 24px;
+    background: linear-gradient(135deg, var(--blue) 0%, #0052D4 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 48px;
+    box-shadow: 0 24px 48px rgba(0,56,168,0.5), 0 0 0 1px rgba(255,255,255,0.1);
+  }
+  .app-name { font-size: 36px; font-weight: 900; letter-spacing: -0.8px; margin-bottom: 6px; }
+  .app-sub  { color: var(--muted); font-size: 16px; margin-bottom: 8px; }
+  .badge-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 40px; }
+  .badge {
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 600;
+    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7);
+    border: 1px solid var(--border);
+  }
+  .badge.green { background: rgba(16,185,129,0.15); color: #34D399; border-color: rgba(16,185,129,0.3); }
+  .badge.blue  { background: rgba(59,130,246,0.15); color: #93C5FD; border-color: rgba(59,130,246,0.3); }
+
+  /* ── Download card ──────────────────────────────────────────────── */
+  .dl-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    max-width: 820px; margin: 0 auto; padding: 0 24px 80px;
+  }
+  @media (max-width: 640px) {
+    .dl-grid { grid-template-columns: 1fr; }
+    .hero { padding: 48px 20px 40px; }
+    .app-name { font-size: 26px; }
+    .nav { padding: 0 16px; }
+  }
+
+  .dl-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px; padding: 32px;
+  }
+  .dl-card h2 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+  .dl-card p  { color: var(--muted); font-size: 13px; line-height: 1.7; margin-bottom: 24px; }
+
+  /* Android download button */
+  .btn-android {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    width: 100%; padding: 16px 24px; border-radius: 14px;
+    background: linear-gradient(135deg, #16A34A 0%, #15803D 100%);
+    color: #fff; text-decoration: none; font-weight: 800; font-size: 15px;
+    border: none; cursor: pointer;
+    box-shadow: 0 8px 24px rgba(22,163,74,0.35);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .btn-android:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(22,163,74,0.45); }
+  .btn-android:active { transform: translateY(0); }
+  .btn-android.disabled {
+    background: rgba(255,255,255,0.08); color: var(--muted);
+    box-shadow: none; cursor: not-allowed; pointer-events: none;
+  }
+  .btn-android svg { flex-shrink: 0; }
+  .btn-meta { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 10px; text-align: center; }
+
+  .btn-ios {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 14px 24px; border-radius: 14px; margin-top: 10px;
+    background: rgba(255,255,255,0.06); color: var(--muted);
+    text-decoration: none; font-weight: 600; font-size: 14px;
+    border: 1px solid var(--border); cursor: not-allowed;
+  }
+
+  /* QR card */
+  .qr-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+  }
+  #qr-canvas {
+    border-radius: 12px; background: #fff;
+    padding: 12px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
+  }
+  .qr-label { color: var(--muted); font-size: 12px; text-align: center; line-height: 1.6; }
+
+  /* Steps card */
+  .steps { list-style: none; display: flex; flex-direction: column; gap: 16px; }
+  .step  { display: flex; gap: 14px; align-items: flex-start; }
+  .step-num {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(0,56,168,0.35); border: 1px solid rgba(0,56,168,0.6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: #93C5FD;
+  }
+  .step-text { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.6; padding-top: 4px; }
+  .step-text strong { color: #fff; font-weight: 700; }
+
+  /* Features card */
+  .features { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .feat {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+    font-size: 13px; color: rgba(255,255,255,0.80);
+  }
+  .feat-icon { font-size: 20px; margin-bottom: 6px; display: block; }
+  .feat-label { font-weight: 600; font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* Footer note */
+  .footer-note {
+    text-align: center; padding: 24px; color: var(--muted); font-size: 12px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <a href="/" class="nav-brand">
+    <img src="/static/logo.png" alt="DepEd" class="nav-logo"/>
+    C.O.R.E
+  </a>
+  <div class="nav-sep"></div>
+  <a href="/" class="nav-back">← Back to Web App</a>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="app-icon">📱</div>
+  <h1 class="app-name">DocTracker Mobile</h1>
+  <p class="app-sub">DepEd Leyte Division · Personnel Unit</p>
+  <div class="badge-row">
+    <span class="badge green">● Free</span>
+    <span class="badge blue">Android</span>
+    <span class="badge">Offline Support</span>
+    <span class="badge">QR Scanning</span>
+    <span class="badge">Real-Time Tracking</span>
+  </div>
+</div>
+
+<!-- Download grid -->
+<div class="dl-grid">
+
+  <!-- Download card -->
+  <div class="dl-card">
+    <h2>📥 Download App</h2>
+    <p>Install the official mobile app to submit documents, track status, and scan QR codes — all from your phone.</p>
+
+    {% if apk_available %}
+      <a href="/download/apk" class="btn-android">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zm-2.5-1C2.67 17 2 17.67 2 18.5v-9C2 8.67 2.67 8 3.5 8S5 8.67 5 9.5v9c0 .83-.67 1.5-1.5 1.5zm17 0c-.83 0-1.5-.67-1.5-1.5v-9c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5zM15.53 2.16l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 1.23 12.95 1 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C6.97 3.26 6 5.01 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/>
+        </svg>
+        Download for Android
+      </a>
+      <p class="btn-meta">
+        Version 1.0 · {{ apk_size or '~35 MB' }} · Android 8.0+
+      </p>
+    {% else %}
+      <a class="btn-android disabled">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zm-2.5-1C2.67 17 2 17.67 2 18.5v-9C2 8.67 2.67 8 3.5 8S5 8.67 5 9.5v9c0 .83-.67 1.5-1.5 1.5zm17 0c-.83 0-1.5-.67-1.5-1.5v-9c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5zM15.53 2.16l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 1.23 12.95 1 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C6.97 3.26 6 5.01 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/>
+        </svg>
+        Coming Soon
+      </a>
+      <p class="btn-meta">APK build not yet uploaded by admin.</p>
+    {% endif %}
+
+    <a class="btn-ios">
+      🍎 &nbsp;iOS — Not Available
+    </a>
+    <p class="btn-meta" style="margin-top:6px;">iPhone users: use the web app instead.</p>
+  </div>
+
+  <!-- QR Code card -->
+  <div class="dl-card">
+    <h2>📷 Scan to Download</h2>
+    <p>Point your phone camera at this QR code to open the download page directly on your device.</p>
+    <div class="qr-wrap">
+      <canvas id="qr-canvas"></canvas>
+      <p class="qr-label">Scan with any camera app<br/>or QR reader</p>
+    </div>
+  </div>
+
+  <!-- Install steps card -->
+  <div class="dl-card">
+    <h2>⚙️ How to Install</h2>
+    <p>Android blocks unknown APKs by default. Follow these steps after downloading:</p>
+    <ul class="steps">
+      <li class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">Tap the downloaded <strong>DepEd-DocTracker.apk</strong> file in your notifications or Downloads folder.</div>
+      </li>
+      <li class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">If prompted, go to <strong>Settings → Install unknown apps</strong> and allow your browser to install.</div>
+      </li>
+      <li class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">Tap <strong>Install</strong> on the confirmation screen. The app installs in seconds.</div>
+      </li>
+      <li class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">Open the app, <strong>log in</strong> with your existing account credentials, and you're ready.</div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Features card -->
+  <div class="dl-card">
+    <h2>✨ What's Inside</h2>
+    <p>Everything the web app does, optimised for your phone.</p>
+    <div class="features">
+      <div class="feat">
+        <span class="feat-icon">📤</span>
+        Submit documents to any office
+        <div class="feat-label">Client feature</div>
+      </div>
+      <div class="feat">
+        <span class="feat-icon">📍</span>
+        Real-time status tracking
+        <div class="feat-label">Live updates</div>
+      </div>
+      <div class="feat">
+        <span class="feat-icon">🔍</span>
+        QR code scanner
+        <div class="feat-label">Staff feature</div>
+      </div>
+      <div class="feat">
+        <span class="feat-icon">📶</span>
+        Works offline
+        <div class="feat-label">Syncs when online</div>
+      </div>
+      <div class="feat">
+        <span class="feat-icon">🔔</span>
+        Push notifications
+        <div class="feat-label">Status alerts</div>
+      </div>
+      <div class="feat">
+        <span class="feat-icon">🖨️</span>
+        Save &amp; print QR codes
+        <div class="feat-label">PDF export</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /dl-grid -->
+
+<div class="footer-note">
+  DepEd Leyte Division · Personnel Unit · C.O.R.E System<br/>
+  Having trouble? Use the <a href="/" style="color:#93C5FD;">web app</a> instead.
+</div>
+
+<script>
+  // Generate a QR code for the current page URL
+  (function () {
+    const url = window.location.origin + '/download';
+    QRCode.toCanvas(
+      document.getElementById('qr-canvas'),
+      url,
+      {
+        width: 180,
+        margin: 1,
+        color: { dark: '#0A0F1E', light: '#FFFFFF' },
+      },
+      function (err) {
+        if (err) console.error('QR error:', err);
+      }
+    );
+  })();
+</script>
+</body>
+</html>
