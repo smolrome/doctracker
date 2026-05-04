@@ -94,6 +94,33 @@ def _is_admin_user(username: str) -> bool:
     return bool(user and user.get('role') in ('admin', 'superadmin'))
 
 
+@api_bp.route('/app-version', methods=['GET'])
+def api_app_version():
+    """
+    Public endpoint — returns the current app version requirements.
+    The mobile app calls this on every launch to decide whether to
+    prompt the user to update.
+
+    Edit  static/apk/version.json  to change version numbers; no
+    code change or server restart required.
+    """
+    import json
+    from flask import current_app
+    version_file = os.path.join(current_app.static_folder, 'apk', 'version.json')
+    try:
+        with open(version_file, 'r') as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = {
+            'latest_version': '1.0.0',
+            'min_version':    '1.0.0',
+            'download_url':   '/download',
+            'release_notes':  '',
+            'force_update':   False,
+        }
+    return jsonify(data)
+
+
 @api_bp.route('/auth/login', methods=['POST'])
 def api_login():
     import os, secrets
