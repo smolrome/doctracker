@@ -1,11 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 import { cache } from '../lib/cache';
 import { useNetwork } from './useNetwork';
 import { useAuthStore } from '../lib/store';
 
-export function useDocuments(search = '', status = 'All') {
+export interface DocumentFilters {
+  office?: string;
+  cat?: string;
+  staff?: string;
+  source?: string; // 'All' | 'Staff' | 'Client'
+  date?: string;   // YYYY-MM-DD
+}
+
+export function useDocuments(search = '', status = 'All', filters?: DocumentFilters) {
   const { isOnline } = useNetwork();
   const [isFromCache, setIsFromCache] = useState(false);
   const user = useAuthStore((s) => s.user);
@@ -26,6 +34,11 @@ export function useDocuments(search = '', status = 'All') {
       const params: any = { limit: PAGE_SIZE, page: 1 };
       if (search) params.search = search;
       if (status !== 'All') params.status = status;
+      if (filters?.office && filters.office !== 'All') params.office = filters.office;
+      if (filters?.cat && filters.cat !== 'All') params.cat = filters.cat;
+      if (filters?.staff && filters.staff !== 'All') params.staff = filters.staff;
+      if (filters?.source && filters.source !== 'All') params.source = filters.source;
+      if (filters?.date) params.date = filters.date;
 
       const firstRes = await api.get('/documents', { params });
       const firstData = firstRes.data;
@@ -49,8 +62,15 @@ export function useDocuments(search = '', status = 'All') {
 
       const data = { documents: allDocs, total, page: 1, limit: total };
 
-      await cache.set(cache.KEYS.DOCUMENTS, data);
-      await cache.updateLastSync();
+      // Only cache the base (unfiltered) fetch to preserve offline integrity
+      const isBaseFetch =
+        !search && status === 'All' &&
+        !filters?.office && !filters?.cat &&
+        !filters?.staff && !filters?.source && !filters?.date;
+      if (isBaseFetch) {
+        await cache.set(cache.KEYS.DOCUMENTS, data);
+        await cache.updateLastSync();
+      }
       setIsFromCache(false);
 
       return data;
@@ -65,7 +85,11 @@ export function useDocuments(search = '', status = 'All') {
   };
 
   const query = useQuery({
-    queryKey: ['documents', userId, search, status, isOnline],
+    queryKey: [
+      'documents', userId, search, status,
+      filters?.office, filters?.cat, filters?.staff, filters?.source, filters?.date,
+      isOnline,
+    ],
     queryFn: fetchDocuments,
     staleTime: 1000 * 60 * 5,
     retry: isOnline ? 2 : 0,
