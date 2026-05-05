@@ -173,7 +173,7 @@ export default function SplashScreen({ onFinish, initPromise }: SplashScreenProp
           textAlign: 'center',
           letterSpacing: 0.3,
         }}>
-          Document Tracker
+          LAKAD
         </Text>
 
         <Text style={{

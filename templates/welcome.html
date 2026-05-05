@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Welcome — DepEd Leyte DocTracker</title>
+  <title>Welcome — DepEd Leyte LAKAD</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}">
 </head>
@@ -22,7 +22,7 @@
   {% endif %}
   <div class="hero-inner">
     <img src="/static/logo.png" alt="DepEd Leyte" class="hero-logo"/>
-    <div class="hero-title">DepEd Leyte Division<br/>Document Tracker</div>
+    <div class="hero-title">DepEd Leyte Division<br/>LAKAD</div>
     <div class="hero-sub">
       Submit your documents, track their status in real time, and receive a QR code to pick them up — all from your phone.
     </div>
@@ -197,7 +197,7 @@
 </div>
 
 <div class="wfooter">
-  DepEd Leyte Division — Document Tracker &nbsp;|&nbsp;
+  DepEd Leyte Division — LAKAD &nbsp;|&nbsp;
   {% if not logged_in %}
   <a href="/client/login">Sign In</a> &nbsp;·&nbsp; <a href="/client/register">Register</a>
   {% else %}

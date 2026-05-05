@@ -114,11 +114,11 @@ def send_invite_email(to_email: str, to_name: str = "",
     html_body = f"""
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;">
       <div style="background:#0D1B2A;padding:28px;text-align:center;border-radius:12px 12px 0 0;">
-        <div style="font-size:22px;font-weight:800;color:#fff;">DocTracker - DepEd Leyte</div>
+        <div style="font-size:22px;font-weight:800;color:#fff;">LAKAD — DepEd Leyte</div>
       </div>
       <div style="background:#fff;padding:32px;border-radius:0 0 12px 12px;">
         <p>{greeting}</p>
-        <p>You have been invited to join the <strong>DepEd Leyte Division Document Tracker</strong>.</p>
+        <p>You have been invited to join the <strong>DepEd Leyte Division LAKAD</strong>.</p>
         <div style="text-align:center;margin:24px 0;">
           <a href="{link}" style="background:#3B82F6;color:#fff;text-decoration:none;
              padding:14px 32px;border-radius:8px;font-weight:700;font-size:16px;display:inline-block;">
@@ -134,9 +134,9 @@ def send_invite_email(to_email: str, to_name: str = "",
     """
 
     payload = json.dumps({
-        "sender":      {"name": "DepEd DocTracker", "email": MAIL_SENDER},
+        "sender":      {"name": "DepEd LAKAD", "email": MAIL_SENDER},
         "to":          [{"email": to_email, "name": to_name or to_email}],
-        "subject":     "You're Invited - DepEd Leyte DocTracker",
+        "subject":     "You're Invited - DepEd Leyte LAKAD",
         "htmlContent": html_body,
         "textContent": f"{greeting}\n\nRegister here (expires 48hrs):\n{link}",
     }).encode("utf-8")
@@ -175,12 +175,12 @@ def send_credentials_email(to_email: str, to_name: str,
     html_body = f"""
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;">
       <div style="background:#0D1B2A;padding:28px;text-align:center;border-radius:12px 12px 0 0;">
-        <div style="font-size:22px;font-weight:800;color:#fff;">DocTracker — DepEd Leyte</div>
+        <div style="font-size:22px;font-weight:800;color:#fff;">LAKAD — DepEd Leyte</div>
         <div style="color:#C9A227;font-size:13px;margin-top:4px;">Schools Division of Leyte</div>
       </div>
       <div style="background:#fff;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;">
         <p style="margin:0 0 12px;">{greeting}</p>
-        <p style="margin:0 0 20px;">Your account on the <strong>DepEd Leyte Division Document Tracker</strong>
+        <p style="margin:0 0 20px;">Your account on the <strong>DepEd Leyte Division LAKAD</strong>
         has been created. Here are your login credentials:</p>
 
         <div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;padding:20px;margin:0 0 24px;">
@@ -218,12 +218,12 @@ def send_credentials_email(to_email: str, to_name: str,
     """
 
     payload = json.dumps({
-        "sender":      {"name": "DepEd DocTracker", "email": MAIL_SENDER},
+        "sender":      {"name": "DepEd LAKAD", "email": MAIL_SENDER},
         "to":          [{"email": to_email, "name": to_name or to_email}],
-        "subject":     "Your DocTracker Account — Login Credentials",
+        "subject":     "Your LAKAD Account — Login Credentials",
         "htmlContent": html_body,
         "textContent": (
-            f"{greeting}\n\nYour DocTracker account has been created.\n\n"
+            f"{greeting}\n\nYour LAKAD account has been created.\n\n"
             f"Username: {username}\nTemporary Password: {password}\n\n"
             f"Log in at: {login_url}\n\nPlease change your password after first login."
         ),

@@ -493,7 +493,7 @@ if __name__ == "__main__":
     except Exception:
         local_ip = "your-ip"
     print("\n" + "=" * 55)
-    print("  DepEd Leyte Division — Document Tracker")
+    print("  DepEd Leyte Division — LAKAD")
     print("=" * 55)
     print(f"  ✅ Server running!")
     print(f"  📡 Local: http://{local_ip}:5000")

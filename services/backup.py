@@ -99,7 +99,7 @@ def create_excel_backup() -> bytes:
     offices = _export_saved_offices()
     now     = datetime.now().strftime("%B %d, %Y %I:%M %p")
 
-    ws["A1"] = "DocTracker — DepEd Leyte Division"
+    ws["A1"] = "LAKAD — DepEd Leyte Division"
     ws["A1"].font = Font(bold=True, name="Arial", size=16, color=NAVY)
     ws["A2"] = f"Data Export  ·  {now}"
     ws["A2"].font = Font(name="Arial", size=10, color="64748B", italic=True)
@@ -325,7 +325,7 @@ def create_backup() -> dict:
         "meta": {
             "version":    BACKUP_VERSION,
             "created_at": datetime.now().isoformat(),
-            "app":        "DocTracker - DepEd Leyte Division",
+            "app":        "LAKAD - DepEd Leyte Division",
         },
         "documents":     _export_documents(),
         "users":         _export_users(),
@@ -348,7 +348,7 @@ def create_selective_backup(export_items: list, filter_office: str = "", date_fr
         "meta": {
             "version":    BACKUP_VERSION,
             "created_at": datetime.now().isoformat(),
-            "app":        "DocTracker - DepEd Leyte Division",
+            "app":        "LAKAD - DepEd Leyte Division",
             "export_type": "selective",
             "items":      export_items,
         },

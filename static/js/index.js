@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════
-//  DOCUMENT TRACKER — INDEX PAGE JAVASCRIPT
+//  LAKAD — INDEX PAGE JAVASCRIPT
 // ══════════════════════════════════════════════════════════════
 'use strict';
 

@@ -50,7 +50,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
             <Text style={styles.title}>DepEd Leyte</Text>
-            <Text style={styles.subtitle}>Document Tracker</Text>
+            <Text style={styles.subtitle}>LAKAD</Text>
           </View>
 
           <View style={styles.form}>

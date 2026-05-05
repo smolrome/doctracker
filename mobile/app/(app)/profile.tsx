@@ -525,7 +525,7 @@ export default function Profile() {
         <SectionCard>
           <Text style={sectionTitle}>App Info</Text>
           {[
-            ['App',      'DepEd Document Tracker'],
+            ['App',      'DepEd LAKAD'],
             ['Division', 'DepEd Leyte Division'],
             ['Unit',     'Personnel Unit'],
             ['Version',  '1.0.0'],

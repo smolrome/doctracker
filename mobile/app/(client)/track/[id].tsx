@@ -84,7 +84,7 @@ export default function TrackDocument() {
           <html>
             <body style="margin:0;padding:40px;text-align:center;font-family:sans-serif;background:#fff;">
               <p style="color:#0038A8;font-size:11px;font-weight:700;text-transform:uppercase;
-                        letter-spacing:1px;margin:0 0 8px;">DepEd Document Tracker</p>
+                        letter-spacing:1px;margin:0 0 8px;">DepEd LAKAD</p>
               <h2 style="color:#1E293B;font-size:18px;margin:0 0 6px;line-height:1.4;">
                 ${doc?.doc_name || 'Document'}
               </h2>

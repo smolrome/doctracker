@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Import from Excel — DocTracker{% endblock %}
+{% block title %}Import from Excel — LAKAD{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/import_excel.css') }}">
@@ -12,7 +12,7 @@
     <div class="icon">📥</div>
     <div>
       <h1>Import from Excel</h1>
-      <p>Upload your DepEd tracking spreadsheet — all rows become documents in DocTracker automatically.</p>
+      <p>Upload your DepEd tracking spreadsheet — all rows become documents in LAKAD automatically.</p>
     </div>
   </div>
 
@@ -286,7 +286,7 @@
   <div class="card">
     <div class="card-title">📋 Supported Column Names</div>
     <p style="font-size:.88rem;color:var(--muted);margin:0 0 8px;">
-      DocTracker automatically recognises these column headers from your spreadsheet.
+      LAKAD automatically recognises these column headers from your spreadsheet.
       Column names are case-insensitive and extra spaces are ignored.
     </p>
     <div class="col-grid">

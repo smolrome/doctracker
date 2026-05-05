@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <!-- <title>Routing Slip {{ slip.slip_no }} — DocTracker</title> -->
+  <!-- <title>Routing Slip {{ slip.slip_no }} — LAKAD</title> -->
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/routing_slip.css') }}"/>
 </head>
@@ -11,8 +11,8 @@
 
 <!-- Topbar -->
 <div class="topbar">
-  <img src="{{ url_for('static', filename='logo.png') }}" alt="DocTracker Logo" class="tb-logo"/>
-  <div class="tb-brand">Doc<span>Tracker</span></div>
+  <img src="{{ url_for('static', filename='logo.png') }}" alt="LAKAD Logo" class="tb-logo"/>
+  <div class="tb-brand">LAKAD</div>
   <div class="tb-sep"></div>
   <div class="tb-label">Routing Slip</div>
   <div style="flex:1"></div>
@@ -231,9 +231,9 @@
       </div>
     </div>
 
-    <!-- DocTracker system bar (hidden on print)
+    <!-- LAKAD system bar (hidden on print)
     <div class="slip-footer-bar screen-only">
-      <span>DocTracker — DepEd Leyte Division Office </span>
+      <span>LAKAD — DepEd Leyte Division Office </span>
       <span>Slip No.: <strong>{{ slip.slip_no }}</strong> &nbsp;·&nbsp; Generated: {{ slip.created_at[:10] }} {{ slip.created_at[11:19] if slip.created_at else '' }}</span>
     </div> -->
 

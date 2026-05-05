@@ -287,7 +287,7 @@ export default function Login() {
 
       // Trigger OS biometric prompt
       const result = await Biometrics.authenticateAsync({
-        promptMessage: 'Sign in to DepEd Document Tracker',
+        promptMessage: 'Sign in to DepEd LAKAD',
         fallbackLabel:  'Use Password',
         cancelLabel:    'Cancel',
       });
@@ -409,7 +409,7 @@ export default function Login() {
             DepEd Leyte
           </Text>
           <Text style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.72)', marginTop: 5, textAlign: 'center', letterSpacing: 0.3 }}>
-            Document Tracker — Personnel Unit
+            LAKAD — Personnel Unit
           </Text>
         </Animated.View>
       </View>

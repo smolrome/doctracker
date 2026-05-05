@@ -1,5 +1,5 @@
 /* ============================================================
-   routing_slip.css — DocTracker · DepEd Leyte Division
+   routing_slip.css — LAKAD · DepEd Leyte Division
    ============================================================ */
 
 *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -617,7 +617,7 @@ body {
 .sof-pagebox b { font-weight: 700; }
 
 
-/* ── DOCTRACKER SYSTEM BAR ───────────────────────────────── */
+/* ── LAKAD SYSTEM BAR ───────────────────────────────── */
 
 .slip-footer-bar {
   padding: 14px 20px;
