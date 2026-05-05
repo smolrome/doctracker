@@ -1192,6 +1192,44 @@ def db_status():
 
 # ── Document Accept/Reject Routes ─────────────────────────────────────────────
 
+def _is_pending_for(doc: dict, username: str, office: str) -> bool:
+    """
+    Return True if this document is pending acceptance for the given user/office.
+
+    Catches both the normal transfer path (transfer_status == "pending") AND
+    the legacy/buggy path where a doc was logged with referred_to_username but
+    transfer_status was never written (old two-step insert+save_doc bug).
+    """
+    office_lower = (office or "").strip().lower()
+
+    # ── Standard path: transfer_status was set correctly ──────────────────
+    if doc.get("transfer_status") == "pending":
+        # Specifically assigned to this user
+        if doc.get("pending_at_staff") == username:
+            return True
+        # Pending at this office with no specific staff assigned
+        if (
+            office_lower
+            and (doc.get("pending_at_office") or "").strip().lower() == office_lower
+            and not doc.get("pending_at_staff", "")
+        ):
+            return True
+
+    # ── Legacy/recovery path: referred_to_username was set but
+    #    transfer_status was never written (old insert+save_doc race).
+    #    Only match if the doc has never been accepted (accepted_by is empty)
+    #    and is not already deleted or fully completed. ─────────────────────
+    if (
+        not doc.get("transfer_status")           # transfer_status missing/empty
+        and doc.get("pending_at_staff") == username  # pending_at_staff IS set
+        and not doc.get("accepted_by")           # not yet accepted
+        and not doc.get("deleted")
+    ):
+        return True
+
+    return False
+
+
 @dashboard_bp.route("/api/pending-documents")
 @login_required
 def get_pending_documents():
@@ -1199,33 +1237,18 @@ def get_pending_documents():
     current_user = session.get("username", "")
     current_role = session.get("role", "")
     current_office = session.get("office", "")
-    
+
     if not current_user:
         return jsonify([])
-    
+
     docs = load_docs()
-    
-    # Admin can see all pending transfers
+
     if current_role == "admin":
-        pending = [
-            d for d in docs
-            if d.get("transfer_status") == "pending"
-        ]
+        # Admins see all docs with transfer_status == "pending"
+        pending = [d for d in docs if d.get("transfer_status") == "pending"]
     else:
-        # Staff can see docs: assigned specifically to them, OR pending at their office (no specific staff assigned)
-        current_office_lower = current_office.strip().lower() if current_office else ""
-        pending = [
-            d for d in docs
-            if d.get("transfer_status") == "pending" 
-            and (
-                d.get("pending_at_staff") == current_user
-                or (
-                    current_office_lower
-                    and d.get("pending_at_office", "").strip().lower() == current_office_lower
-                    and not d.get("pending_at_staff", "")
-                )
-            )
-        ]
+        pending = [d for d in docs if _is_pending_for(d, current_user, current_office)]
+
     return jsonify(pending)
 
 
@@ -1235,33 +1258,18 @@ def get_pending_count():
     """Get count of documents pending acceptance for the current user."""
     current_user = session.get("username", "")
     current_role = session.get("role", "")
-    # Get user's office directly from session
     current_office = session.get("office", "")
-    
+
     if not current_user:
         return jsonify({"count": 0})
-    
+
     docs = load_docs()
-    
-    # Filter documents with pending transfer_status
-    pending_docs = [d for d in docs if d.get("transfer_status") == "pending"]
-    
-    # Admin can see all pending transfers
+
     if current_role == "admin":
-        count = len(pending_docs)
+        count = sum(1 for d in docs if d.get("transfer_status") == "pending")
     else:
-        # Staff can see docs: assigned specifically to them, OR pending at their office (no specific staff assigned)
-        current_office_lower = current_office.strip().lower() if current_office else ""
-        count = sum(
-            1 for d in pending_docs
-            if d.get("pending_at_staff") == current_user
-            or (
-                current_office_lower 
-                and d.get("pending_at_office", "").strip().lower() == current_office_lower
-                and not d.get("pending_at_staff", "")
-            )
-        )
-    
+        count = sum(1 for d in docs if _is_pending_for(d, current_user, current_office))
+
     return jsonify({"count": count})
 
 
