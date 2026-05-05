@@ -100,11 +100,6 @@ def index():
                 or d.get("received_by") == current_username
                 # OR documents they have accepted
                 or d.get("accepted_by") == current_username
-                # OR documents pending at them (need to accept first)
-                or (
-                    d.get("transfer_status") == "pending"
-                    and d.get("pending_at_staff") == current_username
-                )
                 # OR documents they have transferred (to see the status)
                 or d.get("transferred_by") == current_username
             )
@@ -432,40 +427,8 @@ def add():
             else:
                 actor = session.get("full_name") or session.get("username") or "Staff"
                 current_office = session.get("office") or "DepEd Leyte Division"
-                all_users_cache = get_all_users()  # fetch once for the entire batch
                 logged_doc_ids = []
                 for item in cart:
-                    # ── Resolve referred-to user BEFORE building the doc ──────────
-                    ref_username  = item.get("referred_to_username", "").strip()
-                    ref_full_name = item.get("referred_to", "").strip()
-
-                    # Fallback: if JS didn't populate the hidden username field,
-                    # try matching by the displayed full name (handles the case
-                    # where the user typed a name and pressed Enter without
-                    # clicking a dropdown item).
-                    if not ref_username and ref_full_name:
-                        matched = next(
-                            (u for u in all_users_cache
-                             if (u.get("full_name") or "").strip() == ref_full_name
-                             and u.get("role") != "client"
-                             and u.get("active", True)),
-                            None,
-                        )
-                        if matched:
-                            ref_username = matched["username"]
-
-                    # Don't allow self-referral
-                    if ref_username == session.get("username"):
-                        ref_username = ""
-
-                    ref_user = None
-                    if ref_username:
-                        ref_user = next(
-                            (u for u in all_users_cache if u["username"] == ref_username),
-                            None,
-                        )
-
-                    # ── Build the doc ─────────────────────────────────────────────
                     now = now_str()
                     doc = {
                         "id":             str(uuid.uuid4())[:8].upper(),
@@ -484,7 +447,7 @@ def add():
                         "date_received":  now[:16].replace('T', ' '),
                         "date_released":  "",
                         "doc_date":       now[:10],
-                        "status":         "Logged",   # always starts Logged
+                        "status":         "Logged",
                         "notes":          item["notes"],
                         "created_at":     now,
                         "routing":        [],
@@ -495,7 +458,6 @@ def add():
                         "routing_cycle": 0,
                     }
 
-                    # Step 1 — always record the initial Logged action
                     doc["travel_log"].append({
                         "office":    current_office,
                         "action":    "Document Logged by Staff",
@@ -503,28 +465,6 @@ def add():
                         "timestamp": now,
                         "remarks":   f"Logged into system by {actor}. Batch of {len(cart)}.",
                     })
-
-                    # ── Step 2 — if a referred user exists, immediately advance
-                    #    status to Pending and record that as a second travel-log
-                    #    entry.  Both entries are saved in a single insert_doc call
-                    #    so the full Logged → Pending history is preserved from the
-                    #    moment the document is created. ──────────────────────────
-                    if ref_user:
-                        ref_display = ref_user.get("full_name") or ref_username
-                        doc["status"]                = "Pending"
-                        doc["transfer_status"]       = "pending"
-                        doc["pending_at_staff"]      = ref_username
-                        doc["pending_at_office"]     = ref_user.get("office", "")
-                        doc["pending_at_staff_name"] = ref_display
-                        doc["transferred_by"]        = session.get("username")
-                        doc["transferred_at"]        = now_str()
-                        doc["travel_log"].append({
-                            "office":    ref_user.get("office", ""),
-                            "action":    f"Pending Acceptance — referred to {ref_display}",
-                            "officer":   actor,
-                            "timestamp": now_str(),
-                            "remarks":   f"Document referred to {ref_display}. Awaiting acceptance.",
-                        })
 
                     insert_doc(doc)
                     audit_log("doc_created",
@@ -1224,43 +1164,28 @@ def db_status():
 
 def _is_pending_for(doc: dict, username: str, office: str) -> bool:
     """
-    Return True if this document is pending acceptance for the given user/office.
+    Return True if this document is awaiting acceptance by the given user/office.
 
-    Three paths are checked in order:
-      1. Standard transfer path  — transfer_status == "pending" + pending_at_staff/office
-      2. Status-based path       — status == "Pending" + pending_at_staff (logged-with-refer)
-      3. Legacy recovery path    — pending_at_staff set but transfer_status missing (old bug)
+    A document is pending for a user when:
+      - It has not yet been accepted (no accepted_by) and is not deleted
+      - AND either:
+          a) pending_at_staff matches the username (directly assigned), OR
+          b) pending_at_staff is empty but pending_at_office matches the user's
+             office (any staff at that office may accept)
     """
-    office_lower = (office or "").strip().lower()
-    accepted     = bool(doc.get("accepted_by"))
-    deleted      = bool(doc.get("deleted"))
-
-    if accepted or deleted:
+    if doc.get("accepted_by") or doc.get("deleted"):
         return False
 
-    # ── 1. Standard transfer path ─────────────────────────────────────────
-    if doc.get("transfer_status") == "pending":
-        if doc.get("pending_at_staff") == username:
-            return True
-        if (
-            office_lower
-            and (doc.get("pending_at_office") or "").strip().lower() == office_lower
-            and not doc.get("pending_at_staff", "")
-        ):
-            return True
+    pending_staff  = (doc.get("pending_at_staff") or "").strip()
+    pending_office = (doc.get("pending_at_office") or "").strip().lower()
+    office_lower   = (office or "").strip().lower()
 
-    # ── 2. Status-based path (doc logged with referred_to → status = "Pending") ─
-    if (
-        doc.get("status") == "Pending"
-        and doc.get("pending_at_staff") == username
-    ):
+    # Direct staff assignment
+    if pending_staff and pending_staff == username:
         return True
 
-    # ── 3. Legacy recovery: pending_at_staff set but transfer_status missing ────
-    if (
-        not doc.get("transfer_status")
-        and doc.get("pending_at_staff") == username
-    ):
+    # Office-level assignment (no specific staff named)
+    if not pending_staff and pending_office and office_lower and pending_office == office_lower:
         return True
 
     return False
@@ -1336,13 +1261,14 @@ def accept_document(doc_id):
         flash(f"You are not authorized to accept this document. Document is pending for: {doc.get('pending_at_staff') or doc.get('pending_at_office')}", "error")
         return redirect(url_for("dashboard.index"))
     
-    if doc.get("transfer_status") != "pending":
-        flash("This document has already been processed.", "error")
+    # Allow acceptance as long as the doc hasn't been accepted yet.
+    # transfer_status may be "pending" or absent (legacy docs) — both are valid.
+    if doc.get("accepted_by"):
+        flash("This document has already been accepted.", "error")
         return redirect(url_for("dashboard.index"))
-    
+
     try:
         receiving_office = doc.get("pending_at_office", "") or doc.get("transferred_to_office", "")
-        # Replace this block inside accept_document:
         doc["transfer_status"] = "accepted"
         doc["accepted_by"]     = current_user
         doc["accepted_by_name"] = current_full_name or current_user
@@ -1410,10 +1336,11 @@ def reject_document(doc_id):
         flash("You are not authorized to reject this document.", "error")
         return redirect(url_for("dashboard.index"))
     
-    if doc.get("transfer_status") != "pending":
-        flash("This document has already been processed.", "error")
+    # Allow rejection as long as the doc hasn't already been accepted.
+    if doc.get("accepted_by"):
+        flash("This document has already been accepted and cannot be rejected.", "error")
         return redirect(url_for("dashboard.index"))
-    
+
     # Resolve the staff member who originally sent/owns this document.
     # Fall back chain: original_logged_by → transferred_by → current rejector (safe fallback).
     original_sender = (
