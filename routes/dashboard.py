@@ -421,9 +421,6 @@ def add():
                 current_office = session.get("office") or "DepEd Leyte Division"
                 logged_doc_ids = []
                 for item in cart:
-                    audit_log("doc_created",
-                              f"doc_name={item.get('doc_name','')[:80]} sender_org={item.get('sender_org','')}",
-                              username=session.get("username","?"), ip=get_client_ip())
                     doc = {
                         "id":             str(uuid.uuid4())[:8].upper(),
                         "doc_id":         generate_ref(),
@@ -459,6 +456,9 @@ def add():
                         "remarks":   f"Logged into system by {actor}. Status: Logged. Batch of {len(cart)}.",
                     })
                     insert_doc(doc)
+                    audit_log("doc_created",
+                              f"doc_name={item.get('doc_name','')[:80]} sender_org={item.get('sender_org','')}",
+                              username=session.get("username","?"), ip=get_client_ip())
                     logged_doc_ids.append(doc["id"])
 
                 # NOTE: Logging a document never creates a routing slip.

@@ -357,6 +357,13 @@ def api_update_status(doc_id):
     })
 
     save_doc(doc)
+    from services.misc import audit_log
+    audit_log(
+        'doc_status_changed',
+        f"ref={doc.get('doc_id','')} from={old_status} to={new_status} by={user_id}",
+        username=user_id,
+        ip=get_client_ip()
+    )
 
     if doc.get('logged_by') and doc['logged_by'] != user_id:
         send_push_notification(
@@ -1981,6 +1988,13 @@ def api_client_submit():
             }],
         }
         save_doc(doc)
+        from services.misc import audit_log
+        audit_log(
+            'doc_submitted',
+            f"ref={doc.get('doc_id','')} doc_name={doc.get('doc_name','')[:80]} submitted_by={user_id}",
+            username=user_id,
+            ip=get_client_ip()
+        )
         submitted.append({'id': doc['id'], 'doc_id': doc['doc_id'], 'doc_name': doc_name, 'status': 'Pending'})
 
     return jsonify(serialize({'submitted': submitted, 'count': len(submitted)})), 201
