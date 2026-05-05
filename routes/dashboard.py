@@ -379,16 +379,27 @@ def add():
                     edit_item = item
                     break
             if edit_item:
-                _cu = session.get("username", "")
-                _co = session.get("office", "")
-                _office_staff = sorted([
-                    {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
-                    for u in get_all_users()
-                    if u.get("office") == _co
-                    and u.get("username") != _cu
-                    and u.get("role") != "client"
-                    and u.get("active", True)
-                ], key=lambda x: x["full_name"])
+                _cu   = session.get("username", "")
+                _co   = session.get("office", "")
+                _role = session.get("role", "")
+                _all  = get_all_users()
+                if _role == "admin":
+                    _office_staff = sorted([
+                        {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
+                        for u in _all
+                        if u.get("username") != _cu
+                        and u.get("role") != "client"
+                        and u.get("active", True)
+                    ], key=lambda x: x["full_name"])
+                else:
+                    _office_staff = sorted([
+                        {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
+                        for u in _all
+                        if u.get("office") == _co
+                        and u.get("username") != _cu
+                        and u.get("role") != "client"
+                        and u.get("active", True)
+                    ], key=lambda x: x["full_name"])
                 return render_template("form.html", doc={}, action="edit_cart",
                                        edit_item=edit_item, cart=cart, error=None,
                                        auto_ref=generate_ref(),
@@ -535,16 +546,29 @@ def add():
         cart = session.get("staff_cart", [])
 
     current_username = session.get("username", "")
-    current_office = session.get("office", "")
-    all_users = get_all_users()
-    office_staff = sorted([
-        {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
-        for u in all_users
-        if u.get("office") == current_office
-        and u.get("username") != current_username
-        and u.get("role") != "client"
-        and u.get("active", True)
-    ], key=lambda x: x["full_name"])
+    current_office   = session.get("office", "")
+    current_role     = session.get("role", "")
+    all_users        = get_all_users()
+
+    # Admins can refer to any active non-client staff across all offices.
+    # Regular staff only see colleagues within their own office.
+    if current_role == "admin":
+        office_staff = sorted([
+            {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
+            for u in all_users
+            if u.get("username") != current_username
+            and u.get("role") != "client"
+            and u.get("active", True)
+        ], key=lambda x: x["full_name"])
+    else:
+        office_staff = sorted([
+            {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
+            for u in all_users
+            if u.get("office") == current_office
+            and u.get("username") != current_username
+            and u.get("role") != "client"
+            and u.get("active", True)
+        ], key=lambda x: x["full_name"])
 
     return render_template("form.html", doc={}, action="add",
                            cart=cart, error=error,
