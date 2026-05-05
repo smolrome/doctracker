@@ -669,13 +669,15 @@ function escHtmlForm(s) {
         activeIdx = Math.max(activeIdx - 1, 0);
         highlightOption(activeIdx);
       } else if (e.key === 'Enter') {
+        // Always prevent form submit while the dropdown is open —
+        // the user is navigating the list, not submitting the form.
+        e.preventDefault();
         if (activeIdx >= 0 && opts[activeIdx]) {
-          e.preventDefault();
           var selectedName = opts[activeIdx].textContent;
           var match = STAFF.find(function (s) { return s.full_name === selectedName; });
           if (match) selectStaff(match);
-          closeDropdown();
         }
+        closeDropdown();
       } else if (e.key === 'Escape') {
         closeDropdown();
       }

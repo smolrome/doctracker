@@ -421,8 +421,41 @@ def add():
             else:
                 actor = session.get("full_name") or session.get("username") or "Staff"
                 current_office = session.get("office") or "DepEd Leyte Division"
+                all_users_cache = get_all_users()  # fetch once for the entire batch
                 logged_doc_ids = []
                 for item in cart:
+                    # ── Resolve referred-to user BEFORE building the doc ──────────
+                    ref_username  = item.get("referred_to_username", "").strip()
+                    ref_full_name = item.get("referred_to", "").strip()
+
+                    # Fallback: if JS didn't populate the hidden username field,
+                    # try matching by the displayed full name (handles the case
+                    # where the user typed a name and pressed Enter without
+                    # clicking a dropdown item).
+                    if not ref_username and ref_full_name:
+                        matched = next(
+                            (u for u in all_users_cache
+                             if (u.get("full_name") or "").strip() == ref_full_name
+                             and u.get("role") != "client"
+                             and u.get("active", True)),
+                            None,
+                        )
+                        if matched:
+                            ref_username = matched["username"]
+
+                    # Don't allow self-referral
+                    if ref_username == session.get("username"):
+                        ref_username = ""
+
+                    ref_user = None
+                    if ref_username:
+                        ref_user = next(
+                            (u for u in all_users_cache if u["username"] == ref_username),
+                            None,
+                        )
+
+                    # ── Build the doc ─────────────────────────────────────────────
+                    now = now_str()
                     doc = {
                         "id":             str(uuid.uuid4())[:8].upper(),
                         "doc_id":         generate_ref(),
@@ -437,12 +470,12 @@ def add():
                         "forwarded_to":   "",
                         "recipient_name": "", "recipient_org": "", "recipient_contact": "",
                         "received_by":    actor,
-                        "date_received":  now_str()[:16].replace('T', ' '),
+                        "date_received":  now[:16].replace('T', ' '),
                         "date_released":  "",
-                        "doc_date":       now_str()[:10],
+                        "doc_date":       now[:10],
                         "status":         "Logged",
                         "notes":          item["notes"],
-                        "created_at":     now_str(),
+                        "created_at":     now,
                         "routing":        [],
                         "travel_log":     [],
                         "logged_by":      session.get("username"),
@@ -454,35 +487,32 @@ def add():
                         "office":    current_office,
                         "action":    "Document Logged by Staff",
                         "officer":   actor,
-                        "timestamp": doc["created_at"],
+                        "timestamp": now,
                         "remarks":   f"Logged into system by {actor}. Status: Logged. Batch of {len(cart)}.",
                     })
+
+                    # ── Attach transfer fields if a valid referred user exists ────
+                    # Do this BEFORE insert_doc so everything is saved in one write.
+                    if ref_user:
+                        ref_display = ref_user.get("full_name") or ref_username
+                        doc["transfer_status"]       = "pending"
+                        doc["pending_at_staff"]      = ref_username
+                        doc["pending_at_office"]     = ref_user.get("office", "")
+                        doc["pending_at_staff_name"] = ref_display
+                        doc["transferred_by"]        = session.get("username")
+                        doc["transferred_at"]        = now_str()
+                        doc["travel_log"].append({
+                            "office":    ref_user.get("office", ""),
+                            "action":    f"Pending Acceptance — referred to {ref_display}",
+                            "officer":   actor,
+                            "timestamp": now_str(),
+                            "remarks":   f"Awaiting acceptance by {ref_display}.",
+                        })
+
                     insert_doc(doc)
                     audit_log("doc_created",
                               f"doc_name={item.get('doc_name','')[:80]} sender_org={item.get('sender_org','')}",
                               username=session.get("username","?"), ip=get_client_ip())
-
-                    # If a referred_to staff was selected, put the doc in their pending inbox
-                    ref_username = item.get("referred_to_username", "").strip()
-                    if ref_username and ref_username != session.get("username"):
-                        ref_user = next(
-                            (u for u in get_all_users() if u["username"] == ref_username), None
-                        )
-                        if ref_user:
-                            doc["transfer_status"]       = "pending"
-                            doc["pending_at_staff"]      = ref_username
-                            doc["pending_at_office"]     = ref_user.get("office", "")
-                            doc["pending_at_staff_name"] = ref_user.get("full_name") or ref_username
-                            doc["transferred_by"]        = session.get("username")
-                            doc["transferred_at"]        = now_str()
-                            doc["travel_log"].append({
-                                "office":    ref_user.get("office", ""),
-                                "action":    f"Pending Acceptance — referred to {ref_user.get('full_name') or ref_username}",
-                                "officer":   actor,
-                                "timestamp": now_str(),
-                                "remarks":   f"Awaiting acceptance by {ref_user.get('full_name') or ref_username}.",
-                            })
-                            save_doc(doc)
 
                     logged_doc_ids.append(doc["id"])
 
