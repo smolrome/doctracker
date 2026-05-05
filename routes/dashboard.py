@@ -473,7 +473,7 @@ def add():
                         "date_received":  now[:16].replace('T', ' '),
                         "date_released":  "",
                         "doc_date":       now[:10],
-                        "status":         "Logged",
+                        "status":         "Logged",   # always starts Logged
                         "notes":          item["notes"],
                         "created_at":     now,
                         "routing":        [],
@@ -483,18 +483,24 @@ def add():
                         "logged_by_office": current_office,
                         "routing_cycle": 0,
                     }
+
+                    # Step 1 — always record the initial Logged action
                     doc["travel_log"].append({
                         "office":    current_office,
                         "action":    "Document Logged by Staff",
                         "officer":   actor,
                         "timestamp": now,
-                        "remarks":   f"Logged into system by {actor}. Status: Logged. Batch of {len(cart)}.",
+                        "remarks":   f"Logged into system by {actor}. Batch of {len(cart)}.",
                     })
 
-                    # ── Attach transfer fields if a valid referred user exists ────
-                    # Do this BEFORE insert_doc so everything is saved in one write.
+                    # ── Step 2 — if a referred user exists, immediately advance
+                    #    status to Pending and record that as a second travel-log
+                    #    entry.  Both entries are saved in a single insert_doc call
+                    #    so the full Logged → Pending history is preserved from the
+                    #    moment the document is created. ──────────────────────────
                     if ref_user:
                         ref_display = ref_user.get("full_name") or ref_username
+                        doc["status"]                = "Pending"
                         doc["transfer_status"]       = "pending"
                         doc["pending_at_staff"]      = ref_username
                         doc["pending_at_office"]     = ref_user.get("office", "")
@@ -506,7 +512,7 @@ def add():
                             "action":    f"Pending Acceptance — referred to {ref_display}",
                             "officer":   actor,
                             "timestamp": now_str(),
-                            "remarks":   f"Awaiting acceptance by {ref_display}.",
+                            "remarks":   f"Document referred to {ref_display}. Awaiting acceptance.",
                         })
 
                     insert_doc(doc)
@@ -1196,18 +1202,22 @@ def _is_pending_for(doc: dict, username: str, office: str) -> bool:
     """
     Return True if this document is pending acceptance for the given user/office.
 
-    Catches both the normal transfer path (transfer_status == "pending") AND
-    the legacy/buggy path where a doc was logged with referred_to_username but
-    transfer_status was never written (old two-step insert+save_doc bug).
+    Three paths are checked in order:
+      1. Standard transfer path  — transfer_status == "pending" + pending_at_staff/office
+      2. Status-based path       — status == "Pending" + pending_at_staff (logged-with-refer)
+      3. Legacy recovery path    — pending_at_staff set but transfer_status missing (old bug)
     """
     office_lower = (office or "").strip().lower()
+    accepted     = bool(doc.get("accepted_by"))
+    deleted      = bool(doc.get("deleted"))
 
-    # ── Standard path: transfer_status was set correctly ──────────────────
+    if accepted or deleted:
+        return False
+
+    # ── 1. Standard transfer path ─────────────────────────────────────────
     if doc.get("transfer_status") == "pending":
-        # Specifically assigned to this user
         if doc.get("pending_at_staff") == username:
             return True
-        # Pending at this office with no specific staff assigned
         if (
             office_lower
             and (doc.get("pending_at_office") or "").strip().lower() == office_lower
@@ -1215,15 +1225,17 @@ def _is_pending_for(doc: dict, username: str, office: str) -> bool:
         ):
             return True
 
-    # ── Legacy/recovery path: referred_to_username was set but
-    #    transfer_status was never written (old insert+save_doc race).
-    #    Only match if the doc has never been accepted (accepted_by is empty)
-    #    and is not already deleted or fully completed. ─────────────────────
+    # ── 2. Status-based path (doc logged with referred_to → status = "Pending") ─
     if (
-        not doc.get("transfer_status")           # transfer_status missing/empty
-        and doc.get("pending_at_staff") == username  # pending_at_staff IS set
-        and not doc.get("accepted_by")           # not yet accepted
-        and not doc.get("deleted")
+        doc.get("status") == "Pending"
+        and doc.get("pending_at_staff") == username
+    ):
+        return True
+
+    # ── 3. Legacy recovery: pending_at_staff set but transfer_status missing ────
+    if (
+        not doc.get("transfer_status")
+        and doc.get("pending_at_staff") == username
     ):
         return True
 
