@@ -90,6 +90,8 @@
                  value="{{ doc.get('referred_to','') }}"
                  placeholder="Search staff name..."
                  class="staff-combo-input"/>
+          <input type="hidden" name="referred_to_username"
+                 value="{{ doc.get('referred_to_username','') }}"/>
           <div class="staff-combo-dropdown"></div>
         </div>
       </div>
@@ -196,6 +198,8 @@
                    value="{{ edit_item.referred_to or '' }}"
                    placeholder="Search staff name..."
                    class="staff-combo-input"/>
+            <input type="hidden" name="referred_to_username"
+                   value="{{ edit_item.referred_to_username or '' }}"/>
             <div class="staff-combo-dropdown"></div>
           </div>
         </div>
@@ -466,6 +470,7 @@ document.addEventListener('keydown', function(e) {
           <input type="text" name="referred_to" autocomplete="off"
                  placeholder="Search staff name..."
                  class="staff-combo-input"/>
+          <input type="hidden" name="referred_to_username"/>
           <div class="staff-combo-dropdown"></div>
         </div>
       </div>
@@ -571,22 +576,31 @@ function escHtmlForm(s) {
 
 <script>
 (function () {
+  // STAFF is now an array of {username, full_name} objects
   var STAFF = {{ (office_staff or []) | tojson }};
 
   function initCombobox(wrapper) {
     if (!wrapper) return;
-    var input = wrapper.querySelector('.staff-combo-input');
-    var dropdown = wrapper.querySelector('.staff-combo-dropdown');
+    var input       = wrapper.querySelector('.staff-combo-input');
+    var hiddenInput = wrapper.querySelector('input[type="hidden"]');
+    var dropdown    = wrapper.querySelector('.staff-combo-dropdown');
     if (!input || !dropdown) return;
 
     var activeIdx = -1;
+
+    function selectStaff(s) {
+      input.value = s.full_name;
+      if (hiddenInput) hiddenInput.value = s.username;
+      closeDropdown();
+    }
 
     function renderOptions(query) {
       var q = (query || '').toLowerCase().trim();
       var matches = q
         ? STAFF.filter(function (s) {
-            return s.toLowerCase().split(/\s+/).some(function (w) { return w.startsWith(q); })
-                || s.toLowerCase().includes(q);
+            var name = s.full_name.toLowerCase();
+            return name.split(/\s+/).some(function (w) { return w.startsWith(q); })
+                || name.includes(q);
           })
         : STAFF.slice();
 
@@ -599,14 +613,13 @@ function escHtmlForm(s) {
         empty.textContent = q ? 'No matching staff found' : 'No staff in your office';
         dropdown.appendChild(empty);
       } else {
-        matches.forEach(function (name, i) {
+        matches.forEach(function (s) {
           var opt = document.createElement('div');
           opt.className = 'staff-combo-option';
-          opt.textContent = name;
+          opt.textContent = s.full_name;
           opt.addEventListener('mousedown', function (e) {
             e.preventDefault();
-            input.value = name;
-            closeDropdown();
+            selectStaff(s);
           });
           dropdown.appendChild(opt);
         });
@@ -634,7 +647,11 @@ function escHtmlForm(s) {
     }
 
     input.addEventListener('focus', function () { openDropdown(); });
-    input.addEventListener('input', function () { openDropdown(); });
+    input.addEventListener('input', function () {
+      // Clear stale username whenever the user manually edits the text
+      if (hiddenInput) hiddenInput.value = '';
+      openDropdown();
+    });
     input.addEventListener('blur', function () { setTimeout(closeDropdown, 150); });
 
     input.addEventListener('keydown', function (e) {
@@ -654,7 +671,9 @@ function escHtmlForm(s) {
       } else if (e.key === 'Enter') {
         if (activeIdx >= 0 && opts[activeIdx]) {
           e.preventDefault();
-          input.value = opts[activeIdx].textContent;
+          var selectedName = opts[activeIdx].textContent;
+          var match = STAFF.find(function (s) { return s.full_name === selectedName; });
+          if (match) selectStaff(match);
           closeDropdown();
         }
       } else if (e.key === 'Escape') {

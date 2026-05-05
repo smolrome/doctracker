@@ -350,15 +350,16 @@ def add():
                 error = "Content / Particulars is required."
             else:
                 cart.append({
-                    "tmp_id":      uuid.uuid4().hex[:8].upper(),
-                    "doc_name":    doc_name,
-                    "sender_org":  request.form.get("sender_org", "").strip(),
-                    "sender_name": request.form.get("sender_name", "").strip(),
-                    "referred_to": request.form.get("referred_to", "").strip(),
-                    "category":    request.form.get("category", "").strip(),
-                    "description": request.form.get("description", "").strip(),
-                    "notes":       request.form.get("notes", "").strip(),
-                    "due_date":    request.form.get("due_date", "").strip(),
+                    "tmp_id":               uuid.uuid4().hex[:8].upper(),
+                    "doc_name":             doc_name,
+                    "sender_org":           request.form.get("sender_org", "").strip(),
+                    "sender_name":          request.form.get("sender_name", "").strip(),
+                    "referred_to":          request.form.get("referred_to", "").strip(),
+                    "referred_to_username": request.form.get("referred_to_username", "").strip(),
+                    "category":             request.form.get("category", "").strip(),
+                    "description":          request.form.get("description", "").strip(),
+                    "notes":                request.form.get("notes", "").strip(),
+                    "due_date":             request.form.get("due_date", "").strip(),
                 })
                 session["staff_cart"] = cart
                 session.modified = True
@@ -381,13 +382,13 @@ def add():
                 _cu = session.get("username", "")
                 _co = session.get("office", "")
                 _office_staff = sorted([
-                    u.get("full_name") or u.get("username")
+                    {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
                     for u in get_all_users()
                     if u.get("office") == _co
                     and u.get("username") != _cu
                     and u.get("role") != "client"
                     and u.get("active", True)
-                ])
+                ], key=lambda x: x["full_name"])
                 return render_template("form.html", doc={}, action="edit_cart",
                                        edit_item=edit_item, cart=cart, error=None,
                                        auto_ref=generate_ref(),
@@ -402,7 +403,8 @@ def add():
                     cart[i]["doc_name"] = request.form.get("doc_name", "").strip()
                     cart[i]["sender_org"] = request.form.get("sender_org", "").strip()
                     cart[i]["sender_name"] = request.form.get("sender_name", "").strip()
-                    cart[i]["referred_to"] = request.form.get("referred_to", "").strip()
+                    cart[i]["referred_to"]          = request.form.get("referred_to", "").strip()
+                    cart[i]["referred_to_username"] = request.form.get("referred_to_username", "").strip()
                     cart[i]["category"] = request.form.get("category", "").strip()
                     cart[i]["description"] = request.form.get("description", "").strip()
                     cart[i]["notes"] = request.form.get("notes", "") or request.form.get("description", "").strip()
@@ -459,6 +461,29 @@ def add():
                     audit_log("doc_created",
                               f"doc_name={item.get('doc_name','')[:80]} sender_org={item.get('sender_org','')}",
                               username=session.get("username","?"), ip=get_client_ip())
+
+                    # If a referred_to staff was selected, put the doc in their pending inbox
+                    ref_username = item.get("referred_to_username", "").strip()
+                    if ref_username and ref_username != session.get("username"):
+                        ref_user = next(
+                            (u for u in get_all_users() if u["username"] == ref_username), None
+                        )
+                        if ref_user:
+                            doc["transfer_status"]       = "pending"
+                            doc["pending_at_staff"]      = ref_username
+                            doc["pending_at_office"]     = ref_user.get("office", "")
+                            doc["pending_at_staff_name"] = ref_user.get("full_name") or ref_username
+                            doc["transferred_by"]        = session.get("username")
+                            doc["transferred_at"]        = now_str()
+                            doc["travel_log"].append({
+                                "office":    ref_user.get("office", ""),
+                                "action":    f"Pending Acceptance — referred to {ref_user.get('full_name') or ref_username}",
+                                "officer":   actor,
+                                "timestamp": now_str(),
+                                "remarks":   f"Awaiting acceptance by {ref_user.get('full_name') or ref_username}.",
+                            })
+                            save_doc(doc)
+
                     logged_doc_ids.append(doc["id"])
 
                 # NOTE: Logging a document never creates a routing slip.
@@ -477,13 +502,13 @@ def add():
     current_office = session.get("office", "")
     all_users = get_all_users()
     office_staff = sorted([
-        u.get("full_name") or u.get("username")
+        {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
         for u in all_users
         if u.get("office") == current_office
         and u.get("username") != current_username
         and u.get("role") != "client"
         and u.get("active", True)
-    ])
+    ], key=lambda x: x["full_name"])
 
     return render_template("form.html", doc={}, action="add",
                            cart=cart, error=error,
