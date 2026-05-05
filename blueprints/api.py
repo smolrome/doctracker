@@ -358,6 +358,7 @@ def api_update_status(doc_id):
 
     save_doc(doc)
     from services.misc import audit_log
+    from utils import get_client_ip
     audit_log(
         'doc_status_changed',
         f"ref={doc.get('doc_id','')} from={old_status} to={new_status} by={user_id}",
@@ -1989,6 +1990,7 @@ def api_client_submit():
         }
         save_doc(doc)
         from services.misc import audit_log
+        from utils import get_client_ip
         audit_log(
             'doc_submitted',
             f"ref={doc.get('doc_id','')} doc_name={doc.get('doc_name','')[:80]} submitted_by={user_id}",

@@ -191,7 +191,7 @@ class TestDocumentWebRoutes:
         rv = client.get("/healthz")
         assert rv.status_code == 200
         data = rv.get_json()
-        assert data["ok"] is True or "error" in data
+        assert data["status"] in ("ok", "error")
 
     def test_security_headers_present(self, client):
         """Every response must include key security headers."""
