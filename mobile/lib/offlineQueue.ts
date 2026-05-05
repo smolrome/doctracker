@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const QUEUE_KEY = 'doctracker-offline-submit-queue';
+const MAX_RETRIES = 5;
 
 export type QueuedSubmission = {
   queueId: string;
@@ -59,11 +60,13 @@ export const offlineQueue = {
 
   async incrementRetry(queueId: string): Promise<void> {
     const queue = await _read();
-    const item = queue.find((i) => i.queueId === queueId);
-    if (item) {
-      item.retries += 1;
-      await _write(queue);
+    const index = queue.findIndex((i) => i.queueId === queueId);
+    if (index === -1) return;
+    queue[index].retries += 1;
+    if (queue[index].retries >= MAX_RETRIES) {
+      queue.splice(index, 1);
     }
+    await _write(queue);
   },
 
   async clear(): Promise<void> {

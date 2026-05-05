@@ -9,7 +9,7 @@ from services.dropdown_options import get_dropdown_options
 from services.misc import audit_log, load_saved_offices
 from services.auth import get_all_users
 from services.documents import load_docs, save_doc
-from utils import login_required, get_client_ip
+from utils import admin_required, get_client_ip
 
 import_bp = Blueprint("import_excel", __name__)
 
@@ -22,13 +22,13 @@ def _allowed(filename: str) -> bool:
 
 
 @import_bp.route("/import-excel")
-@login_required
+@admin_required
 def import_page():
     return render_template("import_excel.html")
 
 
 @import_bp.route("/import-excel/preview", methods=["POST"])
-@login_required
+@admin_required
 def import_preview():
     """Parse the file and show a preview before committing."""
     uploaded = request.files.get("excel_file")
@@ -40,7 +40,6 @@ def import_preview():
         return redirect(url_for("import_excel.import_page"))
 
     file_bytes = uploaded.read()
-    rows, warnings = parse_excel(file_bytes, uploaded.filename)
 
     # Store bytes in session is too large — store in a temp file instead
     import tempfile, os
@@ -48,6 +47,14 @@ def import_preview():
                                       prefix="dt_import_")
     tmp.write(file_bytes)
     tmp.close()
+
+    try:
+        rows, warnings = parse_excel(file_bytes, uploaded.filename)
+    except Exception as e:
+        os.unlink(tmp.name)
+        flash(f'Failed to parse file: {e}', 'error')
+        return redirect(url_for('import_excel.import_page'))
+
     session["import_tmp"]      = tmp.name
     session["import_filename"] = uploaded.filename
 
@@ -64,7 +71,7 @@ def import_preview():
 
 
 @import_bp.route("/import-excel/confirm", methods=["POST"])
-@login_required
+@admin_required
 def import_confirm():
     """Read temp file and do the actual import."""
     tmp_path = session.pop("import_tmp", None)
@@ -115,7 +122,7 @@ def import_confirm():
 
 
 @import_bp.route("/import-excel/reassign", methods=["GET", "POST"])
-@login_required
+@admin_required
 def reassign_imported():
     """Reassign office/staff for previously imported documents."""
     imported_docs = [d for d in load_docs() if d.get("source", "").startswith("Imported from")]

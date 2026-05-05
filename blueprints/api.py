@@ -187,6 +187,15 @@ def api_login():
 @jwt_required(refresh=True)
 def api_refresh():
     identity = get_jwt_identity()
+    admin_env = os.environ.get('ADMIN_USERNAME', '')
+    if admin_env and secrets.compare_digest(identity.lower(), admin_env.lower()):  # env-var admin bypass
+        access_token = create_access_token(identity=identity)
+        return jsonify(serialize({"access_token": access_token}))
+    user = get_user_by_username(identity)
+    if not user:
+        return jsonify(error='User not found'), 401
+    if not user.get('active', True):
+        return jsonify(error='Account disabled'), 403
     access_token = create_access_token(identity=identity)
     return jsonify(serialize({"access_token": access_token}))
 
@@ -267,6 +276,12 @@ def api_get_document(doc_id):
     doc = get_doc(doc_id)
     if not doc or doc.get('deleted'):
         return jsonify(error='Document not found'), 404
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        user = get_user_by_username(user_id)
+        user_role = user.get('role', '') if user else ''
+        if user_role != 'staff' and doc.get('logged_by') != user_id and doc.get('submitted_by') != user_id:
+            return jsonify(error='Forbidden'), 403
     return jsonify(serialize(doc))
 
 
@@ -300,6 +315,9 @@ def api_create_document():
 def api_update_status(doc_id):
     data = request.get_json()
     new_status = data.get('status')
+    from config import STATUS_OPTIONS
+    if not new_status or new_status not in STATUS_OPTIONS:
+        return jsonify(error=f'Invalid status. Must be one of: {STATUS_OPTIONS}'), 400
     remarks = data.get('remarks', '')
     user_id = get_jwt_identity()
 
@@ -511,6 +529,9 @@ def api_get_routing_slips():
 @api_bp.route('/activity-log', methods=['GET'])
 @jwt_required()
 def api_activity_log():
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        return jsonify(error='Admin access required'), 403
     from services.misc import get_activity_logs
     try:
         limit = max(1, min(int(request.args.get('limit', 200)), 1000))
@@ -1703,11 +1724,12 @@ def api_bulk_status():
     data    = request.get_json(force=True, silent=True) or {}
     doc_ids = data.get('doc_ids', [])
     status  = data.get('status', '').strip()
+    from config import STATUS_OPTIONS
+    if not status or status not in STATUS_OPTIONS:
+        return jsonify(error=f'Invalid status. Must be one of: {STATUS_OPTIONS}'), 400
     remarks = data.get('remarks', '').strip()
     if not doc_ids:
         return jsonify(error='doc_ids is required'), 400
-    if not status:
-        return jsonify(error='status is required'), 400
     user_obj = get_user_by_username(user_id)
     actor    = (user_obj.get('full_name') or user_id) if user_obj else user_id
     office   = (user_obj.get('office') or '') if user_obj else ''
@@ -1762,9 +1784,18 @@ def api_bulk_delete():
 @jwt_required()
 def api_office_documents():
     """Get documents grouped by office, or filtered by a specific office."""
+    user_id = get_jwt_identity()
+    is_admin = _is_admin_user(user_id)
+    if not is_admin:
+        user = get_user_by_username(user_id)
+        user_role = user.get('role', '') if user else ''
+        if user_role != 'staff':
+            return jsonify(error='Staff or admin access required'), 403
     from services.documents import load_docs
     office = request.args.get('office', '').strip()
     docs   = load_docs()
+    if not is_admin:
+        docs = [d for d in docs if d.get('logged_by') == user_id]
     if office:
         docs = [d for d in docs if (d.get('from_office') or '').lower() == office.lower()]
         docs.sort(key=lambda d: d.get('created_at', ''), reverse=True)
@@ -1795,8 +1826,8 @@ def api_client_register():
     email     = data.get('email', '').strip()
     if not username or not password or not full_name:
         return jsonify(error='username, password, and full_name are required'), 400
-    if len(password) < 6:
-        return jsonify(error='Password must be at least 6 characters'), 400
+    if len(password) < 8:
+        return jsonify(error='Password must be at least 8 characters'), 400
     from services.auth import get_user_by_username as _get_u, create_user as _create_u
     if _get_u(username):
         return jsonify(error='Username already taken'), 409

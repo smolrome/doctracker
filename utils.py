@@ -1,6 +1,7 @@
 """
 utils.py — Shared decorators and request helpers used across all route blueprints.
 """
+import os
 from functools import wraps
 
 from flask import flash, redirect, request, session, url_for
@@ -13,9 +14,11 @@ def is_logged_in() -> bool:
 
 
 def get_client_ip() -> str:
-    return (request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
-            or request.remote_addr
-            or "unknown")
+    if os.environ.get('TRUSTED_PROXY'):
+        forwarded_for = request.headers.get('X-Forwarded-For', '')
+        if forwarded_for:
+            return forwarded_for.split(',')[0].strip()
+    return request.remote_addr or '127.0.0.1'
 
 
 # ── Route decorators ──────────────────────────────────────────────────────────

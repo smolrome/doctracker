@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { router } from 'expo-router';
 import { authStorage } from './auth';
 
 export const BASE_URL = 'https://doctracker.depedleytepersonnelunit.com';
@@ -23,7 +24,7 @@ api.interceptors.response.use(
   async (error) => {
     const status = error.response?.status;
     // Only log unexpected errors — 404s on optional endpoints are handled by each hook
-    if (status !== 404 && status !== 401 && status !== 429) {
+    if (status !== 404 && status !== 401 && status !== 429 && status !== 422) {
       console.log('API ERROR:', error.message, error.config?.url);
     }
     const original = error.config;
@@ -47,6 +48,13 @@ api.interceptors.response.use(
       }
       // Exhausted retries — log and reject so the hook falls back to cache
       console.warn(`[API] 429 on ${original.url} — all retries exhausted`);
+      return Promise.reject(error);
+    }
+
+    // ── 422 Unprocessable: token is malformed — clear and force re-login ────
+    if (error.response?.status === 422) {
+      await authStorage.clearAll();
+      router.replace('/(auth)/login');
       return Promise.reject(error);
     }
 

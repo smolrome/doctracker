@@ -232,7 +232,14 @@ def create_app() -> Flask:
             return
         try:
             from services.misc import audit_log
-            actor  = session.get("username", "anonymous")
+            actor = session.get("username", "")
+            if not actor:
+                try:
+                    from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
+                    verify_jwt_in_request(optional=True)
+                    actor = get_jwt_identity() or "anonymous"
+                except Exception:
+                    actor = "anonymous"
             detail = f"method={request.method} path={request.path}"
             if request.form:
                 # FIX 3: redact passwords, hashes AND the csrf token from logs
@@ -382,20 +389,20 @@ def create_app() -> Flask:
 
     @app.errorhandler(429)
     def too_many_requests(e):
-        return render_template(
-            "500.html",
-            error_title="Too Many Attempts",
-            error_msg="Please wait a few minutes before trying again.",
-        ), 429
+        if request.path.startswith('/api/'):
+            return jsonify(error='Too many requests. Please wait before retrying.'), 429
+        return render_template('500.html', error_code=429, error_message='Too Many Requests'), 429
 
     # FIX 6: Send unauthenticated users to login, authenticated to dashboard.
     @app.errorhandler(403)
     def forbidden(e):
+        if request.path.startswith('/api/'):
+            return jsonify(error='Forbidden'), 403
         if not is_logged_in():
             flash("Please log in to access that page.", "error")
-            return redirect(url_for("auth.login"))
+            return redirect(url_for('auth.login'))
         flash("You do not have permission to access that page.", "error")
-        return redirect(url_for("dashboard.index"))
+        return redirect(url_for('dashboard.index'))
 
     @app.errorhandler(404)
     def not_found(e):
@@ -419,24 +426,16 @@ def create_app() -> Flask:
     @app.route("/healthz")
     def healthz():
         """
-        Lightweight health check for monitoring.
-        Returns basic storage information and a simple document count probe.
+        Lightweight health check for uptime monitoring.
+        Returns ok/error without exposing system internals.
         """
-        from services.database import USE_DB
         from services.documents import load_docs
 
-        data = {
-            "ok": True,
-            "storage": "postgresql" if USE_DB else "json",
-        }
         try:
-            docs = load_docs(include_deleted=True)
-            data["document_count"] = len(docs)
-        except Exception as e:
-            data["ok"] = False
-            data["error"] = str(e)[:200]
-
-        return jsonify(data), (200 if data["ok"] else 500)
+            load_docs()
+            return jsonify(status='ok'), 200
+        except Exception:
+            return jsonify(status='error'), 500
 
     @app.route("/api/gen-ref")
     def api_gen_ref():
