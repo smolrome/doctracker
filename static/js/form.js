@@ -205,18 +205,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var categoryInput = form.querySelector('input[name="category"]');
     if (!categoryInput) return;
 
-    var currentVal   = categoryInput.value.trim();
-    var autoFilledVal = (categoryInput.dataset.autoFilled || '').trim();
-
-    // If the field has a value that we did NOT auto-fill, it was manually
-    // typed — never overwrite the user's choice.
-    if (currentVal && currentVal !== autoFilledVal) return;
-
     var docName = docNameInput.value;
 
     // doc_name is empty — unconditionally clear category, referred_to, and
     // referred_to_username so the form resets fully when the user wipes the
-    // primary field.
+    // primary field. This check comes BEFORE the manual-entry guard so that
+    // clearing doc_name always resets dependent fields regardless of how the
+    // category value was set (auto-filled, restored from localStorage, or typed).
     if (!docName.trim()) {
       categoryInput.value = '';
       delete categoryInput.dataset.autoFilled;
@@ -229,6 +224,13 @@ document.addEventListener('DOMContentLoaded', function() {
       detectReferredTo(categoryInput);   // cascades to clear combobox state too
       return;
     }
+
+    var currentVal    = categoryInput.value.trim();
+    var autoFilledVal = (categoryInput.dataset.autoFilled || '').trim();
+
+    // If the field has a value that we did NOT auto-fill, it was manually
+    // typed — never overwrite the user's choice.
+    if (currentVal && currentVal !== autoFilledVal) return;
 
     var options = getDatalistOptions(categoryInput);
     if (!options.length) return;
