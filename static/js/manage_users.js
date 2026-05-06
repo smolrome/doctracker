@@ -15,19 +15,22 @@ function closePwdModal(event) {
 function openEditModal(btn) {
   var username  = btn.getAttribute('data-username');
   var fullName  = btn.getAttribute('data-fullname');
+  var email     = btn.getAttribute('data-email') || '';
   var role      = btn.getAttribute('data-role');
   var office    = btn.getAttribute('data-office');
   var documents = btn.getAttribute('data-documents') || '';
 
   document.getElementById('editUser').textContent     = username;
   document.getElementById('editUsername').value       = username;
+  document.getElementById('editNewUsername').value    = username;
+  document.getElementById('editEmail').value          = email;
   document.getElementById('editFullName').value       = fullName;
   document.getElementById('editRole').value           = role;
   document.getElementById('editOffice').value         = office;
   document.getElementById('editDocuments').value      = documents;
   document.getElementById('editForm').action          = '/edit-user/' + username;
   document.getElementById('editModal').classList.add('active');
-  document.getElementById('editFullName').focus();
+  document.getElementById('editNewUsername').focus();
 }
 
 function closeEditModal() {

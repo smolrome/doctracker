@@ -122,6 +122,7 @@
         <button type="button" class="btn-edit"
                 data-username="{{ user.username|e }}"
                 data-fullname="{{ (user.full_name or '')|e }}"
+                data-email="{{ (user.email or '')|e }}"
                 data-role="{{ user.role|e }}"
                 data-office="{{ (user.office or '')|e }}"
                 data-documents="{{ (user.documents_handled or [])|join(', ')|e }}"
@@ -199,6 +200,18 @@
     </p>
     <form method="post" id="editForm" action="">
       <input type="hidden" name="username" id="editUsername">
+      <div class="form-group">
+        <label for="editNewUsername">Username</label>
+        <input type="text" id="editNewUsername" name="new_username"
+               placeholder="Enter username" autocomplete="off"
+               pattern="[a-zA-Z0-9._\-]+" title="Letters, numbers, dots, dashes and underscores only">
+        <div style="font-size:12px;color:#94A3B8;margin-top:4px;">Changing the username will also update the login name.</div>
+      </div>
+      <div class="form-group">
+        <label for="editEmail">Email Address</label>
+        <input type="email" id="editEmail" name="email"
+               placeholder="e.g. juan@deped.gov.ph" autocomplete="off">
+      </div>
       <div class="form-group">
         <label for="editFullName">Full Name</label>
         <input type="text" id="editFullName" name="full_name" placeholder="Enter full name">

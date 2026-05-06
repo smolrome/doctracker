@@ -477,10 +477,13 @@ def update_user_password(username: str, new_password: str) -> tuple[bool, str | 
 
 
 def update_user(username: str, full_name: str = None,
-                role: str = None, office: str = None) -> tuple[bool, str | None]:
+                role: str = None, office: str = None,
+                email: str = None,
+                new_username: str = None) -> tuple[bool, str | None]:
     """
     Update user details. Only non-None values are changed.
     FIX 6: role is validated against _VALID_ROLES to prevent privilege escalation.
+    new_username renames the account; the caller must ensure no collision exists.
     """
     uname = username.lower().strip()
 
@@ -488,9 +491,14 @@ def update_user(username: str, full_name: str = None,
     if role is not None and role not in _VALID_ROLES:
         return False, f"Invalid role '{role}'."
 
+    new_uname = new_username.lower().strip() if new_username else None
+
     if USE_DB:
         try:
             updates, params = [], []
+            if new_uname and new_uname != uname:
+                updates.append("username = %s")
+                params.append(new_uname)
             if full_name is not None:
                 updates.append("full_name = %s")
                 params.append(full_name.strip())
@@ -500,6 +508,9 @@ def update_user(username: str, full_name: str = None,
             if office is not None:
                 updates.append("office = %s")
                 params.append(office.strip())
+            if email is not None:
+                updates.append("email = %s")
+                params.append(email.strip())
             if not updates:
                 return False, "No fields to update."
             params.append(uname)
@@ -511,17 +522,27 @@ def update_user(username: str, full_name: str = None,
                     )
             return True, None
         except Exception as e:
+            if "unique" in str(e).lower():
+                return False, "Username already taken."
             return False, f"Database error: {e}"
     else:
         users = _load_users_json()
+        # Check for username collision before making any changes
+        if new_uname and new_uname != uname:
+            if any(u["username"] == new_uname for u in users):
+                return False, "Username already taken."
         for u in users:
             if u["username"] == uname:
+                if new_uname and new_uname != uname:
+                    u["username"] = new_uname
                 if full_name is not None:
                     u["full_name"] = full_name.strip()
                 if role is not None:
                     u["role"] = role
                 if office is not None:
                     u["office"] = office.strip()
+                if email is not None:
+                    u["email"] = email.strip()
                 _save_users_json(users)
                 return True, None
         return False, "User not found."

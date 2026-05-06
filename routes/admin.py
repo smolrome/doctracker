@@ -37,8 +37,10 @@ def manage_users():
     except Exception:
         pass
     users = get_all_users()
+    from services.misc import load_saved_offices
+    offices = load_saved_offices()
     return render_template("manage_users.html", users=users,
-                           admin_username=ADMIN_USERNAME)
+                           admin_username=ADMIN_USERNAME, offices=offices)
 
 
 @admin_bp.route("/staff-document-stats")
@@ -694,28 +696,45 @@ def change_password_route(username):
 @admin_bp.route("/edit-user/<username>", methods=["POST"])
 @admin_required
 def edit_user_route(username):
-    """Edit user details: full_name, role, office, and documents_handled."""
-    full_name = request.form.get("full_name", "").strip()
-    role      = request.form.get("role", "").strip()
-    office    = request.form.get("office", "").strip()
-    raw_docs  = request.form.get("documents_handled", "").strip()
-    doc_types = [d.strip() for d in raw_docs.split(",") if d.strip()] if raw_docs else []
+    """Edit user details: username, email, full_name, role, office, documents_handled."""
+    new_username = request.form.get("new_username", "").strip().lower()
+    email        = request.form.get("email", "").strip()
+    full_name    = request.form.get("full_name", "").strip()
+    role         = request.form.get("role", "").strip()
+    office       = request.form.get("office", "").strip()
+    raw_docs     = request.form.get("documents_handled", "").strip()
+    doc_types    = [d.strip() for d in raw_docs.split(",") if d.strip()] if raw_docs else []
+
+    # Prevent renaming to a blank username
+    if new_username == "":
+        new_username = username  # keep original if field was cleared
 
     # Get original user data for audit
     all_users     = get_all_users()
     original_user = next((u for u in all_users if u.get("username") == username), None)
 
-    ok, err = update_user(username,
-                          full_name=full_name if full_name else None,
-                          role=role if role else None,
-                          office=office if office else None)
+    ok, err = update_user(
+        username,
+        full_name    = full_name if full_name else None,
+        role         = role if role else None,
+        office       = office if office else None,
+        email        = email,                               # always pass (blank = clear)
+        new_username = new_username if new_username != username else None,
+    )
 
     if ok:
+        # After a rename the canonical username has changed — use new_username for follow-up calls
+        effective_username = new_username if new_username != username else username
+
         # Always update documents_handled (blank form field → empty list = clear)
-        update_user_documents_handled(username, doc_types)
+        update_user_documents_handled(effective_username, doc_types)
 
         changes = []
         if original_user:
+            if new_username != username:
+                changes.append(f"username: {username} -> {new_username}")
+            if original_user.get("email", "") != email:
+                changes.append(f"email: {original_user.get('email')} -> {email}")
             if original_user.get("full_name") != full_name:
                 changes.append(f"name: {original_user.get('full_name')} -> {full_name}")
             if original_user.get("role") != role:
@@ -730,7 +749,7 @@ def edit_user_route(username):
                   f"admin edited user={username}: {'; '.join(changes) if changes else 'no changes'}",
                   username=session.get("username", "admin"),
                   ip=get_client_ip())
-        flash(f"✅ User '{username}' updated successfully.", "success")
+        flash(f"✅ User '{effective_username}' updated successfully.", "success")
     else:
         flash(f"Failed to update user: {err}", "error")
 
