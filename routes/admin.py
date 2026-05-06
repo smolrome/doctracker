@@ -544,6 +544,70 @@ def send_invite():
         return redirect(url_for("admin.manage_users"))
 
 
+@admin_bp.route("/resend-credentials/<username>", methods=["POST"])
+@admin_required
+def resend_credentials_route(username):
+    """Reset password and resend login credentials to the staff member's email."""
+    import secrets
+    import string
+
+    if username == ADMIN_USERNAME:
+        flash("Cannot resend credentials for the built-in admin account.", "error")
+        return redirect(url_for("admin.manage_users"))
+
+    all_users = get_all_users()
+    user = next((u for u in all_users if u.get("username") == username), None)
+
+    if not user:
+        flash(f"User '{username}' not found.", "error")
+        return redirect(url_for("admin.manage_users"))
+
+    to_email = (user.get("email") or "").strip()
+    if not to_email:
+        flash(f"Cannot resend — '{username}' has no email address on record.", "error")
+        return redirect(url_for("admin.manage_users"))
+
+    # Generate a new 12-char temporary password (at least one digit + one uppercase)
+    alphabet = string.ascii_letters + string.digits
+    pw = [
+        secrets.choice(string.digits),
+        secrets.choice(string.ascii_uppercase),
+        *[secrets.choice(alphabet) for _ in range(10)],
+    ]
+    for j in range(len(pw) - 1, 0, -1):
+        k = secrets.randbelow(j + 1)
+        pw[j], pw[k] = pw[k], pw[j]
+    temp_pw = "".join(pw)
+
+    # Overwrite the user's password with the new temporary one
+    ok, err = update_user_password(username, temp_pw)
+    if not ok:
+        flash(f"Failed to reset password for '{username}': {err}", "error")
+        return redirect(url_for("admin.manage_users"))
+
+    # Email the new credentials
+    base      = _base_url(request.host_url.rstrip("/"))
+    full_name = (user.get("full_name") or username).strip()
+    email_sent, email_err = send_credentials_email(to_email, full_name, username, temp_pw, base)
+
+    audit_log(
+        "credentials_resent",
+        f"user={username} email={to_email} email_sent={email_sent}",
+        username=session.get("username", "admin"),
+        ip=get_client_ip(),
+    )
+
+    if email_sent:
+        flash(f"✅ New credentials sent to {to_email}.", "success")
+    else:
+        flash(
+            f"Password reset but email failed ({email_err}). "
+            f"Share this temporary password manually: {temp_pw}",
+            "error",
+        )
+    return redirect(url_for("admin.manage_users"))
+
+
 @admin_bp.route("/delete-user/<username>", methods=["POST"])
 @admin_required
 def delete_user_route(username):

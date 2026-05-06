@@ -115,11 +115,11 @@ if not _admin_pw_env:
 
 ADMIN_PASSWORD = _admin_pw_env
 
-# ── Email (Brevo) ──────────────────────────────────────────────────────────────
+# ── Email (Gmail SMTP) ─────────────────────────────────────────────────────────
 
-BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
-MAIL_SENDER   = os.environ.get("MAIL_SENDER", "")
-MAIL_ENABLED  = bool(BREVO_API_KEY and MAIL_SENDER)
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
+MAIL_SENDER        = os.environ.get("MAIL_SENDER", "")   # must be the Gmail address
+MAIL_ENABLED       = bool(GMAIL_APP_PASSWORD and MAIL_SENDER)
 
 # ── App URL (for QR codes) ─────────────────────────────────────────────────────
 

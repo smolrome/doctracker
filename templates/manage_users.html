@@ -8,6 +8,12 @@
   border: 1px solid #BFDBFE; border-radius: 4px;
   font-size: 11px; font-weight: 600; padding: 2px 7px;
 }
+.btn-resend {
+  padding: 5px 10px; border-radius: 6px; border: 1px solid #F59E0B;
+  background: #FFFBEB; color: #B45309; font-size: 12px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+}
+.btn-resend:hover { background: #FEF3C7; border-color: #D97706; }
 </style>
 
 <div class="page-header">
@@ -124,6 +130,13 @@
 
         {% if user.username != admin_username %}
         <button type="button" class="btn-pwd" onclick="openPwdModal('{{ user.username }}')">🔑 Password</button>
+        {% endif %}
+
+        {% if user.username != admin_username and user.email %}
+        <form method="post" action="/resend-credentials/{{ user.username }}" style="margin:0;"
+              onsubmit="return confirm('Reset password and resend login credentials to {{ user.email }}?')">
+          <button type="submit" class="btn-resend">📧 Resend Credentials</button>
+        </form>
         {% endif %}
 
         {% if user.username != admin_username %}

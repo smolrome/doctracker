@@ -1,14 +1,19 @@
 """
-services/email.py — Invite token management and Brevo email sending.
+services/email.py — Invite token management and Gmail SMTP email sending.
 """
 import json
 import os
-import urllib.error
-import urllib.request
+import smtplib
+import ssl
 import uuid
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from services.database import USE_DB, get_conn
-from config import BREVO_API_KEY, MAIL_SENDER, MAIL_ENABLED, APP_URL
+from config import GMAIL_APP_PASSWORD, MAIL_SENDER, MAIL_ENABLED, APP_URL
+
+GMAIL_SMTP_HOST = "smtp.gmail.com"
+GMAIL_SMTP_PORT = 465          # SSL — no STARTTLS needed
 
 
 # ── Token helpers ─────────────────────────────────────────────────────────────
@@ -133,30 +138,19 @@ def send_invite_email(to_email: str, to_name: str = "",
     </div>
     """
 
-    payload = json.dumps({
-        "sender":      {"name": "DepEd LAKAD", "email": MAIL_SENDER},
-        "to":          [{"email": to_email, "name": to_name or to_email}],
-        "subject":     "You're Invited - DepEd Leyte LAKAD",
-        "htmlContent": html_body,
-        "textContent": f"{greeting}\n\nRegister here (expires 48hrs):\n{link}",
-    }).encode("utf-8")
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "You're Invited - DepEd Leyte LAKAD"
+    msg["From"]    = f"DepEd LAKAD <{MAIL_SENDER}>"
+    msg["To"]      = f"{to_name} <{to_email}>" if to_name else to_email
+    msg.attach(MIMEText(f"{greeting}\n\nRegister here (expires 48 hrs):\n{link}", "plain"))
+    msg.attach(MIMEText(html_body, "html"))
 
     try:
-        req = urllib.request.Request(
-            "https://api.brevo.com/v3/smtp/email",
-            data=payload,
-            headers={
-                "api-key": BREVO_API_KEY,
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            resp.read()
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP_SSL(GMAIL_SMTP_HOST, GMAIL_SMTP_PORT, context=ctx) as server:
+            server.login(MAIL_SENDER, GMAIL_APP_PASSWORD)
+            server.sendmail(MAIL_SENDER, to_email, msg.as_string())
         return True, token
-    except urllib.error.HTTPError as e:
-        return False, f"Brevo error {e.code}: {e.read().decode()}"
     except Exception as e:
         return False, f"Email error: {e}"
 
@@ -217,34 +211,25 @@ def send_credentials_email(to_email: str, to_name: str,
     </div>
     """
 
-    payload = json.dumps({
-        "sender":      {"name": "DepEd LAKAD", "email": MAIL_SENDER},
-        "to":          [{"email": to_email, "name": to_name or to_email}],
-        "subject":     "Your LAKAD Account — Login Credentials",
-        "htmlContent": html_body,
-        "textContent": (
-            f"{greeting}\n\nYour LAKAD account has been created.\n\n"
-            f"Username: {username}\nTemporary Password: {password}\n\n"
-            f"Log in at: {login_url}\n\nPlease change your password after first login."
-        ),
-    }).encode("utf-8")
+    text_body = (
+        f"{greeting}\n\nYour LAKAD account has been created.\n\n"
+        f"Username: {username}\nTemporary Password: {password}\n\n"
+        f"Log in at: {login_url}\n\nPlease change your password after first login."
+    )
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "Your LAKAD Account — Login Credentials"
+    msg["From"]    = f"DepEd LAKAD <{MAIL_SENDER}>"
+    msg["To"]      = f"{to_name} <{to_email}>" if to_name else to_email
+    msg.attach(MIMEText(text_body, "plain"))
+    msg.attach(MIMEText(html_body, "html"))
 
     try:
-        req = urllib.request.Request(
-            "https://api.brevo.com/v3/smtp/email",
-            data=payload,
-            headers={
-                "api-key": BREVO_API_KEY,
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            resp.read()
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP_SSL(GMAIL_SMTP_HOST, GMAIL_SMTP_PORT, context=ctx) as server:
+            server.login(MAIL_SENDER, GMAIL_APP_PASSWORD)
+            server.sendmail(MAIL_SENDER, to_email, msg.as_string())
         return True, ""
-    except urllib.error.HTTPError as e:
-        return False, f"Brevo error {e.code}: {e.read().decode()}"
     except Exception as e:
         return False, f"Email error: {e}"
 
