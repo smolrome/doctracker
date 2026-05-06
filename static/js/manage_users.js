@@ -13,23 +13,26 @@ function closePwdModal(event) {
 
 // Edit User Modal Functions
 function openEditModal(btn) {
-  var username = btn.getAttribute('data-username');
-  var fullName = btn.getAttribute('data-fullname');
-  var role = btn.getAttribute('data-role');
-  var office = btn.getAttribute('data-office');
-  
-  document.getElementById('editUser').textContent = username;
-  document.getElementById('editUsername').value = username;
-  document.getElementById('editFullName').value = fullName;
-  document.getElementById('editRole').value = role;
-  document.getElementById('editOffice').value = office;
-  document.getElementById('editForm').action = '/edit-user/' + username;
+  var username  = btn.getAttribute('data-username');
+  var fullName  = btn.getAttribute('data-fullname');
+  var role      = btn.getAttribute('data-role');
+  var office    = btn.getAttribute('data-office');
+  var documents = btn.getAttribute('data-documents') || '';
+
+  document.getElementById('editUser').textContent     = username;
+  document.getElementById('editUsername').value       = username;
+  document.getElementById('editFullName').value       = fullName;
+  document.getElementById('editRole').value           = role;
+  document.getElementById('editOffice').value         = office;
+  document.getElementById('editDocuments').value      = documents;
+  document.getElementById('editForm').action          = '/edit-user/' + username;
   document.getElementById('editModal').classList.add('active');
   document.getElementById('editFullName').focus();
 }
 
 function closeEditModal() {
   document.getElementById('editModal').classList.remove('active');
+  document.getElementById('editDocuments').value = '';
 }
 
 // Close modal on Escape key

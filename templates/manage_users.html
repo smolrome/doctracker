@@ -2,6 +2,13 @@
 {% block content %}
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/manage_users.css') }}">
+<style>
+.doc-type-tag {
+  display: inline-block; background: #EFF6FF; color: #1D4ED8;
+  border: 1px solid #BFDBFE; border-radius: 4px;
+  font-size: 11px; font-weight: 600; padding: 2px 7px;
+}
+</style>
 
 <div class="page-header">
   <a href="/" class="page-back">← Dashboard</a>
@@ -74,6 +81,11 @@
             · Last login: {{ user.last_login.strftime('%b %d %I:%M %p') if user.last_login is not string else (user.last_login[:10] + ' ' + (user.last_login[11:16] | time12 if user.last_login|length > 10 else '')) }}
             {% endif %}
           </div>
+          {% if user.documents_handled %}
+          <div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px;">
+            {% for doc in user.documents_handled %}<span class="doc-type-tag">{{ doc }}</span>{% endfor %}
+          </div>
+          {% endif %}
         </div>
       </div>
       <div class="user-actions">
@@ -101,7 +113,13 @@
         {% endif %}
 
         {% if user.username != admin_username %}
-        <button type="button" class="btn-edit" data-username="{{ user.username|e }}" data-fullname="{{ (user.full_name or '')|e }}" data-role="{{ user.role|e }}" data-office="{{ (user.office or '')|e }}" onclick="openEditModal(this)">✏️ Edit</button>
+        <button type="button" class="btn-edit"
+                data-username="{{ user.username|e }}"
+                data-fullname="{{ (user.full_name or '')|e }}"
+                data-role="{{ user.role|e }}"
+                data-office="{{ (user.office or '')|e }}"
+                data-documents="{{ (user.documents_handled or [])|join(', ')|e }}"
+                onclick="openEditModal(this)">✏️ Edit</button>
         {% endif %}
 
         {% if user.username != admin_username %}
@@ -190,6 +208,12 @@
             {% endfor %}
           {% endif %}
         </datalist>
+      </div>
+      <div class="form-group">
+        <label for="editDocuments">Documents Handled</label>
+        <input type="text" id="editDocuments" name="documents_handled"
+               placeholder="e.g. Memorandum, Letter, Report">
+        <div style="font-size:12px;color:#94A3B8;margin-top:4px;">Separate multiple document types with a comma. Leave blank to clear.</div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>

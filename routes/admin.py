@@ -630,33 +630,38 @@ def change_password_route(username):
 @admin_bp.route("/edit-user/<username>", methods=["POST"])
 @admin_required
 def edit_user_route(username):
-    """Edit user details: full_name, role, and office."""
-    from services.auth import update_user
-    
+    """Edit user details: full_name, role, office, and documents_handled."""
     full_name = request.form.get("full_name", "").strip()
-    role = request.form.get("role", "").strip()
-    office = request.form.get("office", "").strip()
-    
-    # Get the original user data for audit
-    from services.auth import get_all_users
-    all_users = get_all_users()
+    role      = request.form.get("role", "").strip()
+    office    = request.form.get("office", "").strip()
+    raw_docs  = request.form.get("documents_handled", "").strip()
+    doc_types = [d.strip() for d in raw_docs.split(",") if d.strip()] if raw_docs else []
+
+    # Get original user data for audit
+    all_users     = get_all_users()
     original_user = next((u for u in all_users if u.get("username") == username), None)
-    
-    ok, err = update_user(username, full_name=full_name if full_name else None, 
-                          role=role if role else None, 
+
+    ok, err = update_user(username,
+                          full_name=full_name if full_name else None,
+                          role=role if role else None,
                           office=office if office else None)
-    
+
     if ok:
-        # Create audit log details
+        # Always update documents_handled (blank form field → empty list = clear)
+        update_user_documents_handled(username, doc_types)
+
         changes = []
         if original_user:
-            if original_user.get('full_name') != full_name:
+            if original_user.get("full_name") != full_name:
                 changes.append(f"name: {original_user.get('full_name')} -> {full_name}")
-            if original_user.get('role') != role:
+            if original_user.get("role") != role:
                 changes.append(f"role: {original_user.get('role')} -> {role}")
-            if original_user.get('office') != office:
+            if original_user.get("office") != office:
                 changes.append(f"office: {original_user.get('office')} -> {office}")
-        
+            old_docs = original_user.get("documents_handled") or []
+            if old_docs != doc_types:
+                changes.append(f"documents_handled: {old_docs} -> {doc_types}")
+
         audit_log("user_edited",
                   f"admin edited user={username}: {'; '.join(changes) if changes else 'no changes'}",
                   username=session.get("username", "admin"),
@@ -664,7 +669,7 @@ def edit_user_route(username):
         flash(f"✅ User '{username}' updated successfully.", "success")
     else:
         flash(f"Failed to update user: {err}", "error")
-    
+
     return redirect(url_for("admin.manage_users"))
 
 
