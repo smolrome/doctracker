@@ -1105,38 +1105,49 @@ def api_admin_update_user(username):
     if not _is_admin_user(user_id):
         return jsonify(error='Admin access required'), 403
     data = request.get_json(force=True, silent=True) or {}
-    from services.auth import update_user, set_user_active, update_user_password, approve_user, get_user
+    from services.auth import update_user, set_user_active, update_user_password, approve_user, get_user, update_user_documents_handled
 
-    full_name = data.get('full_name')
-    role = data.get('role')
-    office = data.get('office')
-    active = data.get('active')
-    approved = data.get('approved')
+    full_name    = data.get('full_name')
+    role         = data.get('role')
+    office       = data.get('office')
+    email        = data.get('email')
+    new_username = (data.get('new_username') or '').strip().lower() or None
+    active       = data.get('active')
+    approved     = data.get('approved')
     new_password = data.get('password')
+    doc_types    = data.get('documents_handled')  # list or None
 
-    if full_name is not None or role is not None or office is not None:
+    if any(v is not None for v in (full_name, role, office, email)) or new_username:
         ok, err = update_user(
             username,
             full_name=full_name if full_name is not None else None,
             role=role if role is not None else None,
             office=office if office is not None else None,
+            email=email if email is not None else None,
+            new_username=new_username if new_username and new_username != username else None,
         )
         if not ok:
             return jsonify(error=err), 400
 
+    # Use the renamed username for follow-up operations
+    effective = new_username if new_username and new_username != username else username
+
+    if isinstance(doc_types, list):
+        update_user_documents_handled(effective, doc_types)
+
     if active is not None:
-        set_user_active(username, bool(active))
+        set_user_active(effective, bool(active))
 
     if approved is True:
-        approve_user(username)
+        approve_user(effective)
 
     if new_password:
-        ok, err = update_user_password(username, new_password)
+        ok, err = update_user_password(effective, new_password)
         if not ok:
             return jsonify(error=err), 400
 
-    updated = get_user(username)
-    return jsonify(serialize(updated or {'username': username}))
+    updated = get_user(effective)
+    return jsonify(serialize(updated or {'username': effective}))
 
 
 @api_bp.route('/admin/users/<username>', methods=['DELETE'])
@@ -1150,6 +1161,221 @@ def api_admin_delete_user(username):
     from services.auth import delete_user
     delete_user(username)
     return jsonify(message='User deleted')
+
+
+@api_bp.route('/admin/users/<username>/resend-credentials', methods=['POST'])
+@jwt_required()
+def api_admin_resend_credentials(username):
+    """Admin: reset password and email new credentials to a user."""
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        return jsonify(error='Admin access required'), 403
+
+    import string
+    from services.auth import get_all_users, update_user_password
+    from services.email import send_credentials_email
+    from services.misc import audit_log
+    from utils import get_client_ip
+    from config import APP_URL
+
+    all_users = get_all_users()
+    user = next((u for u in all_users if u.get('username') == username), None)
+    if not user:
+        return jsonify(error='User not found'), 404
+
+    to_email = (user.get('email') or '').strip()
+    if not to_email:
+        return jsonify(error='User has no email address on record'), 400
+
+    # Generate 12-char temp password (same algo as bulk_create_users)
+    alphabet = string.ascii_letters + string.digits
+    pw = [secrets.choice(string.digits), secrets.choice(string.ascii_uppercase),
+          *[secrets.choice(alphabet) for _ in range(10)]]
+    for j in range(len(pw) - 1, 0, -1):
+        k = secrets.randbelow(j + 1)
+        pw[j], pw[k] = pw[k], pw[j]
+    temp_pw = ''.join(pw)
+
+    ok, err = update_user_password(username, temp_pw)
+    if not ok:
+        return jsonify(error=err or 'Failed to reset password'), 400
+
+    base = (APP_URL or '').rstrip('/')
+    full_name = (user.get('full_name') or username).strip()
+    email_sent, email_err = send_credentials_email(to_email, full_name, username, temp_pw, base)
+
+    audit_log('credentials_resent',
+              f'user={username} email={to_email} email_sent={email_sent}',
+              username=user_id, ip=get_client_ip())
+
+    if email_sent:
+        return jsonify(message=f'Credentials sent to {to_email}', email_sent=True)
+    return jsonify(
+        message=f'Password reset — email failed ({email_err}). Share temp password manually.',
+        email_sent=False,
+        temp_password=temp_pw,
+    ), 207
+
+
+@api_bp.route('/admin/send-invite', methods=['POST'])
+@jwt_required()
+def api_admin_send_invite():
+    """Admin: generate invite link(s) and optionally email them."""
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        return jsonify(error='Admin access required'), 403
+
+    from services.email import send_invite_email, generate_invite_token
+    from services.misc import audit_log
+    from utils import get_client_ip
+    from config import APP_URL, MAIL_ENABLED
+
+    data = request.get_json(force=True, silent=True) or {}
+    mode = data.get('mode', 'single')
+    base = (APP_URL or '').rstrip('/')
+
+    if mode == 'batch':
+        emails = data.get('emails', [])
+        if not isinstance(emails, list) or not emails:
+            return jsonify(error='emails list is required'), 400
+
+        results = []
+        for raw in emails:
+            email = raw.strip()
+            if not email:
+                continue
+            if MAIL_ENABLED:
+                ok, tok = send_invite_email(email, '', base)
+                link = f'{base}/register?token={tok if ok else generate_invite_token(email, "")}'
+                results.append({'email': email, 'ok': ok, 'link': link,
+                                'msg': 'Sent' if ok else 'Email failed — link generated'})
+            else:
+                token = generate_invite_token(email, '')
+                results.append({'email': email, 'ok': True,
+                                'link': f'{base}/register?token={token}', 'msg': 'Link generated'})
+
+        ok_count = sum(1 for r in results if r['ok'])
+        audit_log('batch_invites_sent', f'total={len(results)} ok={ok_count}',
+                  username=user_id, ip=get_client_ip())
+        return jsonify(results=results, total=len(results), sent=ok_count)
+
+    # Single invite
+    to_email = data.get('email', '').strip()
+    to_name  = data.get('name', '').strip()
+    if not to_email:
+        return jsonify(error='email is required'), 400
+
+    if MAIL_ENABLED:
+        ok, tok = send_invite_email(to_email, to_name, base)
+        if ok:
+            link = f'{base}/register?token={tok}'
+            audit_log('invite_sent', f'email={to_email}', username=user_id, ip=get_client_ip())
+            return jsonify(ok=True, link=link, message=f'Invite sent to {to_email}', mail_sent=True)
+        token = generate_invite_token(to_email, to_name)
+        return jsonify(ok=False, link=f'{base}/register?token={token}',
+                       message=f'Email failed. Share link manually.', mail_sent=False)
+
+    token = generate_invite_token(to_email, to_name)
+    audit_log('invite_link_generated', f'email={to_email}', username=user_id, ip=get_client_ip())
+    return jsonify(ok=True, link=f'{base}/register?token={token}',
+                   message=f'Link generated for {to_email}', mail_sent=False, manual=True)
+
+
+@api_bp.route('/admin/bulk-create-users', methods=['POST'])
+@jwt_required()
+def api_admin_bulk_create_users():
+    """Admin: create multiple user accounts from a name+email list."""
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        return jsonify(error='Admin access required'), 403
+
+    import re, string
+    from services.auth import create_user, get_all_users, update_user_documents_handled
+    from services.email import send_credentials_email
+    from services.misc import audit_log
+    from utils import get_client_ip
+    from config import APP_URL, MAIL_ENABLED
+
+    data       = request.get_json(force=True, silent=True) or {}
+    users_data = data.get('users', [])
+    role       = data.get('role', 'staff')
+    office     = data.get('office', '').strip()
+
+    if not isinstance(users_data, list) or not users_data:
+        return jsonify(error='users list is required'), 400
+    if role not in ('admin', 'staff', 'client'):
+        role = 'staff'
+
+    def _make_username(name: str, taken: set) -> str:
+        base = re.sub(r'[^a-z0-9]', '.', name.strip().lower())
+        base = re.sub(r'\.{2,}', '.', base).strip('.') or 'user'
+        cand, sfx = base, 2
+        while cand in taken:
+            cand = f'{base}{sfx}'; sfx += 1
+        return cand
+
+    def _make_password() -> str:
+        alpha = string.ascii_letters + string.digits
+        pw = [secrets.choice(string.digits), secrets.choice(string.ascii_uppercase),
+              *[secrets.choice(alpha) for _ in range(10)]]
+        for j in range(len(pw) - 1, 0, -1):
+            k = secrets.randbelow(j + 1); pw[j], pw[k] = pw[k], pw[j]
+        return ''.join(pw)
+
+    all_users = get_all_users()
+    taken     = {u['username'].lower() for u in all_users}
+    by_email  = {u.get('email', '').strip().lower(): u for u in all_users if u.get('email', '').strip()}
+    base      = (APP_URL or '').rstrip('/')
+    results   = []
+
+    for item in users_data:
+        full_name = (item.get('full_name') or item.get('name') or '').strip()
+        email     = (item.get('email') or '').strip()
+        raw_docs  = item.get('documents_handled', [])
+        doc_types = ([d.strip() for d in raw_docs.split(',') if d.strip()]
+                     if isinstance(raw_docs, str) else list(raw_docs))
+
+        if not email:
+            continue
+
+        # Update existing user if email already known
+        if email.lower() in by_email:
+            existing = by_email[email.lower()]
+            uname = existing['username']
+            if doc_types:
+                update_user_documents_handled(uname, doc_types)
+            results.append({'username': uname, 'full_name': existing.get('full_name') or full_name,
+                            'email': email, 'ok': True, 'updated': True,
+                            'email_sent': False, 'msg': 'Updated existing user'})
+            continue
+
+        uname   = _make_username(full_name or email.split('@')[0], taken)
+        taken.add(uname)
+        temp_pw = _make_password()
+
+        ok, err = create_user(uname, temp_pw, full_name, role=role, email=email,
+                              office=office, documents_handled=doc_types or None)
+        if not ok:
+            results.append({'username': uname, 'full_name': full_name, 'email': email,
+                            'ok': False, 'updated': False, 'msg': err})
+            continue
+
+        email_sent, email_err = False, 'Email not configured'
+        if email and MAIL_ENABLED:
+            email_sent, email_err = send_credentials_email(email, full_name, uname, temp_pw, base)
+
+        results.append({
+            'username': uname, 'full_name': full_name, 'email': email,
+            'ok': True, 'updated': False,
+            'password': temp_pw if not email_sent else None,
+            'email_sent': email_sent,
+            'msg': '' if email_sent else (email_err or ''),
+        })
+
+    ok_count = sum(1 for r in results if r['ok'])
+    audit_log('bulk_users_created', f'total={len(results)} ok={ok_count}',
+              username=user_id, ip=get_client_ip())
+    return jsonify(results=results, total=len(results), created=ok_count), 201
 
 
 # ── Admin: Document full edit ──────────────────────────────────────────────────

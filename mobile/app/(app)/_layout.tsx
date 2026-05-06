@@ -403,6 +403,8 @@ export default function AppLayout() {
         <Tabs.Screen name="dropdown-options" options={{ href: null }} />
         <Tabs.Screen name="office-docs" options={{ href: null }} />
         <Tabs.Screen name="db-status" options={{ href: null }} />
+        <Tabs.Screen name="send-invite" options={{ href: null }} />
+        <Tabs.Screen name="bulk-create-users" options={{ href: null }} />
       </Tabs>
 
       {/* ══════════════════════════════════════════════════════════════════
