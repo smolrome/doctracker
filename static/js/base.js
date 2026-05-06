@@ -410,14 +410,18 @@ function checkPendingDocuments() {
     .then(function (data) {
       const badge         = document.getElementById('pending-badge');
       const headerBadge   = document.getElementById('pending-badge-header');
-      const banner        = document.getElementById('pending-banner');
-      const bannerCount   = document.getElementById('pending-banner-count');
+      const banner        = document.getElementById('incoming-banner');
+      const bannerCount   = document.getElementById('ib-badge');
+      const bannerSub     = document.getElementById('ib-sub-text');
       // Only show badge when count > 0
       if (badge) { badge.textContent = data.count > 0 ? data.count : ''; badge.style.display = data.count > 0 ? 'block' : 'none'; }
       if (headerBadge) { headerBadge.textContent = data.count > 0 ? data.count : ''; headerBadge.style.display = data.count > 0 ? 'block' : 'none'; }
       if (banner && bannerCount) {
         bannerCount.textContent = data.count;
         banner.style.display = data.count > 0 ? 'block' : 'none';
+      }
+      if (bannerSub && data.count > 0) {
+        bannerSub.textContent = data.count + ' document' + (data.count !== 1 ? 's' : '') + ' awaiting your acceptance';
       }
     })
     .catch(function (err) { console.error('Error checking pending documents:', err); });
