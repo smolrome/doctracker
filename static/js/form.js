@@ -199,13 +199,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var docName = docNameInput.value;
 
-    // doc_name is empty — clear any stale auto-fill and stop.
+    // doc_name is empty — unconditionally clear both category and referred-to
+    // so the form resets fully when the user wipes the primary field.
     if (!docName.trim()) {
-      if (currentVal === autoFilledVal) {
-        categoryInput.value = '';
-        delete categoryInput.dataset.autoFilled;
-      }
-      detectReferredTo(categoryInput);
+      categoryInput.value = '';
+      delete categoryInput.dataset.autoFilled;
+      detectReferredTo(categoryInput);   // cascades to clear referred-to too
       return;
     }
 
@@ -264,13 +263,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // If the visible field has a value the user typed/selected manually, never touch it.
     if (currentVisible && currentVisible !== autoFilledName) return;
 
-    // Category is empty — clear any stale auto-fill and stop.
+    // Category is empty — unconditionally clear referred-to so the form
+    // resets fully when the category is wiped (whether by the user or by
+    // detectDocType clearing the auto-filled category above).
     if (!category) {
-      if (currentVisible === autoFilledName) {
-        visibleInput.value = '';
-        hiddenInput.value  = '';
-        delete hiddenInput.dataset.autoFilledName;
-      }
+      visibleInput.value = '';
+      hiddenInput.value  = '';
+      delete hiddenInput.dataset.autoFilledName;
       return;
     }
 
