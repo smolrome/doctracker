@@ -380,7 +380,8 @@ def add():
                 _all  = get_all_users()
                 if _role == "admin":
                     _office_staff = sorted([
-                        {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
+                        {"username": u["username"], "full_name": u.get("full_name") or u["username"],
+                         "documents_handled": u.get("documents_handled") or []}
                         for u in _all
                         if u.get("username") != _cu
                         and u.get("role") != "client"
@@ -388,7 +389,8 @@ def add():
                     ], key=lambda x: x["full_name"])
                 else:
                     _office_staff = sorted([
-                        {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
+                        {"username": u["username"], "full_name": u.get("full_name") or u["username"],
+                         "documents_handled": u.get("documents_handled") or []}
                         for u in _all
                         if u.get("office") == _co
                         and u.get("username") != _cu
@@ -528,7 +530,8 @@ def add():
     # Regular staff only see colleagues within their own office.
     if current_role == "admin":
         office_staff = sorted([
-            {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
+            {"username": u["username"], "full_name": u.get("full_name") or u["username"],
+             "documents_handled": u.get("documents_handled") or []}
             for u in all_users
             if u.get("username") != current_username
             and u.get("role") != "client"
@@ -536,7 +539,8 @@ def add():
         ], key=lambda x: x["full_name"])
     else:
         office_staff = sorted([
-            {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
+            {"username": u["username"], "full_name": u.get("full_name") or u["username"],
+             "documents_handled": u.get("documents_handled") or []}
             for u in all_users
             if u.get("office") == current_office
             and u.get("username") != current_username

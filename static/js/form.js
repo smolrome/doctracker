@@ -205,6 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
         categoryInput.value = '';
         delete categoryInput.dataset.autoFilled;
       }
+      detectReferredTo(categoryInput);
       return;
     }
 
@@ -229,28 +230,122 @@ document.addEventListener('DOMContentLoaded', function() {
         delete categoryInput.dataset.autoFilled;
       }
     }
+
+    // Always cascade into referred-to detection after category may have changed.
+    detectReferredTo(categoryInput);
+  }
+
+  /* ── Auto referred-to detection ─────────────────────────────────────────────
+     Given a category input, find the paired staff combobox in the same <form>
+     and auto-fill the "Referred To" field with the staff member whose
+     documents_handled list contains the selected category.
+     Uses the same guard pattern as detectDocType:
+     - Manual selection is never overwritten (dataset.autoFilledName tracks it).
+     - Exactly one match → auto-fill.
+     - Zero or multiple matches → clear only if we auto-filled it. */
+  function detectReferredTo(categoryInput) {
+    var staff = (typeof window.STAFF !== 'undefined') ? window.STAFF : [];
+    if (!staff.length) return;
+
+    var form = categoryInput.closest('form');
+    if (!form) return;
+
+    var comboWrapper = form.querySelector('.staff-combobox');
+    if (!comboWrapper) return;
+
+    var visibleInput = comboWrapper.querySelector('.staff-combo-input');
+    var hiddenInput  = comboWrapper.querySelector('input[name="referred_to_username"]');
+    if (!visibleInput || !hiddenInput) return;
+
+    var category        = categoryInput.value.trim();
+    var currentVisible  = visibleInput.value.trim();
+    var autoFilledName  = (hiddenInput.dataset.autoFilledName || '').trim();
+
+    // If the visible field has a value the user typed/selected manually, never touch it.
+    if (currentVisible && currentVisible !== autoFilledName) return;
+
+    // Category is empty — clear any stale auto-fill and stop.
+    if (!category) {
+      if (currentVisible === autoFilledName) {
+        visibleInput.value = '';
+        hiddenInput.value  = '';
+        delete hiddenInput.dataset.autoFilledName;
+      }
+      return;
+    }
+
+    // Find staff whose documents_handled contains this category (case-insensitive exact match).
+    var catLower = category.toLowerCase();
+    var matches = staff.filter(function (s) {
+      return (s.documents_handled || []).some(function (doc) {
+        return doc.trim().toLowerCase() === catLower;
+      });
+    });
+
+    if (matches.length === 1) {
+      visibleInput.value               = matches[0].full_name;
+      hiddenInput.value                = matches[0].username;
+      hiddenInput.dataset.autoFilledName = matches[0].full_name;
+    } else {
+      // Zero or multiple — clear only if we auto-filled it.
+      if (currentVisible === autoFilledName) {
+        visibleInput.value = '';
+        hiddenInput.value  = '';
+        delete hiddenInput.dataset.autoFilledName;
+      }
+    }
   }
 
   /* Attach listeners once the DOM is ready.
      Covers all three doc_name inputs: add-form, edit-cart-form, edit-form.
-     Also watches each paired category input: if the user manually changes it,
-     clear dataset.autoFilled so detectDocType never overwrites their choice. */
+     Also watches each paired category input:
+       - on manual change → disown the autoFilled tag so detectDocType never
+         overwrites the user's choice, then cascade into detectReferredTo.
+       - on input/blur → cascade into detectReferredTo so typing a category
+         manually also triggers referred-to auto-fill.
+     Also watches each referred_to visible input:
+       - on input/change → disown the autoFilledName tag so detectReferredTo
+         never overwrites a staff member the user picked manually. */
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('input[name="doc_name"]').forEach(function (docNameInput) {
       docNameInput.addEventListener('input', function () { detectDocType(docNameInput); });
       docNameInput.addEventListener('blur',  function () { detectDocType(docNameInput); });
 
-      // Wire up the paired category input's change guard.
       var form = docNameInput.closest('form');
       if (!form) return;
-      var categoryInput = form.querySelector('input[name="category"]');
-      if (!categoryInput) return;
 
-      categoryInput.addEventListener('change', function () {
-        // User manually selected or typed a value — disown any auto-fill tag
-        // so detectDocType never treats this as an auto-filled value.
-        delete categoryInput.dataset.autoFilled;
-      });
+      // ── Category field guards ───────────────────────────────────────────────
+      var categoryInput = form.querySelector('input[name="category"]');
+      if (categoryInput) {
+        categoryInput.addEventListener('change', function () {
+          // User manually picked a value — disown auto-fill tag.
+          delete categoryInput.dataset.autoFilled;
+          // Still cascade so a manual category pick triggers referred-to fill.
+          detectReferredTo(categoryInput);
+        });
+        categoryInput.addEventListener('input', function () {
+          detectReferredTo(categoryInput);
+        });
+        categoryInput.addEventListener('blur', function () {
+          detectReferredTo(categoryInput);
+        });
+      }
+
+      // ── Referred-to visible input guard ────────────────────────────────────
+      var comboWrapper = form.querySelector('.staff-combobox');
+      if (comboWrapper) {
+        var staffVisible = comboWrapper.querySelector('.staff-combo-input');
+        var staffHidden  = comboWrapper.querySelector('input[name="referred_to_username"]');
+        if (staffVisible && staffHidden) {
+          staffVisible.addEventListener('input', function () {
+            // User is typing manually — disown any auto-filled tracking.
+            delete staffHidden.dataset.autoFilledName;
+          });
+          staffVisible.addEventListener('change', function () {
+            delete staffHidden.dataset.autoFilledName;
+          });
+        }
+      }
     });
   });
 
