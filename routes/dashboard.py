@@ -471,6 +471,40 @@ def add():
                               f"doc_name={item.get('doc_name','')[:80]} sender_org={item.get('sender_org','')}",
                               username=session.get("username","?"), ip=get_client_ip())
 
+                    # ── Auto-transfer if a referred_to_username was set ──────────────────
+                    ref_username = item.get("referred_to_username", "").strip()
+                    if ref_username:
+                        ref_user = next(
+                            (u for u in get_all_users() if u.get("username") == ref_username),
+                            None
+                        )
+                        if ref_user:
+                            ref_office    = ref_user.get("office", "") or ""
+                            ref_full_name = ref_user.get("full_name", "") or ref_username
+                            now_t = now_str()
+                            doc["travel_log"].append({
+                                "office":    current_office,
+                                "action":    "Transferred",
+                                "officer":   actor,
+                                "timestamp": now_t,
+                                "remarks":   "Auto-transferred to referred staff",
+                            })
+                            doc["status"]                = "Transferred"
+                            doc["transferred_to"]        = ref_username
+                            doc["transferred_to_office"] = ref_office
+                            doc["transferred_by"]        = session.get("username")
+                            doc["transferred_at"]        = now_t
+                            doc["transfer_type"]         = "inside_office"
+                            doc["pending_at_staff"]      = ref_username
+                            doc["pending_at_office"]     = ref_office
+                            doc["pending_at_staff_name"] = ref_full_name
+                            doc["transfer_status"]       = "pending"
+                            save_doc(doc)
+                            audit_log("doc_auto_transferred",
+                                      f"doc_id={doc['id']} to={ref_username} office={ref_office}",
+                                      username=session.get("username","?"), ip=get_client_ip())
+                    # ── End auto-transfer ────────────────────────────────────────────────
+
                     logged_doc_ids.append(doc["id"])
 
                 # NOTE: Logging a document never creates a routing slip.
