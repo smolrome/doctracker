@@ -214,12 +214,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var docName = docNameInput.value;
 
-    // doc_name is empty — unconditionally clear both category and referred-to
-    // so the form resets fully when the user wipes the primary field.
+    // doc_name is empty — unconditionally clear category, referred_to, and
+    // referred_to_username so the form resets fully when the user wipes the
+    // primary field.
     if (!docName.trim()) {
       categoryInput.value = '';
       delete categoryInput.dataset.autoFilled;
-      detectReferredTo(categoryInput);   // cascades to clear referred-to too
+
+      var referredToInput         = form.querySelector('input[name="referred_to"]');
+      var referredToUsernameInput = form.querySelector('input[name="referred_to_username"]');
+      if (referredToInput)         referredToInput.value = '';
+      if (referredToUsernameInput) referredToUsernameInput.value = '';
+
+      detectReferredTo(categoryInput);   // cascades to clear combobox state too
       return;
     }
 
