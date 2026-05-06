@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function checkPendingDocuments() {
-  fetch('/api/pending-count')
+  fetch('/pending-count')
     .then(function (r) { return r.json(); })
     .then(function (data) {
       const badge         = document.getElementById('pending-badge');
@@ -430,7 +430,7 @@ function showPendingDocumentsModal() {
   openModal('pending-documents-modal');
   listContainer.innerHTML = '<div class="modal-loading-state"><span>📭</span><p>Loading documents…</p></div>';
 
-  fetch('/api/pending-documents')
+  fetch('/pending-documents')
     .then(function (r) { return r.json(); })
     .then(function (docs) {
       if (!docs.length) {

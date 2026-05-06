@@ -1226,13 +1226,10 @@ def _is_pending_for(doc: dict, username: str, office: str) -> bool:
     return False
 
 
-@dashboard_bp.route("/api/pending-documents")
+@dashboard_bp.route("/pending-documents")
 @login_required
 def get_pending_documents():
     """Get all documents pending acceptance for the current user."""
-    import logging
-    log = logging.getLogger(__name__)
-
     current_user = session.get("username", "")
     current_role = session.get("role", "")
     current_office = session.get("office", "")
@@ -1242,59 +1239,16 @@ def get_pending_documents():
 
     docs = load_docs()
 
-    # ── DEBUG: log comparison details for every doc ──────────────────────────
-    log.warning("=== /api/pending-documents DEBUG ===")
-    log.warning("  current_user=%r  current_role=%r  current_office=%r",
-                current_user, current_role, current_office)
-    for d in docs:
-        if d.get("deleted"):
-            continue
-        result = _is_active_transfer(d) if current_role == "admin" else _is_pending_for(d, current_user, current_office)
-        log.warning(
-            "  doc_id=%-8s  status=%-14s  transfer_status=%-10s  "
-            "pending_at_staff=%-15s  pending_at_office=%-30s  "
-            "accepted_by=%-15s  logged_by=%-15s  => is_pending=%s",
-            d.get("id", "?"),
-            d.get("status", ""),
-            repr(d.get("transfer_status", "")),
-            repr(d.get("pending_at_staff", "")),
-            repr(d.get("pending_at_office", "")),
-            repr(d.get("accepted_by", "")),
-            repr(d.get("logged_by", "")),
-            result,
-        )
-    log.warning("=== END DEBUG ===")
-    # ── END DEBUG ─────────────────────────────────────────────────────────────
-
     if current_role == "admin":
         # Admins see ALL currently-pending docs system-wide (primary + legacy).
         pending = [d for d in docs if _is_active_transfer(d)]
     else:
         pending = [d for d in docs if _is_pending_for(d, current_user, current_office)]
 
-    # TEMPORARY DEBUG — remove before commit
-    debug_info = {
-        'current_user': current_user,
-        'current_office': current_office,
-        'current_role': current_role,
-        'total_docs': len(docs),
-        'pending_count': len(pending),
-        'sample_pending_fields': [
-            {
-                'id': d.get('id'),
-                'transfer_status': d.get('transfer_status'),
-                'pending_at_staff': d.get('pending_at_staff'),
-                'pending_at_office': d.get('pending_at_office'),
-                'status': d.get('status'),
-                'deleted': d.get('deleted'),
-            }
-            for d in docs if d.get('transfer_status') == 'pending'
-        ]
-    }
-    return jsonify({'pending': pending, 'debug': debug_info})
+    return jsonify(pending)
 
 
-@dashboard_bp.route("/api/pending-count")
+@dashboard_bp.route("/pending-count")
 @login_required
 def get_pending_count():
     """Get count of documents pending acceptance for the current user."""
