@@ -453,11 +453,15 @@ function showPendingDocumentsModal() {
               <span class="badge badge-pending">Pending</span>
             </div>
             <div class="pending-doc-meta">
+              ${doc.doc_id ? `<strong>Ref:</strong> ${doc.doc_id}<br>` : ''}
+              ${doc.sender_name || doc.sender_org ? `<strong>Sender:</strong> ${doc.sender_name || doc.sender_org}<br>` : ''}
+              ${doc.category ? `<strong>Category:</strong> ${doc.category}<br>` : ''}
               <strong>From:</strong> ${doc.transferred_by || 'Unknown'}<br>
               <strong>Office:</strong> ${doc.transferred_to_office || doc.pending_at_office || 'N/A'}<br>
               <strong>Transferred:</strong> ${doc.transferred_at || 'Unknown'}
             </div>
             <div class="pending-doc-actions">
+              <a href="/view/${docId}" target="_blank" class="btn btn-ghost btn-sm">👁 View</a>
               <button class="btn btn-success btn-sm" onclick="openAcceptModal('${docId}')">✓ Accept</button>
               <button class="btn btn-danger  btn-sm" onclick="showRejectionModal('${docId}')">✕ Reject</button>
             </div>

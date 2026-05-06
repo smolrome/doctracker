@@ -50,6 +50,10 @@
   {% if logged_in %}
   <a href="/edit/{{ doc.id }}" class="btn btn-primary">✏️ Edit</a>
   <a href="/transfer/{{ doc.id }}" class="btn btn-purple">🔄 Transfer</a>
+  {% if doc.transfer_status == 'pending' and doc.pending_at_staff == current_user %}
+  <button class="btn btn-success" onclick="openAcceptModal('{{ doc.id }}')">✅ Accept</button>
+  <button class="btn btn-danger" onclick="showRejectionModal('{{ doc.id }}')">❌ Reject</button>
+  {% endif %}
   <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ QR Code</a>
   <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
   {% if doc.routing_slip_id and slip_type == 'routing' and (session.get('role') in ['admin', 'staff']) %}
