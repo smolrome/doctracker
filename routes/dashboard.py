@@ -1164,33 +1164,64 @@ def db_status():
 
 # ── Document Accept/Reject Routes ─────────────────────────────────────────────
 
+def _is_active_transfer(doc: dict) -> bool:
+    """
+    Return True if this document is currently in-transit (awaiting acceptance
+    by anyone).  Used by the admin receive modal to show all pending docs
+    system-wide.  Covers both current docs (transfer_status="pending") and
+    legacy docs routed before that field was introduced.
+    """
+    if doc.get("deleted"):
+        return False
+    ts = (doc.get("transfer_status") or "").strip()
+    pending_staff  = (doc.get("pending_at_staff") or "").strip()
+    pending_office = (doc.get("pending_at_office") or "").strip()
+    # Primary: explicit flag
+    if ts == "pending":
+        return True
+    # Legacy: no flag but routing fields are set and not yet accepted
+    if not ts and (pending_staff or pending_office) and not doc.get("accepted_by"):
+        return True
+    return False
+
+
 def _is_pending_for(doc: dict, username: str, office: str) -> bool:
     """
     Return True if this document is actively awaiting acceptance by the given
     user or office.
 
-    The authoritative flag is transfer_status == "pending".  This correctly
-    handles docs that were previously accepted and then re-transferred — their
-    old accepted_by value is irrelevant once a new pending transfer is in flight.
+    Two paths are checked:
+      1. Primary   — transfer_status == "pending" (set by all current transfer
+                     routes).  Works correctly even for previously-accepted docs
+                     that have been re-transferred, because transfer_status is
+                     always reset to "pending" on each new transfer.
+      2. Legacy    — transfer_status is absent/blank but pending_at_staff is set
+                     and the doc has not yet been accepted.  Covers docs that were
+                     routed with older code before transfer_status was introduced.
     """
     if doc.get("deleted"):
-        return False
-
-    # Only documents whose transfer is currently in-flight qualify.
-    if doc.get("transfer_status") != "pending":
         return False
 
     pending_staff  = (doc.get("pending_at_staff") or "").strip()
     pending_office = (doc.get("pending_at_office") or "").strip().lower()
     office_lower   = (office or "").strip().lower()
+    ts             = (doc.get("transfer_status") or "").strip()
 
-    # Direct staff assignment
-    if pending_staff and pending_staff == username:
-        return True
+    def _matches_user():
+        if pending_staff and pending_staff == username:
+            return True
+        if not pending_staff and pending_office and office_lower and pending_office == office_lower:
+            return True
+        return False
 
-    # Office-level assignment (no specific staff named)
-    if not pending_staff and pending_office and office_lower and pending_office == office_lower:
-        return True
+    # ── Primary: explicit "pending" transfer_status ────────────────────────
+    if ts == "pending":
+        return _matches_user()
+
+    # ── Legacy: no transfer_status but pending_at_staff is set and not yet
+    #    accepted (covers docs routed before transfer_status was introduced) ─
+    if not ts and pending_staff and not doc.get("accepted_by"):
+        return _matches_user()
 
     return False
 
@@ -1209,8 +1240,8 @@ def get_pending_documents():
     docs = load_docs()
 
     if current_role == "admin":
-        # Admins see all docs with transfer_status == "pending"
-        pending = [d for d in docs if d.get("transfer_status") == "pending"]
+        # Admins see ALL currently-pending docs system-wide (primary + legacy).
+        pending = [d for d in docs if _is_active_transfer(d)]
     else:
         pending = [d for d in docs if _is_pending_for(d, current_user, current_office)]
 
@@ -1231,7 +1262,7 @@ def get_pending_count():
     docs = load_docs()
 
     if current_role == "admin":
-        count = sum(1 for d in docs if d.get("transfer_status") == "pending")
+        count = sum(1 for d in docs if _is_active_transfer(d))
     else:
         count = sum(1 for d in docs if _is_pending_for(d, current_user, current_office))
 
