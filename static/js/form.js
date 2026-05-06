@@ -149,3 +149,73 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+
+/* ── Auto document type detection ────────────────────────────────────────────
+   Listens on every input[name="doc_name"] in the page. When the user types,
+   checks the value against the options in the associated <datalist> (reached
+   via the sibling input[name="category"] in the same <form>). Auto-fills the
+   category field if it is empty and a word-boundary match is found.
+   ─────────────────────────────────────────────────────────────────────────── */
+(function () {
+
+  /* Escape special regex characters in a string. */
+  function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /* Return all non-empty option values from the <datalist> linked to a
+     given input[name="category"] via its list="..." attribute. */
+  function getDatalistOptions(categoryInput) {
+    var listId = categoryInput.getAttribute('list');
+    if (!listId) return [];
+    var datalist = document.getElementById(listId);
+    if (!datalist) return [];
+    return Array.from(datalist.options)
+      .map(function (opt) { return opt.value.trim(); })
+      .filter(Boolean);
+  }
+
+  /* Core detection: given a doc_name input, find its paired category input
+     (nearest input[name="category"] in the same <form>), then test each
+     datalist option against the doc_name value using word boundaries.
+     Only writes if the category field is currently empty.
+     Longest match wins when multiple options match. */
+  function detectDocType(docNameInput) {
+    var form = docNameInput.closest('form');
+    if (!form) return;
+
+    var categoryInput = form.querySelector('input[name="category"]');
+    if (!categoryInput) return;
+
+    // Never overwrite what the user has already typed.
+    if (categoryInput.value.trim()) return;
+
+    var docName = docNameInput.value;
+    if (!docName.trim()) return;
+
+    var options = getDatalistOptions(categoryInput);
+    if (!options.length) return;
+
+    // Collect all word-boundary matches.
+    var matches = options.filter(function (option) {
+      var pattern = new RegExp('\\b' + escapeRegex(option) + '\\b', 'i');
+      return pattern.test(docName);
+    });
+
+    if (!matches.length) return;
+
+    // Longest match is most specific — use it.
+    matches.sort(function (a, b) { return b.length - a.length; });
+    categoryInput.value = matches[0];
+  }
+
+  /* Attach listeners once the DOM is ready.
+     Covers all three doc_name inputs: add-form, edit-cart-form, edit-form. */
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('input[name="doc_name"]').forEach(function (docNameInput) {
+      docNameInput.addEventListener('input', function () { detectDocType(docNameInput); });
+      docNameInput.addEventListener('blur',  function () { detectDocType(docNameInput); });
+    });
+  });
+
+}());
