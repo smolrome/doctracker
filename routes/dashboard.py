@@ -881,7 +881,6 @@ def transfer_doc(doc_id):
             new_status   = "Transferred" if transfer_type == "inside_office" else "Routed"
 
         doc["status"]                = new_status
-        doc["logged_by"]             = new_staff
         doc["transferred_to"]        = new_staff
         doc["transferred_to_office"] = new_staff_office
         doc["transferred_by"]        = current_user
@@ -891,6 +890,8 @@ def transfer_doc(doc_id):
         doc["pending_at_office"]     = new_staff_office
         doc["pending_at_staff_name"] = new_staff_full_name
         doc["transfer_status"]       = "pending"
+        # NOTE: logged_by is NOT updated here — the receiving staff takes
+        # ownership only after they accept via the receive modal.
 
         current_full_name = session.get("full_name") or session.get("username")
         current_office    = session.get("office") or "DepEd Leyte Division"
@@ -1095,7 +1096,6 @@ def transfer_batch():
             action_label = f"Batch {'Transferred' if transfer_type == 'inside_office' else 'Routed'} — {status_note} (Cycle {cycle + 1})"
 
         doc["status"]                = "Transferred" if transfer_type == "inside_office" else "Routed"
-        doc["logged_by"]             = new_staff
         doc["transferred_to"]        = new_staff
         doc["transferred_to_office"] = new_staff_office
         doc["transferred_by"]        = current_user
@@ -1105,6 +1105,8 @@ def transfer_batch():
         doc["pending_at_office"]     = new_staff_office
         doc["pending_at_staff_name"] = new_staff_full_name
         doc["transfer_status"]       = "pending"
+        # NOTE: logged_by is NOT updated here — the receiving staff takes
+        # ownership only after they accept via the receive modal.
 
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
@@ -1269,11 +1271,12 @@ def accept_document(doc_id):
 
     try:
         receiving_office = doc.get("pending_at_office", "") or doc.get("transferred_to_office", "")
-        doc["transfer_status"] = "accepted"
-        doc["accepted_by"]     = current_user
-        doc["accepted_by_name"] = current_full_name or current_user
-        doc["accepted_at"]     = now_str()
-        doc["status"]          = "Received"
+        doc["transfer_status"]   = "accepted"
+        doc["accepted_by"]       = current_user
+        doc["accepted_by_name"]  = current_full_name or current_user
+        doc["accepted_at"]       = now_str()
+        doc["status"]            = "Received"
+        doc["logged_by"]         = current_user        # ← transfer ownership now
         if not doc.get("date_received"):
             doc["date_received"] = now_str()[:16].replace("T", " ")
         doc["pending_at_staff"]  = ""
@@ -1359,10 +1362,11 @@ def reject_document(doc_id):
     doc["rejection_reason"] = rejection_reason
     doc["status"] = "Rejected"
 
-    # Return document to the sender
-    doc["logged_by"] = original_sender
+    # Return document to the sender — clear pending fields so it
+    # goes straight back to the sender's dashboard, not receive modal.
+    doc["logged_by"]         = original_sender
     doc["pending_at_office"] = ""
-    doc["pending_at_staff"] = original_sender
+    doc["pending_at_staff"]  = ""
     
     # Add to travel log
     doc.setdefault("travel_log", []).append({
