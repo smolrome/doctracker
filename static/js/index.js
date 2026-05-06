@@ -1223,7 +1223,7 @@ function checkPendingDocuments() {
   var ibBadge       = document.getElementById('ib-badge');
   var ibSub         = document.getElementById('ib-sub-text');
   if (!badge && !banner && !headerBadge) return;
-  fetch('/api/pending-count')
+  fetch('/pending-count')
     .then(function(r) { return r.json(); })
     .then(function(data) {
       var count = data.count || 0;
