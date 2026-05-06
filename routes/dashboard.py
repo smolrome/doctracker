@@ -1272,7 +1272,26 @@ def get_pending_documents():
     else:
         pending = [d for d in docs if _is_pending_for(d, current_user, current_office)]
 
-    return jsonify(pending)
+    # TEMPORARY DEBUG — remove before commit
+    debug_info = {
+        'current_user': current_user,
+        'current_office': current_office,
+        'current_role': current_role,
+        'total_docs': len(docs),
+        'pending_count': len(pending),
+        'sample_pending_fields': [
+            {
+                'id': d.get('id'),
+                'transfer_status': d.get('transfer_status'),
+                'pending_at_staff': d.get('pending_at_staff'),
+                'pending_at_office': d.get('pending_at_office'),
+                'status': d.get('status'),
+                'deleted': d.get('deleted'),
+            }
+            for d in docs if d.get('transfer_status') == 'pending'
+        ]
+    }
+    return jsonify({'pending': pending, 'debug': debug_info})
 
 
 @dashboard_bp.route("/api/pending-count")
