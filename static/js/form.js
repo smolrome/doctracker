@@ -83,14 +83,14 @@ function saveFormFields() {
 function restoreFormFields() {
   var form = document.getElementById('add-form');
   if (!form) return;
-  
+
   var stored = localStorage.getItem(FORM_STORAGE_KEY);
   if (!stored) return;
-  
+
   try {
     var fields = JSON.parse(stored);
     var restoredCount = 0;
-    
+
     Object.keys(fields).forEach(function(name) {
       var input = form.querySelector('[name="' + name + '"]');
       if (input) {
@@ -98,8 +98,22 @@ function restoreFormFields() {
         restoredCount++;
       }
     });
-    
+
     if (restoredCount > 0) {
+      // Drop the autoFilled tag on the category input so it is not treated
+      // as a previously auto-filled value from this session — any non-empty
+      // restored value will be left alone by detectDocType (treated as manual),
+      // and an empty category will be filled from the restored doc_name.
+      var categoryInput = form.querySelector('input[name="category"]');
+      if (categoryInput) delete categoryInput.dataset.autoFilled;
+
+      // Re-run doc-type detection so an empty category gets filled from the
+      // restored doc_name, and auto-fill data tags are set correctly.
+      var docNameInput = form.querySelector('input[name="doc_name"]');
+      if (docNameInput && typeof window.detectDocType === 'function') {
+        window.detectDocType(docNameInput);
+      }
+
       // Show toast notification
       showToast('Form data restored from previous session', 'info');
     }
@@ -135,17 +149,18 @@ document.addEventListener('DOMContentLoaded', function() {
     input.addEventListener('change', saveFormFields);
   });
   
-  // Clear saved fields after successful submission
+  // Clear saved fields when the add-to-cart form is submitted.
+  // Called synchronously (no setTimeout) so localStorage is cleared before
+  // the browser navigates away — a setTimeout would lose the race.
   form.addEventListener('submit', function() {
-    // Clear after a short delay to ensure form submits properly
-    setTimeout(clearSavedFormFields, 500);
+    clearSavedFormFields();
   });
-  
-  // Also clear when cart is submitted
+
+  // Also clear when the Log-All cart form is submitted.
   var submitAllForm = document.getElementById('submit-all-form');
   if (submitAllForm) {
     submitAllForm.addEventListener('submit', function() {
-      setTimeout(clearSavedFormFields, 500);
+      clearSavedFormFields();
     });
   }
 });
@@ -294,6 +309,10 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   }
+
+  /* Expose detectDocType globally so restoreFormFields() (outside this IIFE)
+     can call it after field values are written back from localStorage. */
+  window.detectDocType = detectDocType;
 
   /* Attach listeners once the DOM is ready.
      Covers all three doc_name inputs: add-form, edit-cart-form, edit-form.
