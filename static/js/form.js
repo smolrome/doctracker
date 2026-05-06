@@ -178,8 +178,11 @@ document.addEventListener('DOMContentLoaded', function() {
   /* Core detection: given a doc_name input, find its paired category input
      (nearest input[name="category"] in the same <form>), then test each
      datalist option against the doc_name value using word boundaries.
-     Only writes if the category field is currently empty.
-     Longest match wins when multiple options match. */
+     - If category holds a value the user typed manually, never touch it.
+     - If category holds a value we auto-filled (tracked via dataset.autoFilled),
+       allow re-detection to clear or replace it as the doc_name evolves.
+     - Exactly one match → auto-fill and tag dataset.autoFilled.
+     - Zero or multiple matches → clear only if we auto-filled it, then leave empty. */
   function detectDocType(docNameInput) {
     var form = docNameInput.closest('form');
     if (!form) return;
@@ -187,11 +190,23 @@ document.addEventListener('DOMContentLoaded', function() {
     var categoryInput = form.querySelector('input[name="category"]');
     if (!categoryInput) return;
 
-    // Never overwrite what the user has already typed.
-    if (categoryInput.value.trim()) return;
+    var currentVal   = categoryInput.value.trim();
+    var autoFilledVal = (categoryInput.dataset.autoFilled || '').trim();
+
+    // If the field has a value that we did NOT auto-fill, it was manually
+    // typed — never overwrite the user's choice.
+    if (currentVal && currentVal !== autoFilledVal) return;
 
     var docName = docNameInput.value;
-    if (!docName.trim()) return;
+
+    // doc_name is empty — clear any stale auto-fill and stop.
+    if (!docName.trim()) {
+      if (currentVal === autoFilledVal) {
+        categoryInput.value = '';
+        delete categoryInput.dataset.autoFilled;
+      }
+      return;
+    }
 
     var options = getDatalistOptions(categoryInput);
     if (!options.length) return;
@@ -202,19 +217,40 @@ document.addEventListener('DOMContentLoaded', function() {
       return pattern.test(docName);
     });
 
-    if (!matches.length) return;
-
-    // Longest match is most specific — use it.
-    matches.sort(function (a, b) { return b.length - a.length; });
-    categoryInput.value = matches[0];
+    if (matches.length === 1) {
+      // Exactly one match — auto-fill and tag it.
+      categoryInput.value = matches[0];
+      categoryInput.dataset.autoFilled = matches[0];
+    } else {
+      // Zero or multiple matches — ambiguous or nothing found.
+      // Clear only if the current value was previously auto-filled.
+      if (currentVal === autoFilledVal) {
+        categoryInput.value = '';
+        delete categoryInput.dataset.autoFilled;
+      }
+    }
   }
 
   /* Attach listeners once the DOM is ready.
-     Covers all three doc_name inputs: add-form, edit-cart-form, edit-form. */
+     Covers all three doc_name inputs: add-form, edit-cart-form, edit-form.
+     Also watches each paired category input: if the user manually changes it,
+     clear dataset.autoFilled so detectDocType never overwrites their choice. */
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('input[name="doc_name"]').forEach(function (docNameInput) {
       docNameInput.addEventListener('input', function () { detectDocType(docNameInput); });
       docNameInput.addEventListener('blur',  function () { detectDocType(docNameInput); });
+
+      // Wire up the paired category input's change guard.
+      var form = docNameInput.closest('form');
+      if (!form) return;
+      var categoryInput = form.querySelector('input[name="category"]');
+      if (!categoryInput) return;
+
+      categoryInput.addEventListener('change', function () {
+        // User manually selected or typed a value — disown any auto-fill tag
+        // so detectDocType never treats this as an auto-filled value.
+        delete categoryInput.dataset.autoFilled;
+      });
     });
   });
 
