@@ -309,6 +309,8 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('input[name="doc_name"]').forEach(function (docNameInput) {
       docNameInput.addEventListener('input', function () { detectDocType(docNameInput); });
       docNameInput.addEventListener('blur',  function () { detectDocType(docNameInput); });
+      // Handle browser-restored values that exist before listeners were attached.
+      detectDocType(docNameInput);
 
       var form = docNameInput.closest('form');
       if (!form) return;
@@ -346,6 +348,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
     });
+  });
+
+  // Re-run detection when the page is restored from the back/forward cache —
+  // that's when the browser re-populates form fields without firing DOMContentLoaded.
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted) {
+      document.querySelectorAll('input[name="doc_name"]').forEach(function (docNameInput) {
+        detectDocType(docNameInput);
+      });
+    }
   });
 
 }());

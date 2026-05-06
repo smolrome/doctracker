@@ -7,7 +7,7 @@
   <div class="page-title">✏️ Edit Document</div>
 </div>
 
-<form method="post">
+<form method="post" autocomplete="off">
   <div class="form-card">
     <h3>📄 Document Identification</h3>
     <div class="form-row">
@@ -155,7 +155,7 @@
       <h2>✏️ Edit Document</h2>
       <button class="edit-cart-modal-close" onclick="closeEditCartModal(null)">&times;</button>
     </div>
-    <form method="post" class="edit-cart-form">
+    <form method="post" class="edit-cart-form" autocomplete="off">
       <input type="hidden" name="_action" value="update"/>
       <input type="hidden" name="tmp_id" value="{{ edit_item.tmp_id }}"/>
       
@@ -324,12 +324,12 @@ document.addEventListener('keydown', function(e) {
           </div>
         </div>
         <div style="display:flex;gap:8px;">
-          <form method="post" style="margin:0;">
+          <form method="post" style="margin:0;" autocomplete="off">
             <input type="hidden" name="_action" value="edit"/>
             <input type="hidden" name="tmp_id" value="{{ item.tmp_id }}"/>
             <button type="submit" class="btn-edit">✏️ Edit</button>
           </form>
-          <form method="post" style="margin:0;" onsubmit="return confirm('Are you sure you want to remove this document from the log list?');">
+          <form method="post" style="margin:0;" onsubmit="return confirm('Are you sure you want to remove this document from the log list?');" autocomplete="off">
             <input type="hidden" name="_action" value="remove"/>
             <input type="hidden" name="tmp_id" value="{{ item.tmp_id }}"/>
             <button type="submit" class="btn-remove">✕ Remove</button>
@@ -339,7 +339,7 @@ document.addEventListener('keydown', function(e) {
       {% endfor %}
     </div>
     <div class="cart-modal-footer">
-      <form method="post" id="submit-all-form">
+      <form method="post" id="submit-all-form" autocomplete="off">
         <input type="hidden" name="_action" value="submit_all"/>
         <button type="submit" class="btn-submit-all" onclick="showLoading('Logging all documents...')">
           💾 Log All {{ cart|length }} Document{{ 's' if cart|length != 1 else '' }}
@@ -384,7 +384,7 @@ document.addEventListener('keydown', function(e) {
   {% if cart %}
   <div class="submit-all-wrap" style="display:none;">
     <p>✅ <strong>{{ cart|length }} document{{ 's' if cart|length != 1 else '' }}</strong> ready to log.</p>
-    <form method="post">
+    <form method="post" autocomplete="off">
       <input type="hidden" name="_action" value="submit_all"/>
       <button type="submit" class="btn-submit-all" onclick="showLoading('Logging all documents...')">
         💾 Log All {{ cart|length }} Document{{ 's' if cart|length != 1 else '' }}
@@ -405,12 +405,12 @@ document.addEventListener('keydown', function(e) {
         {% if item.description %}<strong>Remarks:</strong> {{ item.description[:80] }}{% if item.description|length > 80 %}…{% endif %}{% endif %}
       </div>
     </div>
-    <form method="post" style="margin:0;display:flex;gap:8px;">
+    <form method="post" style="margin:0;display:flex;gap:8px;" autocomplete="off">
       <input type="hidden" name="_action" value="edit"/>
       <input type="hidden" name="tmp_id" value="{{ item.tmp_id }}"/>
       <button type="submit" class="btn-edit">✏️ Edit</button>
     </form>
-    <form method="post" style="margin:0;" onsubmit="return confirm('Are you sure you want to remove this document from the log list?');">
+    <form method="post" style="margin:0;" onsubmit="return confirm('Are you sure you want to remove this document from the log list?');" autocomplete="off">
       <input type="hidden" name="_action" value="remove"/>
       <input type="hidden" name="tmp_id" value="{{ item.tmp_id }}"/>
       <button type="submit" class="btn-remove">✕ Remove</button>
@@ -430,7 +430,7 @@ document.addEventListener('keydown', function(e) {
   <div class="add-form-title">
     ➕ Add {% if cart %}Another{% endif %} Document
   </div>
-  <form method="post" id="add-form">
+  <form method="post" id="add-form" autocomplete="off">
     <input type="hidden" name="_action" value="add"/>
     <div class="form-row">
       <div class="form-group">
