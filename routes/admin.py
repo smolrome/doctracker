@@ -8,6 +8,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from services.auth import (
     create_user, delete_user, get_all_users, set_user_active,
     update_user_password, update_user, approve_user, get_pending_clients,
+    update_user_documents_handled,
 )
 from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
@@ -723,7 +724,7 @@ def clear_database():
 @admin_bp.route("/api/parse-excel-users", methods=["POST"])
 @admin_required
 def parse_excel_users():
-    """Parse an uploaded Excel file and return name+email rows as JSON."""
+    """Parse an uploaded Excel file and return name+email+documents rows as JSON."""
     import openpyxl, io
     f = request.files.get("file")
     if not f:
@@ -732,18 +733,20 @@ def parse_excel_users():
         wb = openpyxl.load_workbook(io.BytesIO(f.read()), data_only=True)
         ws = wb.active
 
-        # Find header row (scan first 5 rows for name+email columns)
-        name_col = email_col = header_row = None
+        # Find header row (scan first 5 rows for name+email+documents columns)
+        name_col = email_col = docs_col = header_row = None
         for row in ws.iter_rows(min_row=1, max_row=5):
-            ni = ei = None
+            ni = ei = di = None
             for cell in row:
                 h = str(cell.value or "").strip().lower()
                 if ni is None and ("name" in h or "full" in h):
                     ni = cell.column
                 if ei is None and ("email" in h or "mail" in h):
                     ei = cell.column
+                if di is None and ("document" in h or "handled" in h):
+                    di = cell.column
             if ni and ei:
-                name_col, email_col, header_row = ni, ei, cell.row
+                name_col, email_col, docs_col, header_row = ni, ei, di, cell.row
                 break
 
         if not header_row:
@@ -753,8 +756,9 @@ def parse_excel_users():
         for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
             name  = str(row[name_col - 1]  or "").strip()
             email = str(row[email_col - 1] or "").strip()
+            docs  = str(row[docs_col - 1]  or "").strip() if docs_col else ""
             if email:
-                rows.append({"name": name, "email": email})
+                rows.append({"name": name, "email": email, "documents": docs})
 
         if not rows:
             return jsonify({"error": "No data rows found after the header."}), 422
@@ -802,12 +806,19 @@ def bulk_create_users():
     results = None
 
     if request.method == "POST":
-        full_names = request.form.getlist("full_name")
-        emails     = request.form.getlist("email")
+        full_names   = request.form.getlist("full_name")
+        emails       = request.form.getlist("email")
+        docs_handled = request.form.getlist("documents_handled")
 
-        # Collect all existing usernames so we can avoid collisions
+        # Collect all existing users for collision detection and email lookup
         all_users = get_all_users()
         taken = {u["username"].lower() for u in all_users} | {ADMIN_USERNAME.lower()}
+        # Build a case-insensitive email → user map for update-if-exists logic
+        existing_by_email = {
+            u.get("email", "").strip().lower(): u
+            for u in all_users
+            if u.get("email", "").strip()
+        }
 
         base = _base_url(request.host_url.rstrip("/"))
         results = []
@@ -824,15 +835,45 @@ def bulk_create_users():
             if not email:
                 continue
 
+            # Parse documents_handled: comma-separated string → list
+            raw_docs  = docs_handled[i].strip() if i < len(docs_handled) else ""
+            doc_types = [d.strip() for d in raw_docs.split(",") if d.strip()] if raw_docs else []
+
+            # ── Update existing user if email already exists ──────────────
+            email_lower = email.lower()
+            if email_lower in existing_by_email:
+                existing = existing_by_email[email_lower]
+                uname    = existing["username"]
+                if doc_types:
+                    update_user_documents_handled(uname, doc_types)
+                results.append({
+                    "username":          uname,
+                    "full_name":         existing.get("full_name") or full_name,
+                    "email":             email,
+                    "role":              existing.get("role", role),
+                    "office":            existing.get("office", office),
+                    "ok":                True,
+                    "updated":           True,
+                    "documents_handled": doc_types,
+                    "password":          None,
+                    "email_sent":        False,
+                    "email_err":         "",
+                    "msg":               "",
+                })
+                continue
+
+            # ── Create new user ───────────────────────────────────────────
             uname   = _make_username(full_name or email.split("@")[0], taken)
             taken.add(uname)
             temp_pw = _make_password()
 
-            ok, err = create_user(uname, temp_pw, full_name, role=role, email=email, office=office)
+            ok, err = create_user(uname, temp_pw, full_name, role=role, email=email,
+                                  office=office, documents_handled=doc_types or None)
             if not ok:
                 results.append({
                     "username": uname, "full_name": full_name, "email": email,
-                    "ok": False, "msg": err, "password": None, "email_sent": False,
+                    "ok": False, "updated": False, "msg": err,
+                    "password": None, "email_sent": False,
                 })
                 continue
 
@@ -843,15 +884,18 @@ def bulk_create_users():
                 )
 
             results.append({
-                "username":   uname,
-                "full_name":  full_name,
-                "email":      email,
-                "role":       role,
-                "office":     office,
-                "ok":         True,
-                "password":   temp_pw if not email_sent else None,
-                "email_sent": email_sent,
-                "email_err":  email_err if not email_sent else "",
+                "username":          uname,
+                "full_name":         full_name,
+                "email":             email,
+                "role":              role,
+                "office":            office,
+                "ok":                True,
+                "updated":           False,
+                "documents_handled": doc_types,
+                "password":          temp_pw if not email_sent else None,
+                "email_sent":        email_sent,
+                "email_err":         email_err if not email_sent else "",
+                "msg":               "",
             })
 
         ok_count = sum(1 for r in results if r["ok"])

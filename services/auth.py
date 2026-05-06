@@ -143,8 +143,14 @@ def hmac_safe_compare(a: str, b: str) -> bool:
 
 def create_user(username: str, password: str, full_name: str = "",
                 role: str = "staff", office: str = "",
-                email: str = "") -> tuple[bool, str | None]:
-    """Create a new user. Returns (success, error_message)."""
+                email: str = "",
+                documents_handled: list | None = None) -> tuple[bool, str | None]:
+    """Create a new user. Returns (success, error_message).
+
+    Requires DB column for documents_handled:
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS documents_handled JSONB DEFAULT '[]';
+    """
+    import json as _json
     uname = username.lower().strip()
 
     # FIX 6: validate role against allowlist
@@ -160,10 +166,12 @@ def create_user(username: str, password: str, full_name: str = "",
                 with conn.cursor() as cur:
                     cur.execute(
                         """INSERT INTO users
-                               (username, password_hash, full_name, role, office, approved, email)
-                           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                               (username, password_hash, full_name, role, office, approved, email,
+                                documents_handled)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb)""",
                         (uname, hash_password(password),
-                         full_name.strip(), role, office.strip(), approved, email.strip()),
+                         full_name.strip(), role, office.strip(), approved, email.strip(),
+                         _json.dumps(documents_handled or [])),
                     )
             return True, None
         except Exception as e:
@@ -175,13 +183,14 @@ def create_user(username: str, password: str, full_name: str = "",
         if any(u["username"] == uname for u in users):
             return False, "Username already taken."
         users.append({
-            "username":      uname,
-            "password_hash": hash_password(password),
-            "full_name":     full_name.strip(),
-            "role":          role,
-            "office":        office.strip(),
-            "approved":      approved,
-            "email":         email.strip(),
+            "username":          uname,
+            "password_hash":     hash_password(password),
+            "full_name":         full_name.strip(),
+            "role":              role,
+            "office":            office.strip(),
+            "approved":          approved,
+            "email":             email.strip(),
+            "documents_handled": documents_handled or [],
         })
         _save_users_json(users)
         return True, None
@@ -299,10 +308,18 @@ def get_all_users() -> list[dict]:
                                   created_at,
                                   COALESCE(office, '') AS office,
                                   COALESCE(approved, TRUE) AS approved,
-                                  COALESCE(email, '') AS email
+                                  COALESCE(email, '') AS email,
+                                  COALESCE(documents_handled, '[]'::jsonb) AS documents_handled
                            FROM users ORDER BY created_at DESC"""
                     )
-                    return [dict(r) for r in cur.fetchall()]
+                    rows = []
+                    for r in cur.fetchall():
+                        d = dict(r)
+                        # Ensure documents_handled is always a plain Python list
+                        dh = d.get("documents_handled")
+                        d["documents_handled"] = list(dh) if isinstance(dh, (list, tuple)) else []
+                        rows.append(d)
+                    return rows
         except Exception:
             return []
     else:
@@ -505,6 +522,31 @@ def update_user(username: str, full_name: str = None,
                     u["role"] = role
                 if office is not None:
                     u["office"] = office.strip()
+                _save_users_json(users)
+                return True, None
+        return False, "User not found."
+
+
+def update_user_documents_handled(username: str, documents_handled: list) -> tuple[bool, str | None]:
+    """Replace the documents_handled list for a user. Returns (success, error_message)."""
+    import json as _json
+    uname = username.lower().strip()
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE users SET documents_handled = %s::jsonb WHERE username = %s",
+                        (_json.dumps(documents_handled or []), uname),
+                    )
+            return True, None
+        except Exception as e:
+            return False, f"Database error: {e}"
+    else:
+        users = _load_users_json()
+        for u in users:
+            if u["username"] == uname:
+                u["documents_handled"] = documents_handled or []
                 _save_users_json(users)
                 return True, None
         return False, "User not found."

@@ -109,6 +109,18 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
               text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
 .cred-row   { font-family: monospace; font-size: 13px; color: #0E2A47; font-weight: 700; }
 .cred-key   { color: #64748B; font-weight: 400; margin-right: 6px; }
+
+.badge-updated {
+  display: inline-block; background: #EFF6FF; color: #1D4ED8;
+  border: 1px solid #BFDBFE; border-radius: 20px;
+  font-size: 11px; font-weight: 700; padding: 2px 10px;
+  margin-left: 8px; vertical-align: middle; letter-spacing: .02em;
+}
+.docs-tag {
+  display: inline-block; background: #F0FDF4; color: #065F46;
+  border: 1px solid #6EE7B7; border-radius: 4px;
+  font-size: 11px; font-weight: 600; padding: 1px 7px; margin: 2px 2px 0 0;
+}
 </style>
 
 <div class="bcu-page">
@@ -141,13 +153,21 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
           <div class="result-name">
             {{ r.full_name or '(no name)' }}
             <span style="font-weight:400;color:#64748B;"> · @{{ r.username }}</span>
+            {% if r.updated %}<span class="badge-updated">↻ Updated</span>{% endif %}
           </div>
           <div class="result-sub">
             {% if r.role %}<span style="text-transform:capitalize;font-weight:600;">{{ r.role }}</span>{% endif %}
             {% if r.office %} · 🏢 {{ r.office }}{% endif %}
             {% if r.email %} · 📧 {{ r.email }}{% endif %}
             {% if r.ok and r.email_sent %} · ✉️ Credentials emailed{% endif %}
+            {% if r.updated %} · 🔄 Existing account updated{% endif %}
           </div>
+          {% if r.ok and r.documents_handled %}
+          <div style="margin-top:6px;">
+            <span style="font-size:11px;color:#64748B;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Documents Handled: </span>
+            {% for doc in r.documents_handled %}<span class="docs-tag">{{ doc }}</span>{% endfor %}
+          </div>
+          {% endif %}
 
           {% if r.ok and not r.email_sent %}
           <div class="cred-box">
@@ -199,7 +219,7 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
                onchange="handleExcelFile(this.files[0])">
         <div class="bcu-import-label">📂 Import from Excel</div>
         <div class="bcu-import-sub">Click to browse or drag &amp; drop an .xlsx file<br>
-          Needs a <strong>Fullname</strong> column and an <strong>Email</strong> column (any order, any sheet)</div>
+          Needs a <strong>Full Name</strong> column and an <strong>Email</strong> column. Optional: <strong>Documents Handled</strong> column (comma-separated types).</div>
         <button type="button" class="bcu-import-btn" onclick="event.stopPropagation();document.getElementById('excel-file-input').click()">
           Choose File
         </button>
@@ -236,8 +256,9 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
           <table class="bcu-table">
             <thead>
               <tr>
-                <th style="width:46%;">Full Name</th>
-                <th style="width:46%;">Email Address</th>
+                <th style="width:30%;">Full Name</th>
+                <th style="width:28%;">Email Address</th>
+                <th style="width:34%;">Documents Handled <span style="font-weight:400;opacity:.7;">(comma-separated)</span></th>
                 <th style="width:40px;"></th>
               </tr>
             </thead>
@@ -248,6 +269,8 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
                            placeholder="e.g. Juan Dela Cruz"></td>
                 <td><input class="bcu-input" type="email" name="email"
                            placeholder="e.g. juan@deped.ph"></td>
+                <td><input class="bcu-input" type="text" name="documents_handled"
+                           placeholder="e.g. Memorandum, Letter, Report"></td>
                 <td><button type="button" class="btn-remove-row"
                             onclick="removeRow(this)" title="Remove">✕</button></td>
               </tr>
@@ -301,7 +324,7 @@ function handleExcelFile(file) {
 
       var tbody = document.getElementById('rows-body');
       tbody.innerHTML = '';
-      data.rows.forEach(function(d) { tbody.appendChild(buildRow(d.name, d.email)); });
+      data.rows.forEach(function(d) { tbody.appendChild(buildRow(d.name, d.email, d.documents || '')); });
 
       showImportStatus('ok', '✅ Imported <strong>' + data.rows.length + ' row' +
         (data.rows.length !== 1 ? 's' : '') + '</strong> from <em>' + escAttr(file.name) +
@@ -316,12 +339,13 @@ function showImportStatus(type, msg) {
   el.innerHTML = msg;
 }
 
-function buildRow(name, email) {
+function buildRow(name, email, docs) {
   var tr = document.createElement('tr');
   tr.className = 'bcu-row';
   tr.innerHTML =
     '<td><input class="bcu-input" type="text" name="full_name" placeholder="e.g. Juan Dela Cruz" value="' + escAttr(name) + '"></td>' +
     '<td><input class="bcu-input" type="email" name="email" placeholder="e.g. juan@deped.ph" value="' + escAttr(email) + '"></td>' +
+    '<td><input class="bcu-input" type="text" name="documents_handled" placeholder="e.g. Memorandum, Letter, Report" value="' + escAttr(docs || '') + '"></td>' +
     '<td><button type="button" class="btn-remove-row" onclick="removeRow(this)" title="Remove">✕</button></td>';
   return tr;
 }
@@ -331,7 +355,7 @@ function escAttr(s) {
 }
 
 function addRow() {
-  var tr = buildRow('', '');
+  var tr = buildRow('', '', '');
   document.getElementById('rows-body').appendChild(tr);
   tr.querySelector('input').focus();
 }
