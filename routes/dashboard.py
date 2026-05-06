@@ -1166,16 +1166,18 @@ def db_status():
 
 def _is_pending_for(doc: dict, username: str, office: str) -> bool:
     """
-    Return True if this document is awaiting acceptance by the given user/office.
+    Return True if this document is actively awaiting acceptance by the given
+    user or office.
 
-    A document is pending for a user when:
-      - It has not yet been accepted (no accepted_by) and is not deleted
-      - AND either:
-          a) pending_at_staff matches the username (directly assigned), OR
-          b) pending_at_staff is empty but pending_at_office matches the user's
-             office (any staff at that office may accept)
+    The authoritative flag is transfer_status == "pending".  This correctly
+    handles docs that were previously accepted and then re-transferred — their
+    old accepted_by value is irrelevant once a new pending transfer is in flight.
     """
-    if doc.get("accepted_by") or doc.get("deleted"):
+    if doc.get("deleted"):
+        return False
+
+    # Only documents whose transfer is currently in-flight qualify.
+    if doc.get("transfer_status") != "pending":
         return False
 
     pending_staff  = (doc.get("pending_at_staff") or "").strip()
