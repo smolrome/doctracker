@@ -576,8 +576,10 @@ function escHtmlForm(s) {
 
 <script>
 (function () {
-  // STAFF is now an array of {username, full_name} objects
+  // STAFF is now an array of {username, full_name, documents_handled} objects.
+  // Exposed on window so form.js detectReferredTo() can read it.
   var STAFF = {{ (office_staff or []) | tojson }};
+  window.STAFF = STAFF;
 
   function initCombobox(wrapper) {
     if (!wrapper) return;
