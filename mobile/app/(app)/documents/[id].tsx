@@ -42,7 +42,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const STATUS_OPTIONS = [
   'Pending', 'Received', 'Released',
-  'Routed', 'In Review', 'Transferred', 'On Hold',
+  'Routed', 'In Review', 'Transferred', 'On Hold', 'Returned', 'Archived',
 ];
 
 function travelColor(action: string) {

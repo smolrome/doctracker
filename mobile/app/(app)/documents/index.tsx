@@ -43,7 +43,7 @@ function getStatus(status: string) {
   return STATUS_CONFIG[key] ?? { bg: '#F1F5F9', text: '#475569', accent: '#94A3B8' };
 }
 
-const STATUS_FILTERS = ['All', 'Pending', 'Received', 'Released', 'Routed', 'On Hold'];
+const STATUS_FILTERS = ['All', 'Pending', 'Received', 'Released', 'Routed', 'On Hold', 'In Review', 'Transferred', 'Returned', 'Archived'];
 
 export default function Documents() {
   const router = useRouter();
@@ -231,7 +231,7 @@ export default function Documents() {
           else router.push(`/(app)/documents/${item.id}`);
         }}
         onLongPress={() => {
-          if (!isSelecting && isAdmin) {
+          if (!isSelecting && (isAdmin || user?.role === 'staff')) {
             setIsSelecting(true);
             setSelectedIds(new Set([item.id]));
           }

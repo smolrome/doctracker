@@ -46,6 +46,7 @@ type CartItem = {
   referred_to: string;
   category: string;
   description: string;
+  notes: string;
 };
 
 type SubmittedDoc = {
@@ -135,6 +136,7 @@ export default function Submit() {
   const [category, setCategory]       = useState('');
   const [referredTo, setReferredTo]   = useState('');
   const [description, setDescription] = useState('');
+  const [notes, setNotes] = useState('');
 
   // ── Submitted results
   const [submitted, setSubmitted] = useState<SubmittedDoc[]>([]);
@@ -159,6 +161,7 @@ export default function Submit() {
         setReferredTo('');
         setCategory('');
         setDescription('');
+        setNotes('');
         setShowForm(true);
         setSubmitted([]);
         setCatSearch('');
@@ -213,6 +216,7 @@ export default function Submit() {
           unit_office: item.unit_office,
           category:    item.category,
           description: item.description,
+          notes:       item.notes,
         })),
       };
 
@@ -283,11 +287,13 @@ export default function Submit() {
       referred_to: referredTo.trim(),
       category:    category.trim(),
       description: description.trim(),
+      notes:       notes.trim(),
     }]);
     // Reset doc fields but keep office-related ones
     setDocName('');
     setCategory('');
     setDescription('');
+    setNotes('');
     setShowForm(false);
   };
 
@@ -364,6 +370,7 @@ export default function Submit() {
     setReferredTo('');
     setCategory('');
     setDescription('');
+    setNotes('');
     setShowForm(true);
     setSubmitted([]);
     setCatSearch('');
@@ -800,6 +807,24 @@ export default function Submit() {
                   value={description}
                   onChangeText={setDescription}
                   placeholder="Any additional details..."
+                  placeholderTextColor="#CBD5E1"
+                  multiline
+                  style={{
+                    backgroundColor: '#F8FAFC', borderRadius: 10, borderWidth: 1.5,
+                    borderColor: '#E2E8F0', paddingHorizontal: 14, paddingVertical: 12,
+                    fontSize: 14, color: '#1E293B', height: 80, textAlignVertical: 'top',
+                    marginBottom: 14,
+                  }}
+                />
+
+                {/* Notes */}
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
+                  Notes
+                </Text>
+                <TextInput
+                  value={notes}
+                  onChangeText={setNotes}
+                  placeholder="Optional notes..."
                   placeholderTextColor="#CBD5E1"
                   multiline
                   style={{

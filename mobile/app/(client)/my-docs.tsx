@@ -25,7 +25,7 @@ function getStatus(s: string) {
   return STATUS_CONFIG[s?.toLowerCase()] ?? { bg: '#F1F5F9', text: '#475569', accent: '#94A3B8' };
 }
 
-const STATUS_FILTERS = ['All', 'Pending', 'Received', 'Released', 'Routed', 'On Hold'];
+const STATUS_FILTERS = ['All', 'Pending', 'Received', 'Released', 'Routed', 'On Hold', 'Rejected', 'In Review', 'Transferred', 'Returned'];
 
 type Doc = {
   id: string;

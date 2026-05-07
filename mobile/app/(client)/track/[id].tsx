@@ -174,6 +174,8 @@ export default function TrackDocument() {
                 ['Submitted', formatDate(doc.created_at)],
                 ['Last Updated', formatDate(doc.updated_at)],
                 ...(doc.remarks ? [['Remarks', doc.remarks]] : []),
+                ...(doc.description ? [['Description', doc.description]] : []),
+                ...(doc.notes ? [['Notes', doc.notes]] : []),
               ].map(([label, value]) => (
                 <View key={label} style={{ flexDirection: 'row' }}>
                   <Text style={{ color: '#94A3B8', fontSize: 13, width: 110 }}>{label}</Text>
