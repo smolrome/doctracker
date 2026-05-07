@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Modal,
   ScrollView,
+  TextInput,
 } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { useRouter } from 'expo-router';
@@ -21,6 +22,8 @@ type ScanState = 'scanning' | 'loading' | 'error';
 interface ScannedDoc {
   id: string;
   title: string;
+  doc_name?: string;
+  doc_id?: string;
   tracking_number?: string;
   status?: string;
   transfer_status?: string;
@@ -28,6 +31,12 @@ interface ScannedDoc {
   pending_at_office?: string;
   source?: string;
   office?: string;
+  from_office?: string;
+  category?: string;
+  sender_name?: string;
+  referred_to?: string;
+  remarks?: string;
+  logged_by?: string;
   submitted_by_name?: string;
 }
 
@@ -44,6 +53,9 @@ export default function Scanner() {
   // Quick-receive overlay state
   const [scannedDoc, setScannedDoc] = useState<ScannedDoc | null>(null);
   const [accepting, setAccepting] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectModal, setRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   const [acceptedDocTitle, setAcceptedDocTitle] = useState<string | null>(null);
 
   const lastScanned = useRef<string>('');
@@ -84,7 +96,15 @@ export default function Scanner() {
     try {
       const res = await api.get(`/documents/${docId}`);
       if (res.data?.id) {
-        return res.data as ScannedDoc;
+        return {
+          ...res.data,
+          title: res.data.doc_name || res.data.title,
+          tracking_number: res.data.doc_id || res.data.tracking_number,
+          from_office: res.data.from_office,
+          category: res.data.category,
+          sender_name: res.data.sender_name,
+          referred_to: res.data.referred_to,
+        } as ScannedDoc;
       }
     } catch {
       // Not a direct doc ID — fall through to token scan
@@ -93,7 +113,16 @@ export default function Scanner() {
     // Try QR token lookup
     const tokenRes = await api.post('/qr/scan', { token: data });
     if (tokenRes.data?.doc?.id) {
-      return tokenRes.data.doc as ScannedDoc;
+      const d = tokenRes.data.doc;
+      return {
+        ...d,
+        title: d.doc_name || d.title,
+        tracking_number: d.doc_id || d.tracking_number,
+        from_office: d.from_office,
+        category: d.category,
+        sender_name: d.sender_name,
+        referred_to: d.referred_to,
+      } as ScannedDoc;
     }
 
     throw new Error('Document not found');
@@ -223,6 +252,39 @@ export default function Scanner() {
       Alert.alert('Accept Failed', msg);
     } finally {
       setAccepting(false);
+    }
+  };
+
+  // ── Quick reject ──────────────────────────────────────────────────────────
+
+  const handleQuickReject = () => {
+    if (!scannedDoc) return;
+    setRejectReason('');
+    setRejectModal(true);
+  };
+
+  const confirmQuickReject = async () => {
+    if (!rejectReason.trim()) {
+      Alert.alert('Required', 'Reason is required.');
+      return;
+    }
+    if (!scannedDoc) return;
+    setRejecting(true);
+    try {
+      await api.post(`/documents/${scannedDoc.id}/reject`, { reason: rejectReason.trim() });
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-count'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      setRejectModal(false);
+      setRejectReason('');
+      setScannedDoc(null);
+      resetScanner(500);
+      Alert.alert('Rejected', 'Document rejected.');
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'Could not reject document. Please try again.';
+      Alert.alert('Reject Failed', msg);
+    } finally {
+      setRejecting(false);
     }
   };
 
@@ -397,6 +459,43 @@ export default function Scanner() {
                   </View>
                 )}
 
+                {(scannedDoc?.doc_id || scannedDoc?.tracking_number) && (
+                  <View style={styles.docMetaRow}>
+                    <Text style={styles.docMetaLabel}>Reference</Text>
+                    <Text style={styles.docMetaValue}>
+                      {scannedDoc.doc_id || scannedDoc.tracking_number}
+                    </Text>
+                  </View>
+                )}
+
+                {scannedDoc?.category && (
+                  <View style={styles.docMetaRow}>
+                    <Text style={styles.docMetaLabel}>Category</Text>
+                    <Text style={styles.docMetaValue}>{scannedDoc.category}</Text>
+                  </View>
+                )}
+
+                {scannedDoc?.from_office && (
+                  <View style={styles.docMetaRow}>
+                    <Text style={styles.docMetaLabel}>From Office</Text>
+                    <Text style={styles.docMetaValue}>{scannedDoc.from_office}</Text>
+                  </View>
+                )}
+
+                {scannedDoc?.sender_name && (
+                  <View style={styles.docMetaRow}>
+                    <Text style={styles.docMetaLabel}>Sender</Text>
+                    <Text style={styles.docMetaValue}>{scannedDoc.sender_name}</Text>
+                  </View>
+                )}
+
+                {scannedDoc?.referred_to && (
+                  <View style={styles.docMetaRow}>
+                    <Text style={styles.docMetaLabel}>Referred To</Text>
+                    <Text style={styles.docMetaValue}>{scannedDoc.referred_to}</Text>
+                  </View>
+                )}
+
                 {scannedDoc?.office && (
                   <View style={styles.docMetaRow}>
                     <Text style={styles.docMetaLabel}>Office</Text>
@@ -404,10 +503,12 @@ export default function Scanner() {
                   </View>
                 )}
 
-                {scannedDoc?.submitted_by_name && (
+                {(scannedDoc?.logged_by || scannedDoc?.submitted_by_name) && (
                   <View style={styles.docMetaRow}>
-                    <Text style={styles.docMetaLabel}>Submitted by</Text>
-                    <Text style={styles.docMetaValue}>{scannedDoc.submitted_by_name}</Text>
+                    <Text style={styles.docMetaLabel}>Logged By</Text>
+                    <Text style={styles.docMetaValue}>
+                      {scannedDoc.logged_by || scannedDoc.submitted_by_name}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -428,6 +529,19 @@ export default function Scanner() {
                   : <Text style={styles.acceptBtnText}>✓  Accept & Receive Document</Text>
                 }
               </TouchableOpacity>
+
+              {scannedDoc?.transfer_status === 'pending' && (
+                <TouchableOpacity
+                  style={[styles.rejectBtn, rejecting && { opacity: 0.7 }]}
+                  onPress={handleQuickReject}
+                  disabled={rejecting}
+                >
+                  {rejecting
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={styles.rejectBtnText}>✕  Reject Document</Text>
+                  }
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={styles.detailsBtn}
@@ -455,6 +569,55 @@ export default function Scanner() {
           <Text style={styles.successSubText} numberOfLines={1}>{acceptedDocTitle}</Text>
         </View>
       )}
+
+      {/* ── Reject modal ──────────────────────────────────────────────────── */}
+      <Modal visible={rejectModal} transparent animationType="fade" onRequestClose={() => setRejectModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+          <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => setRejectModal(false)} activeOpacity={1} />
+          <View style={{ backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 20 }} />
+            <Text style={{ fontSize: 17, fontWeight: '800', color: '#1E293B', marginBottom: 6 }}>Reject Document</Text>
+            <Text style={{ color: '#64748B', fontSize: 13.5, marginBottom: 20 }}>
+              Provide a reason — it will be sent back to the original logger.
+            </Text>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#EF4444', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+              Reason <Text style={{ color: '#EF4444' }}>*</Text>
+            </Text>
+            <TextInput
+              value={rejectReason}
+              onChangeText={setRejectReason}
+              placeholder="Why is this document being rejected?"
+              placeholderTextColor="#CBD5E1"
+              multiline
+              autoFocus
+              style={{
+                backgroundColor: '#fff', borderRadius: 12,
+                borderWidth: 1.5, borderColor: rejectReason ? '#E2E8F0' : '#FECACA',
+                paddingHorizontal: 14, paddingVertical: 12,
+                fontSize: 14, color: '#1E293B', height: 100, textAlignVertical: 'top', marginBottom: 20,
+              }}
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => { setRejectModal(false); setRejectReason(''); }}
+                style={{ flex: 1, borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff' }}
+              >
+                <Text style={{ color: '#64748B', fontWeight: '600', fontSize: 14 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={confirmQuickReject}
+                disabled={rejecting || !rejectReason.trim()}
+                style={{ flex: 1, backgroundColor: rejectReason.trim() ? '#EF4444' : '#FCA5A5', borderRadius: 12, paddingVertical: 13, alignItems: 'center' }}
+              >
+                {rejecting
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Confirm Reject</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
     </View>
   );
@@ -575,6 +738,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   acceptBtnText: {
+    color: '#fff', fontSize: 16, fontWeight: '700',
+  },
+  rejectBtn: {
+    backgroundColor: '#DC2626',
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  rejectBtnText: {
     color: '#fff', fontSize: 16, fontWeight: '700',
   },
   detailsBtn: {
