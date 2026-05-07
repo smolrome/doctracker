@@ -9,8 +9,9 @@ export interface DocumentFilters {
   office?: string;
   cat?: string;
   staff?: string;
-  source?: string; // 'All' | 'Staff' | 'Client'
-  date?: string;   // YYYY-MM-DD
+  source?: string;    // 'Staff' | 'Client'
+  date_from?: string; // YYYY-MM-DD
+  date_to?: string;   // YYYY-MM-DD
 }
 
 export function useDocuments(search = '', status = 'All', filters?: DocumentFilters) {
@@ -34,11 +35,12 @@ export function useDocuments(search = '', status = 'All', filters?: DocumentFilt
       const params: any = { limit: PAGE_SIZE, page: 1 };
       if (search) params.search = search;
       if (status !== 'All') params.status = status;
-      if (filters?.office && filters.office !== 'All') params.office = filters.office;
-      if (filters?.cat && filters.cat !== 'All') params.cat = filters.cat;
-      if (filters?.staff && filters.staff !== 'All') params.staff = filters.staff;
-      if (filters?.source && filters.source !== 'All') params.source = filters.source;
-      if (filters?.date) params.date = filters.date;
+      if (filters?.office) params.office = filters.office;
+      if (filters?.cat) params.cat = filters.cat;
+      if (filters?.staff) params.staff = filters.staff;
+      if (filters?.source) params.source = filters.source;
+      if (filters?.date_from) params.date_from = filters.date_from;
+      if (filters?.date_to) params.date_to = filters.date_to;
 
       const firstRes = await api.get('/documents', { params });
       const firstData = firstRes.data;
@@ -66,7 +68,8 @@ export function useDocuments(search = '', status = 'All', filters?: DocumentFilt
       const isBaseFetch =
         !search && status === 'All' &&
         !filters?.office && !filters?.cat &&
-        !filters?.staff && !filters?.source && !filters?.date;
+        !filters?.staff && !filters?.source &&
+        !filters?.date_from && !filters?.date_to;
       if (isBaseFetch) {
         await cache.set(cache.KEYS.DOCUMENTS, data);
         await cache.updateLastSync();
@@ -87,7 +90,8 @@ export function useDocuments(search = '', status = 'All', filters?: DocumentFilt
   const query = useQuery({
     queryKey: [
       'documents', userId, search, status,
-      filters?.office, filters?.cat, filters?.staff, filters?.source, filters?.date,
+      filters?.office, filters?.cat, filters?.staff, filters?.source,
+      filters?.date_from, filters?.date_to,
       isOnline,
     ],
     queryFn: fetchDocuments,

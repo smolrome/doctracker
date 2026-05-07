@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,13 +14,13 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Search, CheckSquare, Square, X, Trash2, RefreshCw, UserCheck, Users } from 'lucide-react-native';
+import { Search, CheckSquare, Square, X, Trash2, RefreshCw, UserCheck, Users, Filter } from 'lucide-react-native';
 import { useDocuments } from '../../../hooks/useDocuments';
 import { useNetwork } from '../../../hooks/useNetwork';
 import { OfflineBanner } from '../../../components/ui/OfflineBanner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../../lib/store';
-import { useStaff } from '../../../hooks/useDropdownOptions';
+import { useStaff, useOffices, useDropdownOptions } from '../../../hooks/useDropdownOptions';
 import api from '../../../lib/api';
 
 const { width } = Dimensions.get('window');
@@ -73,10 +73,89 @@ export default function Documents() {
   const [deleteAllModal, setDeleteAllModal] = useState(false);
   const [deleteAllConfirmText, setDeleteAllConfirmText] = useState('');
 
-  const { data, isLoading, isRefetching, refetch, isFromCache } = useDocuments(search, activeFilter);
+  // ── Advanced filter state ──────────────────────────────────────────────────
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [filterOffice, setFilterOffice] = useState('');
+  const [filterCat, setFilterCat] = useState('');
+  const [filterStaff, setFilterStaff] = useState('');
+  const [filterSource, setFilterSource] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [pickerModal, setPickerModal] = useState<'office' | 'category' | 'staff' | null>(null);
+  const [pickerSearch, setPickerSearch] = useState('');
+
+  const activeFilterCount = [filterOffice, filterCat, filterStaff, filterSource, filterDateFrom, filterDateTo].filter(Boolean).length;
+
+  const { data, isLoading, isRefetching, refetch, isFromCache } = useDocuments(
+    search,
+    activeFilter,
+    {
+      office: filterOffice || undefined,
+      cat: filterCat || undefined,
+      staff: filterStaff || undefined,
+      source: filterSource || undefined,
+      date_from: filterDateFrom || undefined,
+      date_to: filterDateTo || undefined,
+    }
+  );
   const docs = data?.documents ?? [];
 
   const { data: staffList = [] } = useStaff();
+  const { data: offices = [] } = useOffices();
+  const { data: dropdownOptions = {} } = useDropdownOptions();
+  const categoryOptions: string[] = (dropdownOptions as Record<string, string[]>)['category'] ?? [];
+
+  const filterStaffLabel = filterStaff
+    ? (staffList.find((s) => s.username === filterStaff)?.full_name || filterStaff)
+    : '';
+
+  const pickerOptions = useMemo(() => {
+    if (pickerModal === 'office') return offices.map((o) => o.office_name);
+    if (pickerModal === 'category') return categoryOptions;
+    if (pickerModal === 'staff') return staffList.map((s) => s.full_name).filter(Boolean);
+    return [];
+  }, [pickerModal, offices, categoryOptions, staffList]);
+
+  const filteredPickerOptions = pickerSearch
+    ? pickerOptions.filter((o) => o.toLowerCase().includes(pickerSearch.toLowerCase()))
+    : pickerOptions;
+
+  const pickerLabel =
+    pickerModal === 'office' ? 'Office' :
+    pickerModal === 'category' ? 'Category' : 'Staff Member';
+
+  const currentPickerValue =
+    pickerModal === 'staff' ? filterStaffLabel :
+    pickerModal === 'office' ? filterOffice :
+    pickerModal === 'category' ? filterCat : '';
+
+  const applyPickerValue = (value: string) => {
+    if (pickerModal === 'office') setFilterOffice(value);
+    else if (pickerModal === 'category') setFilterCat(value);
+    else if (pickerModal === 'staff') {
+      const s = staffList.find((st) => st.full_name === value);
+      setFilterStaff(s?.username || value);
+    }
+    setPickerModal(null);
+    setPickerSearch('');
+  };
+
+  const clearPickerValue = () => {
+    if (pickerModal === 'office') setFilterOffice('');
+    else if (pickerModal === 'category') setFilterCat('');
+    else if (pickerModal === 'staff') setFilterStaff('');
+    setPickerModal(null);
+    setPickerSearch('');
+  };
+
+  const clearAllFilters = () => {
+    setFilterOffice('');
+    setFilterCat('');
+    setFilterStaff('');
+    setFilterSource('');
+    setFilterDateFrom('');
+    setFilterDateTo('');
+  };
 
   const handleSearch = () => setSearch(searchInput);
 
@@ -363,34 +442,59 @@ export default function Documents() {
           )}
         </View>
 
-        {/* Search bar */}
-        <View style={{
-          flexDirection: 'row', gap: 8,
-          backgroundColor: 'rgba(255,255,255,0.15)',
-          borderRadius: 13, paddingHorizontal: 14, paddingVertical: 2,
-          borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)',
-          alignItems: 'center',
-        }}>
-          <Search size={16} color="rgba(255,255,255,0.60)" />
-          <TextInput
-            value={searchInput}
-            onChangeText={setSearchInput}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
-            placeholder="Search documents..."
-            placeholderTextColor="rgba(255,255,255,0.45)"
-            style={{ flex: 1, paddingVertical: 11, color: '#fff', fontSize: 14 }}
-          />
+        {/* Search bar + Filter button */}
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <View style={{
+            flex: 1, flexDirection: 'row', gap: 8,
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            borderRadius: 13, paddingHorizontal: 14, paddingVertical: 2,
+            borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)',
+            alignItems: 'center',
+          }}>
+            <Search size={16} color="rgba(255,255,255,0.60)" />
+            <TextInput
+              value={searchInput}
+              onChangeText={setSearchInput}
+              onSubmitEditing={handleSearch}
+              returnKeyType="search"
+              placeholder="Search documents..."
+              placeholderTextColor="rgba(255,255,255,0.45)"
+              style={{ flex: 1, paddingVertical: 11, color: '#fff', fontSize: 14 }}
+            />
+            <TouchableOpacity
+              onPress={handleSearch}
+              style={{
+                backgroundColor: '#fff',
+                borderRadius: 9,
+                paddingHorizontal: 14,
+                paddingVertical: 7,
+              }}
+            >
+              <Text style={{ color: '#0038A8', fontWeight: '700', fontSize: 13 }}>Search</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Filter toggle */}
           <TouchableOpacity
-            onPress={handleSearch}
+            onPress={() => setShowFilterPanel((v) => !v)}
             style={{
-              backgroundColor: '#fff',
-              borderRadius: 9,
-              paddingHorizontal: 14,
-              paddingVertical: 7,
+              backgroundColor: showFilterPanel ? '#FCD116' : 'rgba(255,255,255,0.18)',
+              borderRadius: 13, padding: 11,
+              borderWidth: 1, borderColor: showFilterPanel ? '#FCD116' : 'rgba(255,255,255,0.25)',
+              alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <Text style={{ color: '#0038A8', fontWeight: '700', fontSize: 13 }}>Search</Text>
+            <Filter size={18} color={showFilterPanel ? '#0038A8' : '#fff'} />
+            {activeFilterCount > 0 && (
+              <View style={{
+                position: 'absolute', top: -5, right: -5,
+                width: 18, height: 18, borderRadius: 9,
+                backgroundColor: '#EF4444',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>{activeFilterCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -442,6 +546,159 @@ export default function Documents() {
           )}
         />
       </View>
+
+      {/* ── Advanced Filter Panel ── */}
+      {showFilterPanel && (
+        <View style={{
+          backgroundColor: '#fff', marginHorizontal: 16, marginTop: 10,
+          borderRadius: 16, padding: 16,
+          borderWidth: 0.5, borderColor: '#E2E8F0',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+        }}>
+          {/* Office */}
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Office</Text>
+            <TouchableOpacity
+              onPress={() => { setPickerSearch(''); setPickerModal('office'); }}
+              style={{
+                flexDirection: 'row', alignItems: 'center',
+                backgroundColor: '#F8FAFC', borderRadius: 10,
+                paddingHorizontal: 14, paddingVertical: 11,
+                borderWidth: 0.5, borderColor: filterOffice ? '#0038A8' : '#E2E8F0',
+              }}
+            >
+              <Text style={{ color: filterOffice ? '#1E293B' : '#94A3B8', fontSize: 13, flex: 1 }}>
+                {filterOffice || 'Any office'}
+              </Text>
+              {filterOffice ? (
+                <TouchableOpacity onPress={() => setFilterOffice('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <X size={14} color="#94A3B8" />
+                </TouchableOpacity>
+              ) : (
+                <Text style={{ color: '#94A3B8', fontSize: 13 }}>›</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Category */}
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Category</Text>
+            <TouchableOpacity
+              onPress={() => { setPickerSearch(''); setPickerModal('category'); }}
+              style={{
+                flexDirection: 'row', alignItems: 'center',
+                backgroundColor: '#F8FAFC', borderRadius: 10,
+                paddingHorizontal: 14, paddingVertical: 11,
+                borderWidth: 0.5, borderColor: filterCat ? '#0038A8' : '#E2E8F0',
+              }}
+            >
+              <Text style={{ color: filterCat ? '#1E293B' : '#94A3B8', fontSize: 13, flex: 1 }}>
+                {filterCat || 'Any category'}
+              </Text>
+              {filterCat ? (
+                <TouchableOpacity onPress={() => setFilterCat('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <X size={14} color="#94A3B8" />
+                </TouchableOpacity>
+              ) : (
+                <Text style={{ color: '#94A3B8', fontSize: 13 }}>›</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Staff Member */}
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Staff Member</Text>
+            <TouchableOpacity
+              onPress={() => { setPickerSearch(''); setPickerModal('staff'); }}
+              style={{
+                flexDirection: 'row', alignItems: 'center',
+                backgroundColor: '#F8FAFC', borderRadius: 10,
+                paddingHorizontal: 14, paddingVertical: 11,
+                borderWidth: 0.5, borderColor: filterStaff ? '#0038A8' : '#E2E8F0',
+              }}
+            >
+              <Text style={{ color: filterStaff ? '#1E293B' : '#94A3B8', fontSize: 13, flex: 1 }}>
+                {filterStaffLabel || 'Any staff member'}
+              </Text>
+              {filterStaff ? (
+                <TouchableOpacity onPress={() => setFilterStaff('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <X size={14} color="#94A3B8" />
+                </TouchableOpacity>
+              ) : (
+                <Text style={{ color: '#94A3B8', fontSize: 13 }}>›</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Source */}
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Source</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {['Staff', 'Client'].map((src) => (
+                <TouchableOpacity
+                  key={src}
+                  onPress={() => setFilterSource(filterSource === src ? '' : src)}
+                  style={{
+                    flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center',
+                    backgroundColor: filterSource === src ? '#0038A8' : '#F1F5F9',
+                    borderWidth: filterSource === src ? 0 : 0.5,
+                    borderColor: '#E2E8F0',
+                  }}
+                >
+                  <Text style={{ color: filterSource === src ? '#fff' : '#64748B', fontWeight: '700', fontSize: 13 }}>{src}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Date From */}
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>From Date</Text>
+            <TextInput
+              value={filterDateFrom}
+              onChangeText={setFilterDateFrom}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#CBD5E1"
+              keyboardType="numeric"
+              style={{
+                backgroundColor: '#F8FAFC', borderRadius: 10,
+                paddingHorizontal: 14, paddingVertical: 11,
+                borderWidth: 0.5, borderColor: filterDateFrom ? '#0038A8' : '#E2E8F0',
+                fontSize: 13, color: '#1E293B',
+              }}
+            />
+          </View>
+
+          {/* Date To */}
+          <View style={{ marginBottom: activeFilterCount > 0 ? 12 : 0 }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>To Date</Text>
+            <TextInput
+              value={filterDateTo}
+              onChangeText={setFilterDateTo}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#CBD5E1"
+              keyboardType="numeric"
+              style={{
+                backgroundColor: '#F8FAFC', borderRadius: 10,
+                paddingHorizontal: 14, paddingVertical: 11,
+                borderWidth: 0.5, borderColor: filterDateTo ? '#0038A8' : '#E2E8F0',
+                fontSize: 13, color: '#1E293B',
+              }}
+            />
+          </View>
+
+          {/* Clear All */}
+          {activeFilterCount > 0 && (
+            <TouchableOpacity
+              onPress={clearAllFilters}
+              style={{ backgroundColor: '#FEE2E2', borderRadius: 10, paddingVertical: 10, alignItems: 'center' }}
+            >
+              <Text style={{ color: '#DC2626', fontWeight: '700', fontSize: 13 }}>Clear All Filters</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* ── Result count / Selection bar ── */}
       <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -775,6 +1032,94 @@ export default function Documents() {
                 {assignBatchMutation.isPending ? 'Assigning…' : 'Confirm Assign'}
               </Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Generic Picker Modal (Office / Category / Staff) ── */}
+      <Modal visible={pickerModal !== null} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <TouchableOpacity
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            onPress={() => { setPickerModal(null); setPickerSearch(''); }}
+            activeOpacity={1}
+          />
+          <View style={{
+            backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+            padding: 20, paddingBottom: 40, maxHeight: '70%',
+          }}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <Text style={{ fontWeight: '800', color: '#1E293B', fontSize: 17 }}>
+                Select {pickerLabel}
+              </Text>
+              <TouchableOpacity onPress={() => { setPickerModal(null); setPickerSearch(''); }}>
+                <X size={20} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search */}
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 8,
+              backgroundColor: '#fff', borderRadius: 12,
+              borderWidth: 1, borderColor: '#E2E8F0',
+              paddingHorizontal: 12, marginBottom: 10,
+            }}>
+              <Search size={15} color="#94A3B8" />
+              <TextInput
+                value={pickerSearch}
+                onChangeText={setPickerSearch}
+                placeholder={`Search ${pickerLabel.toLowerCase()}…`}
+                placeholderTextColor="#CBD5E1"
+                style={{ flex: 1, paddingVertical: 11, fontSize: 14, color: '#1E293B' }}
+              />
+            </View>
+
+            {/* Clear selection row */}
+            {currentPickerValue !== '' && (
+              <TouchableOpacity
+                onPress={clearPickerValue}
+                style={{
+                  paddingVertical: 12, paddingHorizontal: 4, marginBottom: 4,
+                  flexDirection: 'row', alignItems: 'center', gap: 8,
+                }}
+              >
+                <X size={14} color="#EF4444" />
+                <Text style={{ color: '#EF4444', fontWeight: '700', fontSize: 13 }}>Clear selection</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Options list */}
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {filteredPickerOptions.length === 0 ? (
+                <Text style={{ color: '#94A3B8', textAlign: 'center', marginTop: 24, fontSize: 13 }}>
+                  No options found
+                </Text>
+              ) : (
+                filteredPickerOptions.map((opt) => {
+                  const isActive = opt === currentPickerValue;
+                  return (
+                    <TouchableOpacity
+                      key={opt}
+                      onPress={() => applyPickerValue(opt)}
+                      style={{
+                        paddingVertical: 13, paddingHorizontal: 14,
+                        borderRadius: 12, marginBottom: 4,
+                        backgroundColor: isActive ? '#EFF6FF' : '#fff',
+                        borderWidth: isActive ? 1.5 : 0.5,
+                        borderColor: isActive ? '#0038A8' : '#E2E8F0',
+                        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                      }}
+                    >
+                      <Text style={{ color: isActive ? '#0038A8' : '#1E293B', fontWeight: isActive ? '700' : '400', fontSize: 14 }}>
+                        {opt}
+                      </Text>
+                      {isActive && <CheckSquare size={18} color="#0038A8" />}
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
