@@ -224,6 +224,32 @@ def api_me():
     }))
 
 
+def _matches_office(doc, office_lower):
+    # All comparisons are exact (case-insensitive) to prevent "Main"
+    # accidentally matching "MainOffice" or "Main Hall".
+    doc_referred      = (doc.get("referred_to") or "").lower().strip()
+    doc_target        = (doc.get("target_office_name") or "").lower().strip()
+    doc_forwarded     = (doc.get("forwarded_to") or "").lower().strip()
+    doc_pending       = (doc.get("pending_at_office") or "").lower().strip()
+    doc_transferred   = (doc.get("transferred_to_office") or "").lower().strip()
+    doc_logged_office = (doc.get("logged_by_office") or "").lower().strip()
+    tl = doc.get("travel_log", [])
+    tl_office = (tl[0].get("office") or "").lower().strip() if tl else ""
+    # routing is a list — check membership, not substring
+    routing_offices = [r.lower().strip() for r in doc.get("routing", [])]
+
+    return (
+        office_lower == doc_referred or
+        office_lower == doc_target or
+        office_lower == doc_forwarded or
+        office_lower == doc_pending or
+        office_lower == doc_transferred or
+        office_lower == doc_logged_office or
+        office_lower == tl_office or
+        office_lower in routing_offices
+    )
+
+
 @api_bp.route('/documents', methods=['GET'])
 @jwt_required()
 def api_get_documents():
@@ -258,10 +284,8 @@ def api_get_documents():
     if status:
         docs = [d for d in docs if d.get('status') == status]
     if office:
-        import json
-        unique_offices = list(set(d.get('from_office', '') for d in docs))
-        print(f"DEBUG unique from_office values: {json.dumps(unique_offices)}")
-        docs = [d for d in docs if d.get('from_office', '').lower() == office.lower()]
+        office_lower = office.lower().strip()
+        docs = [d for d in docs if _matches_office(d, office_lower)]
     if search:
         search_lower = search.lower()
         docs = [d for d in docs if
