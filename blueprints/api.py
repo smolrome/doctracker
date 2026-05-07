@@ -315,6 +315,97 @@ def api_get_documents():
     return jsonify(serialize({"documents": docs_page, "total": total, "page": page, "limit": limit}))
 
 
+@api_bp.route('/export-csv', methods=['GET'])
+@jwt_required()
+def api_export_csv():
+    import csv
+    import io as _io
+    from datetime import date as _date
+
+    user_id = get_jwt_identity()
+    user = get_user_by_username(user_id)
+    user_role = 'admin' if _is_admin_user(user_id) else (user.get('role', '') if user else '')
+
+    docs = load_docs()
+
+    # Role scoping — staff see only their own documents (same as web export-csv)
+    if user_role not in ('admin', 'superadmin'):
+        docs = [
+            d for d in docs
+            if d.get('original_logged_by') == user_id
+            or d.get('logged_by') == user_id
+            or d.get('received_by') == user_id
+            or d.get('accepted_by') == user_id
+            or d.get('transferred_by') == user_id
+        ]
+
+    # Filters (reuse same logic as api_get_documents)
+    status    = request.args.get('status')
+    office    = request.args.get('office')
+    search    = request.args.get('search')
+    cat       = request.args.get('cat')
+    staff     = request.args.get('staff')
+    source    = request.args.get('source')
+    date_from = request.args.get('date_from')
+    date_to   = request.args.get('date_to')
+
+    if status:
+        docs = [d for d in docs if d.get('status') == status]
+    if office:
+        office_lower = office.lower().strip()
+        docs = [d for d in docs if _matches_office(d, office_lower)]
+    if search:
+        search_lower = search.lower()
+        docs = [d for d in docs if
+                search_lower in (d.get('doc_name') or '').lower() or
+                search_lower in (d.get('doc_id') or '').lower() or
+                search_lower in (d.get('sender_name') or '').lower() or
+                search_lower in (d.get('sender_org') or '').lower() or
+                search_lower in (d.get('referred_to') or '').lower() or
+                search_lower in (d.get('notes') or '').lower()]
+    if cat:
+        docs = [d for d in docs if (d.get('category') or '').lower() == cat.lower()]
+    if staff:
+        docs = [d for d in docs if
+                d.get('logged_by') == staff or d.get('assigned_to') == staff]
+    if source:
+        source_lower = source.lower()
+        docs = [d for d in docs if (d.get('source', 'staff') or 'staff').lower() == source_lower]
+    if date_from:
+        docs = [d for d in docs if (d.get('doc_date') or '')[:10] >= date_from]
+    if date_to:
+        docs = [d for d in docs if (d.get('doc_date') or '')[:10] <= date_to]
+
+    # Build CSV
+    output = _io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        'Ref No.', 'Document', 'Category', 'Sender', 'Sender Org',
+        'Referred To', 'Status', 'Due Date', 'Date Logged', 'Remarks',
+    ])
+    for d in docs:
+        writer.writerow([
+            d.get('doc_id', ''),
+            d.get('doc_name', ''),
+            d.get('category', ''),
+            d.get('sender_name', ''),
+            d.get('sender_org', ''),
+            d.get('referred_to', ''),
+            d.get('status', ''),
+            d.get('due_date', ''),
+            (d.get('created_at') or '')[:10],
+            d.get('notes', '') or d.get('description', ''),
+        ])
+
+    filename = f"documents_export_{_date.today().isoformat()}.csv"
+    from flask import Response
+    return Response(
+        output.getvalue().encode('utf-8-sig'),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
+
+
 @api_bp.route('/documents/<doc_id>', methods=['GET'])
 @jwt_required()
 def api_get_document(doc_id):
