@@ -258,6 +258,9 @@ def api_get_documents():
     if status:
         docs = [d for d in docs if d.get('status') == status]
     if office:
+        import json
+        unique_offices = list(set(d.get('from_office', '') for d in docs))
+        print(f"DEBUG unique from_office values: {json.dumps(unique_offices)}")
         docs = [d for d in docs if d.get('from_office', '').lower() == office.lower()]
     if search:
         search_lower = search.lower()
