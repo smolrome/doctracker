@@ -159,11 +159,11 @@ export default function Dashboard() {
     refetch: refetchDocs,
     isFromCache: docsFromCache,
   } = useDocuments(filterSearch, filterStatus, {
-    office: filterOffice,
-    cat: filterCat,
-    staff: filterStaff,
-    source: filterSource,
-    date: filterDate,
+    office: filterOffice !== 'All' ? filterOffice : undefined,
+    cat: filterCat !== 'All' ? filterCat : undefined,
+    staff: filterStaff !== 'All' ? filterStaff : undefined,
+    source: filterSource !== 'All' ? filterSource : undefined,
+    date_from: filterDate || undefined,
   });
 
   // Show more results when filters are active

@@ -10,7 +10,8 @@ export interface DocumentFilters {
   cat?: string;
   staff?: string;
   source?: string;    // 'Staff' | 'Client'
-  date_from?: string; // YYYY-MM-DD
+  date_from?: string; // YYYY-MM-DD — or use 'date' as a single-date alias
+  date?: string;      // alias for date_from (single date filter)
   date_to?: string;   // YYYY-MM-DD
 }
 
@@ -35,11 +36,11 @@ export function useDocuments(search = '', status = 'All', filters?: DocumentFilt
       const params: any = { limit: PAGE_SIZE, page: 1 };
       if (search) params.search = search;
       if (status !== 'All') params.status = status;
-      if (filters?.office) params.office = filters.office;
-      if (filters?.cat) params.cat = filters.cat;
-      if (filters?.staff) params.staff = filters.staff;
-      if (filters?.source) params.source = filters.source;
-      if (filters?.date_from) params.date_from = filters.date_from;
+      if (filters?.office && filters.office !== 'All') params.office = filters.office;
+      if (filters?.cat && filters.cat !== 'All') params.cat = filters.cat;
+      if (filters?.staff && filters.staff !== 'All') params.staff = filters.staff;
+      if (filters?.source && filters.source !== 'All') params.source = filters.source;
+      if (filters?.date_from || filters?.date) params.date_from = filters.date_from ?? filters.date;
       if (filters?.date_to) params.date_to = filters.date_to;
 
       const firstRes = await api.get('/documents', { params });
@@ -69,7 +70,7 @@ export function useDocuments(search = '', status = 'All', filters?: DocumentFilt
         !search && status === 'All' &&
         !filters?.office && !filters?.cat &&
         !filters?.staff && !filters?.source &&
-        !filters?.date_from && !filters?.date_to;
+        !filters?.date && !filters?.date_from && !filters?.date_to;
       if (isBaseFetch) {
         await cache.set(cache.KEYS.DOCUMENTS, data);
         await cache.updateLastSync();
