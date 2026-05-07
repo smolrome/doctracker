@@ -14,7 +14,9 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Search, CheckSquare, Square, X, Trash2, RefreshCw, UserCheck, Users, Filter } from 'lucide-react-native';
+import { Search, CheckSquare, Square, X, Trash2, RefreshCw, UserCheck, Users, Filter, Download } from 'lucide-react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useDocuments } from '../../../hooks/useDocuments';
 import { useNetwork } from '../../../hooks/useNetwork';
 import { OfflineBanner } from '../../../components/ui/OfflineBanner';
@@ -85,6 +87,8 @@ export default function Documents() {
   const [pickerSearch, setPickerSearch] = useState('');
 
   const activeFilterCount = [filterOffice, filterCat, filterStaff, filterSource, filterDateFrom, filterDateTo].filter(Boolean).length;
+
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data, isLoading, isRefetching, refetch, isFromCache } = useDocuments(
     search,
@@ -158,6 +162,48 @@ export default function Documents() {
   };
 
   const handleSearch = () => setSearch(searchInput);
+
+  const doExport = async (params: Record<string, string | undefined>) => {
+    setIsExporting(true);
+    try {
+      const res = await api.get('/export-csv', { params, responseType: 'text' });
+      const csvContent = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+      const today = new Date().toISOString().slice(0, 10);
+      const filename = `documents_export_${today}.csv`;
+      const fileUri = (FileSystem.cacheDirectory ?? '') + filename;
+      await FileSystem.writeAsStringAsync(fileUri, csvContent, { encoding: 'utf8' });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(fileUri, { mimeType: 'text/csv', dialogTitle: 'Export Documents CSV' });
+      } else {
+        Alert.alert('Saved', `File saved to: ${fileUri}`);
+      }
+    } catch (e: any) {
+      Alert.alert('Export Failed', e?.response?.data?.error || e?.message || 'Could not export CSV.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExport = () => {
+    Alert.alert('Export CSV', 'Choose what to export:', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Export All', onPress: () => doExport({}) },
+      {
+        text: 'Export Current Filters',
+        onPress: () => doExport({
+          search: search || undefined,
+          status: activeFilter !== 'All' ? activeFilter : undefined,
+          office: filterOffice || undefined,
+          cat: filterCat || undefined,
+          staff: filterStaff || undefined,
+          source: filterSource || undefined,
+          date_from: filterDateFrom || undefined,
+          date_to: filterDateTo || undefined,
+        }),
+      },
+    ]);
+  };
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
@@ -496,6 +542,25 @@ export default function Documents() {
               </View>
             )}
           </TouchableOpacity>
+
+          {/* Export CSV */}
+          {(isAdmin || user?.role === 'staff') && (
+            <TouchableOpacity
+              onPress={handleExport}
+              disabled={isExporting}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.18)',
+                borderRadius: 13, padding: 11,
+                borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
+                alignItems: 'center', justifyContent: 'center',
+                opacity: isExporting ? 0.7 : 1,
+              }}
+            >
+              {isExporting
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Download size={18} color="#fff" />}
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Cached data notice */}
