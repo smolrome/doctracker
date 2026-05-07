@@ -227,9 +227,14 @@ def api_me():
 @api_bp.route('/documents', methods=['GET'])
 @jwt_required()
 def api_get_documents():
-    status = request.args.get('status')
-    office = request.args.get('office')
-    search = request.args.get('search')
+    status    = request.args.get('status')
+    office    = request.args.get('office')
+    search    = request.args.get('search')
+    cat       = request.args.get('cat')
+    staff     = request.args.get('staff')
+    source    = request.args.get('source')
+    date_from = request.args.get('date_from')
+    date_to   = request.args.get('date_to')
     try:
         page = int(request.args.get('page', 1))
     except (ValueError, TypeError):
@@ -261,6 +266,19 @@ def api_get_documents():
                 search_lower in (d.get('doc_id') or '').lower() or
                 search_lower in (d.get('sender_org') or '').lower() or
                 search_lower in (d.get('from_office') or '').lower()]
+    if cat:
+        cat_lower = cat.lower()
+        docs = [d for d in docs if (d.get('category') or '').lower() == cat_lower]
+    if staff:
+        docs = [d for d in docs if
+                d.get('logged_by') == staff or d.get('assigned_to') == staff]
+    if source:
+        source_lower = source.lower()
+        docs = [d for d in docs if (d.get('source', 'staff') or 'staff').lower() == source_lower]
+    if date_from:
+        docs = [d for d in docs if (d.get('doc_date') or '')[:10] >= date_from]
+    if date_to:
+        docs = [d for d in docs if (d.get('doc_date') or '')[:10] <= date_to]
 
     total = len(docs)
     start = (page - 1) * limit
