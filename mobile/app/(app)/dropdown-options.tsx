@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Alert,
   TextInput, ActivityIndicator, StatusBar, Modal,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -28,13 +28,14 @@ export default function DropdownOptions() {
 
   // ── Data ──────────────────────────────────────────────────────────────────
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isRefetching, refetch } = useQuery({
     queryKey: ['dropdown-options'],
     queryFn: async () => {
       const res = await api.get('/dropdown-options/admin');
       return res.data as Record<string, DropdownConfig>;
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   // Normalise: ensure every config has an options array (API may return null for empty fields)
@@ -146,7 +147,16 @@ export default function DropdownOptions() {
           <Text style={{ color: '#94A3B8', marginTop: 12, fontSize: 13 }}>Loading options…</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        <ScrollView
+          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={refetch}
+              tintColor="#0038A8"
+            />
+          }
+        >
           {configs.map((config, idx) => {
             const expanded = expandedField === config.field_name;
             return (
@@ -189,7 +199,7 @@ export default function DropdownOptions() {
                   <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
                     {/* Option pills */}
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-                      {config.options.map((opt, oi) => (
+                      {config.options.map((opt: string, oi: number) => (
                         <View key={`${config.field_name}-opt-${oi}`} style={{
                           backgroundColor: '#EFF6FF',
                           borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,

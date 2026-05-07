@@ -619,9 +619,28 @@ def api_get_office_staff(office_slug: str):
 @api_bp.route('/routing-slips', methods=['GET'])
 @jwt_required()
 def api_get_routing_slips():
+    user_id = get_jwt_identity()
+    user = get_user_by_username(user_id)
+    user_role = 'admin' if _is_admin_user(user_id) else (user.get('role', '') if user else '')
+    user_office = (user.get('office') or '') if user else ''
+
     from services.misc import get_all_routing_slips
     slips = get_all_routing_slips()
-    return jsonify(serialize(slips))
+
+    if user_role in ('admin', 'superadmin'):
+        return jsonify(serialize(slips))
+    elif user_role == 'staff':
+        scoped = [
+            s for s in slips
+            if (user_office and (
+                s.get('from_office', '') == user_office or
+                s.get('destination', '') == user_office or
+                s.get('to_office', '') == user_office
+            )) or s.get('created_by') == user_id
+        ]
+        return jsonify(serialize(scoped))
+    else:
+        return jsonify(serialize([]))
 
 
 @api_bp.route('/activity-log', methods=['GET'])

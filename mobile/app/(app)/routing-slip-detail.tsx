@@ -384,7 +384,7 @@ export default function RoutingSlipDetail() {
             </TouchableOpacity>
 
             {/* Archive */}
-            {isAdmin && (
+            {canAct && (
               <TouchableOpacity
                 onPress={handleArchive}
                 disabled={archiveMutation.isPending}
