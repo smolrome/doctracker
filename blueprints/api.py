@@ -258,7 +258,7 @@ def api_get_documents():
     if status:
         docs = [d for d in docs if d.get('status') == status]
     if office:
-        docs = [d for d in docs if d.get('office') == office]
+        docs = [d for d in docs if d.get('from_office', '').lower() == office.lower()]
     if search:
         search_lower = search.lower()
         docs = [d for d in docs if
