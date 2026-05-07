@@ -67,6 +67,14 @@ export default function Documents() {
   const [bulkRemarks, setBulkRemarks] = useState('');
   const [selectedBulkStatus, setSelectedBulkStatus] = useState<string | null>(null);
 
+  // ── Bulk transfer modal state ──────────────────────────────────────────────
+  const [bulkTransferModal, setBulkTransferModal] = useState(false);
+  const [bulkTransferStaff, setBulkTransferStaff] = useState('');
+  const [bulkTransferUsername, setBulkTransferUsername] = useState('');
+  const [bulkTransferType, setBulkTransferType] = useState<'inside_office' | 'outside_office'>('inside_office');
+  const [bulkTransferRemarks, setBulkTransferRemarks] = useState('');
+  const [bulkTransferSearch, setBulkTransferSearch] = useState('');
+
   // ── Assign modal state ─────────────────────────────────────────────────────
   const [assignModal, setAssignModal] = useState(false);
   const [staffSearch, setStaffSearch] = useState('');
@@ -235,6 +243,24 @@ export default function Documents() {
       Alert.alert('Deleted', res.data?.message || `${selectedIds.size} document(s) moved to trash.`);
     },
     onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Bulk delete failed.'),
+  });
+
+  const bulkTransferMutation = useMutation({
+    mutationFn: ({ new_staff, transfer_type, remarks }: { new_staff: string; transfer_type: string; remarks: string }) =>
+      api.post('/documents/bulk-transfer', { doc_ids: Array.from(selectedIds), new_staff, transfer_type, remarks }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      setBulkTransferModal(false);
+      setBulkTransferStaff('');
+      setBulkTransferUsername('');
+      setBulkTransferRemarks('');
+      setBulkTransferSearch('');
+      setSelectedIds(new Set());
+      setIsSelecting(false);
+      Alert.alert('Transferred', res.data?.message || `${selectedIds.size} document(s) transferred.`);
+    },
+    onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Bulk transfer failed.'),
   });
 
   const assignBatchMutation = useMutation({
@@ -875,6 +901,22 @@ export default function Documents() {
                 <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Status</Text>
               </TouchableOpacity>
 
+              {/* Transfer — all staff */}
+              <TouchableOpacity
+                onPress={() => { setBulkTransferStaff(''); setBulkTransferUsername(''); setBulkTransferRemarks(''); setBulkTransferSearch(''); setBulkTransferType('inside_office'); setBulkTransferModal(true); }}
+                disabled={bulkTransferMutation.isPending}
+                style={{
+                  backgroundColor: '#8B5CF6', borderRadius: 10,
+                  paddingHorizontal: 12, paddingVertical: 8,
+                  flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1,
+                }}
+              >
+                {bulkTransferMutation.isPending
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <UserCheck size={14} color="#fff" />}
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Transfer</Text>
+              </TouchableOpacity>
+
               {/* Assign to Staff — admin only */}
               {isAdmin && (
                 <TouchableOpacity
@@ -1029,6 +1071,174 @@ export default function Documents() {
                     : selectedBulkStatus
                       ? `Apply to ${selectedIds.size} document${selectedIds.size !== 1 ? 's' : ''}`
                       : 'Select a status'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Bulk Transfer Modal ── */}
+      <Modal visible={bulkTransferModal} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <TouchableOpacity
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            onPress={() => setBulkTransferModal(false)}
+            activeOpacity={1}
+          />
+          <View style={{
+            backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+            padding: 20, paddingBottom: 40,
+          }}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontWeight: '800', color: '#1E293B', fontSize: 17 }}>
+                Transfer Documents · {selectedIds.size} selected
+              </Text>
+              <TouchableOpacity onPress={() => setBulkTransferModal(false)}>
+                <X size={20} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Transfer Type toggle */}
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+              Transfer Type
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+              {([['inside_office', 'Same Office'], ['outside_office', 'Other Office']] as const).map(([val, label]) => (
+                <TouchableOpacity
+                  key={val}
+                  onPress={() => setBulkTransferType(val)}
+                  style={{
+                    flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center',
+                    backgroundColor: bulkTransferType === val ? '#8B5CF6' : '#F1F5F9',
+                    borderWidth: bulkTransferType === val ? 0 : 0.5,
+                    borderColor: '#E2E8F0',
+                  }}
+                >
+                  <Text style={{ color: bulkTransferType === val ? '#fff' : '#64748B', fontWeight: '700', fontSize: 13 }}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Staff search + picker */}
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+              Transfer To
+            </Text>
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 8,
+              backgroundColor: '#fff', borderRadius: 12,
+              borderWidth: 1, borderColor: '#E2E8F0',
+              paddingHorizontal: 12, marginBottom: 8,
+            }}>
+              <Search size={15} color="#94A3B8" />
+              <TextInput
+                value={bulkTransferSearch}
+                onChangeText={setBulkTransferSearch}
+                placeholder="Search staff by name or office…"
+                placeholderTextColor="#CBD5E1"
+                style={{ flex: 1, paddingVertical: 11, fontSize: 14, color: '#1E293B' }}
+              />
+            </View>
+            <ScrollView style={{ maxHeight: 160 }} showsVerticalScrollIndicator={false}>
+              {staffList
+                .filter((s) => {
+                  const q = bulkTransferSearch.toLowerCase();
+                  return (
+                    !q ||
+                    s.full_name?.toLowerCase().includes(q) ||
+                    s.username?.toLowerCase().includes(q) ||
+                    s.office?.toLowerCase().includes(q)
+                  );
+                })
+                .map((s) => {
+                  const isChosen = bulkTransferUsername === s.username;
+                  return (
+                    <TouchableOpacity
+                      key={s.username}
+                      onPress={() => { setBulkTransferUsername(s.username); setBulkTransferStaff(s.full_name || s.username); }}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 10,
+                        backgroundColor: isChosen ? '#F5F3FF' : '#fff',
+                        borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 6,
+                        borderWidth: isChosen ? 1.5 : 0.5,
+                        borderColor: isChosen ? '#8B5CF6' : '#E2E8F0',
+                      }}
+                    >
+                      <View style={{
+                        width: 32, height: 32, borderRadius: 16,
+                        backgroundColor: isChosen ? '#8B5CF6' : '#F1F5F9',
+                        alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: isChosen ? '#fff' : '#64748B' }}>
+                          {(s.full_name || s.username).charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontWeight: '700', color: '#1E293B', fontSize: 13 }}>{s.full_name || s.username}</Text>
+                        <Text style={{ color: '#94A3B8', fontSize: 11 }}>{s.office || s.role || '—'}</Text>
+                      </View>
+                      {isChosen && <CheckSquare size={18} color="#8B5CF6" />}
+                    </TouchableOpacity>
+                  );
+                })}
+            </ScrollView>
+
+            {/* Remarks */}
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 14, marginBottom: 8 }}>
+              Remarks (optional)
+            </Text>
+            <TextInput
+              value={bulkTransferRemarks}
+              onChangeText={setBulkTransferRemarks}
+              placeholder="Add a note about this transfer…"
+              placeholderTextColor="#94A3B8"
+              multiline
+              style={{
+                backgroundColor: '#fff', borderRadius: 12, padding: 12,
+                borderWidth: 1, borderColor: '#E2E8F0', fontSize: 14, color: '#1E293B',
+                height: 60, textAlignVertical: 'top', marginBottom: 16,
+              }}
+            />
+
+            {/* Action buttons */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setBulkTransferModal(false)}
+                style={{
+                  flex: 1, backgroundColor: '#F1F5F9', borderRadius: 13,
+                  paddingVertical: 14, alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#475569', fontWeight: '700', fontSize: 14 }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  if (!bulkTransferUsername) return;
+                  bulkTransferMutation.mutate({
+                    new_staff: bulkTransferUsername,
+                    transfer_type: bulkTransferType,
+                    remarks: bulkTransferRemarks,
+                  });
+                }}
+                disabled={!bulkTransferUsername || bulkTransferMutation.isPending}
+                style={{
+                  flex: 2, borderRadius: 13, paddingVertical: 14,
+                  alignItems: 'center', justifyContent: 'center',
+                  flexDirection: 'row', gap: 8,
+                  backgroundColor: bulkTransferUsername ? '#8B5CF6' : '#E2E8F0',
+                }}
+              >
+                {bulkTransferMutation.isPending
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <UserCheck size={15} color={bulkTransferUsername ? '#fff' : '#94A3B8'} />}
+                <Text style={{ color: bulkTransferUsername ? '#fff' : '#94A3B8', fontWeight: '700', fontSize: 14 }}>
+                  {bulkTransferMutation.isPending
+                    ? 'Transferring…'
+                    : bulkTransferUsername
+                      ? `Transfer ${selectedIds.size} Document${selectedIds.size !== 1 ? 's' : ''}`
+                      : 'Select a staff member'}
                 </Text>
               </TouchableOpacity>
             </View>

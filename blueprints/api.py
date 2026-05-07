@@ -2388,6 +2388,122 @@ def api_bulk_status():
     return jsonify(message=f'{updated} document(s) updated to {status}', updated=updated)
 
 
+@api_bp.route('/documents/bulk-transfer', methods=['POST'])
+@jwt_required()
+def api_bulk_transfer():
+    """Staff/Admin: transfer/route multiple documents to another staff member."""
+    user_id = get_jwt_identity()
+    user_obj = get_user_by_username(user_id)
+    user_role = (user_obj.get('role', '') if user_obj else '')
+    is_admin = _is_admin_user(user_id) or user_role in ('admin', 'superadmin')
+    if not is_admin and user_role != 'staff':
+        return jsonify(error='Staff access required'), 403
+
+    data          = request.get_json(force=True, silent=True) or {}
+    doc_ids       = data.get('doc_ids', [])
+    new_staff     = (data.get('new_staff', '') or '').strip()
+    transfer_type = (data.get('transfer_type', 'inside_office') or 'inside_office').strip()
+    remarks       = (data.get('remarks', '') or '').strip()
+
+    if not doc_ids:
+        return jsonify(error='doc_ids is required'), 400
+    if not new_staff:
+        return jsonify(error='new_staff is required'), 400
+    if transfer_type not in ('inside_office', 'outside_office'):
+        return jsonify(error='transfer_type must be inside_office or outside_office'), 400
+    if new_staff == user_id:
+        return jsonify(error='Cannot transfer to yourself'), 400
+
+    from services.auth import get_all_users
+    all_users   = get_all_users()
+    valid_staff = [u['username'] for u in all_users if u.get('role') != 'client']
+    if new_staff not in valid_staff:
+        return jsonify(error='Invalid staff member'), 400
+
+    new_staff_office     = ''
+    new_staff_full_name  = ''
+    actor                = (user_obj.get('full_name') or user_id) if user_obj else user_id
+    for u in all_users:
+        if u.get('username') == new_staff:
+            new_staff_office    = u.get('office', '')
+            new_staff_full_name = u.get('full_name', '') or new_staff
+            break
+
+    status_note       = '(Inside Office)' if transfer_type == 'inside_office' else '(Outside Office)'
+    id_list           = doc_ids[:50]
+    transferred_count = 0
+    skipped_count     = 0
+    ts = now_str()
+
+    for did in id_list:
+        doc = get_doc(did)
+        if not doc or doc.get('deleted'):
+            skipped_count += 1
+            continue
+
+        can_transfer = (
+            is_admin or
+            doc.get('logged_by') == user_id or
+            doc.get('original_logged_by') == user_id or
+            doc.get('accepted_by') == user_id
+        )
+        if not can_transfer:
+            skipped_count += 1
+            continue
+
+        original_logger = doc.get('original_logged_by', doc.get('logged_by', ''))
+        cycle           = doc.get('routing_cycle', 0)
+
+        if not doc.get('original_logged_by'):
+            doc['original_logged_by'] = doc.get('logged_by', user_id)
+
+        routing_back = (new_staff == original_logger)
+        if routing_back:
+            doc['routing_cycle'] = cycle + 1
+            action_label = f"Batch Re-routed to Originating Staff (Cycle {doc['routing_cycle']})"
+        else:
+            action_label = f"Batch {'Transferred' if transfer_type == 'inside_office' else 'Routed'} — {status_note} (Cycle {cycle + 1})"
+
+        doc['status']                = 'Transferred' if transfer_type == 'inside_office' else 'Routed'
+        doc['transferred_to']        = new_staff
+        doc['transferred_to_office'] = new_staff_office
+        doc['transferred_by']        = user_id
+        doc['transferred_at']        = ts
+        doc['transfer_type']         = transfer_type
+        doc['pending_at_staff']      = new_staff
+        doc['pending_at_office']     = new_staff_office
+        doc['pending_at_staff_name'] = new_staff_full_name
+        doc['transfer_status']       = 'pending'
+        doc['updated_at']            = ts
+        doc['updated_by']            = user_id
+
+        doc.setdefault('travel_log', []).append({
+            'office':    new_staff_office or 'DepEd Leyte Division Office',
+            'action':    action_label,
+            'officer':   actor,
+            'timestamp': ts,
+            'remarks':   remarks or (
+                f"Batch re-routed back to originating staff. Cycle {doc['routing_cycle']} completed."
+                if routing_back else
+                f"Batch routed from {user_id} → {new_staff} at {new_staff_office or 'N/A'} {status_note}."
+            ),
+        })
+        save_doc(doc)
+        transferred_count += 1
+
+    from services.misc import audit_log
+    from utils import get_client_ip
+    audit_log('doc_batch_transferred',
+              f'count={transferred_count} to={new_staff} type={transfer_type}',
+              username=user_id, ip=get_client_ip())
+
+    return jsonify(
+        message=f'{transferred_count} document(s) transferred to {new_staff_full_name}.',
+        transferred=transferred_count,
+        skipped=skipped_count,
+    )
+
+
 @api_bp.route('/documents/bulk-delete', methods=['POST'])
 @jwt_required()
 def api_bulk_delete():
