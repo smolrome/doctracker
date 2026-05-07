@@ -110,6 +110,10 @@ export default function DocumentDetail() {
   const [assignModal, setAssignModal] = useState(false);
   const [assignStaff, setAssignStaff] = useState('');
 
+  // Quick Note modal
+  const [noteModal, setNoteModal] = useState(false);
+  const [noteText, setNoteText] = useState('');
+
   // ── Data for transfer ─────────────────────────────────────────────────────
 
   const { data: staffList } = useStaff();
@@ -236,6 +240,24 @@ export default function DocumentDetail() {
       router.back();
     },
     onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to delete document.'),
+  });
+
+  const releaseMutation = useMutation({
+    mutationFn: () => api.post(`/documents/${id}/release`),
+    onSuccess: () => {
+      invalidate();
+      Alert.alert('Released', 'Document has been released. Workflow closed.');
+    },
+    onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to release document.'),
+  });
+
+  const quickNoteMutation = useMutation({
+    mutationFn: (note: string) => api.post(`/documents/${id}/quick-note`, { note }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['document', id] });
+      setNoteModal(false);
+    },
+    onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to save note.'),
   });
 
   const handleDelete = () => {
@@ -388,6 +410,11 @@ export default function DocumentDetail() {
   const canTransfer = user?.role === 'admin' || user?.role === 'staff';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
   const canEdit = isAdmin || user?.role === 'staff';
+  const canRelease = isAdmin || (
+    (doc?.original_logged_by === user?.username || (!doc?.original_logged_by && doc?.logged_by === user?.username)) &&
+    doc?.logged_by === user?.username &&
+    user?.role === 'staff'
+  );
 
   // ── Loading / not found ───────────────────────────────────────────────────
 
@@ -576,6 +603,28 @@ export default function DocumentDetail() {
           </View>
         ) : null}
 
+        {/* ── Notes ────────────────────────────────────────────────────── */}
+        {canEdit && (
+          <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 0.5, borderColor: '#E2E8F0' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ fontWeight: '800', color: '#0038A8', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                Notes
+              </Text>
+              <TouchableOpacity
+                onPress={() => { setNoteText(doc.notes || ''); setNoteModal(true); }}
+                style={{ padding: 6 }}
+              >
+                <Pencil size={15} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            {doc.notes ? (
+              <Text style={{ color: '#334155', fontSize: 14, lineHeight: 21 }}>{doc.notes}</Text>
+            ) : (
+              <Text style={{ color: '#CBD5E1', fontSize: 13, fontStyle: 'italic' }}>No notes added</Text>
+            )}
+          </View>
+        )}
+
         {/* ── Travel Log ────────────────────────────────────────────────── */}
         {travelLog.length > 0 && (
           <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 0.5, borderColor: '#E2E8F0' }}>
@@ -710,6 +759,45 @@ export default function DocumentDetail() {
               </Text>
             </View>
             <Text style={{ color: '#86EFAC', fontSize: 20 }}>›</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* ── Release Document ──────────────────────────────────────────── */}
+        {canRelease && (
+          <TouchableOpacity
+            onPress={() => Alert.alert(
+              'Release Document',
+              'Release this document? This cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Release', style: 'destructive', onPress: () => releaseMutation.mutate() },
+              ],
+            )}
+            disabled={releaseMutation.isPending}
+            activeOpacity={0.8}
+            style={{
+              backgroundColor: '#FFF7ED',
+              borderRadius: 14, padding: 16, marginBottom: 12,
+              borderWidth: 1, borderColor: '#FED7AA',
+              flexDirection: 'row', alignItems: 'center', gap: 12,
+              opacity: releaseMutation.isPending ? 0.7 : 1,
+            }}
+          >
+            <View style={{
+              width: 40, height: 40, borderRadius: 20,
+              backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {releaseMutation.isPending
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <CheckCircle size={18} color="#fff" />}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: '800', color: '#9A3412', fontSize: 14 }}>Release Document</Text>
+              <Text style={{ color: '#C2410C', fontSize: 12.5, marginTop: 2 }}>
+                Mark as released and close document
+              </Text>
+            </View>
+            <Text style={{ color: '#FDBA74', fontSize: 20 }}>›</Text>
           </TouchableOpacity>
         )}
 
@@ -1277,6 +1365,57 @@ export default function DocumentDetail() {
                   style={{ borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 13, paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff' }}
                 >
                   <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Quick Note Modal ───────────────────────────────────────────── */}
+      <Modal visible={noteModal} transparent animationType="slide" onRequestClose={() => setNoteModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+            <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => setNoteModal(false)} activeOpacity={1} />
+            <View style={{ backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24 }}>
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 20 }} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={{ fontSize: 17, fontWeight: '800', color: '#1E293B' }}>Edit Notes</Text>
+                <TouchableOpacity onPress={() => setNoteModal(false)}>
+                  <X size={20} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                value={noteText}
+                onChangeText={setNoteText}
+                placeholder="Add notes about this document…"
+                placeholderTextColor="#CBD5E1"
+                multiline
+                autoFocus
+                style={{
+                  backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: '#E2E8F0',
+                  paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: '#1E293B',
+                  height: 120, textAlignVertical: 'top', marginBottom: 16,
+                }}
+              />
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity
+                  onPress={() => setNoteModal(false)}
+                  style={{ flex: 1, borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff' }}
+                >
+                  <Text style={{ color: '#64748B', fontWeight: '600', fontSize: 14 }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => quickNoteMutation.mutate(noteText)}
+                  disabled={quickNoteMutation.isPending}
+                  style={{
+                    flex: 1, backgroundColor: quickNoteMutation.isPending ? '#93C5FD' : '#0038A8',
+                    borderRadius: 12, paddingVertical: 13, alignItems: 'center',
+                  }}
+                >
+                  {quickNoteMutation.isPending
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Save Note</Text>}
                 </TouchableOpacity>
               </View>
             </View>
