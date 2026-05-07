@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, Alert,
   ActivityIndicator, StatusBar, Platform, FlatList, Clipboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
+import * as FileSystem from 'expo-file-system';
 import api from '../../lib/api';
 import { SelectField } from '../../components/ui/SelectField';
 import {
   ArrowLeft, UserPlus, Plus, Trash2, Check, X, Copy, ChevronDown, ChevronUp,
+  FileSpreadsheet,
 } from 'lucide-react-native';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -33,14 +35,24 @@ function emptyRow(): UserRow { return { id: uid(), full_name: '', email: '', doc
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
+const EXCEL_MIME_TYPES = [
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  '*/*',
+];
+const EXCEL_EXTENSIONS = ['xlsx', 'xls', 'xlsm'];
+const TEN_MB = 10 * 1024 * 1024;
+
 export default function BulkCreateUsers() {
   const router = useRouter();
+  const scrollRef = useRef<ScrollView>(null);
 
-  const [rows, setRows]       = useState<UserRow[]>([emptyRow()]);
-  const [role, setRole]       = useState('staff');
-  const [office, setOffice]   = useState('');
-  const [results, setResults] = useState<CreateResult[]>([]);
+  const [rows, setRows]         = useState<UserRow[]>([emptyRow()]);
+  const [role, setRole]         = useState('staff');
+  const [office, setOffice]     = useState('');
+  const [results, setResults]   = useState<CreateResult[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [importing, setImporting] = useState(false);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
@@ -73,6 +85,78 @@ export default function BulkCreateUsers() {
         { text: 'Create', onPress: () => { setResults([]); createMutation.mutate(); } },
       ],
     );
+  };
+
+  // ── Excel import ──────────────────────────────────────────────────────────
+
+  const handleImportExcel = async () => {
+    let DocumentPicker: any;
+    try {
+      DocumentPicker = require('expo-document-picker');
+    } catch {
+      Alert.alert('Not Available', 'File import requires the full app build. Please use the EAS build instead of Expo Go.');
+      return;
+    }
+
+    const result = await DocumentPicker.getDocumentAsync({
+      type: EXCEL_MIME_TYPES,
+      copyToCacheDirectory: true,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    const fileName = asset.name ?? 'upload.xlsx';
+    const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
+
+    if (!EXCEL_EXTENSIONS.includes(ext)) {
+      Alert.alert('Invalid File', `Only .xlsx, .xls, and .xlsm files are supported.\n\nSelected: .${ext}`);
+      return;
+    }
+
+    if (asset.size && asset.size > TEN_MB) {
+      Alert.alert(
+        'Large File',
+        `This file is ${(asset.size / (1024 * 1024)).toFixed(1)} MB. The server may reject files over 10 MB, but we'll try anyway.`,
+      );
+    }
+
+    setImporting(true);
+    try {
+      const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const mimeType = asset.mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      const fd = new FormData();
+      fd.append('file', { uri: asset.uri, name: fileName, type: mimeType } as any);
+
+      const res = await api.post('/parse-excel-users', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      const imported: UserRow[] = (res.data?.rows ?? []).map((row: any) => ({
+        id:               uid(),
+        full_name:        String(row.name ?? '').trim(),
+        email:            String(row.email ?? '').trim(),
+        documents_handled: String(row.documents ?? '').trim(),
+      }));
+
+      if (imported.length === 0) {
+        Alert.alert('No Rows Found', 'The file was parsed but contained no user rows. Check that your sheet has Name, Email, and Documents columns.');
+        return;
+      }
+
+      setRows(imported);
+      setResults([]);
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      Alert.alert('Imported', `${imported.length} row${imported.length !== 1 ? 's' : ''} loaded from "${fileName}".`);
+    } catch (e: any) {
+      const msg = e?.response?.data?.error || e?.message || 'Could not parse the Excel file.';
+      Alert.alert('Import Failed', msg);
+    } finally {
+      setImporting(false);
+    }
   };
 
   // ── Row helpers ────────────────────────────────────────────────────────────
@@ -119,7 +203,24 @@ export default function BulkCreateUsers() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} contentContainerStyle={{ padding: 20, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+
+        {/* Import from Excel */}
+        <TouchableOpacity
+          onPress={handleImportExcel}
+          disabled={importing}
+          activeOpacity={0.8}
+          style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+            backgroundColor: importing ? '#F1F5F9' : '#F0FDF4',
+            borderRadius: 14, paddingVertical: 15, marginBottom: 16,
+            borderWidth: 1.5, borderColor: importing ? '#E2E8F0' : '#86EFAC',
+          }}
+        >
+          {importing
+            ? <><ActivityIndicator size="small" color="#16A34A" /><Text style={{ color: '#15803D', fontSize: 14, fontWeight: '700' }}>Importing…</Text></>
+            : <><FileSpreadsheet size={18} color="#16A34A" /><Text style={{ color: '#15803D', fontSize: 14, fontWeight: '700' }}>📂 Import from Excel</Text></>}
+        </TouchableOpacity>
 
         {/* Global settings */}
         <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 0.5, borderColor: '#E2E8F0' }}>

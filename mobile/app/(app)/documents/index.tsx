@@ -11,14 +11,16 @@ import {
   Dimensions,
   Modal,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Search, CheckSquare, Square, X, Trash2, RefreshCw } from 'lucide-react-native';
+import { Search, CheckSquare, Square, X, Trash2, RefreshCw, UserCheck, Users } from 'lucide-react-native';
 import { useDocuments } from '../../../hooks/useDocuments';
 import { useNetwork } from '../../../hooks/useNetwork';
 import { OfflineBanner } from '../../../components/ui/OfflineBanner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../../lib/store';
+import { useStaff } from '../../../hooks/useDropdownOptions';
 import api from '../../../lib/api';
 
 const { width } = Dimensions.get('window');
@@ -54,51 +56,105 @@ export default function Documents() {
   const [searchInput, setSearchInput] = useState('');
   const { isOnline } = useNetwork();
 
-  // ── Bulk select state ──────────────────────────────────────────────────────
-  const [bulkMode, setBulkMode] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // ── Select state ───────────────────────────────────────────────────────────
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // ── Bulk status modal state ────────────────────────────────────────────────
   const [bulkStatusModal, setBulkStatusModal] = useState(false);
   const [bulkRemarks, setBulkRemarks] = useState('');
+
+  // ── Assign modal state ─────────────────────────────────────────────────────
+  const [assignModal, setAssignModal] = useState(false);
+  const [staffSearch, setStaffSearch] = useState('');
+  const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
+
+  // ── Delete All Unassigned modal state ──────────────────────────────────────
+  const [deleteAllModal, setDeleteAllModal] = useState(false);
+  const [deleteAllConfirmText, setDeleteAllConfirmText] = useState('');
 
   const { data, isLoading, isRefetching, refetch, isFromCache } = useDocuments(search, activeFilter);
   const docs = data?.documents ?? [];
 
+  const { data: staffList = [] } = useStaff();
+
   const handleSearch = () => setSearch(searchInput);
 
-  // ── Bulk mutations ─────────────────────────────────────────────────────────
+  // ── Mutations ──────────────────────────────────────────────────────────────
 
   const bulkStatusMutation = useMutation({
     mutationFn: ({ status, remarks }: { status: string; remarks: string }) =>
-      api.post('/documents/bulk-status', { doc_ids: Array.from(selected), status, remarks }),
+      api.post('/documents/bulk-status', { doc_ids: Array.from(selectedIds), status, remarks }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
       setBulkStatusModal(false);
-      setSelected(new Set());
-      setBulkMode(false);
+      setSelectedIds(new Set());
+      setIsSelecting(false);
       setBulkRemarks('');
-      Alert.alert('Updated', res.data?.message || `${selected.size} document(s) updated.`);
+      Alert.alert('Updated', res.data?.message || `${selectedIds.size} document(s) updated.`);
     },
     onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Bulk update failed.'),
   });
 
   const bulkDeleteMutation = useMutation({
-    mutationFn: () => api.post('/documents/bulk-delete', { doc_ids: Array.from(selected) }),
+    mutationFn: () => api.post('/documents/bulk-delete', { doc_ids: Array.from(selectedIds) }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['trash'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
-      setSelected(new Set());
-      setBulkMode(false);
-      Alert.alert('Deleted', res.data?.message || `${selected.size} document(s) moved to trash.`);
+      setSelectedIds(new Set());
+      setIsSelecting(false);
+      Alert.alert('Deleted', res.data?.message || `${selectedIds.size} document(s) moved to trash.`);
     },
     onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Bulk delete failed.'),
+  });
+
+  const assignBatchMutation = useMutation({
+    mutationFn: (staff_username: string) =>
+      api.post('/admin/assign-doc-batch', { doc_ids: Array.from(selectedIds), staff_username }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      setSelectedIds(new Set());
+      setIsSelecting(false);
+      setAssignModal(false);
+      setSelectedStaff(null);
+      setStaffSearch('');
+      Alert.alert('Assigned', `${res.data?.assigned ?? 0} document(s) assigned to ${res.data?.staff}.`);
+    },
+    onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Assign failed.'),
+  });
+
+  const deleteUnassignedMutation = useMutation({
+    mutationFn: () =>
+      api.post('/admin/delete-unassigned-batch', { doc_ids: Array.from(selectedIds), delete_all: false }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      setSelectedIds(new Set());
+      setIsSelecting(false);
+      Alert.alert('Done', `${res.data?.deleted ?? 0} unassigned document(s) deleted.`);
+    },
+    onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Delete failed.'),
+  });
+
+  const deleteAllUnassignedMutation = useMutation({
+    mutationFn: () =>
+      api.post('/admin/delete-unassigned-batch', { doc_ids: [], delete_all: true }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      setDeleteAllModal(false);
+      setDeleteAllConfirmText('');
+      Alert.alert('Done', `${res.data?.deleted ?? 0} unassigned document(s) deleted.`);
+    },
+    onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Operation failed.'),
   });
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   const toggleSelect = (id: string) => {
-    setSelected((prev) => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -106,19 +162,19 @@ export default function Documents() {
     });
   };
 
-  const selectAll = () => setSelected(new Set(docs.map((d: any) => d.id)));
-  const clearSelection = () => setSelected(new Set());
+  const selectAll = () => setSelectedIds(new Set(docs.map((d: any) => d.id)));
+  const clearSelection = () => setSelectedIds(new Set());
 
-  const exitBulkMode = () => {
-    setBulkMode(false);
-    setSelected(new Set());
+  const exitSelectMode = () => {
+    setIsSelecting(false);
+    setSelectedIds(new Set());
   };
 
   const handleBulkDelete = () => {
-    if (selected.size === 0) return;
+    if (selectedIds.size === 0) return;
     Alert.alert(
       'Bulk Delete',
-      `Move ${selected.size} document${selected.size !== 1 ? 's' : ''} to trash?`,
+      `Move ${selectedIds.size} document${selectedIds.size !== 1 ? 's' : ''} to trash?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Move to Trash', style: 'destructive', onPress: () => bulkDeleteMutation.mutate() },
@@ -126,22 +182,58 @@ export default function Documents() {
     );
   };
 
+  const handleDeleteUnassigned = () => {
+    if (selectedIds.size === 0) return;
+    Alert.alert(
+      'Delete Unassigned',
+      `Only documents with no assigned staff will be deleted. Documents already assigned to someone will be skipped.\n\nProceed with ${selectedIds.size} selected?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete Unassigned', style: 'destructive', onPress: () => deleteUnassignedMutation.mutate() },
+      ],
+    );
+  };
+
+  const handleConfirmAssign = () => {
+    if (!selectedStaff) { Alert.alert('No Staff Selected', 'Please select a staff member.'); return; }
+    assignBatchMutation.mutate(selectedStaff);
+  };
+
+  const handleDeleteAllUnassigned = () => {
+    if (deleteAllConfirmText.trim().toUpperCase() !== 'DELETE') {
+      Alert.alert('Confirmation Required', 'Type DELETE in the box to confirm.');
+      return;
+    }
+    deleteAllUnassignedMutation.mutate();
+  };
+
+  // ── Filtered staff for picker ──────────────────────────────────────────────
+
+  const filteredStaff = staffList.filter((s) => {
+    const q = staffSearch.toLowerCase();
+    return (
+      s.full_name?.toLowerCase().includes(q) ||
+      s.username?.toLowerCase().includes(q) ||
+      s.office?.toLowerCase().includes(q)
+    );
+  });
+
   // ── Render item ────────────────────────────────────────────────────────────
 
   const renderDoc = ({ item }: { item: any }) => {
     const s = getStatus(item.status);
-    const isSelected = selected.has(item.id);
+    const isSelected = selectedIds.has(item.id);
 
     return (
       <TouchableOpacity
         onPress={() => {
-          if (bulkMode) toggleSelect(item.id);
+          if (isSelecting) toggleSelect(item.id);
           else router.push(`/(app)/documents/${item.id}`);
         }}
         onLongPress={() => {
-          if (!bulkMode) {
-            setBulkMode(true);
-            setSelected(new Set([item.id]));
+          if (!isSelecting && isAdmin) {
+            setIsSelecting(true);
+            setSelectedIds(new Set([item.id]));
           }
         }}
         activeOpacity={0.75}
@@ -157,8 +249,8 @@ export default function Documents() {
           gap: 12,
         }}
       >
-        {/* Checkbox (bulk mode) or accent bar */}
-        {bulkMode ? (
+        {/* Checkbox (select mode) or accent bar */}
+        {isSelecting ? (
           <View style={{ width: 24, alignItems: 'center' }}>
             {isSelected
               ? <CheckSquare size={22} color="#0038A8" />
@@ -236,19 +328,39 @@ export default function Documents() {
           <Text style={{ color: '#fff', fontSize: 22, fontWeight: '800', letterSpacing: -0.4 }}>
             Documents
           </Text>
-          {/* Bulk mode toggle */}
-          <TouchableOpacity
-            onPress={() => bulkMode ? exitBulkMode() : setBulkMode(true)}
-            style={{
-              backgroundColor: bulkMode ? '#EF4444' : 'rgba(255,255,255,0.18)',
-              borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7,
-              borderWidth: 1, borderColor: bulkMode ? '#EF4444' : 'rgba(255,255,255,0.25)',
-            }}
-          >
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>
-              {bulkMode ? 'Exit Bulk' : 'Bulk Select'}
-            </Text>
-          </TouchableOpacity>
+
+          {/* Admin-only header actions */}
+          {isAdmin && (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {/* Delete All Unassigned */}
+              {!isSelecting && (
+                <TouchableOpacity
+                  onPress={() => { setDeleteAllConfirmText(''); setDeleteAllModal(true); }}
+                  style={{
+                    backgroundColor: 'rgba(239,68,68,0.20)',
+                    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7,
+                    borderWidth: 1, borderColor: 'rgba(239,68,68,0.35)',
+                  }}
+                >
+                  <Text style={{ color: '#FCA5A5', fontSize: 11, fontWeight: '700' }}>Del Unassigned</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Select / Cancel toggle */}
+              <TouchableOpacity
+                onPress={() => isSelecting ? exitSelectMode() : setIsSelecting(true)}
+                style={{
+                  backgroundColor: isSelecting ? '#EF4444' : 'rgba(255,255,255,0.18)',
+                  borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7,
+                  borderWidth: 1, borderColor: isSelecting ? '#EF4444' : 'rgba(255,255,255,0.25)',
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>
+                  {isSelecting ? 'Cancel' : 'Select'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Search bar */}
@@ -331,20 +443,20 @@ export default function Documents() {
         />
       </View>
 
-      {/* ── Result count / Bulk bar ── */}
+      {/* ── Result count / Selection bar ── */}
       <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        {bulkMode ? (
+        {isSelecting ? (
           <>
             <Text style={{ fontSize: 11, fontWeight: '700', color: '#0038A8', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-              {selected.size} selected
+              {selectedIds.size} selected
             </Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity
-                onPress={selected.size === docs.length ? clearSelection : selectAll}
+                onPress={selectedIds.size === docs.length ? clearSelection : selectAll}
                 style={{ backgroundColor: '#EFF6FF', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}
               >
                 <Text style={{ color: '#0038A8', fontSize: 12, fontWeight: '700' }}>
-                  {selected.size === docs.length ? 'Deselect All' : 'Select All'}
+                  {selectedIds.size === docs.length ? 'Deselect All' : 'Select All'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -375,7 +487,7 @@ export default function Documents() {
           data={docs}
           keyExtractor={(item) => item.id}
           renderItem={renderDoc}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: bulkMode ? 100 : 16 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: isSelecting ? 120 : 16 }}
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
@@ -404,55 +516,87 @@ export default function Documents() {
         />
       )}
 
-      {/* ── Bulk Action Bar (shown when in bulk mode) ── */}
-      {bulkMode && (
+      {/* ── Batch Action Toolbar (select mode, ≥1 selected) ── */}
+      {isSelecting && selectedIds.size > 0 && (
         <View style={{
           position: 'absolute', bottom: 100, left: 16, right: 16,
           backgroundColor: '#1E293B', borderRadius: 16, padding: 14,
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
           shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.25, shadowRadius: 12, elevation: 8,
         }}>
-          <TouchableOpacity
-            onPress={exitBulkMode}
-            style={{ padding: 4 }}
-          >
-            <X size={20} color="#94A3B8" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+            <TouchableOpacity onPress={exitSelectMode} style={{ padding: 4 }}>
+              <X size={20} color="#94A3B8" />
+            </TouchableOpacity>
+            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700', flex: 1, marginLeft: 10 }}>
+              {selectedIds.size} selected
+            </Text>
+          </View>
 
-          <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700', flex: 1, marginLeft: 10 }}>
-            {selected.size > 0 ? `${selected.size} selected` : 'Tap items to select'}
-          </Text>
-
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            {/* Status — all staff */}
             <TouchableOpacity
-              onPress={() => {
-                if (selected.size === 0) { Alert.alert('No Selection', 'Select at least one document.'); return; }
-                setBulkStatusModal(true);
-              }}
-              disabled={selected.size === 0}
+              onPress={() => setBulkStatusModal(true)}
+              disabled={bulkStatusMutation.isPending}
               style={{
-                backgroundColor: selected.size > 0 ? '#3B82F6' : '#374151',
-                borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
-                flexDirection: 'row', alignItems: 'center', gap: 5,
+                backgroundColor: '#3B82F6', borderRadius: 10,
+                paddingHorizontal: 12, paddingVertical: 8,
+                flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1,
               }}
             >
               <RefreshCw size={14} color="#fff" />
               <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Status</Text>
             </TouchableOpacity>
 
+            {/* Assign to Staff — admin only */}
+            {isAdmin && (
+              <TouchableOpacity
+                onPress={() => { setSelectedStaff(null); setStaffSearch(''); setAssignModal(true); }}
+                disabled={assignBatchMutation.isPending}
+                style={{
+                  backgroundColor: '#10B981', borderRadius: 10,
+                  paddingHorizontal: 12, paddingVertical: 8,
+                  flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1,
+                }}
+              >
+                <UserCheck size={14} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Assign</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Delete Unassigned — admin only */}
+            {isAdmin && (
+              <TouchableOpacity
+                onPress={handleDeleteUnassigned}
+                disabled={deleteUnassignedMutation.isPending}
+                style={{
+                  backgroundColor: '#F59E0B', borderRadius: 10,
+                  paddingHorizontal: 12, paddingVertical: 8,
+                  flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1,
+                }}
+              >
+                {deleteUnassignedMutation.isPending
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Trash2 size={14} color="#fff" />}
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Del Unassigned</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Delete (to trash) — admin only */}
             {isAdmin && (
               <TouchableOpacity
                 onPress={handleBulkDelete}
-                disabled={selected.size === 0 || bulkDeleteMutation.isPending}
+                disabled={bulkDeleteMutation.isPending}
                 style={{
-                  backgroundColor: selected.size > 0 ? '#EF4444' : '#374151',
-                  borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
-                  flexDirection: 'row', alignItems: 'center', gap: 5,
+                  backgroundColor: '#EF4444', borderRadius: 10,
+                  paddingHorizontal: 12, paddingVertical: 8,
+                  flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1,
                 }}
               >
-                <Trash2 size={14} color="#fff" />
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Delete</Text>
+                {bulkDeleteMutation.isPending
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Trash2 size={14} color="#fff" />}
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Trash</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -473,7 +617,7 @@ export default function Documents() {
           }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <Text style={{ fontWeight: '800', color: '#1E293B', fontSize: 17 }}>
-                Update Status · {selected.size} doc{selected.size !== 1 ? 's' : ''}
+                Update Status · {selectedIds.size} doc{selectedIds.size !== 1 ? 's' : ''}
               </Text>
               <TouchableOpacity onPress={() => setBulkStatusModal(false)}>
                 <X size={20} color="#94A3B8" />
@@ -519,6 +663,176 @@ export default function Documents() {
                 height: 80, textAlignVertical: 'top',
               }}
             />
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Assign to Staff Modal ── */}
+      <Modal visible={assignModal} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <TouchableOpacity
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            onPress={() => setAssignModal(false)}
+            activeOpacity={1}
+          />
+          <View style={{
+            backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+            padding: 20, paddingBottom: 40, maxHeight: '75%',
+          }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Users size={18} color="#0038A8" />
+                <Text style={{ fontWeight: '800', color: '#1E293B', fontSize: 17 }}>
+                  Assign to Staff · {selectedIds.size} doc{selectedIds.size !== 1 ? 's' : ''}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setAssignModal(false)}>
+                <X size={20} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Staff search */}
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 8,
+              backgroundColor: '#fff', borderRadius: 12,
+              borderWidth: 1, borderColor: '#E2E8F0',
+              paddingHorizontal: 12, marginBottom: 12,
+            }}>
+              <Search size={15} color="#94A3B8" />
+              <TextInput
+                value={staffSearch}
+                onChangeText={setStaffSearch}
+                placeholder="Search staff by name or office…"
+                placeholderTextColor="#CBD5E1"
+                style={{ flex: 1, paddingVertical: 11, fontSize: 14, color: '#1E293B' }}
+              />
+            </View>
+
+            {/* Staff list */}
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+              {filteredStaff.length === 0 ? (
+                <Text style={{ color: '#94A3B8', textAlign: 'center', marginTop: 24, fontSize: 13 }}>
+                  No staff found
+                </Text>
+              ) : (
+                filteredStaff.map((s) => {
+                  const isChosen = selectedStaff === s.username;
+                  return (
+                    <TouchableOpacity
+                      key={s.username}
+                      onPress={() => setSelectedStaff(isChosen ? null : s.username)}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 12,
+                        backgroundColor: isChosen ? '#EFF6FF' : '#fff',
+                        borderRadius: 12, padding: 14, marginBottom: 8,
+                        borderWidth: isChosen ? 1.5 : 0.5,
+                        borderColor: isChosen ? '#0038A8' : '#E2E8F0',
+                      }}
+                    >
+                      <View style={{
+                        width: 38, height: 38, borderRadius: 19,
+                        backgroundColor: isChosen ? '#0038A8' : '#F1F5F9',
+                        alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Text style={{ fontSize: 15, fontWeight: '800', color: isChosen ? '#fff' : '#64748B' }}>
+                          {(s.full_name || s.username).charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontWeight: '700', color: '#1E293B', fontSize: 14 }}>
+                          {s.full_name || s.username}
+                        </Text>
+                        <Text style={{ color: '#94A3B8', fontSize: 12 }}>
+                          {s.office || s.role || '—'}
+                        </Text>
+                      </View>
+                      {isChosen && <CheckSquare size={20} color="#0038A8" />}
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            {/* Confirm button */}
+            <TouchableOpacity
+              onPress={handleConfirmAssign}
+              disabled={!selectedStaff || assignBatchMutation.isPending}
+              style={{
+                marginTop: 16,
+                backgroundColor: selectedStaff ? '#0038A8' : '#E2E8F0',
+                borderRadius: 13, paddingVertical: 15,
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              {assignBatchMutation.isPending
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <UserCheck size={16} color={selectedStaff ? '#fff' : '#94A3B8'} />}
+              <Text style={{ color: selectedStaff ? '#fff' : '#94A3B8', fontSize: 15, fontWeight: '700' }}>
+                {assignBatchMutation.isPending ? 'Assigning…' : 'Confirm Assign'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Delete All Unassigned Modal ── */}
+      <Modal visible={deleteAllModal} animationType="fade" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', paddingHorizontal: 24 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 24 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <Trash2 size={20} color="#EF4444" />
+              <Text style={{ fontWeight: '800', color: '#1E293B', fontSize: 17 }}>Delete All Unassigned</Text>
+            </View>
+
+            <Text style={{ color: '#475569', fontSize: 13, lineHeight: 20, marginBottom: 16 }}>
+              This will permanently soft-delete ALL documents with no assigned staff. Documents already assigned to someone are unaffected. This cannot be easily undone.
+            </Text>
+
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#EF4444', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+              Type DELETE to confirm
+            </Text>
+            <TextInput
+              value={deleteAllConfirmText}
+              onChangeText={setDeleteAllConfirmText}
+              placeholder="DELETE"
+              autoCapitalize="characters"
+              placeholderTextColor="#CBD5E1"
+              style={{
+                backgroundColor: '#F8FAFC', borderRadius: 12,
+                paddingHorizontal: 14, paddingVertical: 12, marginBottom: 20,
+                borderWidth: 1.5,
+                borderColor: deleteAllConfirmText.trim().toUpperCase() === 'DELETE' ? '#EF4444' : '#E2E8F0',
+                fontSize: 15, color: '#1E293B', fontWeight: '700',
+              }}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => { setDeleteAllModal(false); setDeleteAllConfirmText(''); }}
+                style={{
+                  flex: 1, backgroundColor: '#F1F5F9', borderRadius: 12,
+                  paddingVertical: 13, alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#475569', fontWeight: '700', fontSize: 14 }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleDeleteAllUnassigned}
+                disabled={deleteAllUnassignedMutation.isPending}
+                style={{
+                  flex: 1, backgroundColor: '#EF4444', borderRadius: 12,
+                  paddingVertical: 13, alignItems: 'center',
+                  flexDirection: 'row', justifyContent: 'center', gap: 6,
+                  opacity: deleteAllUnassignedMutation.isPending ? 0.7 : 1,
+                }}
+              >
+                {deleteAllUnassignedMutation.isPending
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Trash2 size={15} color="#fff" />}
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Delete All</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

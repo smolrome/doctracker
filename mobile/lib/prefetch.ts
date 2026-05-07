@@ -3,33 +3,6 @@ import api from './api';
 import { cache } from './cache';
 import { DocumentsResponse } from './types';
 
-const PAGE_SIZE = 200;
-
-async function fetchAllDocuments(
-  endpoint: string,
-  extraParams?: Record<string, any>
-): Promise<DocumentsResponse> {
-  const allDocs: any[] = [];
-  let page = 1;
-  let total = 0;
-
-  while (true) {
-    const res = await api.get(endpoint, {
-      params: { ...extraParams, page, limit: PAGE_SIZE },
-    });
-    const data = res.data as DocumentsResponse;
-    total = data.total ?? 0;
-    const docs = data.documents ?? [];
-    allDocs.push(...docs);
-
-    if (allDocs.length >= total || docs.length < PAGE_SIZE) break;
-    page++;
-  }
-
-  console.log(`[Prefetch] Fetched ${allDocs.length}/${total} docs from ${endpoint}`);
-  return { documents: allDocs, total, page: 1, limit: total };
-}
-
 /**
  * Prefetch all key data into React Query cache + manual cache so everything
  * is available offline even if the user hasn't visited every screen yet.
@@ -96,11 +69,14 @@ export async function prefetchAllData(
   // ── Staff-only data ─────────────────────────────────────────────────────
 
   if (isStaff) {
-    // All documents — paginate through the entire dataset
+    // First page of documents — enough for instant render; the list screen handles full pagination
     tasks.push(
       prefetchQuery(
         ['documents', '', '', 'All', true],
-        () => fetchAllDocuments('/documents'),
+        async () => {
+          const res = await api.get('/documents', { params: { page: 1, limit: 200 } });
+          return res.data as DocumentsResponse;
+        },
         cache.KEYS.DOCUMENTS
       )
     );

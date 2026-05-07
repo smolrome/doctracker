@@ -291,6 +291,10 @@ def api_create_document():
     data = request.get_json()
     user_id = get_jwt_identity()
 
+    user = get_user_by_username(user_id)
+    actor          = (user.get('full_name') or user_id) if user else user_id
+    current_office = (user.get('office') or '') if user else ''
+
     doc = {
         "id": str(uuid.uuid4()),
         "doc_id": generate_ref(),
@@ -302,11 +306,51 @@ def api_create_document():
         "referred_to": data.get('referred_to', ''),
         "remarks": data.get('remarks', ''),
         "doc_date": data.get('doc_date', now_str()),
+        "due_date": data.get('due_date', ''),
         "status": "Pending",
         "created_at": now_str(),
         "logged_by": user_id,
+        "travel_log": [],
     }
     insert_doc(doc)
+
+    # ── Auto-transfer if referred_to_username was provided ─────────────────
+    ref_username = (data.get('referred_to_username') or '').strip()
+    if ref_username:
+        from services.auth import get_all_users
+        from services.misc import audit_log
+        from utils import get_client_ip
+        ref_user = next(
+            (u for u in get_all_users() if u.get('username') == ref_username),
+            None
+        )
+        if ref_user:
+            ref_office    = ref_user.get('office', '') or ''
+            ref_full_name = ref_user.get('full_name', '') or ref_username
+            now_t = now_str()
+            doc['travel_log'].append({
+                'office':    current_office,
+                'action':    'Transferred',
+                'officer':   actor,
+                'timestamp': now_t,
+                'remarks':   'Auto-transferred to referred staff',
+            })
+            doc['status']                = 'Transferred'
+            doc['transferred_to']        = ref_username
+            doc['transferred_to_office'] = ref_office
+            doc['transferred_by']        = user_id
+            doc['transferred_at']        = now_t
+            doc['transfer_type']         = 'inside_office'
+            doc['pending_at_staff']      = ref_username
+            doc['pending_at_office']     = ref_office
+            doc['pending_at_staff_name'] = ref_full_name
+            doc['transfer_status']       = 'pending'
+            save_doc(doc)
+            audit_log('doc_auto_transferred',
+                      f"doc_id={doc['id']} to={ref_username} office={ref_office}",
+                      username=user_id, ip=get_client_ip())
+    # ── End auto-transfer ──────────────────────────────────────────────────
+
     return jsonify(serialize(doc)), 201
 
 
@@ -1376,6 +1420,97 @@ def api_admin_bulk_create_users():
     audit_log('bulk_users_created', f'total={len(results)} ok={ok_count}',
               username=user_id, ip=get_client_ip())
     return jsonify(results=results, total=len(results), created=ok_count), 201
+
+
+# ── Admin: Batch document assign ───────────────────────────────────────────────
+
+@api_bp.route('/admin/assign-doc-batch', methods=['POST'])
+@jwt_required()
+def api_admin_assign_doc_batch():
+    """Admin: assign multiple documents to a staff member."""
+    from services.auth import get_all_users
+    from services.misc import audit_log
+    from utils import get_client_ip
+
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        return jsonify(error='Admin access required'), 403
+
+    data = request.get_json(force=True, silent=True) or {}
+    doc_ids = data.get('doc_ids', [])
+    staff_username = (data.get('staff_username') or '').strip()
+
+    if not isinstance(doc_ids, list) or not doc_ids:
+        return jsonify(error='doc_ids must be a non-empty list'), 400
+    if not staff_username:
+        return jsonify(error='staff_username is required'), 400
+
+    all_users = get_all_users()
+    staff_user = next((u for u in all_users if u.get('username') == staff_username), None)
+    if not staff_user:
+        return jsonify(error=f'Staff user "{staff_username}" not found'), 404
+
+    assigned = 0
+    for doc_id in doc_ids:
+        doc = get_doc(doc_id)
+        if not doc or doc.get('deleted'):
+            continue
+        doc['logged_by'] = staff_username
+        if not doc.get('original_logged_by'):
+            doc['original_logged_by'] = staff_username
+        save_doc(doc)
+        assigned += 1
+
+    audit_log('doc_batch_assigned', f'assigned {assigned} docs to {staff_username}',
+              username=user_id, ip=get_client_ip())
+    return jsonify(success=True, assigned=assigned, staff=staff_username)
+
+
+# ── Admin: Batch delete unassigned docs ────────────────────────────────────────
+
+@api_bp.route('/admin/delete-unassigned-batch', methods=['POST'])
+@jwt_required()
+def api_admin_delete_unassigned_batch():
+    """Admin: delete unassigned documents (all or selected)."""
+    from services.misc import audit_log
+    from utils import get_client_ip
+
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        return jsonify(error='Admin access required'), 403
+
+    data = request.get_json(force=True, silent=True) or {}
+    doc_ids = data.get('doc_ids', [])
+    delete_all = bool(data.get('delete_all', False))
+
+    deleted = 0
+
+    if delete_all:
+        docs = load_docs()
+        for doc in docs:
+            if doc.get('deleted'):
+                continue
+            if not doc.get('logged_by') and not doc.get('original_logged_by') and not doc.get('submitted_by'):
+                doc['deleted'] = True
+                save_doc(doc)
+                deleted += 1
+        audit_log('unassigned_docs_deleted_all', f'deleted_count={deleted}',
+                  username=user_id, ip=get_client_ip())
+    else:
+        if not isinstance(doc_ids, list) or not doc_ids:
+            return jsonify(error='doc_ids must be a non-empty list when delete_all is false'), 400
+        for doc_id in doc_ids:
+            doc = get_doc(doc_id)
+            if not doc or doc.get('deleted'):
+                continue
+            if not doc.get('logged_by') and not doc.get('original_logged_by') and not doc.get('submitted_by'):
+                doc['deleted'] = True
+                save_doc(doc)
+                deleted += 1
+        audit_log('unassigned_docs_deleted_selected', f'deleted_count={deleted}',
+                  username=user_id, ip=get_client_ip())
+
+    return jsonify(success=True, deleted=deleted)
 
 
 # ── Admin: Document full edit ──────────────────────────────────────────────────

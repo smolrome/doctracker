@@ -1,18 +1,21 @@
-import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import api from './api';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
-
 export async function registerForPushNotifications(): Promise<string | null> {
+  if (Constants.appOwnership === 'expo') return null;
+
+  const Notifications = require('expo-notifications');
+
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+
   if (!Device.isDevice) {
     console.log('Push notifications require a physical device');
     return null;
@@ -75,8 +78,8 @@ async function registerTokenWithBackend(token: string) {
 }
 
 export function useNotificationListeners(
-  onReceive?: (notification: Notifications.Notification) => void,
-  onResponse?: (response: Notifications.NotificationResponse) => void
+  onReceive?: (notification: any) => void,
+  onResponse?: (response: any) => void
 ) {
   return { onReceive, onResponse };
 }

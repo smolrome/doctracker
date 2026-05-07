@@ -13,7 +13,7 @@ import {
 } from 'lucide-react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { useDropdownOptions, usePendingCount } from '../../hooks/useDropdownOptions';
+import { useDropdownOptions, usePendingCount, useStaff } from '../../hooks/useDropdownOptions';
 import { SelectField } from '../../components/ui/SelectField';
 import { useModalStore } from '../../lib/modalStore';
 
@@ -38,12 +38,14 @@ type CartItem = {
   docName: string;
   category: string;
   referredTo: string;
+  referredToUsername: string;
+  dueDate: string;
   remarks: string;
 };
 
 const EMPTY_FORM = {
   fromOffice: '', senderName: '', docName: '',
-  category: '', referredTo: '', remarks: '',
+  category: '', referredTo: '', referredToUsername: '', dueDate: '', remarks: '',
 };
 
 async function checkDuplicateName(name: string): Promise<{ id: string; doc_id: string; doc_name: string; status: string }[]> {
@@ -102,7 +104,9 @@ export default function AppLayout() {
   }, [cartOpenTrigger]);
 
   const categoryOptions = dropdownOptions?.category ?? [];
-  const staffNames = dropdownOptions?.referred_to ?? [];
+  const { data: staffList = [] } = useStaff();
+  const staffFullNames = staffList.map((s) => s.full_name);
+  const staffNameToUsername = Object.fromEntries(staffList.map((s) => [s.full_name, s.username]));
 
   const setField = (key: keyof typeof EMPTY_FORM) => (val: string) =>
     setForm((f) => ({ ...f, [key]: val }));
@@ -159,6 +163,8 @@ export default function AppLayout() {
       docName: item.docName,
       category: item.category,
       referredTo: item.referredTo,
+      referredToUsername: item.referredToUsername,
+      dueDate: item.dueDate,
       remarks: item.remarks,
     });
     setEditingTmpId(item.tmpId);
@@ -186,6 +192,8 @@ export default function AppLayout() {
           sender_org: item.fromOffice.trim(),
           sender_name: item.senderName.trim(),
           referred_to: item.referredTo.trim(),
+          referred_to_username: item.referredToUsername.trim(),
+          due_date: item.dueDate.trim(),
           remarks: item.remarks.trim(),
         });
         results.push(res.data);
@@ -263,6 +271,11 @@ export default function AppLayout() {
         {item.referredTo ? (
           <Text style={{ fontSize: 12, color: '#475569' }}>
             <Text style={{ color: '#94A3B8' }}>Referred To: </Text>{item.referredTo}
+          </Text>
+        ) : null}
+        {item.dueDate ? (
+          <Text style={{ fontSize: 12, color: '#475569' }}>
+            <Text style={{ color: '#94A3B8' }}>Due: </Text>{item.dueDate}
           </Text>
         ) : null}
         {item.remarks ? (
@@ -544,11 +557,25 @@ export default function AppLayout() {
                 <Text style={fieldLabelMuted}>Referred To</Text>
                 <SelectField
                   value={form.referredTo}
-                  onChange={setField('referredTo')}
-                  options={staffNames}
+                  onChange={(name) => setForm((f) => ({
+                    ...f,
+                    referredTo: name,
+                    referredToUsername: staffNameToUsername[name] ?? '',
+                  }))}
+                  options={staffFullNames}
                   placeholder="Search staff name…"
                   label="Referred To"
                   allowFreeText
+                />
+
+                <Text style={fieldLabelMuted}>Due Date</Text>
+                <TextInput
+                  value={form.dueDate}
+                  onChangeText={setField('dueDate')}
+                  placeholder="YYYY-MM-DD (optional)"
+                  style={input}
+                  placeholderTextColor="#CBD5E1"
+                  keyboardType="numeric"
                 />
 
                 <Text style={fieldLabelMuted}>Description / Remarks</Text>

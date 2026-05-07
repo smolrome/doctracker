@@ -3,7 +3,7 @@ import { AppState, AppStateStatus, Linking } from 'react-native';
 import { Slot } from 'expo-router';
 import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
-import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { useAuthStore } from '../lib/store';
 import { registerForPushNotifications } from '../lib/notifications';
 import { cache } from '../lib/cache';
@@ -51,8 +51,8 @@ function AppShell() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading       = useAuthStore((s) => s.isLoading);
   const { isOnline }    = useNetwork();
-  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
-  const responseListener     = useRef<Notifications.EventSubscription | null>(null);
+  const notificationListener = useRef<{ remove: () => void } | null>(null);
+  const responseListener     = useRef<{ remove: () => void } | null>(null);
   const syncingRef = useRef(false);
   // Track when the last prefetch ran so foreground re-prefetches are throttled.
   // Using a timestamp ref instead of a boolean flag allows re-prefetching after
@@ -73,14 +73,17 @@ function AppShell() {
   // Push notifications
   useEffect(() => {
     if (!isAuthenticated) return;
+    const isExpoGo = Constants.appOwnership === 'expo';
+    if (isExpoGo) return;
+    const Notifications = require('expo-notifications');
     registerForPushNotifications();
 
     notificationListener.current =
-      Notifications.addNotificationReceivedListener((n) => {
+      Notifications.addNotificationReceivedListener((n: any) => {
         console.log('Notification:', n);
       });
     responseListener.current =
-      Notifications.addNotificationResponseReceivedListener((r) => {
+      Notifications.addNotificationResponseReceivedListener((r: any) => {
         console.log('Tapped:', r);
       });
 

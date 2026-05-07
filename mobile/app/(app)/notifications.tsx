@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { useState, useEffect } from 'react';
 
 export default function NotificationsScreen() {
@@ -13,9 +13,18 @@ export default function NotificationsScreen() {
   const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
-    Notifications.getPresentedNotificationsAsync().then((notifs) => {
-      setNotifications(notifs);
-    });
+    const load = async () => {
+      try {
+        const isExpoGo = Constants.appOwnership === 'expo';
+        if (isExpoGo) return;
+        const Notifications = require('expo-notifications');
+        const presented = await Notifications.getPresentedNotificationsAsync();
+        setNotifications(presented);
+      } catch {
+        // expo-notifications not available in Expo Go
+      }
+    };
+    load();
   }, []);
 
   return (

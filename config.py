@@ -166,7 +166,7 @@ RATE_LIMITS = {
     "register":      {"max": 3,   "window": 3600, "lockout": 7200},  # 3 / hr → 2 hr lockout
     "status_update": {"max": 100, "window": 60,   "lockout": 60},    # prevent status floods
     "doc_create":    {"max": 50,  "window": 60,   "lockout": 60},    # prevent doc spam
-    "api":           {"max": 60,  "window": 60,   "lockout": 120},   # API protection
+    "api":           {"max": 200, "window": 60,   "lockout": 60},    # API protection
 }
 
 # ── Document statuses ──────────────────────────────────────────────────────────
