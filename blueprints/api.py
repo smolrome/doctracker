@@ -2367,9 +2367,9 @@ def api_bulk_status():
             doc['status']     = status
             doc['updated_at'] = ts
             doc['updated_by'] = user_id
-            if status == 'Received':
+            if status == 'Received' and not doc.get('date_received'):
                 doc['date_received'] = ts[:16].replace('T', ' ')
-            elif status == 'Released':
+            if status == 'Released' and not doc.get('date_released'):
                 doc['date_released'] = ts[:16].replace('T', ' ')
             doc.setdefault('travel_log', []).append({
                 'office':    office,
@@ -2379,6 +2379,11 @@ def api_bulk_status():
                 'remarks':   remarks or f'Bulk status update to {status}.',
             })
             save_doc(doc)
+            from services.misc import audit_log
+            from utils import get_client_ip
+            audit_log('bulk_status_updated',
+                      f'doc_id={did} new_status={status}',
+                      username=user_id, ip=get_client_ip())
             updated += 1
     return jsonify(message=f'{updated} document(s) updated to {status}', updated=updated)
 

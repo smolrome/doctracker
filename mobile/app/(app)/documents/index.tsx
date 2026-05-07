@@ -65,6 +65,7 @@ export default function Documents() {
   // ── Bulk status modal state ────────────────────────────────────────────────
   const [bulkStatusModal, setBulkStatusModal] = useState(false);
   const [bulkRemarks, setBulkRemarks] = useState('');
+  const [selectedBulkStatus, setSelectedBulkStatus] = useState<string | null>(null);
 
   // ── Assign modal state ─────────────────────────────────────────────────────
   const [assignModal, setAssignModal] = useState(false);
@@ -214,6 +215,7 @@ export default function Documents() {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
       setBulkStatusModal(false);
+      setSelectedBulkStatus(null);
       setSelectedIds(new Set());
       setIsSelecting(false);
       setBulkRemarks('');
@@ -934,46 +936,24 @@ export default function Documents() {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
           <TouchableOpacity
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            onPress={() => setBulkStatusModal(false)}
+            onPress={() => { setBulkStatusModal(false); setSelectedBulkStatus(null); setBulkRemarks(''); }}
             activeOpacity={1}
           />
           <View style={{
             backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24,
             padding: 20, paddingBottom: 40,
           }}>
+            {/* Header */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <Text style={{ fontWeight: '800', color: '#1E293B', fontSize: 17 }}>
                 Update Status · {selectedIds.size} doc{selectedIds.size !== 1 ? 's' : ''}
               </Text>
-              <TouchableOpacity onPress={() => setBulkStatusModal(false)}>
+              <TouchableOpacity onPress={() => { setBulkStatusModal(false); setSelectedBulkStatus(null); setBulkRemarks(''); }}>
                 <X size={20} color="#94A3B8" />
               </TouchableOpacity>
             </View>
 
-            {/* Status pills */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-              {ALL_STATUSES.map((s) => {
-                const cfg = getStatus(s);
-                return (
-                  <TouchableOpacity
-                    key={s}
-                    onPress={() => {
-                      setBulkStatusModal(false);
-                      bulkStatusMutation.mutate({ status: s, remarks: bulkRemarks });
-                    }}
-                    disabled={bulkStatusMutation.isPending}
-                    style={{
-                      backgroundColor: cfg.bg, borderRadius: 20,
-                      paddingHorizontal: 14, paddingVertical: 8,
-                    }}
-                  >
-                    <Text style={{ color: cfg.text, fontWeight: '700', fontSize: 13 }}>{s}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Remarks */}
+            {/* Remarks — shown first so user fills it before picking a status */}
             <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
               Remarks (optional)
             </Text>
@@ -986,9 +966,72 @@ export default function Documents() {
               style={{
                 backgroundColor: '#fff', borderRadius: 12, padding: 12,
                 borderWidth: 1, borderColor: '#E2E8F0', fontSize: 14, color: '#1E293B',
-                height: 80, textAlignVertical: 'top',
+                height: 72, textAlignVertical: 'top', marginBottom: 16,
               }}
             />
+
+            {/* Status pills — tap to select, highlighted when chosen */}
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>
+              Select New Status
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+              {ALL_STATUSES.map((s) => {
+                const cfg = getStatus(s);
+                const isChosen = selectedBulkStatus === s;
+                return (
+                  <TouchableOpacity
+                    key={s}
+                    onPress={() => setSelectedBulkStatus(isChosen ? null : s)}
+                    style={{
+                      backgroundColor: isChosen ? cfg.accent : cfg.bg,
+                      borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
+                      borderWidth: isChosen ? 2 : 0,
+                      borderColor: isChosen ? cfg.accent : 'transparent',
+                    }}
+                  >
+                    <Text style={{ color: isChosen ? '#fff' : cfg.text, fontWeight: '700', fontSize: 13 }}>{s}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Action buttons */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => { setBulkStatusModal(false); setSelectedBulkStatus(null); setBulkRemarks(''); }}
+                style={{
+                  flex: 1, backgroundColor: '#F1F5F9', borderRadius: 13,
+                  paddingVertical: 14, alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#475569', fontWeight: '700', fontSize: 14 }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  if (!selectedBulkStatus) return;
+                  bulkStatusMutation.mutate({ status: selectedBulkStatus, remarks: bulkRemarks });
+                }}
+                disabled={!selectedBulkStatus || bulkStatusMutation.isPending}
+                style={{
+                  flex: 2, borderRadius: 13, paddingVertical: 14,
+                  alignItems: 'center', justifyContent: 'center',
+                  flexDirection: 'row', gap: 8,
+                  backgroundColor: selectedBulkStatus ? '#0038A8' : '#E2E8F0',
+                }}
+              >
+                {bulkStatusMutation.isPending
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <RefreshCw size={15} color={selectedBulkStatus ? '#fff' : '#94A3B8'} />}
+                <Text style={{ color: selectedBulkStatus ? '#fff' : '#94A3B8', fontWeight: '700', fontSize: 14 }}>
+                  {bulkStatusMutation.isPending
+                    ? 'Applying…'
+                    : selectedBulkStatus
+                      ? `Apply to ${selectedIds.size} document${selectedIds.size !== 1 ? 's' : ''}`
+                      : 'Select a status'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
