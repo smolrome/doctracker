@@ -1025,6 +1025,87 @@ def api_transfer_document(doc_id):
     return jsonify(serialize(doc))
 
 
+@api_bp.route('/documents/<doc_id>/release', methods=['POST'])
+@jwt_required()
+def api_release_document(doc_id):
+    user_id = get_jwt_identity()
+    user = get_user_by_username(user_id)
+    user_role = (user.get('role') or '') if user else ''
+    user_full_name = (user.get('full_name') or user_id) if user else user_id
+    user_office = (user.get('office') or '') if user else ''
+
+    doc = get_doc(doc_id)
+    if not doc:
+        return jsonify(error='Document not found'), 404
+
+    original_logger = doc.get('original_logged_by') or doc.get('logged_by', '')
+
+    # Only the original logger (or admin) can release
+    if user_role != 'admin' and user_id != original_logger:
+        return jsonify(error='Only the staff who originally logged this document can release it'), 403
+
+    # Document must be back in the original logger's hands
+    if doc.get('logged_by') != user_id and user_role != 'admin':
+        return jsonify(error='Document must be returned to you before you can release it'), 403
+
+    total_cycles = doc.get('routing_cycle', 0)
+
+    doc['status'] = 'Released'
+    doc['date_released'] = now_str()[:16].replace('T', ' ')
+    doc['released_by'] = user_id
+    doc['transfer_status'] = 'released'
+    doc['updated_at'] = now_str()
+    doc['updated_by'] = user_id
+
+    doc.setdefault('travel_log', []).append({
+        'office': user_office,
+        'action': 'Released by Originating Staff',
+        'officer': user_full_name,
+        'timestamp': now_str(),
+        'remarks': (
+            f'All routing cycles completed ({total_cycles} cycle'
+            f'{"s" if total_cycles != 1 else ""}). '
+            f'Document officially released by {user_full_name}. Workflow closed.'
+        ),
+    })
+
+    save_doc(doc)
+    from services.misc import audit_log
+    from utils import get_client_ip
+    audit_log(
+        'doc_released',
+        f"doc_id={doc_id} released_by={user_id} cycles={total_cycles} doc_name={doc.get('doc_name', '')[:60]}",
+        username=user_id,
+        ip=get_client_ip(),
+    )
+
+    return jsonify(serialize(doc))
+
+
+@api_bp.route('/documents/<doc_id>/quick-note', methods=['POST'])
+@jwt_required()
+def api_quick_note(doc_id):
+    user_id = get_jwt_identity()
+
+    doc = get_doc(doc_id)
+    if not doc:
+        return jsonify(error='Document not found'), 404
+
+    data = request.get_json(force=True, silent=True) or {}
+    note = (data.get('note') or '').strip()
+
+    doc['notes'] = note
+    doc['updated_at'] = now_str()
+    doc['updated_by'] = user_id
+
+    save_doc(doc)
+    from services.misc import audit_log
+    from utils import get_client_ip
+    audit_log('note_updated', f'doc_id={doc_id}', username=user_id, ip=get_client_ip())
+
+    return jsonify(serialize(doc))
+
+
 @api_bp.route('/check-duplicate', methods=['GET'])
 @jwt_required()
 def api_check_duplicate():

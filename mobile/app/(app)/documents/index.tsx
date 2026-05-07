@@ -516,90 +516,94 @@ export default function Documents() {
         />
       )}
 
-      {/* ── Batch Action Toolbar (select mode, ≥1 selected) ── */}
-      {isSelecting && selectedIds.size > 0 && (
+      {/* ── Batch Action Toolbar ── */}
+      {isSelecting && (
         <View style={{
           position: 'absolute', bottom: 100, left: 16, right: 16,
           backgroundColor: '#1E293B', borderRadius: 16, padding: 14,
           shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.25, shadowRadius: 12, elevation: 8,
         }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+          {/* Header — always visible once select mode is active */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: selectedIds.size > 0 ? 10 : 0 }}>
             <TouchableOpacity onPress={exitSelectMode} style={{ padding: 4 }}>
               <X size={20} color="#94A3B8" />
             </TouchableOpacity>
             <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700', flex: 1, marginLeft: 10 }}>
-              {selectedIds.size} selected
+              {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Tap items to select'}
             </Text>
           </View>
 
-          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-            {/* Status — all staff */}
-            <TouchableOpacity
-              onPress={() => setBulkStatusModal(true)}
-              disabled={bulkStatusMutation.isPending}
-              style={{
-                backgroundColor: '#3B82F6', borderRadius: 10,
-                paddingHorizontal: 12, paddingVertical: 8,
-                flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1,
-              }}
-            >
-              <RefreshCw size={14} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Status</Text>
-            </TouchableOpacity>
-
-            {/* Assign to Staff — admin only */}
-            {isAdmin && (
+          {/* Action buttons — only appear once ≥1 item is selected */}
+          {selectedIds.size > 0 && (
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              {/* Status — all staff */}
               <TouchableOpacity
-                onPress={() => { setSelectedStaff(null); setStaffSearch(''); setAssignModal(true); }}
-                disabled={assignBatchMutation.isPending}
+                onPress={() => setBulkStatusModal(true)}
+                disabled={bulkStatusMutation.isPending}
                 style={{
-                  backgroundColor: '#10B981', borderRadius: 10,
+                  backgroundColor: '#3B82F6', borderRadius: 10,
                   paddingHorizontal: 12, paddingVertical: 8,
                   flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1,
                 }}
               >
-                <UserCheck size={14} color="#fff" />
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Assign</Text>
+                <RefreshCw size={14} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Status</Text>
               </TouchableOpacity>
-            )}
 
-            {/* Delete Unassigned — admin only */}
-            {isAdmin && (
-              <TouchableOpacity
-                onPress={handleDeleteUnassigned}
-                disabled={deleteUnassignedMutation.isPending}
-                style={{
-                  backgroundColor: '#F59E0B', borderRadius: 10,
-                  paddingHorizontal: 12, paddingVertical: 8,
-                  flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1,
-                }}
-              >
-                {deleteUnassignedMutation.isPending
-                  ? <ActivityIndicator size="small" color="#fff" />
-                  : <Trash2 size={14} color="#fff" />}
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Del Unassigned</Text>
-              </TouchableOpacity>
-            )}
+              {/* Assign to Staff — admin only */}
+              {isAdmin && (
+                <TouchableOpacity
+                  onPress={() => { setSelectedStaff(null); setStaffSearch(''); setAssignModal(true); }}
+                  disabled={assignBatchMutation.isPending}
+                  style={{
+                    backgroundColor: '#10B981', borderRadius: 10,
+                    paddingHorizontal: 12, paddingVertical: 8,
+                    flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1,
+                  }}
+                >
+                  <UserCheck size={14} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Assign</Text>
+                </TouchableOpacity>
+              )}
 
-            {/* Delete (to trash) — admin only */}
-            {isAdmin && (
-              <TouchableOpacity
-                onPress={handleBulkDelete}
-                disabled={bulkDeleteMutation.isPending}
-                style={{
-                  backgroundColor: '#EF4444', borderRadius: 10,
-                  paddingHorizontal: 12, paddingVertical: 8,
-                  flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1,
-                }}
-              >
-                {bulkDeleteMutation.isPending
-                  ? <ActivityIndicator size="small" color="#fff" />
-                  : <Trash2 size={14} color="#fff" />}
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Trash</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+              {/* Delete Unassigned — admin only */}
+              {isAdmin && (
+                <TouchableOpacity
+                  onPress={handleDeleteUnassigned}
+                  disabled={deleteUnassignedMutation.isPending}
+                  style={{
+                    backgroundColor: '#F59E0B', borderRadius: 10,
+                    paddingHorizontal: 12, paddingVertical: 8,
+                    flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1,
+                  }}
+                >
+                  {deleteUnassignedMutation.isPending
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Trash2 size={14} color="#fff" />}
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Del Unassigned</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Delete (to trash) — admin only */}
+              {isAdmin && (
+                <TouchableOpacity
+                  onPress={handleBulkDelete}
+                  disabled={bulkDeleteMutation.isPending}
+                  style={{
+                    backgroundColor: '#EF4444', borderRadius: 10,
+                    paddingHorizontal: 12, paddingVertical: 8,
+                    flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1,
+                  }}
+                >
+                  {bulkDeleteMutation.isPending
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Trash2 size={14} color="#fff" />}
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Trash</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
       )}
 
