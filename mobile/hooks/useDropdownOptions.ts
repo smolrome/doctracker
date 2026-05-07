@@ -46,12 +46,12 @@ export function useOffices() {
 }
 
 export function useStaff() {
-  return useQuery<Array<{ username: string; full_name: string; office: string; role: string }>>({
+  return useQuery<Array<{ username: string; full_name: string; office: string; role: string; documents_handled: string[] }>>({
     queryKey: ['staff'],
     queryFn: async () => {
       try {
         const res = await api.get('/staff');
-        return (res.data ?? []) as Array<{ username: string; full_name: string; office: string; role: string }>;
+        return (res.data ?? []) as Array<{ username: string; full_name: string; office: string; role: string; documents_handled: string[] }>;
       } catch {
         return [];
       }

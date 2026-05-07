@@ -888,13 +888,27 @@ def api_get_staff():
     current_user = get_user_by_username(user_id)
     current_office = (current_user.get('office') or '').strip() if current_user else ''
 
+    import json as _json
+
+    def _parse_dh(val):
+        if isinstance(val, list):
+            return val
+        if isinstance(val, str):
+            try:
+                parsed = _json.loads(val)
+                return parsed if isinstance(parsed, list) else []
+            except (ValueError, TypeError):
+                return []
+        return []
+
     if USE_DB:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     if is_admin:
                         cur.execute("""
-                            SELECT username, full_name, COALESCE(office, '') AS office, role
+                            SELECT username, full_name, COALESCE(office, '') AS office, role,
+                                   documents_handled
                             FROM users
                             WHERE active = TRUE AND approved = TRUE
                               AND role != 'client'
@@ -902,7 +916,8 @@ def api_get_staff():
                         """)
                     else:
                         cur.execute("""
-                            SELECT username, full_name, COALESCE(office, '') AS office, role
+                            SELECT username, full_name, COALESCE(office, '') AS office, role,
+                                   documents_handled
                             FROM users
                             WHERE active = TRUE AND approved = TRUE
                               AND role != 'client'
@@ -911,11 +926,15 @@ def api_get_staff():
                             ORDER BY full_name
                         """, (current_office, user_id))
                     rows = cur.fetchall()
-                    return jsonify(serialize([dict(r) for r in rows]))
+                    result = []
+                    for r in rows:
+                        d = dict(r)
+                        d['documents_handled'] = _parse_dh(d.get('documents_handled'))
+                        result.append(d)
+                    return jsonify(serialize(result))
         except Exception:
             return jsonify([])
     else:
-        import json as _json
         if not os.path.exists("users.json"):
             return jsonify([])
         with open("users.json") as f:
@@ -941,6 +960,7 @@ def api_get_staff():
                     'full_name': u.get('full_name') or u['username'],
                     'office': u.get('office', ''),
                     'role': u.get('role', 'staff'),
+                    'documents_handled': _parse_dh(u.get('documents_handled')),
                 }
                 for u in users if _keep(u)
             ],

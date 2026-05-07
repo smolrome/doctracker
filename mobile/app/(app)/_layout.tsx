@@ -87,6 +87,8 @@ export default function AppLayout() {
   const { setCartCount, addModalTrigger, cartOpenTrigger } = useModalStore();
   const prevAddTrigger = useRef(0);
   const prevCartTrigger = useRef(0);
+  const autoCategoryRef = useRef('');  // tracks the last auto-filled category value
+  const autoReferredRef = useRef('');  // tracks the last auto-filled referredToUsername
 
   useEffect(() => { setCartCount(cart.length); }, [cart.length]);
   useEffect(() => {
@@ -117,6 +119,8 @@ export default function AppLayout() {
     setForm(EMPTY_FORM);
     setEditingTmpId(null);
     setDuplicateWarning([]);
+    autoCategoryRef.current = '';
+    autoReferredRef.current = '';
     setModalVisible(true);
   };
 
@@ -125,12 +129,68 @@ export default function AppLayout() {
     setForm(EMPTY_FORM);
     setEditingTmpId(null);
     setDuplicateWarning([]);
+    autoCategoryRef.current = '';
+    autoReferredRef.current = '';
   };
 
   const handleDocNameBlur = async () => {
     const dupes = await checkDuplicateName(form.docName);
     setDuplicateWarning(dupes);
   };
+
+  // ── Stage 1: doc_name → category (600ms debounce) ────────────────────────
+  useEffect(() => {
+    const escaped = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const timer = setTimeout(() => {
+      if (!form.docName.trim()) {
+        // Clear category if we auto-filled it; clear referred-to unconditionally
+        if (autoCategoryRef.current) {
+          setForm((f) => ({ ...f, category: '' }));
+          autoCategoryRef.current = '';
+        }
+        setForm((f) => ({ ...f, referredTo: '', referredToUsername: '' }));
+        autoReferredRef.current = '';
+        return;
+      }
+      // Never overwrite a manually-typed category
+      if (form.category && !autoCategoryRef.current) return;
+      const matches = categoryOptions.filter((opt) =>
+        new RegExp(`\\b${escaped(opt)}\\b`, 'i').test(form.docName)
+      );
+      if (matches.length === 1) {
+        setForm((f) => ({ ...f, category: matches[0] }));
+        autoCategoryRef.current = matches[0];
+      } else if (autoCategoryRef.current) {
+        setForm((f) => ({ ...f, category: '' }));
+        autoCategoryRef.current = '';
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [form.docName]);
+
+  // ── Stage 2: category → referred_to ──────────────────────────────────────
+  useEffect(() => {
+    if (!form.category.trim()) {
+      if (autoReferredRef.current) {
+        setForm((f) => ({ ...f, referredTo: '', referredToUsername: '' }));
+        autoReferredRef.current = '';
+      }
+      return;
+    }
+    // Never overwrite a manually-selected referred-to
+    if (form.referredTo && !autoReferredRef.current) return;
+    const catLower = form.category.trim().toLowerCase();
+    const matches = staffList.filter((s) =>
+      (s.documents_handled ?? []).some((d) => d.trim().toLowerCase() === catLower)
+    );
+    if (matches.length === 1) {
+      setForm((f) => ({ ...f, referredTo: matches[0].full_name, referredToUsername: matches[0].username }));
+      autoReferredRef.current = matches[0].username;
+    } else if (autoReferredRef.current) {
+      setForm((f) => ({ ...f, referredTo: '', referredToUsername: '' }));
+      autoReferredRef.current = '';
+    }
+  }, [form.category]);
 
   const handleAddToCart = () => {
     if (!form.fromOffice.trim() || !form.docName.trim()) {
@@ -152,6 +212,8 @@ export default function AppLayout() {
 
     setForm(EMPTY_FORM);
     setDuplicateWarning([]);
+    autoCategoryRef.current = '';
+    autoReferredRef.current = '';
     // Keep modal open so user can add another document
   };
 
@@ -169,6 +231,8 @@ export default function AppLayout() {
     });
     setEditingTmpId(item.tmpId);
     setDuplicateWarning([]);
+    autoCategoryRef.current = '';
+    autoReferredRef.current = '';
     setModalVisible(true);
   };
 
@@ -548,7 +612,7 @@ export default function AppLayout() {
                 <Text style={fieldLabelMuted}>Document Type</Text>
                 <SelectField
                   value={form.category}
-                  onChange={setField('category')}
+                  onChange={(val) => { autoCategoryRef.current = ''; setField('category')(val); }}
                   options={categoryOptions}
                   placeholder="Select document type…"
                   label="Document Type"
@@ -557,11 +621,14 @@ export default function AppLayout() {
                 <Text style={fieldLabelMuted}>Referred To</Text>
                 <SelectField
                   value={form.referredTo}
-                  onChange={(name) => setForm((f) => ({
-                    ...f,
-                    referredTo: name,
-                    referredToUsername: staffNameToUsername[name] ?? '',
-                  }))}
+                  onChange={(name) => {
+                    autoReferredRef.current = '';
+                    setForm((f) => ({
+                      ...f,
+                      referredTo: name,
+                      referredToUsername: staffNameToUsername[name] ?? '',
+                    }));
+                  }}
                   options={staffFullNames}
                   placeholder="Search staff name…"
                   label="Referred To"
