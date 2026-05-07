@@ -40,12 +40,14 @@ type CartItem = {
   referredTo: string;
   referredToUsername: string;
   dueDate: string;
+  docDate: string;
   remarks: string;
+  notes: string;
 };
 
 const EMPTY_FORM = {
   fromOffice: '', senderName: '', docName: '',
-  category: '', referredTo: '', referredToUsername: '', dueDate: '', remarks: '',
+  category: '', referredTo: '', referredToUsername: '', dueDate: '', docDate: '', remarks: '', notes: '',
 };
 
 async function checkDuplicateName(name: string): Promise<{ id: string; doc_id: string; doc_name: string; status: string }[]> {
@@ -227,7 +229,9 @@ export default function AppLayout() {
       referredTo: item.referredTo,
       referredToUsername: item.referredToUsername,
       dueDate: item.dueDate,
+      docDate: item.docDate,
       remarks: item.remarks,
+      notes: item.notes,
     });
     setEditingTmpId(item.tmpId);
     setDuplicateWarning([]);
@@ -258,7 +262,9 @@ export default function AppLayout() {
           referred_to: item.referredTo.trim(),
           referred_to_username: item.referredToUsername.trim(),
           due_date: item.dueDate.trim(),
+          doc_date: item.docDate.trim() || undefined,
           remarks: item.remarks.trim(),
+          notes: item.notes.trim(),
         });
         results.push(res.data);
       }
@@ -645,11 +651,31 @@ export default function AppLayout() {
                   keyboardType="numeric"
                 />
 
+                <Text style={fieldLabelMuted}>Document Date</Text>
+                <TextInput
+                  value={form.docDate}
+                  onChangeText={setField('docDate')}
+                  placeholder="YYYY-MM-DD (optional)"
+                  style={input}
+                  placeholderTextColor="#CBD5E1"
+                  keyboardType="numeric"
+                />
+
                 <Text style={fieldLabelMuted}>Description / Remarks</Text>
                 <TextInput
                   value={form.remarks}
                   onChangeText={setField('remarks')}
                   placeholder="Additional details..."
+                  style={[input, { height: 88, textAlignVertical: 'top' }]}
+                  multiline
+                  placeholderTextColor="#CBD5E1"
+                />
+
+                <Text style={fieldLabelMuted}>Notes</Text>
+                <TextInput
+                  value={form.notes}
+                  onChangeText={setField('notes')}
+                  placeholder="Internal notes (optional)..."
                   style={[input, { height: 88, textAlignVertical: 'top' }]}
                   multiline
                   placeholderTextColor="#CBD5E1"

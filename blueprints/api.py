@@ -305,6 +305,7 @@ def api_create_document():
         "sender_name": data.get('sender_name', ''),
         "referred_to": data.get('referred_to', ''),
         "remarks": data.get('remarks', ''),
+        "notes": data.get('notes', ''),
         "doc_date": data.get('doc_date', now_str()),
         "due_date": data.get('due_date', ''),
         "status": "Pending",
