@@ -788,25 +788,6 @@ function setupSortableHeaders() {
 // ─────────────────────────────────────────────────────────────
 //  MODAL HELPERS
 // ─────────────────────────────────────────────────────────────
-function openModal(id) {
-  var modal = document.getElementById(id);
-  if (!modal) return;
-  modal.classList.add('open');
-  setTimeout(function() {
-    var first = modal.querySelector('input:not([type=hidden]), select, textarea, .rp-close');
-    if (first) first.focus();
-  }, 80);
-  function onBackdrop(e) {
-    if (e.target === modal) { closeModal(id); modal.removeEventListener('click', onBackdrop); }
-  }
-  modal.addEventListener('click', onBackdrop);
-}
-
-function closeModal(id) {
-  var modal = document.getElementById(id);
-  if (modal) modal.classList.remove('open');
-}
-
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     document.querySelectorAll('.modal-overlay.open').forEach(function(m) { m.classList.remove('open'); });

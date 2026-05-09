@@ -121,7 +121,16 @@ document.addEventListener('click', function (e) {
 // ── Generic modal helpers ─────────────────────────────────────────────────
 function openModal(id) {
   const el = document.getElementById(id);
-  if (el) el.classList.add('open');
+  if (!el) return;
+  el.classList.add('open');
+  setTimeout(function() {
+    const first = el.querySelector('input:not([type=hidden]), select, textarea, .rp-close');
+    if (first) first.focus();
+  }, 80);
+  function onBackdrop(e) {
+    if (e.target === el) { closeModal(id); el.removeEventListener('click', onBackdrop); }
+  }
+  el.addEventListener('click', onBackdrop);
 }
 
 function closeModal(id) {
@@ -134,15 +143,6 @@ function closeAllModals() {
     m.classList.remove('open');
   });
 }
-
-// Close any modal when clicking on its backdrop
-document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('.modal-overlay').forEach(function (overlay) {
-    overlay.addEventListener('click', function (e) {
-      if (e.target === overlay) overlay.classList.remove('open');
-    });
-  });
-});
 
 
 // ── Flash auto-dismiss (5 s) ──────────────────────────────────────────────

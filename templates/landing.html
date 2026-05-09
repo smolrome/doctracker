@@ -19,10 +19,6 @@
   <div class="nav-sep"></div>
   <div class="nav-links">
     <a href="#offices" class="nav-a">Submit Documents</a>
-    <a href="#how-it-works" class="nav-a">How It Works</a>
-    <a href="#process" class="nav-a">Process Flow</a>
-    <a href="#qr-guide" class="nav-a">QR Guide</a>
-    <a href="#tech" class="nav-a">Tech Stack</a>
   </div>
   <div class="nav-actions">
     <a href="/download" class="nav-btn-ghost" style="display:flex;align-items:center;gap:6px;">📱 Get the App</a>
@@ -35,90 +31,345 @@
         <a href="/logout" class="nav-btn-ghost">Sign Out</a>
       {% endif %}
     {% else %}
-      <a href="/client/login" class="nav-btn-ghost">Sign In</a>
-      <a href="/client/register" class="nav-btn-solid">✍️ Register Free</a>
+      <button class="nav-btn-ghost" onclick="openModal('signin')">Sign In</button>
+      <button class="nav-btn-solid" onclick="openModal('register')">✍️ Register Free</button>
     {% endif %}
   </div>
 </nav>
 
 <!-- ═══ HERO ═══ -->
-<section class="cover" id="home">
-  <div class="cover-pattern"></div>
-  <div class="cover-particle" style="width:6px;height:6px;background:var(--gold);left:8%;animation-duration:19s;animation-delay:0s"></div>
-  <div class="cover-particle" style="width:4px;height:4px;background:var(--mint);left:22%;animation-duration:25s;animation-delay:5s"></div>
-  <div class="cover-particle" style="width:7px;height:7px;background:var(--gold2);left:50%;animation-duration:21s;animation-delay:2s"></div>
-  <div class="cover-particle" style="width:5px;height:5px;background:var(--sage);left:74%;animation-duration:23s;animation-delay:8s"></div>
-  <div class="cover-particle" style="width:4px;height:4px;background:var(--gold);left:91%;animation-duration:17s;animation-delay:1s"></div>
+<style>
+  @keyframes hpulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.35;transform:scale(0.65);}}
+  @media(prefers-reduced-motion:reduce){.hero-pulse{animation:none!important;opacity:0.7;}}
+  @media(max-width:740px){
+    .hero-rp{display:none!important;}
+    .hero-inner{padding:52px 24px 44px!important;gap:0!important;}
+  }
+  .hero-btn:focus-visible{outline:3px solid #c9a227;outline-offset:3px;}
+  .hero-btn-gold:hover{opacity:0.86;}
+  .hero-btn-outline:hover{background:rgba(255,255,255,0.08)!important;border-color:rgba(255,255,255,0.38)!important;}
+</style>
+<section id="home" style="position:relative;background:#0f2744;overflow:hidden;padding:0;">
 
-  <div class="cover-seal"><img src="/static/logo.png" alt="DepEd Leyte Division"/></div>
-  <div class="cover-eyebrow">Schools Division of Leyte — Division Office</div>
-  <h1><span class="hero-pu">Logging and Acknowledgment of Key Administrative Documents</span><em>LAKAD</em></h1>
-  <p class="cover-subtitle">Personnel Unit's official system for logging, tracking, and managing all incoming and outgoing documents</p>
+  <!-- Diagonal stripe texture -->
+  <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;
+    background-image:repeating-linear-gradient(-52deg,transparent,transparent 48px,rgba(255,255,255,0.016) 48px,rgba(255,255,255,0.016) 49px);"></div>
 
-  {% if logged_in %}
-    <div class="cover-welcome">
-      <div>
-        <div class="cover-welcome-name">Welcome back, {{ current_full_name or current_user }}!</div>
-        <div class="cover-welcome-sub">
-          {% if current_role == 'client' %}You're signed in as a client. Submit documents or check your existing ones below.
-          {% elif current_role == 'staff' %}You're signed in as staff. Head to your dashboard to manage documents.
-          {% else %}You're signed in as administrator. Full system access available.{% endif %}
+  <!-- Top-right warm glow -->
+  <div aria-hidden="true" style="position:absolute;top:-200px;right:-200px;width:560px;height:560px;border-radius:50%;pointer-events:none;
+    background:radial-gradient(ellipse,rgba(201,162,39,0.07) 0%,transparent 60%);"></div>
+
+  <!-- Gold top border -->
+  <div aria-hidden="true" style="height:3px;position:relative;z-index:3;
+    background:linear-gradient(90deg,#0f2744 0%,#c9a227 18%,#f0c040 50%,#c9a227 82%,#0f2744 100%);"></div>
+
+  <!-- Two-column layout -->
+  <div class="hero-inner" style="position:relative;z-index:2;
+    max-width:1120px;margin:0 auto;padding:80px 48px 72px;
+    display:flex;gap:72px;align-items:center;flex-wrap:wrap;">
+
+    <!-- ─── LEFT COLUMN ─────────────────────────────────────── -->
+    <div style="flex:1;min-width:300px;">
+
+      <!-- Institution badge -->
+      <div style="display:inline-flex;align-items:center;gap:12px;margin-bottom:32px;
+                  padding:9px 18px 9px 9px;border-radius:8px;
+                  background:rgba(255,255,255,0.045);border:1px solid rgba(255,255,255,0.085);">
+        <img src="/static/logo.png" alt="DepEd Leyte Division seal" style="width:44px;height:44px;border-radius:50%;
+             border:1.5px solid rgba(201,162,39,0.40);flex-shrink:0;display:block;
+             object-fit:contain;background:#fff;padding:3px;box-sizing:border-box;"/>
+        <div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;
+                      color:rgba(255,255,255,0.35);line-height:1.5;">Department of Education</div>
+          <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.68);line-height:1.4;">
+            SDO Leyte &mdash; Personnel Unit</div>
         </div>
       </div>
-      <div class="cover-welcome-badge">✓ Signed In</div>
-    </div>
-    <div class="cover-ctas">
-      {% if current_role == 'client' %}
-        <a href="/client" class="cover-btn gold">📋 My Documents</a>
-        <a href="#offices" class="cover-btn glass">🏢 Submit to an Office</a>
-      {% elif current_role in ('admin','staff') %}
-        <a href="/dashboard" class="cover-btn gold">📊 Go to Dashboard</a>
-        <a href="#process" class="cover-btn glass">📖 View Process Flow</a>
+
+      <!-- Eyebrow label -->
+      <div style="font-size:10px;font-weight:700;letter-spacing:4px;text-transform:uppercase;
+                  color:#c9a227;margin-bottom:14px;">Official Document Tracking System</div>
+
+      <!-- LAKAD wordmark -->
+      <h1 style="margin:0;font-family:'Libre Baskerville',Georgia,serif;
+                 font-size:clamp(52px,7.5vw,86px);font-weight:700;
+                 color:#ffffff;letter-spacing:-2.5px;line-height:0.95;">LAKAD</h1>
+
+      <!-- Gold rule -->
+      <div style="width:44px;height:2px;background:#c9a227;margin:18px 0 20px;border-radius:1px;"></div>
+
+      <!-- Subtitle -->
+      <p style="margin:0 0 36px;font-size:15px;line-height:1.8;color:rgba(255,255,255,0.50);
+                max-width:440px;font-weight:400;">
+        The Personnel Unit's official platform for logging, routing, and monitoring all incoming and outgoing documents across DepEd Leyte Division offices.
+      </p>
+
+      <!-- ── Jinja2 CTA block — logic untouched ── -->
+      {% if logged_in %}
+        <div style="display:inline-flex;align-items:center;gap:14px;text-align:left;
+                    background:rgba(201,162,39,0.07);border:1px solid rgba(201,162,39,0.20);
+                    border-radius:10px;padding:13px 18px;margin-bottom:20px;max-width:420px;">
+          <div aria-hidden="true" style="width:34px;height:34px;border-radius:50%;background:#c9a227;flex-shrink:0;
+                      display:flex;align-items:center;justify-content:center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0f2744" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div>
+            <div style="color:#fff;font-weight:700;font-size:14px;line-height:1.3;">{{ current_full_name or current_user }}</div>
+            <div style="color:rgba(255,255,255,0.45);font-size:12px;margin-top:3px;">
+              {% if current_role == 'client' %}Signed in as Client — submit or track your documents below.
+              {% elif current_role == 'staff' %}Signed in as Staff — manage documents from your dashboard.
+              {% else %}Signed in as Administrator — full system access available.{% endif %}
+            </div>
+          </div>
+        </div>
+        <br/>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px;">
+          {% if current_role == 'client' %}
+            <a href="/client" class="hero-btn hero-btn-gold"
+               style="display:inline-flex;align-items:center;gap:9px;padding:13px 26px;min-height:44px;
+                      background:#c9a227;color:#0f2744;font-weight:700;font-size:14px;border-radius:7px;
+                      text-decoration:none;cursor:pointer;transition:opacity 200ms ease;
+                      box-shadow:0 4px 16px rgba(201,162,39,0.30);">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              My Documents
+            </a>
+            <a href="#offices" class="hero-btn hero-btn-outline"
+               style="display:inline-flex;align-items:center;gap:9px;padding:13px 26px;min-height:44px;
+                      background:transparent;color:rgba(255,255,255,0.82);font-weight:600;font-size:14px;
+                      border-radius:7px;text-decoration:none;cursor:pointer;
+                      border:1px solid rgba(255,255,255,0.20);
+                      transition:background 200ms ease,border-color 200ms ease;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="9" width="18" height="12" rx="1"/><path d="M8 9V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4"/></svg>
+              Submit to Office
+            </a>
+          {% elif current_role in ('admin','staff') %}
+            <a href="/dashboard" class="hero-btn hero-btn-gold"
+               style="display:inline-flex;align-items:center;gap:9px;padding:13px 26px;min-height:44px;
+                      background:#c9a227;color:#0f2744;font-weight:700;font-size:14px;border-radius:7px;
+                      text-decoration:none;cursor:pointer;transition:opacity 200ms ease;
+                      box-shadow:0 4px 16px rgba(201,162,39,0.30);">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              Go to Dashboard
+            </a>
+          {% endif %}
+        </div>
+      {% else %}
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px;">
+          <button onclick="openModal('register')" class="hero-btn hero-btn-gold"
+             style="display:inline-flex;align-items:center;gap:9px;padding:14px 30px;min-height:44px;
+                    background:#c9a227;color:#0f2744;font-weight:700;font-size:14px;border-radius:7px;
+                    border:none;cursor:pointer;transition:opacity 200ms ease;
+                    box-shadow:0 4px 20px rgba(201,162,39,0.36);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Register Free
+          </button>
+          <button onclick="openModal('signin')" class="hero-btn hero-btn-outline"
+             style="display:inline-flex;align-items:center;gap:9px;padding:14px 30px;min-height:44px;
+                    background:transparent;color:rgba(255,255,255,0.82);font-weight:600;font-size:14px;
+                    border-radius:7px;cursor:pointer;
+                    border:1px solid rgba(255,255,255,0.20);
+                    transition:background 200ms ease,border-color 200ms ease;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            Sign In
+          </button>
+        </div>
       {% endif %}
-    </div>
-  {% else %}
-    <div class="cover-ctas">
-      <a href="/client/register" class="cover-btn gold">✍️ Register Free — No Email Needed</a>
-      <a href="/client/login" class="cover-btn glass">🔑 Sign In</a>
-    </div>
-  {% endif %}
 
-  <!-- Mobile app download strip -->
-  <div style="display:inline-flex;align-items:center;gap:12px;margin-bottom:28px;
-              padding:12px 20px;border-radius:14px;
-              background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
-              text-decoration:none;color:inherit;flex-wrap:wrap;justify-content:center;">
-    <span style="font-size:24px;">📱</span>
-    <span style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.85);">
-      The mobile app is now available!
-    </span>
-    <a href="/download"
-       style="padding:8px 18px;border-radius:10px;background:#16A34A;color:#fff;
-              font-weight:700;font-size:13px;text-decoration:none;white-space:nowrap;
-              box-shadow:0 4px 12px rgba(22,163,74,0.4);">
-      ⬇ Download APK
-    </a>
-  </div>
+    </div><!-- /left -->
 
-  <div class="cover-chips">
-    <span class="chip">📱 Mobile-First</span>
-    <span class="chip">🔍 Real-Time Tracking</span>
-    <span class="chip">📋 QR Code Receipts</span>
-    <span class="chip">🏢 Multi-Office Routing</span>
-    <span class="chip">🔒 Private &amp; Secure</span>
-    <span class="chip">🤖 AI-Assisted Entry</span>
-  </div>
-  <div class="cover-stats">
-    <div class="cover-stat"><div class="cover-stat-num">3</div><div class="cover-stat-lbl">User Roles</div></div>
-    <div class="cover-stat"><div class="cover-stat-num">7</div><div class="cover-stat-lbl">Process Phases</div></div>
-    <div class="cover-stat"><div class="cover-stat-num">4</div><div class="cover-stat-lbl">QR Code Types</div></div>
-    <div class="cover-stat"><div class="cover-stat-num">100%</div><div class="cover-stat-lbl">Audit Trail</div></div>
-  </div>
-  <div class="scroll-hint">
-    <span>Scroll to explore</span>
-    <div class="scroll-arrows"><div class="s-arrow"></div><div class="s-arrow"></div><div class="s-arrow"></div></div>
-  </div>
+    <!-- ─── RIGHT COLUMN: Document status card ────────────── -->
+    <div class="hero-rp" aria-hidden="true" style="flex:0 0 290px;">
+
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+                  border-radius:14px;overflow:hidden;font-family:'Inter',sans-serif;">
+
+        <!-- Card header -->
+        <div style="padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.06);
+                    background:rgba(255,255,255,0.025);">
+          <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+                      color:rgba(255,255,255,0.32);margin-bottom:5px;">Document Status</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.65);">REF-2025-0842</div>
+            <div style="font-size:9px;font-weight:700;color:#c9a227;letter-spacing:1px;">LIVE ●</div>
+          </div>
+        </div>
+
+        <!-- Status timeline -->
+        <div style="padding:18px 18px 14px;">
+
+          <!-- Submitted -->
+          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;">
+            <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+              <div style="width:26px;height:26px;border-radius:50%;background:#c9a227;
+                          display:flex;align-items:center;justify-content:center;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0f2744" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div style="width:1px;height:20px;background:rgba(255,255,255,0.10);margin-top:4px;"></div>
+            </div>
+            <div style="padding-top:3px;">
+              <div style="font-size:12px;font-weight:700;color:#c9a227;">Submitted</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.30);margin-top:2px;">Jan 8 · 09:14</div>
+            </div>
+          </div>
+
+          <!-- Received -->
+          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;">
+            <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+              <div style="width:26px;height:26px;border-radius:50%;background:#1e40af;
+                          display:flex;align-items:center;justify-content:center;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div style="width:1px;height:20px;background:rgba(255,255,255,0.10);margin-top:4px;"></div>
+            </div>
+            <div style="padding-top:3px;">
+              <div style="font-size:12px;font-weight:700;color:#93c5fd;">Received</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.30);margin-top:2px;">Jan 8 · 10:02</div>
+            </div>
+          </div>
+
+          <!-- In Review — active/pulsing -->
+          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;">
+            <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+              <div style="width:26px;height:26px;border-radius:50%;
+                          background:rgba(201,162,39,0.12);border:2px solid #c9a227;
+                          display:flex;align-items:center;justify-content:center;">
+                <div class="hero-pulse" style="width:7px;height:7px;border-radius:50%;background:#c9a227;
+                            animation:hpulse 1.8s ease-in-out infinite;"></div>
+              </div>
+              <div style="width:1px;height:20px;background:rgba(255,255,255,0.06);margin-top:4px;"></div>
+            </div>
+            <div style="padding-top:3px;">
+              <div style="font-size:12px;font-weight:700;color:#fef08a;">In Review</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.30);margin-top:2px;">Processing now…</div>
+            </div>
+          </div>
+
+          <!-- Routed — pending -->
+          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;">
+            <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+              <div style="width:26px;height:26px;border-radius:50%;
+                          background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.10);
+                          display:flex;align-items:center;justify-content:center;">
+                <span style="font-size:10px;color:rgba(255,255,255,0.22);">4</span>
+              </div>
+              <div style="width:1px;height:20px;background:rgba(255,255,255,0.05);margin-top:4px;"></div>
+            </div>
+            <div style="padding-top:5px;">
+              <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.22);">Routed</div>
+            </div>
+          </div>
+
+          <!-- Released — pending -->
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="flex-shrink:0;">
+              <div style="width:26px;height:26px;border-radius:50%;
+                          background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
+                          display:flex;align-items:center;justify-content:center;">
+                <span style="font-size:10px;color:rgba(255,255,255,0.18);">5</span>
+              </div>
+            </div>
+            <div style="padding-top:5px;">
+              <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.18);">Released</div>
+            </div>
+          </div>
+
+        </div><!-- /timeline -->
+
+        <!-- Card footer -->
+        <div style="padding:10px 18px;border-top:1px solid rgba(255,255,255,0.06);
+                    background:rgba(255,255,255,0.018);">
+          <span style="font-size:9px;color:rgba(255,255,255,0.25);font-weight:600;letter-spacing:0.5px;">AUDIT TRAIL · 3 ENTRIES · FULL VISIBILITY</span>
+        </div>
+
+      </div><!-- /card -->
+
+      <!-- Stats row -->
+      <div style="display:flex;margin-top:10px;border-radius:8px;overflow:hidden;
+                  border:1px solid rgba(255,255,255,0.07);">
+        <div style="flex:1;padding:12px 6px;text-align:center;background:rgba(255,255,255,0.03);">
+          <div style="font-size:17px;font-weight:800;color:#c9a227;font-family:'Libre Baskerville',serif;">3</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.30);margin-top:3px;text-transform:uppercase;letter-spacing:1px;">Roles</div>
+        </div>
+        <div style="flex:1;padding:12px 6px;text-align:center;background:rgba(255,255,255,0.03);
+                    border-left:1px solid rgba(255,255,255,0.07);">
+          <div style="font-size:17px;font-weight:800;color:#c9a227;font-family:'Libre Baskerville',serif;">100%</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.30);margin-top:3px;text-transform:uppercase;letter-spacing:1px;">Audited</div>
+        </div>
+        <div style="flex:1;padding:12px 6px;text-align:center;background:rgba(255,255,255,0.03);
+                    border-left:1px solid rgba(255,255,255,0.07);">
+          <div style="font-size:17px;font-weight:800;color:#c9a227;font-family:'Libre Baskerville',serif;">Free</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.30);margin-top:3px;text-transform:uppercase;letter-spacing:1px;">No Email</div>
+        </div>
+      </div>
+
+    </div><!-- /right -->
+
+  </div><!-- /hero-inner -->
+
+  <!-- Bottom fade -->
+  <div style="height:28px;background:linear-gradient(to bottom,transparent,rgba(15,39,68,0.65));position:relative;z-index:2;"></div>
+
 </section>
+
+<div style="background:#0f2744;padding:48px 24px;text-align:center;
+            border-top:1px solid rgba(255,255,255,0.08);">
+  <div style="max-width:900px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px;">
+
+    <div style="padding:28px 24px;background:rgba(255,255,255,0.04);border-radius:14px;
+                border:1px solid rgba(255,255,255,0.08);">
+      <div style="width:44px;height:44px;border-radius:10px;background:rgba(201,162,39,0.12);
+                  border:1px solid rgba(201,162,39,0.25);display:flex;align-items:center;
+                  justify-content:center;margin:0 auto 16px;" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c9a227" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+      </div>
+      <div style="font-weight:700;font-size:15px;color:#ffffff;margin-bottom:8px;
+                  font-family:'Inter',sans-serif;">Submit Documents</div>
+      <div style="font-size:14px;color:rgba(255,255,255,0.52);line-height:1.7;
+                  font-family:'Inter',sans-serif;">Scan a QR code or sign in to submit documents to any office and track their progress in real time.</div>
+    </div>
+
+    <div style="padding:28px 24px;background:rgba(255,255,255,0.04);border-radius:14px;
+                border:1px solid rgba(255,255,255,0.08);">
+      <div style="width:44px;height:44px;border-radius:10px;background:rgba(201,162,39,0.12);
+                  border:1px solid rgba(201,162,39,0.25);display:flex;align-items:center;
+                  justify-content:center;margin:0 auto 16px;" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c9a227" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </div>
+      <div style="font-weight:700;font-size:15px;color:#ffffff;margin-bottom:8px;
+                  font-family:'Inter',sans-serif;">Track in Real Time</div>
+      <div style="font-size:14px;color:rgba(255,255,255,0.52);line-height:1.7;
+                  font-family:'Inter',sans-serif;">Know exactly where your document is — pending, received, in review, routed, or released.</div>
+    </div>
+
+    <div style="padding:28px 24px;background:rgba(255,255,255,0.04);border-radius:14px;
+                border:1px solid rgba(255,255,255,0.08);">
+      <div style="width:44px;height:44px;border-radius:10px;background:rgba(201,162,39,0.12);
+                  border:1px solid rgba(201,162,39,0.25);display:flex;align-items:center;
+                  justify-content:center;margin:0 auto 16px;" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c9a227" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <div style="font-weight:700;font-size:15px;color:#ffffff;margin-bottom:8px;
+                  font-family:'Inter',sans-serif;">Private &amp; Secure</div>
+      <div style="font-size:14px;color:rgba(255,255,255,0.52);line-height:1.7;
+                  font-family:'Inter',sans-serif;">Your documents are visible only to you and the office handling them. No public access.</div>
+    </div>
+
+  </div>
+</div>
 
 <div class="section-divider"></div>
 
@@ -153,7 +404,7 @@
           {% elif logged_in and current_role in ('admin','staff') %}
             <a href="/office-action/{{ sub_slug }}" class="btn-submit">📋 Open Office Page</a>
           {% else %}
-            <a href="/client/login?next=/client/submit%3Foffice_slug%3D{{ office.office_slug | urlencode }}%26office_name%3D{{ office.office_name | urlencode }}" class="btn-submit">🔑 Sign In to Submit</a>
+            <button class="btn-submit" onclick="openModal('signin')">🔑 Sign In to Submit</button>
           {% endif %}
           <a href="/office-qr/{{ sub_slug }}.png" download="{{ sub_slug }}.png" class="btn-dl">⬇️ Download QR</a>
         </div>
@@ -170,15 +421,6 @@
       <div class="client-strip-btns">
         <a href="/client" class="c-btn gold">📋 My Documents</a>
         <a href="/client/submit" class="c-btn ghost">+ New Submission</a>
-      </div>
-    </div>
-    {% elif not logged_in %}
-    <div class="auth-prompt reveal">
-      <h3>Ready to Submit Your Documents?</h3>
-      <p>Create a free account to submit to any office above and track your documents in real time. No email required — just a username and password you choose.</p>
-      <div class="auth-prompt-btns">
-        <a href="/client/register" class="auth-btn gold">✍️ Register Free</a>
-        <a href="/client/login" class="auth-btn outline">🔑 Sign In</a>
       </div>
     </div>
     {% endif %}
@@ -201,275 +443,171 @@
   </div>
 </div>
 
-<div class="section-divider"></div>
-
-<!-- ═══ HOW IT WORKS ═══ -->
-<section class="section" id="how-it-works">
-  <div class="section-head reveal">
-    <div class="section-eyebrow">System Overview</div>
-    <div class="section-title">Three Roles, <span>One System</span></div>
-    <p class="section-sub">Every person in LAKAD has a clearly defined role. Clients can only see their own documents — the staff document table is never accessible to the public.</p>
-  </div>
-  <div class="roles-grid stagger">
-    <div class="role-card admin reveal">
-      <span class="role-icon">👑</span><span class="role-tag admin">Administrator</span>
-      <div class="role-name">System Admin</div>
-      <div class="role-desc">Manages the entire system — users, offices, QR codes, and configuration. Full visibility over all documents and all activity.</div>
-      <ul class="role-perms">
-        <li class="perm-item">Invite and manage all staff accounts</li>
-        <li class="perm-item">Generate and print all office QR code sets</li>
-        <li class="perm-item">View, search and filter every document</li>
-        <li class="perm-item">Access full activity and audit log</li>
-        <li class="perm-item">Post App Welcome QR for public onboarding</li>
-      </ul>
-    </div>
-    <div class="role-card staff reveal">
-      <span class="role-icon">🏢</span><span class="role-tag staff">Office Staff</span>
-      <div class="role-name">Staff Member</div>
-      <div class="role-desc">Receives, processes, routes, and releases documents. Creates the paper trail and maintains chain of custody across offices.</div>
-      <ul class="role-perms">
-        <li class="perm-item">Receive documents via QR scan or manual entry</li>
-        <li class="perm-item">Update status, add remarks, edit details</li>
-        <li class="perm-item">Create batch routing slips with time filters</li>
-        <li class="perm-item">Use AI to auto-extract fields from photos/PDFs</li>
-        <li class="perm-item">View dashboard and all documents</li>
-      </ul>
-    </div>
-    <div class="role-card client reveal">
-      <span class="role-icon">👤</span><span class="role-tag client">Client</span>
-      <div class="role-name">Client / Public</div>
-      <div class="role-desc">Submits documents and tracks their progress. Privacy-first — clients can only ever see their own submitted documents.</div>
-      <ul class="role-perms">
-        <li class="perm-item">Register free — no email required</li>
-        <li class="perm-item">Submit documents to any registered office</li>
-        <li class="perm-item">Get a unique QR code receipt per document</li>
-        <li class="perm-item">Track real-time status and travel log</li>
-        <li class="perm-item no">Cannot see other clients' documents</li>
-        <li class="perm-item no">Cannot access the staff document table</li>
-      </ul>
-    </div>
-  </div>
-</section>
-
-<div class="section-divider"></div>
-
-<!-- ═══ PROCESS FLOW ═══ -->
-<section class="section" id="process">
-  <div class="section-head reveal">
-    <div class="section-eyebrow">End-to-End Workflow</div>
-    <div class="section-title">Complete <span>Process Flow</span></div>
-    <p class="section-sub">From system setup all the way to document release — every phase of the lifecycle explained step by step.</p>
-  </div>
-  <div class="flow-wrap">
-    <div class="flow-phase p1 reveal">
-      <div class="phase-aside"><div class="phase-num">PHASE 01</div><div class="phase-title">System Initialization</div><span class="phase-actor actor-admin">👑 Admin</span></div>
-      <div class="phase-body"><div class="steps-row stagger">
-        <div class="step reveal"><div class="step-n">01.1</div><span class="step-ico">🔐</span><div class="step-title">Admin Login</div><div class="step-desc">Admin logs in via <strong>/login</strong> using credentials set in Railway environment variables. Full access to all system functions — users, documents, QR codes, activity logs.</div></div>
-        <div class="step reveal"><div class="step-n">01.2</div><span class="step-ico">🖨️</span><div class="step-title">Generate Office QR Sets</div><div class="step-desc">Goes to QR Codes page, types each office name, downloads four QR codes per office: App Welcome, SUB, REC, REL. Posts them in the correct physical locations.</div></div>
-        <div class="step reveal"><div class="step-n">01.3</div><span class="step-ico">📊</span><div class="step-title">Monitor Everything</div><div class="step-desc">Admin sees all documents on the main dashboard with full search, date, and time filters. Can edit, reroute, or update any document at any time.</div></div>
-      </div></div>
-    </div>
-    <div class="flow-phase p2 reveal">
-      <div class="phase-aside"><div class="phase-num">PHASE 02</div><div class="phase-title">Staff Onboarding</div><span class="phase-actor actor-staff">🏢 Admin → Staff</span></div>
-      <div class="phase-body"><div class="steps-row stagger">
-        <div class="step reveal"><div class="step-n">02.1</div><span class="step-ico">📧</span><div class="step-title">Admin Sends Invitation</div><div class="step-desc">Admin goes to 👥 Users → 📧 Send Invite. System generates a one-time 32-char token with a 48-hour expiry. Brevo HTTPS API delivers a branded email.</div></div>
-        <div class="step reveal"><div class="step-n">02.2</div><span class="step-ico">📝</span><div class="step-title">Staff Registers &amp; QR Auto-Created</div><div class="step-desc">Staff clicks the link, fills in their Office/Unit name, full name, username, and password. The system immediately generates their office's full QR code set automatically.</div></div>
-        <div class="step reveal"><div class="step-n">02.3</div><span class="step-ico">🖨️</span><div class="step-title">Print &amp; Post QR Codes</div><div class="step-desc">Staff logs in, downloads their office QR set. Posts: SUB at the client counter, REC at the receiving window, REL at the releasing window.</div></div>
-        <div class="step reveal"><div class="step-n">02.4</div><span class="step-ico">📊</span><div class="step-title">Access Dashboard</div><div class="step-desc">Staff lands on the document dashboard. Can log walk-in documents, scan QR codes, filter by date and time, and create routing slips for batch forwarding.</div></div>
-      </div></div>
-    </div>
-    <div class="flow-phase p3 reveal">
-      <div class="phase-aside"><div class="phase-num">PHASE 03</div><div class="phase-title">Client Registration</div><span class="phase-actor actor-client">👤 Client</span></div>
-      <div class="phase-body"><div class="steps-row stagger">
-        <div class="step reveal"><div class="step-n">03.1</div><span class="step-ico">📱</span><div class="step-title">Scan the Welcome QR</div><div class="step-desc">Client spots the App Welcome QR posted at the office entrance or bulletin board. Scans it — opens this landing page directly on their phone.</div></div>
-        <div class="step reveal"><div class="step-n">03.2</div><span class="step-ico">✍️</span><div class="step-title">Register Free</div><div class="step-desc">Taps Register, fills in full name, chooses a username and password (8+ chars, 1 number). Account created instantly — no email address needed.</div></div>
-        <div class="step reveal"><div class="step-n">03.3</div><span class="step-ico">🔒</span><div class="step-title">Private Client Portal</div><div class="step-desc">Client logs in and lands on their personal portal. They see only their own submitted documents — the staff document table is completely inaccessible.</div></div>
-      </div></div>
-    </div>
-    <div class="flow-phase p4 reveal">
-      <div class="phase-aside"><div class="phase-num">PHASE 04</div><div class="phase-title">Document Submission</div><span class="phase-actor actor-client">👤 Client</span></div>
-      <div class="phase-body"><div class="steps-row stagger">
-        <div class="step reveal"><div class="step-n">04.1</div><span class="step-ico">📄</span><div class="step-title">Choose Office &amp; Fill Form</div><div class="step-desc">Taps Submit Here on any office card above. Form opens pre-filled with that office. Fills in unit/school, sender name, document particulars, category, and Referred To officer. Can add multiple documents to one batch.</div></div>
-        <div class="step reveal"><div class="step-n">04.2</div><span class="step-ico">💾</span><div class="step-title">Logged to Database</div><div class="step-desc">Each document gets a unique Reference Number (REF-2026-XXXX) and 8-char system ID. Inserted into PostgreSQL JSONB with status <strong>Pending</strong> and an initial travel log entry.</div></div>
-        <div class="step reveal"><div class="step-n">04.3</div><span class="step-ico">📲</span><div class="step-title">QR Code Receipt</div><div class="step-desc">Client is shown a QR code immediately after submission. <strong>Screenshot or download it</strong> — this QR is the key to receiving and releasing the document at the office.</div></div>
-        <div class="step reveal"><div class="step-n">04.4</div><span class="step-ico">👁️</span><div class="step-title">Always in Your Portal</div><div class="step-desc">The QR is permanently available in each document's tracking page in the client portal. Tap any document → QR displayed with full status history and travel log.</div></div>
-      </div></div>
-    </div>
-    <div class="flow-phase p5 reveal">
-      <div class="phase-aside"><div class="phase-num">PHASE 05</div><div class="phase-title">Document Receiving</div><span class="phase-actor actor-both">👤 Client + 🏢 Staff</span></div>
-      <div class="phase-body"><div class="steps-row stagger">
-        <div class="step reveal"><div class="step-n">05.1</div><span class="step-ico">🚶</span><div class="step-title">Client Arrives at Counter</div><div class="step-desc">Client brings physical documents to the office receiving window and shows their document QR code from their phone portal.</div></div>
-        <div class="step reveal"><div class="step-n">05.2</div><span class="step-ico">📷</span><div class="step-title">Staff Scans Document QR</div><div class="step-desc">Staff uses the LAKAD scan page or the office REC scanner. System pulls up the document record instantly — no manual search required.</div></div>
-        <div class="step reveal"><div class="step-n">05.3</div><span class="step-ico">📥</span><div class="step-title">Mark as Received</div><div class="step-desc">Staff taps Mark as Received. Status: Pending → <strong>Received</strong>. Receiving officer name, date, time, and office are appended to the travel log automatically.</div></div>
-        <div class="step reveal"><div class="step-n">05.4</div><span class="step-ico">⚡</span><div class="step-title">Client Sees Update Instantly</div><div class="step-desc">The client can see the status change in their private portal immediately — no need to ask the staff. Full travel log entry is visible right away.</div></div>
-      </div></div>
-    </div>
-    <div class="flow-phase p6 reveal">
-      <div class="phase-aside"><div class="phase-num">PHASE 06</div><div class="phase-title">Staff Processing &amp; Routing</div><span class="phase-actor actor-staff">🏢 Staff / Admin</span></div>
-      <div class="phase-body"><div class="steps-row stagger">
-        <div class="step reveal"><div class="step-n">06.1</div><span class="step-ico">📊</span><div class="step-title">View &amp; Filter Dashboard</div><div class="step-desc">Staff filters by Date and Time range (e.g. 08:00–12:00) to isolate a morning batch, then searches by name or reference number. Clicks any row to open the full document detail.</div></div>
-        <div class="step reveal"><div class="step-n">06.2</div><span class="step-ico">🚌</span><div class="step-title">Batch Route via Slip</div><div class="step-desc">Select documents on the dashboard, set destination office, click Create Routing Slip. Or use Auto-select by Time to select an entire shift's batch in one click. All selected documents → <strong>Routed</strong>.</div></div>
-        <div class="step reveal"><div class="step-n">06.3</div><span class="step-ico">🖨️</span><div class="step-title">Print &amp; Forward</div><div class="step-desc">System generates a routing slip (SLIP-2026-XXXX) with a document table, prepared-by and received-by signature blocks. Print and attach to the physical documents.</div></div>
-        <div class="step reveal"><div class="step-n">06.4</div><span class="step-ico">🤖</span><div class="step-title">AI-Assisted Entry</div><div class="step-desc">For walk-in documents: upload a photo or PDF of the physical document. Claude AI extracts all fields automatically — name, sender, category, dates — and pre-fills the entire form.</div></div>
-      </div></div>
-    </div>
-    <div class="flow-phase p7 reveal">
-      <div class="phase-aside"><div class="phase-num">PHASE 07</div><div class="phase-title">Document Release</div><span class="phase-actor actor-both">🏢 Staff + 👤 Client</span></div>
-      <div class="phase-body"><div class="steps-row stagger">
-        <div class="step reveal"><div class="step-n">07.1</div><span class="step-ico">✅</span><div class="step-title">Staff Sets Status to Released</div><div class="step-desc">When processing is complete, staff updates the document to <strong>Released</strong> using the Quick Status Update panel. Client sees this change immediately in their private portal.</div></div>
-        <div class="step reveal"><div class="step-n">07.2</div><span class="step-ico">📲</span><div class="step-title">Client Presents QR for Pickup</div><div class="step-desc">Client returns to the office, opens their document from the portal, and shows the QR at the releasing window. Staff scans it to confirm pickup.</div></div>
-        <div class="step reveal"><div class="step-n">07.3</div><span class="step-ico">🎉</span><div class="step-title">Lifecycle Complete</div><div class="step-desc">Travel log records the final entry. Client's portal shows the complete journey: Submitted → Received → In Review → Released, with every timestamp and officer name throughout.</div></div>
-      </div></div>
-    </div>
-  </div>
-</section>
-
-<div class="section-divider"></div>
-
-<!-- ═══ STATUS PIPELINE ═══ -->
-<section class="section section-bg-alt" id="status">
-  <div class="section-head reveal">
-    <div class="section-eyebrow">Document Lifecycle</div>
-    <div class="section-title">Status <span>Pipeline</span></div>
-  </div>
-  <div class="pipeline reveal">
-    <div class="pipe-node p-pending"><span class="pipe-ico">📤</span><div class="pipe-name">Pending</div><div class="pipe-how">Client submits via portal</div></div>
-    <div class="pipe-node p-received"><span class="pipe-ico">📥</span><div class="pipe-name">Received</div><div class="pipe-how">Staff scans QR at receiving counter</div></div>
-    <div class="pipe-node p-review"><span class="pipe-ico">🔍</span><div class="pipe-name">In Review</div><div class="pipe-how">Staff updates during processing</div></div>
-    <div class="pipe-node p-transit"><span class="pipe-ico">🚌</span><div class="pipe-name">Routed</div><div class="pipe-how">Routed to another office via slip</div></div>
-    <div class="pipe-node p-released"><span class="pipe-ico">✅</span><div class="pipe-name">Released</div><div class="pipe-how">Client picks up — cycle complete</div></div>
-  </div>
-  <div class="info-boxes stagger">
-    <div class="info-box reveal" style="border-color:rgba(200,146,42,.3)"><div class="info-box-title" style="color:var(--gold)">⚡ QR-Triggered Updates</div>Pending → <strong>Received</strong> — staff scans document QR at receiving counter<br/><br/>Released → <strong>Pickup confirmed</strong> — staff scans document QR at releasing window to close the lifecycle</div>
-    <div class="info-box reveal" style="border-color:rgba(45,106,53,.3)"><div class="info-box-title" style="color:var(--green)">✋ Manual Staff Updates</div>Any → <strong>In Review</strong>, <strong>Routed</strong>, <strong>On Hold</strong>, <strong>Archived</strong><br/><br/>Routing slip creation automatically sets all selected documents to <strong>Routed</strong> in one action</div>
-    <div class="info-box reveal" style="border-color:rgba(26,74,122,.3)"><div class="info-box-title" style="color:var(--blue)">🔒 Privacy by Design</div>Clients view the full travel log of <strong>their own documents only</strong>. The staff document table, other clients' data, and system statistics are <strong>never accessible</strong> to client accounts under any circumstance.</div>
-  </div>
-</section>
-
-<div class="section-divider"></div>
-
-<!-- ═══ QR GUIDE ═══ -->
-<section class="section" id="qr-guide">
-  <div class="section-head reveal">
-    <div class="section-eyebrow">QR Code Architecture</div>
-    <div class="section-title">Four Types of <span>QR Codes</span></div>
-    <p class="section-sub">Each QR code serves a specific purpose in the document lifecycle. Here's where to post each one and exactly who scans it.</p>
-  </div>
-  <div class="qr-grid stagger">
-    <div class="qr-card q-app reveal"><div class="qr-vis">📱</div><div class="qr-slug">App Welcome</div><h4>Welcome QR</h4><p>Posted at office entrances, bulletin boards, waiting areas. Scanned by new or returning clients — opens this landing page with Register and Sign In options.</p></div>
-    <div class="qr-card q-sub reveal"><div class="qr-vis">📋</div><div class="qr-slug">OfficeName-sub</div><h4>Submission QR</h4><p>Posted at each office counter. Client scans → submission form opens pre-filled with that office's name. Download visible in the Offices section above.</p></div>
-    <div class="qr-card q-rec reveal"><div class="qr-vis">📥</div><div class="qr-slug">OfficeName-rec</div><h4>Receiving Station</h4><p>Posted at the receiving window. Staff scans client's document QR here to mark it Received — office name, officer, and timestamp logged automatically.</p></div>
-    <div class="qr-card q-rel reveal"><div class="qr-vis">✅</div><div class="qr-slug">OfficeName-rel</div><h4>Releasing Station</h4><p>Posted at the pickup window. Scanned when client retrieves their processed document. Closes the document lifecycle with a final travel log entry.</p></div>
-  </div>
-  <div class="reveal" style="display:grid;grid-template-columns:1fr auto 1fr;gap:24px;align-items:center;background:var(--white);border:2px solid var(--parchment);border-radius:20px;padding:28px 32px">
-    <div class="info-box" style="border:none;padding:0;background:none"><div class="info-box-title" style="color:var(--gold)">📲 Auto-Created on Staff Registration</div>When a staff member registers and enters their Office/Unit name, the system automatically generates their full QR code set — no admin action required. Also available manually from the 🖨️ QR Codes page.</div>
-    <div style="text-align:center;font-size:36px;color:var(--parchment);font-weight:300">→</div>
-    <div class="info-box" style="border:none;padding:0;background:none"><div class="info-box-title" style="color:var(--green)">📋 Office Name Auto-Logged</div>When a scan happens via an office QR, the office name is parsed from the QR slug and recorded automatically in the document's travel log — no manual entry needed by the scanning officer.</div>
-  </div>
-</section>
-
-<div class="section-divider"></div>
-
-<!-- ═══ ACTORS ═══ -->
-<section class="section section-bg-alt" id="actors">
-  <div class="section-head reveal">
-    <div class="section-eyebrow">Step-by-Step Breakdown</div>
-    <div class="section-title">Actions by <span>Each Actor</span></div>
-  </div>
-  <div class="actor-compare stagger">
-    <div class="actor-col reveal">
-      <div class="actor-col-head admin-h"><span class="actor-col-icon">👑</span><div class="actor-col-name">Administrator</div></div>
-      <div class="actor-col-body">
-        <div class="actor-action"><span class="aa-n">01</span><div class="aa-txt">Log in at <strong>/login</strong> with admin credentials from Railway environment variables</div></div>
-        <div class="actor-action"><span class="aa-n">02</span><div class="aa-txt">Go to <strong>👥 Users → 📧 Send Invite</strong> to onboard staff with a one-time email link</div></div>
-        <div class="actor-action"><span class="aa-n">03</span><div class="aa-txt">Monitor all documents on the <strong>dashboard</strong> with date, time, status, and text filters</div></div>
-        <div class="actor-action"><span class="aa-n">04</span><div class="aa-txt">Go to <strong>🖨️ QR Codes</strong> → type office name → download all 4 QR codes as PNG files</div></div>
-        <div class="actor-action"><span class="aa-n">05</span><div class="aa-txt">Post the <strong>App Welcome QR</strong> at building entrances to onboard clients to the system</div></div>
-        <div class="actor-action"><span class="aa-n">06</span><div class="aa-txt">Enable or disable staff accounts from <strong>Manage Users</strong> — takes effect immediately</div></div>
-        <div class="actor-action"><span class="aa-n">07</span><div class="aa-txt">View the <strong>Activity Log</strong> for a full audit trail of every login, submission, and status change</div></div>
-      </div>
-    </div>
-    <div class="actor-col reveal">
-      <div class="actor-col-head staff-h"><span class="actor-col-icon">🏢</span><div class="actor-col-name">Office Staff</div></div>
-      <div class="actor-col-body">
-        <div class="actor-action"><span class="aa-n">01</span><div class="aa-txt">Receive invite email → click one-time link → fill in <strong>Office/Unit name, username &amp; password</strong></div></div>
-        <div class="actor-action"><span class="aa-n">02</span><div class="aa-txt">Post QR codes — <strong>SUB</strong> at counter, <strong>REC</strong> at receiving window, <strong>REL</strong> at releasing window</div></div>
-        <div class="actor-action"><span class="aa-n">03</span><div class="aa-txt">Log walk-in documents via <strong>+ Log Document</strong> → multi-document cart → Log All in one action</div></div>
-        <div class="actor-action"><span class="aa-n">04</span><div class="aa-txt">Use <strong>Date + Time From/To filters</strong> on the dashboard to isolate morning or afternoon batches</div></div>
-        <div class="actor-action"><span class="aa-n">05</span><div class="aa-txt">Use <strong>Auto-select by Time</strong> in the route panel to select an entire shift's batch instantly</div></div>
-        <div class="actor-action"><span class="aa-n">06</span><div class="aa-txt">Create and print <strong>Routing Slips</strong> (SLIP-2026-XXXX) with signature columns for chain-of-custody</div></div>
-        <div class="actor-action"><span class="aa-n">07</span><div class="aa-txt">Use <strong>🤖 AI Scan</strong> — upload photo or PDF → Claude AI extracts and pre-fills all form fields</div></div>
-      </div>
-    </div>
-    <div class="actor-col reveal">
-      <div class="actor-col-head client-h"><span class="actor-col-icon">👤</span><div class="actor-col-name">Client</div></div>
-      <div class="actor-col-body">
-        <div class="actor-action"><span class="aa-n">01</span><div class="aa-txt">Scan the <strong>App Welcome QR</strong> or visit this page → tap Register → account in seconds</div></div>
-        <div class="actor-action"><span class="aa-n">02</span><div class="aa-txt">Choose an office in the <strong>Offices section above</strong> → tap Submit Here → fill form → submit batch</div></div>
-        <div class="actor-action"><span class="aa-n">03</span><div class="aa-txt"><strong>Screenshot or download</strong> the QR code on the confirmation page — it's your document receipt</div></div>
-        <div class="actor-action"><span class="aa-n">04</span><div class="aa-txt">Bring physical documents to the office → staff scans your QR → status becomes <strong>Received</strong></div></div>
-        <div class="actor-action"><span class="aa-n">05</span><div class="aa-txt">Track status anytime in <strong>My Documents</strong> — only your own documents are ever shown</div></div>
-        <div class="actor-action"><span class="aa-n">06</span><div class="aa-txt">When status shows <strong>Released</strong> → return to office → present QR → pick up your documents</div></div>
-        <div class="actor-action"><span class="aa-n">07</span><div class="aa-txt">View the full <strong>travel log</strong> — see every office your document passed through and who handled it</div></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="section-divider"></div>
-
-<!-- ═══ DATA FLOW ═══ -->
-<section class="section">
-  <div class="section-head reveal">
-    <div class="section-eyebrow">Technical Architecture</div>
-    <div class="section-title">Data <span>Flow</span></div>
-  </div>
-  <div class="dataflow-table reveal">
-    <div class="df-row df-head"><div class="df-cell">Actor</div><div class="df-cell">Action</div><div class="df-cell">System Process</div><div class="df-cell">Result</div></div>
-    <div class="df-row"><div class="df-cell df-actor-cell">👑 Admin</div><div class="df-cell df-action-cell">Sends staff invitation</div><div class="df-cell df-system-cell">INSERT invite_tokens (32-char hex, 48h expiry) → Brevo HTTPS API call</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--gold)"></div>Branded email delivered to staff</div></div>
-    <div class="df-row"><div class="df-cell df-actor-cell">🏢 Staff</div><div class="df-cell df-action-cell">Registers via invite link</div><div class="df-cell df-system-cell">Validate token → INSERT users (role=staff, office=X) → save_office(X) → QR set auto-generated → token used=TRUE</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--green)"></div>Account + office QR set created instantly</div></div>
-    <div class="df-row"><div class="df-cell df-actor-cell">👤 Client</div><div class="df-cell df-action-cell">Registers via landing page</div><div class="df-cell df-system-cell">POST /client/register → INSERT users (role=client, SHA-256 hashed password) — no email stored</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--blue)"></div>Client account active instantly</div></div>
-    <div class="df-row"><div class="df-cell df-actor-cell">👤 Client</div><div class="df-cell df-action-cell">Submits documents</div><div class="df-cell df-system-cell">INSERT documents (JSONB: id, fields, status=Pending, travel_log[]) — one per document in batch</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--sage)"></div>QR code generated and shown per document</div></div>
-    <div class="df-row"><div class="df-cell df-actor-cell">🏢 Staff</div><div class="df-cell df-action-cell">Scans doc QR → Received</div><div class="df-cell df-system-cell">POST /receive/&lt;id&gt; action=receive → UPDATE status=Received, date_received + travel_log APPEND</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--blue)"></div>Status updated, client portal reflects change</div></div>
-    <div class="df-row"><div class="df-cell df-actor-cell">🏢 Staff</div><div class="df-cell df-action-cell">Creates routing slip</div><div class="df-cell df-system-cell">POST /routing-slip/create → UPDATE docs IN TRANSIT + INSERT routing_slips (SLIP-2026-XXXX)</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--green)"></div>Printable slip with signature columns ready</div></div>
-    <div class="df-row"><div class="df-cell df-actor-cell">🏢 Staff</div><div class="df-cell df-action-cell">Manual status update</div><div class="df-cell df-system-cell">POST /update-status/&lt;id&gt; → UPDATE documents SET status=X + travel_log APPEND with officer + timestamp</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--green)"></div>Status changed, client sees update</div></div>
-    <div class="df-row"><div class="df-cell df-actor-cell">🏢 Staff</div><div class="df-cell df-action-cell">Scans doc QR → Released</div><div class="df-cell df-system-cell">POST /receive/&lt;id&gt; action=release → UPDATE status=Released, date_released + travel_log APPEND</div><div class="df-cell df-result-cell"><div class="df-dot" style="background:var(--green)"></div>✅ Document lifecycle complete</div></div>
-  </div>
-</section>
-
-<div class="section-divider"></div>
-
-<!-- ═══ TECH STACK ═══ -->
-<section class="section section-bg-alt" id="tech">
-  <div class="section-head reveal">
-    <div class="section-eyebrow">Infrastructure</div>
-    <div class="section-title">Technology <span>Stack</span></div>
-  </div>
-  <div class="tech-grid stagger">
-    <div class="tech-item reveal"><span class="tech-ico">🐍</span><div><div class="tech-name">Python 3 + Flask</div><div class="tech-role">Web Framework &amp; Routing</div></div></div>
-    <div class="tech-item reveal"><span class="tech-ico">🐘</span><div><div class="tech-name">PostgreSQL</div><div class="tech-role">Persistent Database (Railway)</div></div></div>
-    <div class="tech-item reveal"><span class="tech-ico">🚂</span><div><div class="tech-name">Railway</div><div class="tech-role">Cloud Hosting &amp; Auto-Deploy</div></div></div>
-    <div class="tech-item reveal"><span class="tech-ico">🦄</span><div><div class="tech-name">Gunicorn</div><div class="tech-role">Production WSGI Server</div></div></div>
-    <div class="tech-item reveal"><span class="tech-ico">📦</span><div><div class="tech-name">psycopg2</div><div class="tech-role">PostgreSQL Adapter (JSONB)</div></div></div>
-    <div class="tech-item reveal"><span class="tech-ico">📱</span><div><div class="tech-name">qrcode + Pillow</div><div class="tech-role">Server-Side QR Generation</div></div></div>
-    <div class="tech-item reveal"><span class="tech-ico">👁️</span><div><div class="tech-name">jsQR (Browser)</div><div class="tech-role">In-App Camera QR Scanning</div></div></div>
-    <div class="tech-item reveal"><span class="tech-ico">📷</span><div><div class="tech-name">OpenCV + NumPy</div><div class="tech-role">Server-Side QR Image Decode</div></div></div>
-    <div class="tech-item reveal"><span class="tech-ico">🤖</span><div><div class="tech-name">Claude AI (Anthropic)</div><div class="tech-role">Document Data Extraction</div></div></div>
-    <div class="tech-item reveal"><span class="tech-ico">📧</span><div><div class="tech-name">Brevo API</div><div class="tech-role">Transactional Email (HTTPS)</div></div></div>
-    <div class="tech-item reveal"><span class="tech-ico">🔐</span><div><div class="tech-name">SHA-256 + Flask Sessions</div><div class="tech-role">Authentication &amp; Security</div></div></div>
-    <div class="tech-item reveal"><span class="tech-ico">🗄️</span><div><div class="tech-name">JSONB Document Store</div><div class="tech-role">Flexible Schema with UPSERT</div></div></div>
-  </div>
-</section>
-
 <!-- ═══ FOOTER ═══ -->
 <footer class="footer">
   <div class="footer-logo">LAKAD</div>
   <div style="font-size:16px;color:rgba(255,255,255,.55);margin-top:8px;position:relative;z-index:1">Personnel Unit · DepEd SDO Leyte Division</div>
-  <div class="footer-sub">Flask · PostgreSQL · Railway · Claude AI · Brevo · qrcode · jsQR · OpenCV</div>
 </footer>
 
 <button id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">↑</button>
 
 <script src="{{ url_for('static', filename='js/landing.js') }}"></script>
+
+<script>
+(function () {
+  function showError(boxId, msg) {
+    var el = document.getElementById(boxId);
+    if (!el) return;
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideError(boxId) {
+    var el = document.getElementById(boxId);
+    if (el) el.style.display = 'none';
+  }
+  function setSubmitting(btn, busy) {
+    btn.disabled = busy;
+    btn.textContent = busy ? 'Please wait…' : btn.dataset.label;
+  }
+
+  function bindModalForm(formId, errorId) {
+    var form = document.getElementById(formId);
+    if (!form) return;
+    var btn = form.querySelector('button[type="submit"]');
+    btn.dataset.label = btn.textContent;
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      hideError(errorId);
+      setSubmitting(btn, true);
+
+      fetch(form.action, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: new FormData(form),
+        credentials: 'same-origin',
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.success) {
+            if (data.redirect) {
+              window.location.href = data.redirect;
+            } else {
+              /* registration success — show message then switch to sign-in */
+              closeModal('register');
+              openModal('signin');
+              showError('signin-error', data.message || 'Account created. You can sign in once approved.');
+              document.getElementById('signin-error').style.background = '#f0fdf4';
+              document.getElementById('signin-error').style.borderColor = '#bbf7d0';
+              document.getElementById('signin-error').style.color = '#15803d';
+            }
+          } else {
+            showError(errorId, data.error || 'Something went wrong. Please try again.');
+            setSubmitting(btn, false);
+          }
+        })
+        .catch(function () {
+          showError(errorId, 'Network error. Please check your connection and try again.');
+          setSubmitting(btn, false);
+        });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    bindModalForm('signin-form', 'signin-error');
+    bindModalForm('register-form', 'register-error');
+  });
+})();
+</script>
+
+<!-- Sign In Modal -->
+<div id="modal-signin" class="lp-modal-overlay" onclick="closeModalOnBackdrop(event, 'signin')" aria-modal="true" role="dialog" aria-label="Sign In">
+  <div class="lp-modal-box">
+    <button class="lp-modal-close" onclick="closeModal('signin')" aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="lp-modal-header">
+      <img src="/static/logo.png" alt="DepEd seal" class="lp-modal-logo"/>
+      <h2 class="lp-modal-title">Sign In</h2>
+      <p class="lp-modal-sub">Personnel Unit · LAKAD Document Tracking</p>
+    </div>
+    <form id="signin-form" method="post" action="/client/login" class="lp-modal-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+      <input type="hidden" name="next_url" value="/"/>
+      <div class="lp-form-group">
+        <label class="lp-label" for="si-username">Username</label>
+        <input class="lp-input" type="text" id="si-username" name="username" placeholder="Enter your username" required autocomplete="username"/>
+      </div>
+      <div class="lp-form-group">
+        <label class="lp-label" for="si-password">Password</label>
+        <input class="lp-input" type="password" id="si-password" name="password" placeholder="Enter your password" required autocomplete="current-password"/>
+      </div>
+      <div class="lp-error-box" id="signin-error" style="display:none"></div>
+      <button type="submit" class="lp-submit-btn">Sign In</button>
+    </form>
+    <p class="lp-modal-footer-text">No account? <button class="lp-link-btn" onclick="switchModal('signin','register')">Register Free</button></p>
+  </div>
+</div>
+
+<!-- Register Modal -->
+<div id="modal-register" class="lp-modal-overlay" onclick="closeModalOnBackdrop(event, 'register')" aria-modal="true" role="dialog" aria-label="Register">
+  <div class="lp-modal-box">
+    <button class="lp-modal-close" onclick="closeModal('register')" aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="lp-modal-header">
+      <img src="/static/logo.png" alt="DepEd seal" class="lp-modal-logo"/>
+      <h2 class="lp-modal-title">Create Account</h2>
+      <p class="lp-modal-sub">No email required — just a username and password</p>
+    </div>
+    <form id="register-form" method="post" action="/client/register" class="lp-modal-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+      <input type="hidden" name="next_url" value="/"/>
+      <div class="lp-form-group">
+        <label class="lp-label" for="rg-fullname">Full Name</label>
+        <input class="lp-input" type="text" id="rg-fullname" name="full_name" placeholder="Enter your full name" required autocomplete="name"/>
+      </div>
+      <div class="lp-form-group">
+        <label class="lp-label" for="rg-username">Username</label>
+        <input class="lp-input" type="text" id="rg-username" name="username" placeholder="Choose a username" required autocomplete="username"/>
+      </div>
+      <div class="lp-form-group">
+        <label class="lp-label" for="rg-password">Password</label>
+        <input class="lp-input" type="password" id="rg-password" name="password" placeholder="Minimum 8 characters" required autocomplete="new-password" minlength="8"/>
+      </div>
+      <div class="lp-form-group">
+        <label class="lp-label" for="rg-confirm">Confirm Password</label>
+        <input class="lp-input" type="password" id="rg-confirm" name="confirm_password" placeholder="Re-enter your password" required autocomplete="new-password"/>
+      </div>
+      <div class="lp-error-box" id="register-error" style="display:none"></div>
+      <button type="submit" class="lp-submit-btn">Create Account</button>
+    </form>
+    <p class="lp-modal-footer-text">Already have an account? <button class="lp-link-btn" onclick="switchModal('register','signin')">Sign In</button></p>
+  </div>
+</div>
+
+<script>
+function openModal(id) {
+  document.getElementById('modal-' + id).classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById('modal-' + id).classList.remove('active');
+  document.body.style.overflow = '';
+}
+function closeModalOnBackdrop(e, id) {
+  if (e.target === document.getElementById('modal-' + id)) closeModal(id);
+}
+function switchModal(from, to) {
+  closeModal(from);
+  setTimeout(() => openModal(to), 180);
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeModal('signin');
+    closeModal('register');
+  }
+});
+</script>
 </body>
 </html>

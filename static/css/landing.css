@@ -243,3 +243,35 @@ body{font-family:'Inter','Source Sans 3',sans-serif;background:var(--paper);colo
   .offices-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:380px){.offices-grid{grid-template-columns:1fr}}
+
+/* ── Landing page modals ─────────────────────────────────────────────────── */
+.lp-error-box {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  margin-bottom: 12px;
+}
+.lp-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:1000;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);}
+.lp-modal-overlay.active{display:flex;}
+.lp-modal-box{background:#fff;border-radius:18px;padding:40px 36px;width:100%;max-width:420px;position:relative;box-shadow:0 24px 64px rgba(0,0,0,0.28);animation:modalIn 0.22s ease;}
+@keyframes modalIn{from{opacity:0;transform:translateY(16px) scale(0.97);}to{opacity:1;transform:translateY(0) scale(1);}}
+.lp-modal-close{position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;color:#999;padding:4px;border-radius:6px;transition:color 0.15s;}
+.lp-modal-close:hover{color:#333;}
+.lp-modal-header{text-align:center;margin-bottom:28px;}
+.lp-modal-logo{width:52px;height:52px;border-radius:50%;object-fit:contain;background:#fff;border:2px solid rgba(201,162,39,0.4);padding:4px;margin-bottom:14px;}
+.lp-modal-title{font-family:'Libre Baskerville',serif;font-size:22px;color:#0f2744;margin:0 0 6px;}
+.lp-modal-sub{font-size:13px;color:#888;margin:0;}
+.lp-modal-form{display:flex;flex-direction:column;gap:16px;}
+.lp-form-group{display:flex;flex-direction:column;gap:6px;}
+.lp-label{font-size:13px;font-weight:600;color:#374151;}
+.lp-input{padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:14px;color:#111;outline:none;transition:border-color 0.15s;font-family:'Inter',sans-serif;}
+.lp-input:focus{border-color:#c9a227;box-shadow:0 0 0 3px rgba(201,162,39,0.12);}
+.lp-submit-btn{margin-top:4px;padding:13px;background:#0f2744;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:background 0.15s;font-family:'Inter',sans-serif;}
+.lp-submit-btn:hover{background:#1a3a5c;}
+.lp-modal-footer-text{text-align:center;font-size:13px;color:#888;margin-top:16px;}
+.lp-link-btn{background:none;border:none;color:#c9a227;font-weight:600;cursor:pointer;font-size:13px;padding:0;text-decoration:underline;}
+@media(prefers-reduced-motion:reduce){.lp-modal-box{animation:none;}}
+@media(max-width:480px){.lp-modal-box{padding:28px 20px;}}

@@ -562,6 +562,9 @@ nav::after {
 }
 .filters input { flex: 1; min-width: 200px; }
 .filters input:focus, .filters select:focus {
+  border-color: var(--teal); box-shadow: 0 0 0 3px rgba(14,116,144,.15);
+}
+
 
 /* ════════════════════════════════════
    PASSWORD TOGGLE
@@ -595,8 +598,6 @@ nav::after {
 .password-toggle:hover {
   color: var(--text);
   background: rgba(0, 0, 0, 0.05);
-}
-  border-color: var(--teal); box-shadow: 0 0 0 3px rgba(14,116,144,.15);
 }
 .btn-filter {
   padding: 12px 18px; border-radius: var(--radius-sm);

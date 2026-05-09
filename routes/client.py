@@ -20,7 +20,7 @@ import time
 import urllib.parse
 import uuid
 
-from flask import (Blueprint, abort, flash, redirect, render_template,
+from flask import (Blueprint, abort, flash, jsonify, redirect, render_template,
                    request, session, url_for)
 from urllib.parse import urlparse
 
@@ -173,6 +173,7 @@ def login():
     if request.method == "POST":
         # FIX 2 – validate CSRF on login POST too (prevents login CSRF)
         _require_csrf()
+        is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
@@ -184,6 +185,8 @@ def login():
             lockout_remaining = wait
             audit_log("client_login_blocked", f"username={username}",
                       username=username, ip=ip)
+            if is_xhr:
+                return jsonify({'success': False, 'error': error})
         else:
             # NOTE (FIX 5): verify_user MUST perform a constant-time dummy bcrypt
             # compare even when the username is not found so that timing differences
@@ -198,6 +201,8 @@ def login():
                     user = get_user(username.lower().strip())
                     if user and not user.get("approved", True):
                         error = "Your account is pending approval. Please wait for the administrator to approve your registration."
+                        if is_xhr:
+                            return jsonify({'success': False, 'error': error})
                         return render_template("client_login.html", error=error,
                                                lockout_remaining=0,
                                                csrf_token=csrf_token,
@@ -227,14 +232,19 @@ def login():
                     fallback=url_for("client.portal") if role == "client"
                              else url_for("dashboard.index"),
                 )
-                if role == "client":
-                    return redirect(safe_next if safe_next != url_for("client.portal")
-                                    else url_for("client.portal"))
-                return redirect(url_for("dashboard.index"))
+                redirect_url = (
+                    (safe_next if safe_next != url_for("client.portal") else url_for("client.portal"))
+                    if role == "client" else url_for("dashboard.index")
+                )
+                if is_xhr:
+                    return jsonify({'success': True, 'redirect': redirect_url})
+                return redirect(redirect_url)
             else:
                 error = "Invalid username or password."
                 audit_log("client_login_fail", f"username={username}",
                           username=username, ip=ip)
+                if is_xhr:
+                    return jsonify({'success': False, 'error': error})
 
     return render_template("client_login.html", error=error,
                            lockout_remaining=lockout_remaining,
@@ -270,6 +280,7 @@ def register():
     if request.method == "POST":
         # FIX 2 – CSRF check
         _require_csrf()
+        is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
         # FIX 3 – rate-limit registrations per IP to prevent spam/account enumeration
         ip = get_client_ip()
@@ -278,6 +289,8 @@ def register():
             mins = max(1, wait // 60)
             error = f"Too many registration attempts. Try again in {mins} minute{'s' if mins != 1 else ''}."
             audit_log("client_register_blocked", "", username="", ip=ip)
+            if is_xhr:
+                return jsonify({'success': False, 'error': error})
         else:
             username  = request.form.get("username", "").strip()
             full_name = request.form.get("full_name", "").strip()
@@ -294,15 +307,19 @@ def register():
             else:
                 ok, err = create_user(username, password, full_name, role="client")
                 if ok:
-                    flash(
+                    msg = (
                         "Registration successful! Your account is pending approval "
                         "by the administrator. You will be able to login once your "
-                        "account is approved.",
-                        "info",
+                        "account is approved."
                     )
+                    if is_xhr:
+                        return jsonify({'success': True, 'message': msg})
+                    flash(msg, "info")
                     return redirect(url_for("client.login"))
                 else:
                     error = err
+            if is_xhr and error:
+                return jsonify({'success': False, 'error': error})
 
     return render_template("client_register.html", error=error,
                            office_name=office_name, office_slug=office_slug,
