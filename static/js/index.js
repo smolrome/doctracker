@@ -294,18 +294,7 @@ function toggleTimeRange(on) {
   }
 }
 
-function setToday() {
-  var el = document.querySelector('[name="date"]');
-  if (el) {
-    el.value = new Date().toISOString().slice(0, 10);
-    saveSelectionsToLocalStorage();
-    var params = new URLSearchParams(window.location.search);
-    params.set('date', el.value);
-    var allIds = restoreSelectionsFromLocalStorage();
-    if (allIds.length > 0) params.set('selected_docs', allIds.join(','));
-    window.location.href = '/?' + params.toString();
-  }
-}
+// setToday() removed — Today shortcut button was removed from the filter bar
 
 function setType(val) {
   var el = document.getElementById('type-hidden');

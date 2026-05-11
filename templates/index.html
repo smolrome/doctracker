@@ -61,6 +61,114 @@ var serverSessionData = {
   </div>
 
 
+  {# ── FILTER BAR ── #}
+  <div class="filter-strip" id="filter-sticky-bar" role="search" aria-label="Filter documents">
+  <form method="get" action="/" id="filter-form">
+
+    <div class="filter-card">
+      {# Row 1: search + selects + date + Search button #}
+      <div class="fc-row1">
+        <div class="fc-search-wrap">
+          <span class="fc-search-icon">🔍</span>
+          <input type="text" id="search-input" name="search"
+            class="{% if search %}has-value{% endif %}"
+            value="{{ search }}"
+            placeholder="Search documents, ID, sender, office…"
+            autocomplete="off"
+            oninput="onSearchInput(this)"/>
+          <button type="button" class="fc-clear-btn"
+                  onclick="clearSearchField()"
+                  aria-label="Clear search"
+                  {% if not search %}style="display:none"{% endif %}>✕</button>
+        </div>
+
+        {% if is_admin %}
+        <select class="chip-select" id="office-filter-select" onchange="setOffice(this.value)" title="Filter by office">
+          <option value="All" {% if filter_office=='All' or not filter_office or filter_office is not defined %}selected{% endif %}>All Offices</option>
+          {% for office in saved_offices %}
+          <option value="{{ office.office_name }}" {% if filter_office==office.office_name %}selected{% endif %}>{{ office.office_name }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        {% if cat_options %}
+        <select class="chip-select" id="cat-filter-select" onchange="setCat(this.value)" title="Filter by category">
+          <option value="All" {% if not filter_cat or filter_cat=='All' %}selected{% endif %}>All Categories</option>
+          {% for cat in cat_options %}
+          <option value="{{ cat }}" {% if filter_cat==cat %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        {% if office_staff_names %}
+        <select class="chip-select" id="staff-filter-select" onchange="setStaff(this.value)" title="Filter by staff">
+          <option value="All" {% if not filter_staff or filter_staff=='All' %}selected{% endif %}>All Staff</option>
+          {% for name in office_staff_names %}
+          <option value="{{ name }}" {% if filter_staff==name %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        <div class="fc-date">
+          <input type="date" id="date-input" name="date"
+            class="{% if filter_date %}has-value{% endif %}"
+            value="{{ filter_date }}"
+            onchange="this.form.submit()"/>
+        </div>
+
+        <div class="fc-btns">
+          <button type="submit" class="btn btn-primary btn-sm">Search</button>
+          {% set _any = search or filter_status != 'All' or filter_source != 'All' or filter_date or (filter_office and filter_office != 'All') or (filter_cat and filter_cat != 'All') or (filter_staff and filter_staff != 'All') %}
+          {% if _any %}
+          <a href="#" class="btn btn-secondary btn-sm" onclick="clearAllFilters(event)">Clear</a>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Active filter pills #}
+      {% set any_filter = search or filter_status != 'All' or filter_date or (filter_office and filter_office != 'All') or (filter_cat and filter_cat != 'All') or (filter_staff and filter_staff != 'All') %}
+      {% if any_filter %}
+      <div class="fc-chips">
+        <div class="active-pills" role="list">
+          {% if filter_date %}<span class="f-pill">📅 {{ filter_date }}<button class="f-pill-x" type="button" onclick="clearField('date')">×</button></span>{% endif %}
+          {% if filter_status != 'All' %}<span class="f-pill">{{ filter_status }}<button class="f-pill-x" type="button" onclick="clearField('status','All')">×</button></span>{% endif %}
+          {% if search %}<span class="f-pill">🔍 "{{ search }}"<button class="f-pill-x" type="button" onclick="clearField('search','')">×</button></span>{% endif %}
+          {% if is_admin and filter_office and filter_office != 'All' %}<span class="f-pill">🏢 {{ filter_office }}<button class="f-pill-x" type="button" onclick="clearField('office','All')">×</button></span>{% endif %}
+          {% if filter_cat and filter_cat != 'All' %}<span class="f-pill">🗂️ {{ filter_cat }}<button class="f-pill-x" type="button" onclick="clearField('cat','All')">×</button></span>{% endif %}
+          {% if filter_staff and filter_staff != 'All' %}<span class="f-pill">👤 {{ filter_staff }}<button class="f-pill-x" type="button" onclick="clearField('staff','All')">×</button></span>{% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <input type="hidden" name="status"   id="status-hidden"   value="{{ filter_status }}"/>
+    <input type="hidden" name="source"   id="source-hidden"   value="{{ filter_source }}"/>
+    <input type="hidden" name="office"   id="office-hidden"   value="{{ filter_office }}"/>
+    <input type="hidden" name="cat"      id="cat-hidden"      value="{{ filter_cat }}"/>
+    <input type="hidden" name="staff"    id="staff-hidden"    value="{{ filter_staff }}"/>
+    <input type="hidden" name="sort"     id="sort-hidden"     value="{{ sort_col }}"/>
+    <input type="hidden" name="sort_dir" id="sort-dir-hidden" value="{{ sort_dir }}"/>
+    <input type="hidden" name="per_page"                      value="{{ per_page }}"/>
+  </form>
+  </div>
+
+  {# ── INCOMING BANNER ── #}
+  {% if logged_in and session.get('role') in ('staff', 'admin') %}
+  <div id="incoming-banner" class="dash-incoming" style="display:none;"
+       role="alert" tabindex="0"
+       onclick="showPendingDocumentsModal()"
+       onkeydown="if(event.key==='Enter'||event.key===' ')showPendingDocumentsModal()">
+    <div class="ib-icon">📥</div>
+    <div class="ib-body">
+      <div class="ib-title">Documents awaiting your acceptance</div>
+      <div class="ib-sub" id="ib-sub-text">Click to review and accept</div>
+    </div>
+    <span class="ib-badge" id="ib-badge">0</span>
+    <span class="ib-cta">Review ›</span>
+  </div>
+  {% endif %}
+
   {# ── STATS ROW ── #}
   <div class="dash-stats-row" role="navigation" aria-label="Filter by status">
 
@@ -114,141 +222,6 @@ var serverSessionData = {
       <span class="dsc-num">{{ stats.unknown }}</span><span class="dsc-label">Unknown</span>
     </a>
     {% endif %}
-  </div>
-
-  {# ── INCOMING BANNER ── #}
-  {% if logged_in and session.get('role') in ('staff', 'admin') %}
-  <div id="incoming-banner" class="dash-incoming" style="display:none;"
-       role="alert" tabindex="0"
-       onclick="showPendingDocumentsModal()"
-       onkeydown="if(event.key==='Enter'||event.key===' ')showPendingDocumentsModal()">
-    <div class="ib-icon">📥</div>
-    <div class="ib-body">
-      <div class="ib-title">Documents awaiting your acceptance</div>
-      <div class="ib-sub" id="ib-sub-text">Click to review and accept</div>
-    </div>
-    <span class="ib-badge" id="ib-badge">0</span>
-    <span class="ib-cta">Review ›</span>
-  </div>
-  {% endif %}
-
-  {# ── FILTER BAR ── #}
-  <div class="filter-strip" id="filter-sticky-bar" role="search" aria-label="Filter documents">
-  <form method="get" action="/" id="filter-form">
-
-    <div class="filter-card">
-      {# Row 1: search + source chips + selects + date + time toggle + buttons #}
-      <div class="fc-row1">
-        <div class="fc-search-wrap">
-          <span class="fc-search-icon">🔍</span>
-          <input type="text" id="search-input" name="search"
-            class="{% if search %}has-value{% endif %}"
-            value="{{ search }}"
-            placeholder="Search documents, ID, sender, office…"
-            autocomplete="off"
-            oninput="onSearchInput(this)"/>
-          <button type="button" class="fc-clear-btn"
-                  onclick="clearSearchField()"
-                  aria-label="Clear search"
-                  {% if not search %}style="display:none"{% endif %}>✕</button>
-        </div>
-
-        <div class="fc-source-inline" role="group" aria-label="Source filter">
-          <button type="button" class="chip {% if filter_source=='All' or not filter_source %}src-active{% endif %}" onclick="setSource('All')">All</button>
-          <button type="button" class="chip {% if filter_source=='Staff' %}src-active{% endif %}" onclick="setSource('Staff')">Staff</button>
-          <button type="button" class="chip {% if filter_source=='Client' %}src-active{% endif %}" onclick="setSource('Client')">Client</button>
-        </div>
-
-        {% if is_admin %}
-        <select class="chip-select" id="office-filter-select" onchange="setOffice(this.value)" title="Filter by office">
-          <option value="All" {% if filter_office=='All' or not filter_office or filter_office is not defined %}selected{% endif %}>All Offices</option>
-          {% for office in saved_offices %}
-          <option value="{{ office.office_name }}" {% if filter_office==office.office_name %}selected{% endif %}>{{ office.office_name }}</option>
-          {% endfor %}
-        </select>
-        {% endif %}
-
-        {% if cat_options %}
-        <select class="chip-select" id="cat-filter-select" onchange="setCat(this.value)" title="Filter by category">
-          <option value="All" {% if not filter_cat or filter_cat=='All' %}selected{% endif %}>All Categories</option>
-          {% for cat in cat_options %}
-          <option value="{{ cat }}" {% if filter_cat==cat %}selected{% endif %}>{{ cat }}</option>
-          {% endfor %}
-        </select>
-        {% endif %}
-
-        {% if office_staff_names %}
-        <select class="chip-select" id="staff-filter-select" onchange="setStaff(this.value)" title="Filter by staff">
-          <option value="All" {% if not filter_staff or filter_staff=='All' %}selected{% endif %}>All Staff</option>
-          {% for name in office_staff_names %}
-          <option value="{{ name }}" {% if filter_staff==name %}selected{% endif %}>{{ name }}</option>
-          {% endfor %}
-        </select>
-        {% endif %}
-
-        <div class="fc-date">
-          <input type="date" id="date-input" name="date"
-            class="{% if filter_date %}has-value{% endif %}"
-            value="{{ filter_date }}"
-            onchange="this.form.submit()"/>
-        </div>
-
-        <label class="fc-time-label" for="toggle-time-range" title="Filter by time range">
-          <input type="checkbox" id="toggle-time-range"
-            onchange="toggleTimeRange(this.checked)"
-            {% if filter_time_from or filter_time_to %}checked{% endif %}/>
-          🕐 Time
-        </label>
-
-        <div class="fc-btns">
-          <button type="submit" class="btn btn-primary btn-sm">Search</button>
-          {% set _any = search or filter_status != 'All' or filter_source != 'All' or filter_date or filter_time_from or filter_time_to or (filter_office and filter_office != 'All') or (filter_cat and filter_cat != 'All') or (filter_staff and filter_staff != 'All') %}
-          {% if _any %}
-          <a href="#" class="btn btn-secondary btn-sm" onclick="clearAllFilters(event)">Clear</a>
-          {% endif %}
-        </div>
-      </div>
-
-      {# Row 2: Today chip + active pills #}
-      {% set any_filter = search or filter_status != 'All' or filter_source != 'All' or filter_date or filter_time_from or filter_time_to or (filter_office and filter_office != 'All') or (filter_cat and filter_cat != 'All') or (filter_staff and filter_staff != 'All') %}
-      <div class="fc-chips">
-        <button type="button" class="chip" onclick="setToday()">📆 Today</button>
-        {% if any_filter %}
-        <div class="active-pills" role="list">
-          {% if filter_date %}<span class="f-pill">📅 {{ filter_date }}<button class="f-pill-x" type="button" onclick="clearField('date')">×</button></span>{% endif %}
-          {% if filter_time_from or filter_time_to %}<span class="f-pill">🕐 {{ filter_time_from or '00:00' }}–{{ filter_time_to or '23:59' }}<button class="f-pill-x" type="button" onclick="clearField('time_from');clearField('time_to');">×</button></span>{% endif %}
-          {% if filter_status != 'All' %}<span class="f-pill">{{ filter_status }}<button class="f-pill-x" type="button" onclick="clearField('status','All')">×</button></span>{% endif %}
-          {% if search %}<span class="f-pill">🔍 "{{ search }}"<button class="f-pill-x" type="button" onclick="clearField('search','')">×</button></span>{% endif %}
-          {% if filter_source != 'All' %}<span class="f-pill">{{ filter_source }}<button class="f-pill-x" type="button" onclick="clearField('source','All')">×</button></span>{% endif %}
-          {% if is_admin and filter_office and filter_office != 'All' %}<span class="f-pill">🏢 {{ filter_office }}<button class="f-pill-x" type="button" onclick="clearField('office','All')">×</button></span>{% endif %}
-          {% if filter_cat and filter_cat != 'All' %}<span class="f-pill">🗂️ {{ filter_cat }}<button class="f-pill-x" type="button" onclick="clearField('cat','All')">×</button></span>{% endif %}
-          {% if filter_staff and filter_staff != 'All' %}<span class="f-pill">👤 {{ filter_staff }}<button class="f-pill-x" type="button" onclick="clearField('staff','All')">×</button></span>{% endif %}
-        </div>
-        {% endif %}
-      </div>
-
-      {# Time range row — inputs shown/hidden by toggle-time-range checkbox in fc-row1 #}
-      <div class="fc-time-row">
-        <div class="fc-time-inputs" id="time-range-row"
-             style="display:{% if filter_time_from or filter_time_to %}flex{% else %}none{% endif %};">
-          <input type="time" id="time-from-input" name="time_from" value="{{ filter_time_from }}" placeholder="From"/>
-          <span style="color:var(--muted);font-size:12px;">–</span>
-          <input type="time" id="time-to-input" name="time_to" value="{{ filter_time_to }}" placeholder="To"/>
-          <button type="submit" class="btn btn-primary btn-sm">Apply</button>
-        </div>
-      </div>
-
-    </div>
-
-    <input type="hidden" name="status"   id="status-hidden"   value="{{ filter_status }}"/>
-    <input type="hidden" name="source"   id="source-hidden"   value="{{ filter_source }}"/>
-    <input type="hidden" name="office"   id="office-hidden"   value="{{ filter_office }}"/>
-    <input type="hidden" name="cat"      id="cat-hidden"      value="{{ filter_cat }}"/>
-    <input type="hidden" name="staff"    id="staff-hidden"    value="{{ filter_staff }}"/>
-    <input type="hidden" name="sort"     id="sort-hidden"     value="{{ sort_col }}"/>
-    <input type="hidden" name="sort_dir" id="sort-dir-hidden" value="{{ sort_dir }}"/>
-    <input type="hidden" name="per_page"                      value="{{ per_page }}"/>
-  </form>
   </div>
 
   {# ── SELECTION BAR ── #}

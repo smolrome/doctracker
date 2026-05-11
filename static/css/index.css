@@ -1572,12 +1572,6 @@ tr:hover .status-change-inline { opacity:1; }
 .dash-incoming .ib-cta   { font-size: 12px; font-weight: 700; color: #1E3A5F; white-space: nowrap; }
 
 
-/* ── Filter bar: source chips inline in row 1 ── */
-.fc-source-inline {
-  display: flex;
-  gap: 3px;
-  flex-shrink: 0;
-}
 /* fc-row1 layout for full-width filter bar */
 .filter-card .fc-row1 {
   display: flex;
@@ -1589,9 +1583,7 @@ tr:hover .status-change-inline { opacity:1; }
 }
 .filter-card .fc-row1::-webkit-scrollbar { display: none; }
 .fc-search-wrap { flex: 1 1 200px; min-width: 150px; }
-.fc-source-inline { flex-shrink: 0; }
 .fc-date input { width: 130px; }
-.fc-time-label { flex-shrink: 0; white-space: nowrap; font-size: 12px; }
 .fc-btns { flex-shrink: 0; }
 
 
@@ -1618,7 +1610,7 @@ tr:hover .status-change-inline { opacity:1; }
 
   .filter-card .fc-row1 { flex-wrap: wrap; }
   .fc-search-wrap { flex: 1 1 100%; min-width: 0; }
-  .fc-source-inline, .fc-date, .fc-time-label, .fc-btns { flex: 0 0 auto; }
+  .fc-date, .fc-btns { flex: 0 0 auto; }
   .chip-select { max-width: 120px; }
 
   /* Table → card view */
