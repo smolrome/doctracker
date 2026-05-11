@@ -241,7 +241,7 @@ body {
 }
 
 .fc-search-wrap {
-  position: relative; flex: 1; min-width: 200px;
+  position: relative; flex: 1 1 200px; min-width: 150px;
 }
 .fc-search-wrap input {
   width: 100%; padding: 8px 34px 8px 36px;
@@ -1582,7 +1582,6 @@ tr:hover .status-change-inline { opacity:1; }
   scrollbar-width: none;
 }
 .filter-card .fc-row1::-webkit-scrollbar { display: none; }
-.fc-search-wrap { flex: 1 1 200px; min-width: 150px; }
 .fc-date input { width: 130px; }
 .fc-btns { flex-shrink: 0; }
 
