@@ -1303,26 +1303,59 @@ def api_staff_stats():
         if not user or user.get('role') not in ('admin', 'superadmin'):
             return jsonify(error='Admin access required'), 403
 
-    docs = load_docs()
+    from services.auth import get_all_users
+
+    # Build stats keyed by username, seeded from the authoritative user list
+    # so only real staff/admin accounts appear (no client or ghost usernames)
+    all_users = get_all_users()
     stats: dict = {}
+    for u in all_users:
+        if u.get('role') not in ('staff', 'admin', 'superadmin'):
+            continue
+        if not u.get('active', True):
+            continue
+        uname = u.get('username', '')
+        if not uname:
+            continue
+        stats[uname] = {
+            'full_name': u.get('full_name') or uname,
+            'office':    u.get('office') or '',
+            'total':     0,
+            'pending':   0,
+            'received':  0,
+            'released':  0,
+            'other':     0,
+        }
+
+    # Count docs where the user is logged_by OR original_logged_by (union)
+    docs = load_docs()
     for d in docs:
         if d.get('deleted'):
             continue
-        logger = d.get('logged_by', 'unknown')
-        if logger not in stats:
-            stats[logger] = {'total': 0, 'pending': 0, 'received': 0, 'released': 0, 'other': 0}
-        stats[logger]['total'] += 1
         s = (d.get('status') or '').lower()
-        if s == 'pending':
-            stats[logger]['pending'] += 1
-        elif s == 'received':
-            stats[logger]['received'] += 1
-        elif s == 'released':
-            stats[logger]['released'] += 1
-        else:
-            stats[logger]['other'] += 1
+        # Credit both the current logger and the original logger
+        owners = set()
+        if d.get('logged_by'):
+            owners.add(d['logged_by'])
+        if d.get('original_logged_by'):
+            owners.add(d['original_logged_by'])
+        for uname in owners:
+            if uname not in stats:
+                continue  # skip usernames not in the staff/admin user list
+            stats[uname]['total'] += 1
+            if s == 'pending':
+                stats[uname]['pending'] += 1
+            elif s == 'received':
+                stats[uname]['received'] += 1
+            elif s == 'released':
+                stats[uname]['released'] += 1
+            else:
+                stats[uname]['other'] += 1
 
-    result = [{'username': k, **v} for k, v in sorted(stats.items(), key=lambda x: -x[1]['total'])]
+    result = sorted(
+        [{'username': k, **v} for k, v in stats.items()],
+        key=lambda x: -x['total'],
+    )
     return jsonify(serialize(result))
 
 
