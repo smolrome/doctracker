@@ -40,6 +40,28 @@
   </p>
 </div>
 
+<!-- Filter bar -->
+<div class="users-filter-bar">
+  <div class="uf-search-wrap">
+    <span class="uf-search-icon">🔍</span>
+    <input type="text" id="user-search" placeholder="Search by name, username, or email..." autocomplete="off" />
+  </div>
+  <select id="user-office-filter">
+    <option value="">All Offices</option>
+    {% set office_list = users | map(attribute='office') | select | unique | sort %}
+    {% for office in office_list %}
+    <option value="{{ office | lower }}">{{ office }}</option>
+    {% endfor %}
+  </select>
+  <select id="user-role-filter">
+    <option value="">All Roles</option>
+    <option value="staff">Staff</option>
+    <option value="admin">Admin</option>
+    <option value="client">Client</option>
+  </select>
+  <span id="user-count" class="uf-count"></span>
+</div>
+
 <!-- Users Table -->
 <div class="users-card">
   <div class="users-head">
@@ -65,7 +87,12 @@
   {% if users %}
     {% for user in users %}
     {% set is_disabled = not user.active if user.active is not none else false %}
-    <div class="user-row {% if is_disabled %}disabled-row{% endif %}">
+    <div class="user-row {% if is_disabled %}disabled-row{% endif %}"
+         data-name="{{ (user.full_name or user.username) | lower }}"
+         data-username="{{ user.username | lower }}"
+         data-email="{{ (user.email or '') | lower }}"
+         data-office="{{ (user.office or '') | lower }}"
+         data-role="{{ (user.role or '') | lower }}">
       <div class="user-info">
         <div class="user-avatar {% if is_disabled %}disabled-av{% endif %}">
           {{ (user.full_name or user.username or 'U')[0].upper() }}

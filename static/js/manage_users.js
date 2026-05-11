@@ -1,3 +1,34 @@
+function filterUsers() {
+  var search = document.getElementById('user-search').value.toLowerCase().trim();
+  var office = document.getElementById('user-office-filter').value.toLowerCase();
+  var role   = document.getElementById('user-role-filter').value.toLowerCase();
+  var rows   = document.querySelectorAll('.user-row[data-username]');
+  var visible = 0;
+  rows.forEach(function(row) {
+    var matchSearch = !search ||
+      row.dataset.name.includes(search) ||
+      row.dataset.username.includes(search) ||
+      row.dataset.email.includes(search);
+    var matchOffice = !office || row.dataset.office === office;
+    var matchRole   = !role   || row.dataset.role === role;
+    var show = matchSearch && matchOffice && matchRole;
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  var countEl = document.getElementById('user-count');
+  if (countEl) countEl.textContent = visible + ' user' + (visible !== 1 ? 's' : '');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var search = document.getElementById('user-search');
+  var office = document.getElementById('user-office-filter');
+  var role   = document.getElementById('user-role-filter');
+  if (search) search.addEventListener('input', filterUsers);
+  if (office) office.addEventListener('change', filterUsers);
+  if (role)   role.addEventListener('change', filterUsers);
+  filterUsers();
+});
+
 function openPwdModal(username) {
   document.getElementById('pwdUser').textContent = username;
   document.getElementById('pwdForm').action = '/change-password/' + username;
