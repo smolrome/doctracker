@@ -279,7 +279,16 @@ def api_get_documents():
 
     # Filter documents based on user role
     if user_role not in ['admin', 'superadmin']:
-        docs = [d for d in docs if d.get('logged_by') == user_id]
+        user_office_lower = user_office.strip().lower() if user_office else ''
+        docs = [d for d in docs if
+            d.get('logged_by') == user_id
+            or d.get('accepted_by') == user_id
+            or d.get('transferred_by') == user_id
+            or d.get('pending_at_staff') == user_id
+            or d.get('assigned_to') == user_id
+            or (user_office_lower and d.get('pending_at_office', '').strip().lower() == user_office_lower)
+            or (user_office_lower and _matches_office(d, user_office_lower))
+        ]
 
     if status:
         docs = [d for d in docs if d.get('status') == status]
@@ -2843,18 +2852,19 @@ def api_client_empty_trash():
 
 
 def send_push_notification(username: str, title: str, body: str, data: dict = None):
-    """Send push notification to a specific user via Expo Push API."""
-    if data is None:
-        data = {}
-    import requests as req
-
-    _ensure_push_tokens_loaded()
-    with _push_tokens_lock:
-        token = _push_tokens.get(username)
-    if not token:
-        return False
-
+    """Send push notification to a specific user via Expo Push API.
+    Never raises — always returns False on any failure."""
     try:
+        if data is None:
+            data = {}
+        import requests as req
+
+        _ensure_push_tokens_loaded()
+        with _push_tokens_lock:
+            token = _push_tokens.get(username)
+        if not token:
+            return False
+
         response = req.post(
             'https://exp.host/--/api/v2/push/send',
             json={

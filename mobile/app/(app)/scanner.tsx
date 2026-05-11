@@ -76,7 +76,7 @@ export default function Scanner() {
       || doc.pending_at_staff === user?.username
       || (
         !doc.pending_at_staff
-        && doc.pending_at_office
+        && !!doc.pending_at_office
         && doc.pending_at_office.trim().toLowerCase() ===
            (user?.office || '').trim().toLowerCase()
       )
@@ -233,6 +233,13 @@ export default function Scanner() {
   const handleQuickAccept = async () => {
     if (!scannedDoc) return;
     setAccepting(true);
+    console.log('ACCEPT DEBUG:', JSON.stringify({
+      id: scannedDoc.id,
+      transfer_status: scannedDoc.transfer_status,
+      pending_at_staff: scannedDoc.pending_at_staff,
+      pending_at_office: scannedDoc.pending_at_office,
+      status: scannedDoc.status
+    }));
     try {
       await api.post(`/documents/${scannedDoc.id}/accept`);
       Vibration.vibrate([0, 80, 60, 80]);
