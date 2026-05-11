@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,23 +7,29 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Users } from 'lucide-react-native';
+import { ArrowLeft, Users, Search } from 'lucide-react-native';
 import api from '../../lib/api';
 import { useAuthStore } from '../../lib/store';
 
+type StaffStat = {
+  username: string;
+  full_name: string;
+  office: string;
+  total: number;
+  pending: number;
+  received: number;
+  released: number;
+  other: number;
+};
+
 async function fetchStaffStats() {
   const res = await api.get('/staff-stats');
-  return (res.data ?? []) as Array<{
-    username: string;
-    total: number;
-    pending: number;
-    received: number;
-    released: number;
-    other: number;
-  }>;
+  return (res.data ?? []) as StaffStat[];
 }
 
 function StatPill({ label, value, bg, text }: { label: string; value: number; bg: string; text: string }) {
@@ -39,6 +46,9 @@ export default function StaffStats() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
+  const [search, setSearch] = useState('');
+  const [officeFilter, setOfficeFilter] = useState('All');
+
   const { data, isLoading, isRefetching, refetch, error } = useQuery({
     queryKey: ['staff-stats'],
     queryFn: fetchStaffStats,
@@ -46,11 +56,41 @@ export default function StaffStats() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const items = data ?? [];
-  const totalDocs = items.reduce((s, i) => s + i.total, 0);
+  const allItems = data ?? [];
 
-  const renderItem = ({ item, index }: { item: typeof items[0]; index: number }) => {
+  // Unique sorted office list for pills
+  const offices = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const item of allItems) {
+      const o = item.office?.trim() || '';
+      if (o && !seen.has(o)) { seen.add(o); list.push(o); }
+    }
+    return list.sort();
+  }, [allItems]);
+
+  // Apply search + office filter
+  const items = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return allItems.filter((item) => {
+      const matchOffice = officeFilter === 'All' || (item.office?.trim() || '') === officeFilter;
+      if (!matchOffice) return false;
+      if (!q) return true;
+      return (
+        (item.full_name || '').toLowerCase().includes(q) ||
+        item.username.toLowerCase().includes(q) ||
+        (item.office || '').toLowerCase().includes(q)
+      );
+    });
+  }, [allItems, search, officeFilter]);
+
+  const totalDocs = allItems.reduce((s, i) => s + i.total, 0);
+
+  const renderItem = ({ item }: { item: StaffStat }) => {
     const pct = totalDocs > 0 ? Math.round((item.total / totalDocs) * 100) : 0;
+    const displayName = item.full_name || item.username;
+    const officeLabel = item.office?.trim() || 'No office assigned';
+
     return (
       <View style={{
         backgroundColor: '#fff',
@@ -62,9 +102,10 @@ export default function StaffStats() {
       }}>
         {/* Top row */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontWeight: '800', color: '#1E293B', fontSize: 14 }}>{item.username}</Text>
-            <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 2 }}>{pct}% of all documents</Text>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={{ fontWeight: '800', color: '#1E293B', fontSize: 14 }}>{displayName}</Text>
+            <Text style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>{officeLabel}</Text>
+            <Text style={{ color: '#94A3B8', fontSize: 11, marginTop: 1 }}>{pct}% of all documents</Text>
           </View>
           <View style={{ backgroundColor: '#EFF6FF', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 }}>
             <Text style={{ color: '#0038A8', fontWeight: '800', fontSize: 16 }}>{item.total}</Text>
@@ -102,7 +143,7 @@ export default function StaffStats() {
           <Text style={{ color: '#fff', fontSize: 22, fontWeight: '800', letterSpacing: -0.4 }}>Staff Statistics</Text>
         </View>
         <Text style={{ color: 'rgba(255,255,255,0.60)', fontSize: 13, marginTop: 4 }}>
-          {totalDocs} total documents · {items.length} staff member{items.length !== 1 ? 's' : ''}
+          {totalDocs} total documents · {allItems.length} staff member{allItems.length !== 1 ? 's' : ''}
         </Text>
       </View>
 
@@ -134,12 +175,74 @@ export default function StaffStats() {
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#0038A8" />
           }
+          ListHeaderComponent={
+            <View style={{ marginBottom: 14 }}>
+              {/* Search bar */}
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', gap: 10,
+                backgroundColor: '#fff', borderRadius: 12,
+                borderWidth: 1, borderColor: '#E2E8F0',
+                paddingHorizontal: 12, marginBottom: 10,
+              }}>
+                <Search size={15} color="#94A3B8" />
+                <TextInput
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder="Search by name, username, or office…"
+                  placeholderTextColor="#CBD5E1"
+                  style={{ flex: 1, paddingVertical: 11, fontSize: 14, color: '#1E293B' }}
+                />
+              </View>
+
+              {/* Office filter pills */}
+              {offices.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                  <View style={{ flexDirection: 'row', gap: 8, paddingRight: 4 }}>
+                    {['All', ...offices].map((office) => {
+                      const active = officeFilter === office;
+                      return (
+                        <TouchableOpacity
+                          key={office}
+                          onPress={() => setOfficeFilter(office)}
+                          style={{
+                            paddingHorizontal: 14, paddingVertical: 7,
+                            borderRadius: 20,
+                            backgroundColor: active ? '#0038A8' : '#fff',
+                            borderWidth: 1,
+                            borderColor: active ? '#0038A8' : '#E2E8F0',
+                          }}
+                        >
+                          <Text style={{
+                            fontSize: 12.5, fontWeight: '600',
+                            color: active ? '#fff' : '#64748B',
+                          }}>
+                            {office}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              )}
+
+              {/* Result count when filtering */}
+              {(search.trim() || officeFilter !== 'All') && (
+                <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
+                  {items.length} result{items.length !== 1 ? 's' : ''}
+                </Text>
+              )}
+            </View>
+          }
           ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingTop: 72 }}>
+            <View style={{ alignItems: 'center', paddingTop: 48 }}>
               <Text style={{ fontSize: 36 }}>📊</Text>
-              <Text style={{ color: '#1E293B', fontSize: 15, fontWeight: '700', marginTop: 14 }}>No data yet</Text>
-              <Text style={{ color: '#94A3B8', fontSize: 13, marginTop: 6 }}>
-                Stats will appear once documents are logged.
+              <Text style={{ color: '#1E293B', fontSize: 15, fontWeight: '700', marginTop: 14 }}>
+                {search.trim() || officeFilter !== 'All' ? 'No results found' : 'No data yet'}
+              </Text>
+              <Text style={{ color: '#94A3B8', fontSize: 13, marginTop: 6, textAlign: 'center' }}>
+                {search.trim() || officeFilter !== 'All'
+                  ? 'Try a different search or office filter.'
+                  : 'Stats will appear once documents are logged.'}
               </Text>
             </View>
           }
