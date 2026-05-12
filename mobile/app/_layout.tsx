@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { AppState, AppStateStatus, Linking } from 'react-native';
+import { Alert, AppState, AppStateStatus, Linking, Platform } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { Slot } from 'expo-router';
 import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
@@ -174,9 +177,46 @@ function AppShell() {
   const showMustUpdate = checked && mustUpdate;
   const showSoftUpdate = checked && needsUpdate && !softDismissed;
 
-  const openDownload = () => {
+  const openDownload = async () => {
     const url = downloadUrl || 'https://doctracker.depedleytepersonnelunit.com/download';
-    Linking.openURL(url);
+
+    if (Platform.OS !== 'android') {
+      try {
+        const supported = await Linking.canOpenURL(url);
+        if (supported) {
+          await Linking.openURL(url);
+        } else {
+          Alert.alert('Error', 'Cannot open download page. Please visit:\n' + url);
+        }
+      } catch {
+        Alert.alert('Error', 'Could not open download page. Please try again.');
+      }
+      return;
+    }
+
+    try {
+      Alert.alert('Downloading Update', 'Downloading APK, please wait…');
+      const dest = FileSystem.documentDirectory + 'doctracker-update.apk';
+      const { uri } = await FileSystem.downloadAsync(url, dest);
+      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+        data: uri,
+        flags: 1,
+        type: 'application/vnd.android.package-archive',
+      });
+    } catch (e) {
+      console.error('APK download/install error:', e);
+      Alert.alert('Error', 'Could not download or open the update. Please try again.');
+    }
+  };
+
+  const copyDownloadLink = async () => {
+    const url = downloadUrl || 'https://doctracker.depedleytepersonnelunit.com/download';
+    try {
+      await Clipboard.setStringAsync(url);
+      Alert.alert('Link Copied', 'Link copied! Paste it in your browser.');
+    } catch {
+      Alert.alert('Error', 'Could not copy link. Please write it down:\n' + url);
+    }
   };
 
   return (
@@ -191,12 +231,17 @@ function AppShell() {
         icon="🔄"
         accentColor="#0038A8"
         title="Update Required"
-        message={`Your app version is no longer supported. Please download the latest version (${latestVersion}) to continue.${releaseNotes ? `\n\n${releaseNotes}` : ''}`}
+        message={`Your current version is no longer supported. Please update to version ${latestVersion} to continue.\n\n${releaseNotes ? releaseNotes + '\n\n' : ''}Tap "Download Update" to open the download page. Download and install the APK to update.`}
         buttons={[
           {
             label: 'Download Update',
             variant: 'default',
             onPress: openDownload,
+          },
+          {
+            label: 'Copy Download Link',
+            variant: 'ghost',
+            onPress: copyDownloadLink,
           },
         ]}
       />
@@ -208,7 +253,7 @@ function AppShell() {
         icon="✨"
         accentColor="#0038A8"
         title="New Version Available"
-        message={`Version ${latestVersion} is available with new features and improvements.${releaseNotes ? `\n\n${releaseNotes}` : ''}`}
+        message={`Version ${latestVersion} is available.\n\n${releaseNotes ? releaseNotes + '\n\n' : ''}Tap "Update" to open the download page. Download and install the APK to update.`}
         buttons={[
           {
             label: 'Not Now',
