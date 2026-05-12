@@ -203,9 +203,9 @@ function AppShell() {
         flags: 1,
         type: 'application/vnd.android.package-archive',
       });
-    } catch (e) {
+    } catch (e: any) {
       console.error('APK download/install error:', e);
-      Alert.alert('Error', 'Could not download or open the update. Please try again.');
+      Alert.alert('Error', `${e?.message || e?.toString() || 'Unknown error'}`);
     }
   };
 
