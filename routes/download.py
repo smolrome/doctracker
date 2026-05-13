@@ -8,6 +8,7 @@ To activate:
   4. The /download page will automatically detect it and enable the button.
 """
 
+import json
 import os
 from flask import Blueprint, render_template, send_from_directory, abort, current_app
 
@@ -31,11 +32,20 @@ def _apk_size_mb():
 
 @download_bp.route('/download')
 def download_page():
+    apk_version = '1.0.0'
+    version_file = os.path.join(current_app.static_folder, 'apk', 'version.json')
+    try:
+        with open(version_file, 'r') as f:
+            apk_version = json.load(f).get('latest_version', '1.0.0')
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+
     return render_template(
         'download.html',
         apk_available=os.path.exists(_apk_path()),
         apk_size=_apk_size_mb(),
         apk_filename=APK_FILENAME,
+        apk_version=apk_version,
     )
 
 

@@ -207,8 +207,31 @@ function AppShell() {
   const currentVersion: string =
     (Constants.expoConfig?.version ?? (Constants as any).manifest?.version ?? '0.0.0') as string;
 
-  // Soft-update dialog: user can dismiss once per session
+  // Soft-update dialog: persisted to AsyncStorage keyed by version so it
+  // survives app restarts (user only sees it once per latestVersion).
   const [softDismissed, setSoftDismissed] = useState(false);
+
+  // Load persisted dismiss state whenever latestVersion becomes known
+  useEffect(() => {
+    if (!latestVersion) return;
+    (async () => {
+      try {
+        const val = await AsyncStorage.getItem(`soft_dismissed_${latestVersion}`);
+        if (val === 'true') setSoftDismissed(true);
+      } catch {
+        // AsyncStorage failure — fall back to showing the dialog
+      }
+    })();
+  }, [latestVersion]);
+
+  const dismissSoftUpdate = async () => {
+    setSoftDismissed(true);
+    try {
+      await AsyncStorage.setItem(`soft_dismissed_${latestVersion}`, 'true');
+    } catch {
+      // Silently ignore — worst case the dialog reappears next launch
+    }
+  };
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
 
@@ -275,6 +298,16 @@ function AppShell() {
         flags: 3,
         type: 'application/vnd.android.package-archive',
       });
+      // Mark the installed version as "seen" so the update dialogs don't
+      // reappear on the next launch and the What's New banner fires instead.
+      try {
+        const { latest_version } = await api.get('/app-version').then((r) => r.data);
+        if (latest_version) {
+          await AsyncStorage.setItem('last_seen_version', latest_version);
+        }
+      } catch {
+        // Silently ignore — the banner will just show on next launch anyway
+      }
       Alert.alert(
         '✅ Update Downloaded',
         'The update has been installed. Please close and reopen the app to use the latest version.',
@@ -342,7 +375,7 @@ function AppShell() {
       {/* ── Soft-update dialog (dismissible) ────────────────────────────── */}
       <ConfirmDialog
         visible={!showMustUpdate && showSoftUpdate}
-        onClose={() => setSoftDismissed(true)}
+        onClose={dismissSoftUpdate}
         icon="✨"
         accentColor="#0038A8"
         title="New Version Available"
@@ -351,7 +384,7 @@ function AppShell() {
           {
             label: 'Not Now',
             variant: 'ghost',
-            onPress: () => setSoftDismissed(true),
+            onPress: dismissSoftUpdate,
           },
           {
             label: 'Update',
