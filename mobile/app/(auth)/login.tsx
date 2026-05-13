@@ -73,6 +73,8 @@ function FingerprintIcon({ color = '#0038A8', size = 26 }: { color?: string; siz
 export default function Login() {
   const router  = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
+  const pendingQR = useAuthStore((s) => s.pendingQR);
+  const clearPendingQR = useAuthStore((s) => s.clearPendingQR);
   const { width, height } = useWindowDimensions();
 
   // Form state
@@ -189,7 +191,11 @@ export default function Login() {
       await authStorage.saveTokens(access_token, refresh_token);
       await authStorage.saveUser(user);
       setUser(user);
-      if (user?.role === 'client') {
+      if (user?.role === 'client' && pendingQR) {
+        const { officeSlug, officeName } = pendingQR;
+        clearPendingQR();
+        router.replace({ pathname: '/(client)/submit', params: { officeSlug, officeName } });
+      } else if (user?.role === 'client') {
         router.replace('/(client)/my-docs');
       } else {
         router.replace('/(app)/dashboard');
@@ -262,7 +268,11 @@ export default function Login() {
   };
 
   const navigateAfterLogin = (user: any) => {
-    if (user?.role === 'client') {
+    if (user?.role === 'client' && pendingQR) {
+      const { officeSlug, officeName } = pendingQR;
+      clearPendingQR();
+      router.replace({ pathname: '/(client)/submit', params: { officeSlug, officeName } });
+    } else if (user?.role === 'client') {
       router.replace('/(client)/my-docs');
     } else {
       router.replace('/(app)/dashboard');

@@ -10,6 +10,9 @@ interface AuthState {
   setUser: (user: User) => void;
   logout: () => Promise<void>;
   loadFromStorage: () => Promise<void>;
+  pendingQR: { officeSlug: string; officeName: string } | null;
+  setPendingQR: (qr: { officeSlug: string; officeName: string }) => void;
+  clearPendingQR: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -18,6 +21,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
 
   setUser: (user) => set({ user, isAuthenticated: true, isLoading: false }),
+
+  pendingQR: null,
+  setPendingQR: (qr) => set({ pendingQR: qr }),
+  clearPendingQR: () => set({ pendingQR: null }),
 
   logout: async () => {
     await authStorage.clearAll();

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { useRouter } from 'expo-router';
-import { FileText, PlusCircle, Trash2, User } from 'lucide-react-native';
+import { FileText, PlusCircle, ScanLine, Trash2, User } from 'lucide-react-native';
 import { useAuthStore } from '../../lib/store';
 
 export default function ClientLayout() {
@@ -46,6 +46,10 @@ export default function ClientLayout() {
       <Tabs.Screen
         name="submit"
         options={{ title: 'Submit', tabBarIcon: ({ color }) => <PlusCircle size={22} color={color} /> }}
+      />
+      <Tabs.Screen
+        name="scan"
+        options={{ title: 'Scan QR', tabBarIcon: ({ color }) => <ScanLine size={22} color={color} /> }}
       />
       <Tabs.Screen
         name="trash"

@@ -1,16 +1,18 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, Alert,
   ActivityIndicator, StatusBar, TextInput, Modal,
-  RefreshControl,
+  RefreshControl, ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft, CheckCircle, XCircle, Inbox, Clock,
+  ArrowLeft, CheckCircle, XCircle, Inbox, Clock, ChevronDown, Filter,
 } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import api from '../../lib/api';
 import { useAuthStore } from '../../lib/store';
+import { useDropdownOptions } from '../../hooks/useDropdownOptions';
 
 type PendingDoc = {
   id: string;
@@ -22,6 +24,7 @@ type PendingDoc = {
   category?: string;
   status?: string;
   pending_at_staff?: string;
+  pending_at_staff_name?: string;
   pending_at_office?: string;
   updated_at?: string;
   updated_by?: string;
@@ -45,8 +48,15 @@ export default function ReceiveDocs() {
 
   const [rejectTarget, setRejectTarget] = useState<PendingDoc | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // ── Data ──────────────────────────────────────────────────────────────────
+
+  const { data: dropdownOpts } = useDropdownOptions();
 
   const { data: docs = [], isLoading, refetch, isRefetching } = useQuery<PendingDoc[]>({
     queryKey: ['pending-documents'],
@@ -56,6 +66,30 @@ export default function ReceiveDocs() {
     },
     retry: false,
   });
+
+  const categories = useMemo(() => {
+    const opts = dropdownOpts?.category ?? [];
+    if (opts.length > 0) return ['All', ...opts];
+    // fallback: derive from loaded docs if dropdown not available
+    const unique = Array.from(new Set(docs.map((d) => d.category).filter(Boolean)));
+    return ['All', ...unique.sort()];
+  }, [docs, dropdownOpts]);
+
+  const filteredDocs = useMemo(() => {
+    return docs.filter((d) => {
+      if (selectedCategory !== 'All' && d.category !== selectedCategory) return false;
+      if (selectedDate) {
+        const lastTransfer = [...(d.travel_log ?? [])].reverse().find((e) => e.action?.includes('transfer'));
+        const dateStr = lastTransfer?.timestamp ?? d.updated_at ?? '';
+        if (!dateStr) return false;
+        const docDate = new Date(dateStr);
+        const from = new Date(selectedDate); from.setHours(0,0,0,0);
+        const to = new Date(selectedDate); to.setHours(23,59,59,999);
+        if (docDate < from || docDate > to) return false;
+      }
+      return true;
+    });
+  }, [docs, selectedCategory, selectedDate]);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
@@ -90,14 +124,21 @@ export default function ReceiveDocs() {
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleAccept = (doc: PendingDoc) => {
-    Alert.alert(
-      'Accept Document',
-      `Mark "${doc.doc_name || doc.doc_id}" as received?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Accept', onPress: () => acceptMutation.mutate(doc.id) },
-      ],
-    );
+    const isProxy =
+      user?.role === 'admin' &&
+      !!doc.pending_at_staff &&
+      doc.pending_at_staff !== user?.username;
+
+    const staffLabel = doc.pending_at_staff_name || doc.pending_at_staff;
+
+    const message = isProxy
+      ? `Accept on behalf of ${staffLabel}?\n\n"${doc.doc_name || doc.doc_id}" will be marked as Received.`
+      : `Mark "${doc.doc_name || doc.doc_id}" as received?`;
+
+    Alert.alert('Accept Document', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Accept', onPress: () => acceptMutation.mutate(doc.id) },
+    ]);
   };
 
   const openReject = (doc: PendingDoc) => {
@@ -236,12 +277,105 @@ export default function ReceiveDocs() {
           <View>
             <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800' }}>Receive Documents</Text>
             <Text style={{ color: 'rgba(255,255,255,0.60)', fontSize: 12, marginTop: 2 }}>
-              {docs.length > 0
-                ? `${docs.length} document${docs.length !== 1 ? 's' : ''} awaiting acceptance`
-                : 'No pending transfers'}
+              {`${filteredDocs.length} of ${docs.length} document${docs.length !== 1 ? 's' : ''} pending`}
             </Text>
           </View>
         </View>
+      </View>
+
+      {/* Filter Bar */}
+      <View style={{
+        backgroundColor: '#fff',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+      }}>
+        {/* Toggle row */}
+        <TouchableOpacity
+          onPress={() => setShowFilters((v) => !v)}
+          style={{ flexDirection: 'row', alignItems: 'center' }}
+        >
+          <Filter size={16} color="#0038A8" />
+          <Text style={{ color: '#0038A8', fontWeight: '700', fontSize: 13, marginLeft: 6 }}>Filters</Text>
+          {(selectedCategory !== 'All' || selectedDate !== null) ? (
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#0038A8', marginLeft: 6 }} />
+          ) : null}
+          <ChevronDown size={14} color="#0038A8" style={{ marginLeft: 4 }} />
+        </TouchableOpacity>
+
+        {/* Expanded filters */}
+        {showFilters && (
+          <View style={{ marginTop: 12 }}>
+
+            {/* Category Dropdown */}
+            <TouchableOpacity
+              onPress={() => setShowCategoryPicker(true)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: selectedCategory !== 'All' ? '#EFF6FF' : '#F1F5F9',
+                borderWidth: 1.5,
+                borderColor: selectedCategory !== 'All' ? '#0038A8' : '#E2E8F0',
+                borderRadius: 10,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                marginBottom: 12,
+              }}
+            >
+              <Text style={{ color: selectedCategory !== 'All' ? '#0038A8' : '#475569', fontWeight: '600', fontSize: 13 }}>
+                {selectedCategory === 'All' ? 'All Document Types' : selectedCategory}
+              </Text>
+              <ChevronDown size={16} color={selectedCategory !== 'All' ? '#0038A8' : '#94A3B8'} />
+            </TouchableOpacity>
+
+            {/* Date Picker */}
+            <TouchableOpacity
+              onPress={() => setShowDatePicker(true)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: selectedDate ? '#EFF6FF' : '#F1F5F9',
+                borderWidth: 1.5,
+                borderColor: selectedDate ? '#0038A8' : '#E2E8F0',
+                borderRadius: 10,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                marginBottom: 12,
+              }}
+            >
+              <Text style={{ color: selectedDate ? '#0038A8' : '#94A3B8', fontWeight: '600', fontSize: 13 }}>
+                {selectedDate ? selectedDate.toISOString().slice(0, 10) : 'Filter by date'}
+              </Text>
+              <Clock size={16} color={selectedDate ? '#0038A8' : '#94A3B8'} />
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={selectedDate ?? new Date()}
+                mode="date"
+                display="default"
+                onChange={(event, date) => {
+                  setShowDatePicker(false);
+                  if (event.type === 'set' && date) setSelectedDate(date);
+                }}
+              />
+            )}
+
+            {/* Clear filters */}
+            {(selectedCategory !== 'All' || selectedDate !== null) ? (
+              <TouchableOpacity
+                onPress={() => { setSelectedCategory('All'); setSelectedDate(null); }}
+                style={{ alignSelf: 'flex-end', marginTop: 10 }}
+              >
+                <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '600' }}>Clear Filters</Text>
+              </TouchableOpacity>
+            ) : null}
+
+          </View>
+        )}
       </View>
 
       {/* List */}
@@ -251,7 +385,7 @@ export default function ReceiveDocs() {
         </View>
       ) : (
         <FlatList
-          data={docs}
+          data={filteredDocs}
           keyExtractor={(d) => d.id}
           renderItem={renderDoc}
           contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
@@ -278,6 +412,44 @@ export default function ReceiveDocs() {
           }
         />
       )}
+
+      {/* Category Picker Modal */}
+      <Modal visible={showCategoryPicker} transparent animationType="fade" onRequestClose={() => setShowCategoryPicker(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+          <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => setShowCategoryPicker(false)} activeOpacity={1} />
+          <View style={{ backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '70%' }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 20 }} />
+            <Text style={{ fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 16 }}>Document Type</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {categories.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => { setSelectedCategory(cat); setShowCategoryPicker(false); }}
+                  style={{
+                    paddingVertical: 14,
+                    paddingHorizontal: 16,
+                    borderRadius: 10,
+                    marginBottom: 6,
+                    backgroundColor: selectedCategory === cat ? '#EFF6FF' : '#fff',
+                    borderWidth: 1.5,
+                    borderColor: selectedCategory === cat ? '#0038A8' : '#E2E8F0',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <Text style={{ color: selectedCategory === cat ? '#0038A8' : '#475569', fontWeight: '600', fontSize: 14 }}>
+                    {cat === 'All' ? 'All Document Types' : cat}
+                  </Text>
+                  {selectedCategory === cat && (
+                    <CheckCircle size={16} color="#0038A8" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Reject Reason Modal ──────────────────────────────────────────── */}
       <Modal visible={!!rejectTarget} transparent animationType="fade" onRequestClose={() => setRejectTarget(null)}>

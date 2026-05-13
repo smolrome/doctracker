@@ -139,7 +139,9 @@ export default function Profile() {
     mutationFn: () => api.patch('/profile', { full_name: fullName.trim(), office: office.trim() }),
     onSuccess: (res) => {
       const updated = res.data;
-      setUser({ ...user!, full_name: updated.full_name, office: updated.office });
+      const merged = { ...user!, full_name: updated.full_name, office: updated.office };
+      setUser(merged);
+      authStorage.saveUser(merged);
       Alert.alert('Saved', 'Profile updated successfully.');
       setExpanded(null);
     },

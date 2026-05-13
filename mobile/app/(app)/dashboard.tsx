@@ -19,6 +19,7 @@ import { useNetwork } from '../../hooks/useNetwork';
 import { usePendingCount, useDropdownOptions, useOffices, useStaff } from '../../hooks/useDropdownOptions';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { SelectField } from '../../components/ui/SelectField';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Search, SlidersHorizontal, X } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
@@ -110,6 +111,7 @@ export default function Dashboard() {
   const [filterCat, setFilterCat] = useState('All');
   const [filterStaff, setFilterStaff] = useState('All');
   const [filterDate, setFilterDate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // ── Dropdown data ────────────────────────────────────────────────────────────
   const { data: dropdownOpts } = useDropdownOptions();
@@ -691,25 +693,46 @@ export default function Dashboard() {
 
               {/* ── Date ───────────────────────────────────────────────────── */}
               <Text style={sheetSectionLabel}>Date</Text>
-              <View style={{
-                flexDirection: 'row', alignItems: 'center',
-                backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 4,
-                borderWidth: 1.5, borderColor: '#E2E8F0', marginBottom: 20,
-              }}>
-                <TextInput
-                  value={filterDate}
-                  onChangeText={setFilterDate}
-                  placeholder="YYYY-MM-DD  (e.g. 2025-01-15)"
-                  placeholderTextColor="#CBD5E1"
-                  keyboardType="numeric"
-                  style={{ flex: 1, color: '#1E293B', fontSize: 14, paddingVertical: 10 }}
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(true)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: filterDate ? '#EFF6FF' : '#fff',
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  borderWidth: 1.5,
+                  borderColor: filterDate ? '#0038A8' : '#E2E8F0',
+                  marginBottom: 20,
+                }}
+              >
+                <Text style={{ color: filterDate ? '#0038A8' : '#CBD5E1', fontSize: 14, fontWeight: filterDate ? '600' : '400' }}>
+                  {filterDate || 'Pick a date'}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  {filterDate !== '' && (
+                    <TouchableOpacity onPress={() => setFilterDate('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <X size={15} color="#94A3B8" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={filterDate ? new Date(filterDate) : new Date()}
+                  mode="date"
+                  display="default"
+                  onChange={(event, date) => {
+                    setShowDatePicker(false);
+                    if (event.type === 'set' && date) {
+                      setFilterDate(date.toISOString().slice(0, 10));
+                    }
+                  }}
                 />
-                {filterDate !== '' && (
-                  <TouchableOpacity onPress={() => setFilterDate('')}>
-                    <X size={15} color="#94A3B8" />
-                  </TouchableOpacity>
-                )}
-              </View>
+              )}
 
               {/* ── Category ───────────────────────────────────────────────── */}
               <Text style={sheetSectionLabel}>Category</Text>

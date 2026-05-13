@@ -925,6 +925,14 @@ def api_pending_documents():
                 )
             )
         ]
+    for d in result:
+        ps = d.get('pending_at_staff')
+        if ps:
+            ps_user = get_user_by_username(ps)
+            d['pending_at_staff_name'] = (
+                ps_user.get('full_name') or ps
+            ) if ps_user else ps
+
     return jsonify(serialize(result))
 
 
@@ -952,22 +960,44 @@ def api_accept_document(doc_id):
     if not is_authorized:
         return jsonify(error='Forbidden'), 403
 
+    # Detect proxy acceptance — admin accepting on behalf of a specific staff member
+    is_proxy = _is_admin_user(user_id) and bool(pending_staff) and pending_staff != user_id
+
+    new_cycle = doc.get('routing_cycle', 0) + 1
+
+    if is_proxy:
+        # Resolve the staff member's full name for the audit trail
+        proxy_target_user = get_user_by_username(pending_staff)
+        proxy_target_name = (
+            proxy_target_user.get('full_name') or pending_staff
+        ) if proxy_target_user else pending_staff
+        accepted_by_label = f'{user_full_name} (Admin, proxy for {proxy_target_name})'
+        action_label = 'Document Accepted (Proxy)'
+        remarks_text = (
+            f'Document accepted by {user_full_name} (Admin) as proxy for {proxy_target_name}. '
+            f'Routing cycle {new_cycle} in progress.'
+        )
+    else:
+        accepted_by_label = user_full_name
+        action_label = 'Document Accepted'
+        remarks_text = (
+            f'Document received and accepted by {user_full_name}. '
+            f'Routing cycle {new_cycle} in progress.'
+        )
+
     doc['transfer_status'] = 'accepted'
     doc['status'] = 'Received'
     doc['date_received'] = now_str()[:16].replace('T', ' ')
-    doc['accepted_by'] = user_id
+    doc['accepted_by'] = accepted_by_label
     doc['accepted_at'] = now_str()
-    doc['routing_cycle'] = doc.get('routing_cycle', 0) + 1
+    doc['routing_cycle'] = new_cycle
 
     doc.setdefault('travel_log', []).append({
         'office': user_office or doc.get('pending_at_office', ''),
-        'action': 'Document Accepted',
-        'officer': user_full_name,
+        'action': action_label,
+        'officer': accepted_by_label,
         'timestamp': now_str(),
-        'remarks': (
-            f'Document received and accepted by {user_full_name}. '
-            f'Routing cycle {doc.get("routing_cycle", 1)} in progress.'
-        ),
+        'remarks': remarks_text,
     })
 
     save_doc(doc)
@@ -2882,6 +2912,129 @@ def api_client_empty_trash():
         except Exception:
             pass
     return jsonify(message=f'Permanently deleted {count} document(s)', count=count)
+
+
+@api_bp.route('/client/submit-mobile', methods=['POST'])
+@jwt_required()
+def api_client_submit_mobile():
+    user_id = get_jwt_identity()
+    user = get_user_by_username(user_id)
+    if not user or user.get('role') != 'client':
+        return jsonify(error='Forbidden'), 403
+
+    data = request.get_json(force=True, silent=True) or {}
+    office_slug = (data.get('office_slug') or '').strip().lower()
+    office_name = (data.get('office_name') or '').strip()
+    selected_staff = (data.get('selected_staff') or '').strip()
+    items = data.get('items') or []
+
+    if not office_slug and not office_name:
+        return jsonify(error='Office is required'), 400
+    if not items:
+        return jsonify(error='No documents to submit'), 400
+    if len(items) > 50:
+        return jsonify(error='Maximum 50 documents per submission'), 400
+
+    from services.auth import get_all_users
+    all_users = get_all_users()
+
+    assigned_staff = ''
+    assigned_staff_name = ''
+
+    if selected_staff:
+        for u in all_users:
+            if u.get('username') == selected_staff:
+                assigned_staff = selected_staff
+                assigned_staff_name = u.get('full_name') or u.get('username', '')
+                break
+
+    if not assigned_staff:
+        from services.misc import load_saved_offices
+        saved_offices = load_saved_offices()
+        primary_recipient = ''
+        for off in saved_offices:
+            if (off.get('office_slug', '').lower() == office_slug or
+                    off.get('office_name', '').strip().lower() == office_name.strip().lower()):
+                primary_recipient = off.get('primary_recipient', '')
+                break
+        if primary_recipient:
+            for u in all_users:
+                if u.get('username') == primary_recipient:
+                    assigned_staff = primary_recipient
+                    assigned_staff_name = u.get('full_name') or u.get('username', '')
+                    break
+
+    if not assigned_staff:
+        office_staff = [
+            u for u in all_users
+            if u.get('office', '').strip().lower() == office_name.strip().lower()
+            and u.get('role') in ('staff', 'admin')
+        ]
+        if not office_staff:
+            office_staff = [u for u in all_users if u.get('role') in ('staff', 'admin')]
+        if office_staff:
+            assigned_staff = office_staff[0].get('username', '')
+            assigned_staff_name = office_staff[0].get('full_name') or office_staff[0].get('username', '')
+
+    submitted = []
+    sender_name = user.get('full_name') or user_id
+
+    for item in items[:50]:
+        doc_name = (item.get('doc_name') or '').strip()
+        unit_office = (item.get('unit_office') or '').strip()
+        referred_to = (item.get('referred_to') or '').strip()
+        if not doc_name or not unit_office or not referred_to:
+            continue
+        doc = {
+            'id':                    str(uuid.uuid4())[:8].upper(),
+            'doc_id':                generate_ref(),
+            'doc_name':              doc_name,
+            'category':              (item.get('category') or '').strip(),
+            'description':           (item.get('description') or '').strip(),
+            'sender_name':           sender_name,
+            'sender_org':            unit_office,
+            'sender_contact':        '',
+            'referred_to':           referred_to or office_name,
+            'forwarded_to':          '',
+            'recipient_name':        '',
+            'recipient_org':         '',
+            'recipient_contact':     '',
+            'received_by':           '',
+            'date_received':         '',
+            'date_released':         '',
+            'doc_date':              now_str()[:10],
+            'status':                'Pending',
+            'notes':                 (item.get('notes') or '').strip(),
+            'created_at':            now_str(),
+            'routing':               [],
+            'travel_log':            [],
+            'submitted_by':          user_id,
+            'submitted_by_name':     sender_name,
+            'target_office_slug':    office_slug,
+            'target_office_name':    office_name,
+            'pending_at_staff':      assigned_staff,
+            'pending_at_staff_name': assigned_staff_name,
+            'pending_at_office':     office_name,
+            'transfer_status':       'pending' if (assigned_staff or office_name) else '',
+        }
+        doc['travel_log'].append({
+            'office':    office_name or unit_office or 'Client',
+            'action':    'Document Submitted by Client - Pending at ' + (assigned_staff_name or assigned_staff or 'Office'),
+            'officer':   sender_name,
+            'timestamp': doc['created_at'],
+            'remarks':   (
+                f'Submitted via mobile app. '
+                f'Target office: {office_name or "General"}. '
+                f'Assigned to: {assigned_staff_name or assigned_staff or "Any staff"}.'
+            ),
+        })
+        insert_doc(doc)
+        submitted.append({'id': doc['id'], 'doc_id': doc['doc_id'], 'doc_name': doc['doc_name']})
+
+    if not submitted:
+        return jsonify(error='No valid documents in submission — check required fields'), 400
+
+    return jsonify(submitted=submitted, count=len(submitted))
 
 
 def send_push_notification(username: str, title: str, body: str, data: dict = None):

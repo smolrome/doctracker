@@ -4,8 +4,8 @@
  *   Step 2 — Add Documents to cart (form) + review cart
  *   Step 3 — Submission confirmation with QR codes for each document
  */
-import { useState, useCallback, useRef } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity, FlatList,
   Alert, ActivityIndicator, StatusBar, KeyboardAvoidingView, Platform,
@@ -111,6 +111,10 @@ function StepIndicator({ step }: { step: 1 | 2 | 3 }) {
 
 export default function Submit() {
   const router = useRouter();
+  const { officeSlug: qrOfficeSlug, officeName: qrOfficeName } = useLocalSearchParams<{
+    officeSlug?: string;
+    officeName?: string;
+  }>();
   const queryClient = useQueryClient();
   const { isOnline } = useNetwork();
 
@@ -178,6 +182,24 @@ export default function Submit() {
     },
     staleTime: 1000 * 60 * 5,
   });
+
+  useEffect(() => {
+    if (!qrOfficeSlug) return;
+    const match = offices.find(o => o.office_slug === qrOfficeSlug);
+    if (match) {
+      setSelectedOffice(match);
+      setSelectedStaff(match.primary_recipient || '');
+      setReferredTo(match.office_name);
+    } else if (qrOfficeName) {
+      const synthetic: SavedOffice = {
+        office_name: qrOfficeName,
+        office_slug: qrOfficeSlug,
+        primary_recipient: '',
+      };
+      setSelectedOffice(synthetic);
+      setReferredTo(qrOfficeName);
+    }
+  }, [offices, qrOfficeSlug]);
 
   const { data: staffList = [] } = useQuery({
     queryKey: ['office-staff', selectedOffice?.office_slug],

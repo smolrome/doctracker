@@ -7,6 +7,7 @@ import { Slot } from 'expo-router';
 import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '../lib/store';
 import { registerForPushNotifications } from '../lib/notifications';
 import { cache } from '../lib/cache';
@@ -51,6 +52,7 @@ const queryClient = new QueryClient({
 
 // ── Inner component so hooks can read auth state ──────────────────────────────
 function AppShell() {
+  const router = useRouter();
   const loadFromStorage = useAuthStore((s) => s.loadFromStorage);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading       = useAuthStore((s) => s.isLoading);
@@ -65,6 +67,37 @@ function AppShell() {
   const PREFETCH_COOLDOWN_MS = 1000 * 60 * 5; // 5 minutes between prefetches
 
   useEffect(() => { loadFromStorage(); }, []);
+
+  const setPendingQR = useAuthStore((s) => s.setPendingQR);
+  const user = useAuthStore((s) => s.user);
+
+  useEffect(() => {
+    const parseSubQR = (url: string) => {
+      const match = url.match(/\/office-action\/([^?]+)-sub(\?|$)/);
+      if (!match) return null;
+      const rawSlug = match[1];
+      return {
+        officeSlug: rawSlug.toLowerCase(),
+        officeName: rawSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      };
+    };
+
+    const handleURL = (url: string | null) => {
+      if (!url) return;
+      const parsed = parseSubQR(url);
+      if (!parsed) return;
+      if (isAuthenticated && user?.role === 'client') {
+        router.push({ pathname: '/(client)/submit', params: parsed });
+      } else if (!isAuthenticated) {
+        setPendingQR(parsed);
+        router.push('/(auth)/login');
+      }
+    };
+
+    Linking.getInitialURL().then(handleURL);
+    const sub = Linking.addEventListener('url', ({ url }) => handleURL(url));
+    return () => sub.remove();
+  }, [isAuthenticated, user]);
 
   // Clear query cache + local cache on logout
   useEffect(() => {
@@ -132,8 +165,6 @@ function AppShell() {
   // is available offline — even screens the user hasn't visited yet.
   // A 5-minute cooldown prevents hammering the API when the user backgrounds
   // and foregrounds the app rapidly (which was causing 429 rate-limit errors).
-  const user = useAuthStore((s) => s.user);
-
   const runPrefetchIfDue = () => {
     const now = Date.now();
     if (now - lastPrefetchAt.current < PREFETCH_COOLDOWN_MS) return;
