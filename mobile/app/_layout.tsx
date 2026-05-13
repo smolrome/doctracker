@@ -13,6 +13,7 @@ import { cache } from '../lib/cache';
 import { queryPersister, PERSIST_MAX_AGE } from '../lib/queryPersister';
 import { OfflineBanner } from '../components/ui/OfflineBanner';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { DownloadProgressModal } from '../components/ui/DownloadProgressModal';
 import { offlineQueue } from '../lib/offlineQueue';
 import { useNetwork } from '../hooks/useNetwork';
 import { useAppVersion } from '../hooks/useAppVersion';
@@ -173,6 +174,8 @@ function AppShell() {
 
   // Soft-update dialog: user can dismiss once per session
   const [softDismissed, setSoftDismissed] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
   const showMustUpdate = checked && mustUpdate;
   const showSoftUpdate = checked && needsUpdate && !softDismissed;
@@ -194,11 +197,22 @@ function AppShell() {
       return;
     }
 
+    setDownloading(true);
+    setDownloadProgress(0);
     try {
-      Alert.alert('Downloading Update', 'Downloading APK, please wait…');
       const dest = FileSystem.documentDirectory + 'doctracker-update.apk';
-      const { uri } = await FileSystem.downloadAsync(url, dest);
-      const contentUri = await FileSystem.getContentUriAsync(uri);
+      const resumable = FileSystem.createDownloadResumable(
+        url,
+        dest,
+        {},
+        ({ totalBytesWritten, totalBytesExpectedToWrite }) => {
+          if (totalBytesExpectedToWrite > 0) {
+            setDownloadProgress(totalBytesWritten / totalBytesExpectedToWrite);
+          }
+        }
+      );
+      const result = await resumable.downloadAsync();
+      const contentUri = await FileSystem.getContentUriAsync(result!.uri);
       await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
         data: contentUri,
         flags: 1,
@@ -207,6 +221,9 @@ function AppShell() {
     } catch (e: any) {
       console.error('APK download/install error:', e);
       Alert.alert('Error', `${e?.message || e?.toString() || 'Unknown error'}`);
+    } finally {
+      setDownloading(false);
+      setDownloadProgress(0);
     }
   };
 
@@ -224,6 +241,8 @@ function AppShell() {
     <>
       <OfflineBanner />
       <Slot />
+
+      <DownloadProgressModal visible={downloading} progress={downloadProgress} />
 
       {/* ── Force-update dialog (blocking — cannot be dismissed) ─────────── */}
       <ConfirmDialog
