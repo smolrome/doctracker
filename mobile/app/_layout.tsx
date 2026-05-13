@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState, AppStateStatus, Linking, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
@@ -203,10 +204,35 @@ function AppShell() {
   const { mustUpdate, needsUpdate, downloadUrl, releaseNotes, latestVersion, checked } =
     useAppVersion();
 
+  const currentVersion: string =
+    (Constants.expoConfig?.version ?? (Constants as any).manifest?.version ?? '0.0.0') as string;
+
   // Soft-update dialog: user can dismiss once per session
   const [softDismissed, setSoftDismissed] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
+
+  // "What's New" banner — shown once after the app upgrades to a new version
+  const [showWhatsNew, setShowWhatsNew]     = useState(false);
+  const [whatsNewNotes, setWhatsNewNotes]   = useState('');
+
+  // Check once the server version response has arrived (so we can read releaseNotes)
+  useEffect(() => {
+    if (!checked) return;
+    (async () => {
+      try {
+        const lastSeen = await AsyncStorage.getItem('last_seen_version');
+        await AsyncStorage.setItem('last_seen_version', currentVersion);
+        // Only show on an upgrade (lastSeen exists and is different from current)
+        if (lastSeen && lastSeen !== currentVersion) {
+          setWhatsNewNotes(releaseNotes || 'Bug fixes and improvements.');
+          setShowWhatsNew(true);
+        }
+      } catch {
+        // AsyncStorage failure — silently skip the banner
+      }
+    })();
+  }, [checked]);
 
   const showMustUpdate = checked && mustUpdate;
   const showSoftUpdate = checked && needsUpdate && !softDismissed;
@@ -249,6 +275,22 @@ function AppShell() {
         flags: 3,
         type: 'application/vnd.android.package-archive',
       });
+      Alert.alert(
+        '✅ Update Downloaded',
+        'The update has been installed. Please close and reopen the app to use the latest version.',
+        [
+          {
+            text: 'Close App Now',
+            onPress: () => {
+              if (Platform.OS === 'android') {
+                const { BackHandler } = require('react-native');
+                BackHandler.exitApp();
+              }
+            },
+          },
+          { text: 'Later', style: 'cancel' },
+        ]
+      );
     } catch (e: any) {
       console.error('APK download/install error:', e);
       Alert.alert('Error', `${e?.message || e?.toString() || 'Unknown error'}`);
@@ -315,6 +357,23 @@ function AppShell() {
             label: 'Update',
             variant: 'default',
             onPress: openDownload,
+          },
+        ]}
+      />
+
+      {/* ── What's New banner (shown once after an upgrade) ─────────────── */}
+      <ConfirmDialog
+        visible={!showMustUpdate && !showSoftUpdate && showWhatsNew}
+        onClose={() => setShowWhatsNew(false)}
+        icon="🎉"
+        accentColor="#0038A8"
+        title={`What's New in v${currentVersion}`}
+        message={whatsNewNotes || 'Bug fixes and improvements.'}
+        buttons={[
+          {
+            label: 'Got it',
+            variant: 'default',
+            onPress: () => setShowWhatsNew(false),
           },
         ]}
       />

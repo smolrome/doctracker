@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, Alert,
   TextInput, ActivityIndicator, StatusBar, Switch,
 } from 'react-native';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { useAuthStore } from '../../lib/store';
@@ -530,7 +531,7 @@ export default function Profile() {
             ['App',      'DepEd LAKAD'],
             ['Division', 'DepEd Leyte Division'],
             ['Unit',     'Personnel Unit'],
-            ['Version',  '1.0.0'],
+            ['Version',  Constants.expoConfig?.version ?? '1.0.0'],
           ].map(([label, value]) => (
             <View key={label} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
               <Text style={{ color: '#6B7280', fontSize: 13 }}>{label}</Text>
