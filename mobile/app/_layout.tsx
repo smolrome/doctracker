@@ -213,6 +213,7 @@ function AppShell() {
       );
       const result = await resumable.downloadAsync();
       const contentUri = await FileSystem.getContentUriAsync(result!.uri);
+      Alert.alert('Debug', contentUri);
       await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
         data: contentUri,
         flags: 1,

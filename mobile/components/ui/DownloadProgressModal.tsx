@@ -9,6 +9,8 @@ interface Props {
 export function DownloadProgressModal({ visible, progress, onCancel }: Props) {
   const pct = Math.round(Math.min(Math.max(progress, 0), 1) * 100);
 
+  if (!visible) return null;
+
   return (
     <Modal
       visible={visible}
