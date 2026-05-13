@@ -146,7 +146,7 @@ function AppShell() {
 
       for (const item of pending) {
         try {
-          await api.post('/client/submit', item.payload);
+          await api.post('/client/submit-mobile', item.payload);
           await offlineQueue.remove(item.queueId);
           // Invalidate docs so My Docs refreshes with the newly submitted doc
           queryClient.invalidateQueries({ queryKey: ['client-docs'] });

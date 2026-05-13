@@ -232,7 +232,7 @@ export default function Submit() {
         office_slug:    selectedOffice?.office_slug || '',
         office_name:    selectedOffice?.office_name || '',
         selected_staff: selectedStaff || '',
-        documents: cart.map((item) => ({
+        items: cart.map((item) => ({
           doc_name:    item.doc_name,
           referred_to: item.referred_to,
           unit_office: item.unit_office,
@@ -248,7 +248,7 @@ export default function Submit() {
         return { _queued: true, queueId, submitted: [] as SubmittedDoc[] };
       }
 
-      return api.post('/client/submit', payload);
+      return api.post('/client/submit-mobile', payload);
     },
     onSuccess: async (res: any) => {
       // ── Offline path: document queued, not yet submitted

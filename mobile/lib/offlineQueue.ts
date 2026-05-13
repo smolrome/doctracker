@@ -9,7 +9,7 @@ export type QueuedSubmission = {
     office_slug: string;
     office_name: string;
     selected_staff: string;
-    documents: {
+    items: {
       doc_name: string;
       referred_to: string;
       unit_office: string;
