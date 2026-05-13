@@ -207,31 +207,15 @@ function AppShell() {
   const currentVersion: string =
     (Constants.expoConfig?.version ?? (Constants as any).manifest?.version ?? '0.0.0') as string;
 
-  // Soft-update dialog: persisted to AsyncStorage keyed by version so it
-  // survives app restarts (user only sees it once per latestVersion).
   const [softDismissed, setSoftDismissed] = useState(false);
+  const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
 
-  // Load persisted dismiss state whenever latestVersion becomes known
+  // Load previously dismissed version on mount
   useEffect(() => {
-    if (!latestVersion) return;
-    (async () => {
-      try {
-        const val = await AsyncStorage.getItem(`soft_dismissed_${latestVersion}`);
-        if (val === 'true') setSoftDismissed(true);
-      } catch {
-        // AsyncStorage failure — fall back to showing the dialog
-      }
-    })();
-  }, [latestVersion]);
-
-  const dismissSoftUpdate = async () => {
-    setSoftDismissed(true);
-    try {
-      await AsyncStorage.setItem(`soft_dismissed_${latestVersion}`, 'true');
-    } catch {
-      // Silently ignore — worst case the dialog reappears next launch
-    }
-  };
+    AsyncStorage.getItem('update_dismissed_version').then((v) => {
+      if (v) setDismissedVersion(v);
+    });
+  }, []);
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
 
@@ -258,7 +242,7 @@ function AppShell() {
   }, [checked]);
 
   const showMustUpdate = checked && mustUpdate;
-  const showSoftUpdate = checked && needsUpdate && !softDismissed;
+  const showSoftUpdate = checked && needsUpdate && !softDismissed && dismissedVersion !== latestVersion;
 
   const openDownload = async () => {
     const url = downloadUrl || 'https://doctracker.depedleytepersonnelunit.com/download';
@@ -375,7 +359,7 @@ function AppShell() {
       {/* ── Soft-update dialog (dismissible) ────────────────────────────── */}
       <ConfirmDialog
         visible={!showMustUpdate && showSoftUpdate}
-        onClose={dismissSoftUpdate}
+        onClose={() => { setSoftDismissed(true); AsyncStorage.setItem('update_dismissed_version', latestVersion); }}
         icon="✨"
         accentColor="#0038A8"
         title="New Version Available"
@@ -384,7 +368,7 @@ function AppShell() {
           {
             label: 'Not Now',
             variant: 'ghost',
-            onPress: dismissSoftUpdate,
+            onPress: () => { setSoftDismissed(true); AsyncStorage.setItem('update_dismissed_version', latestVersion); },
           },
           {
             label: 'Update',

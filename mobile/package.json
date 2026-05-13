@@ -6,7 +6,11 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "sync-version": "bash scripts/sync-version.sh",
+    "prebuild": "bash scripts/sync-version.sh",
+    "build:android": "npm run sync-version && eas build --platform android --profile preview",
+    "build:android:prod": "npm run sync-version && eas build --platform android --profile production"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
