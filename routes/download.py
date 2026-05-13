@@ -55,10 +55,16 @@ def download_apk():
     apk_dir = os.path.join(current_app.static_folder, 'apk')
     if not os.path.exists(os.path.join(apk_dir, APK_FILENAME)):
         abort(404, description='APK not yet available. Check back soon.')
-    return send_from_directory(
-        apk_dir,
-        APK_FILENAME,
-        as_attachment=True,
-        download_name='DepEd-DocTracker.apk',
-        mimetype='application/vnd.android.package-archive',
+    resp = current_app.make_response(
+        send_from_directory(
+            apk_dir,
+            APK_FILENAME,
+            as_attachment=True,
+            download_name='DepEd-DocTracker.apk',
+            mimetype='application/vnd.android.package-archive',
+        )
     )
+    resp.headers['Accept-Ranges']       = 'bytes'
+    resp.headers['Cache-Control']       = 'no-cache'
+    resp.headers['Content-Disposition'] = 'attachment; filename="DepEd-DocTracker.apk"'
+    return resp
