@@ -1,70 +1,225 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Source Sans 3',sans-serif;min-height:100vh;
-      background:linear-gradient(135deg,#0A4D68 0%,#0E7490 55%,#059669 100%);
-      display:flex;align-items:center;justify-content:center;padding:20px;}
-    .wrap{width:100%;max-width:460px;}
 
-    /* Logo + heading */
-    .header{text-align:center;margin-bottom:28px;}
-    .logo{width:96px;height:96px;border-radius:50%;object-fit:cover;
-      border:4px solid rgba(255,255,255,.5);box-shadow:0 8px 28px rgba(0,0,0,.3);
-      display:block;margin:0 auto 16px;background:#fff;}
-    .header-title{font-family:'Outfit',sans-serif;font-size:26px;font-weight:900;
-      color:#fff;margin-bottom:4px;}
-    .header-sub{font-size:16px;color:rgba(255,255,255,.8);}
+/* ── Page ── */
+html,body{min-height:100vh;}
+body{
+  font-family:'Source Sans 3',sans-serif;
+  min-height:100vh;
+  background:linear-gradient(160deg,#0f2744 0%,#1B3A6B 100%);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:40px 20px 60px;
+  position:relative;
+}
 
-    /* Office banner */
-    .office-banner{background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);
-      border-radius:16px;padding:16px 20px;margin-bottom:24px;
-      display:flex;align-items:center;gap:14px;}
-    .ob-icon{font-size:36px;flex-shrink:0;}
-    .ob-label{font-size:14px;font-weight:700;color:rgba(255,255,255,.75);
-      text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;}
-    .ob-name{font-family:'Outfit',sans-serif;font-size:20px;font-weight:900;color:#fff;
-      line-height:1.2;}
+/* DepEd red top strip */
+body::before{
+  content:'';
+  position:fixed;
+  top:0;left:0;right:0;
+  height:4px;
+  background:#C8102E;
+  z-index:100;
+}
 
-    /* Card */
-    .card{background:#fff;border-radius:22px;padding:32px;
-      box-shadow:0 24px 80px rgba(0,0,0,.3);}
-    .card-q{font-family:'Outfit',sans-serif;font-size:20px;font-weight:900;
-      color:#0A2540;margin-bottom:6px;}
-    .card-hint{font-size:15px;color:#5A7A91;margin-bottom:26px;line-height:1.5;}
+/* Subtle diagonal texture overlay (matches landing.html hero) */
+body::after{
+  content:'';
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background-image:repeating-linear-gradient(
+    -52deg,
+    transparent,transparent 48px,
+    rgba(255,255,255,0.018) 48px,rgba(255,255,255,0.018) 49px
+  );
+  z-index:0;
+}
 
-    /* Choice buttons */
-    .choices{display:flex;flex-direction:column;gap:14px;}
-    .choice-btn{display:flex;align-items:center;gap:16px;padding:18px 20px;
-      border-radius:16px;border:2.5px solid;text-decoration:none;
-      transition:all .18s;cursor:pointer;}
-    .choice-btn:hover{transform:translateY(-2px);}
-    .choice-new{border-color:#059669;background:#ECFDF5;}
-    .choice-new:hover{background:#059669;border-color:#059669;}
-    .choice-new:hover .cb-title{color:#fff;}
-    .choice-new:hover .cb-sub{color:rgba(255,255,255,.85);}
-    .choice-new:hover .cb-icon{background:rgba(255,255,255,.25);}
-    .choice-return{border-color:#0E7490;background:#EFF6FF;}
-    .choice-return:hover{background:#0E7490;border-color:#0E7490;}
-    .choice-return:hover .cb-title{color:#fff;}
-    .choice-return:hover .cb-sub{color:rgba(255,255,255,.85);}
-    .choice-return:hover .cb-icon{background:rgba(255,255,255,.25);}
-    .cb-icon{width:52px;height:52px;border-radius:14px;display:flex;
-      align-items:center;justify-content:center;font-size:26px;flex-shrink:0;
-      transition:background .18s;}
-    .choice-new .cb-icon{background:#D1FAE5;}
-    .choice-return .cb-icon{background:#DBEAFE;}
-    .cb-text{flex:1;}
-    .cb-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;
-      color:#0A2540;margin-bottom:3px;transition:color .18s;}
-    .cb-sub{font-size:14px;color:#5A7A91;line-height:1.4;transition:color .18s;}
-    .cb-arrow{font-size:22px;color:#C8DDE8;flex-shrink:0;transition:color .18s;}
-    .choice-btn:hover .cb-arrow{color:#fff;}
+.wrap{
+  width:100%;
+  max-width:420px;
+  position:relative;
+  z-index:1;
+}
 
-    .divider-or{display:flex;align-items:center;gap:12px;margin:4px 0;}
-    .divider-or hr{flex:1;border:none;border-top:2px solid #E8F0F5;}
-    .divider-or span{font-size:14px;font-weight:700;color:#8BA5B5;}
+/* ── Header (logo + wordmark above card) ── */
+.header{
+  text-align:center;
+  margin-bottom:28px;
+}
+.logo{
+  width:80px;height:80px;
+  border-radius:50%;
+  object-fit:cover;
+  border:3px solid rgba(201,162,39,0.55);
+  box-shadow:0 0 0 6px rgba(201,162,39,0.12),0 8px 32px rgba(0,0,0,0.35);
+  display:block;
+  margin:0 auto 18px;
+  background:#fff;
+  padding:3px;
+}
+.header-title{
+  font-family:'Outfit',sans-serif;
+  font-size:36px;
+  font-weight:900;
+  color:#ffffff;
+  letter-spacing:-1px;
+  line-height:1;
+  margin-bottom:6px;
+}
+.header-sub{
+  font-size:13px;
+  font-weight:600;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:#C9A227;
+}
 
-    @media(max-width:420px){
-      .card{padding:24px 18px;}
-      .cb-icon{width:44px;height:44px;font-size:22px;}
-      .cb-title{font-size:17px;}
-      .header-title{font-size:22px;}
-    }
+/* ── Card ── */
+.card{
+  background:#ffffff;
+  border-radius:22px;
+  padding:32px;
+  box-shadow:0 24px 80px rgba(0,0,0,0.35),0 2px 8px rgba(0,0,0,0.15);
+}
+.card-q{
+  font-family:'Outfit',sans-serif;
+  font-size:19px;
+  font-weight:900;
+  color:#0E2A47;
+  margin-bottom:6px;
+}
+.card-hint{
+  font-size:14px;
+  color:#5A7A99;
+  line-height:1.55;
+  margin-bottom:22px;
+}
+.card-hint strong{
+  color:#0E2A47;
+  font-weight:700;
+}
+
+/* ── Office banner (inside card) ── */
+.office-banner{
+  background:#EBF3FF;
+  border:1.5px solid #C2D8F5;
+  border-radius:12px;
+  padding:14px 18px;
+  margin-bottom:22px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.ob-icon{font-size:28px;flex-shrink:0;}
+.ob-label{
+  font-size:11px;
+  font-weight:700;
+  color:#5A7A99;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  margin-bottom:2px;
+}
+.ob-name{
+  font-family:'Outfit',sans-serif;
+  font-size:17px;
+  font-weight:900;
+  color:#0E2A47;
+  line-height:1.2;
+}
+
+/* ── Choice buttons ── */
+.choices{display:flex;flex-direction:column;gap:12px;}
+
+.choice-btn{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:16px 18px;
+  border-radius:14px;
+  border:1.5px solid #E2EAF4;
+  background:#ffffff;
+  text-decoration:none;
+  transition:transform 0.17s,box-shadow 0.17s,background 0.17s;
+  cursor:pointer;
+  position:relative;
+  overflow:hidden;
+}
+.choice-btn:hover{
+  background:#F8FAFF;
+  transform:translateY(-2px);
+  box-shadow:0 8px 28px rgba(14,42,71,0.13);
+}
+
+/* Gold left accent — Register */
+.choice-new{border-left:4px solid #C9A227;}
+.choice-new .cb-icon{background:#FEF3C7;}
+
+/* Navy left accent — Login */
+.choice-return{border-left:4px solid #1B3A6B;}
+.choice-return .cb-icon{background:#DBEAFE;}
+
+.cb-icon{
+  width:48px;height:48px;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:24px;
+  flex-shrink:0;
+}
+.cb-text{flex:1;min-width:0;}
+.cb-title{
+  font-family:'Outfit',sans-serif;
+  font-size:16px;
+  font-weight:900;
+  color:#0E2A47;
+  margin-bottom:2px;
+}
+.cb-sub{
+  font-size:13px;
+  color:#6B8BAD;
+  line-height:1.4;
+}
+.cb-arrow{
+  font-size:20px;
+  color:#C2D0E0;
+  flex-shrink:0;
+  transition:transform 0.17s,color 0.17s;
+}
+.choice-btn:hover .cb-arrow{
+  color:#1B3A6B;
+  transform:translateX(3px);
+}
+
+/* ── Divider OR ── */
+.divider-or{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:2px 0;
+}
+.divider-or hr{
+  flex:1;
+  border:none;
+  border-top:1.5px solid #E2EAF4;
+}
+.divider-or span{
+  font-size:12px;
+  font-weight:700;
+  color:#A0B4C8;
+  letter-spacing:0.08em;
+}
+
+/* ── Mobile ── */
+@media(max-width:440px){
+  body{padding:28px 14px 48px;}
+  .card{padding:24px 18px;}
+  .header-title{font-size:30px;}
+  .cb-icon{width:42px;height:42px;font-size:20px;}
+  .cb-title{font-size:15px;}
+  .cb-sub{font-size:12px;}
+}
