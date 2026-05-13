@@ -102,6 +102,8 @@ export function ConfirmDialog({
     }
   };
 
+  if (!visible) return null;
+
   return (
     <Modal
       visible={visible}

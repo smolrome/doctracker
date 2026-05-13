@@ -213,10 +213,9 @@ function AppShell() {
       );
       const result = await resumable.downloadAsync();
       const contentUri = await FileSystem.getContentUriAsync(result!.uri);
-      Alert.alert('Debug', contentUri);
-      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+      await IntentLauncher.startActivityAsync('android.intent.action.INSTALL_PACKAGE', {
         data: contentUri,
-        flags: 1,
+        flags: 3,
         type: 'application/vnd.android.package-archive',
       });
     } catch (e: any) {
