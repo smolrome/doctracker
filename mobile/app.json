@@ -2,7 +2,7 @@
   "expo": {
     "name": "LAKAD",
     "slug": "deped-document-tracker",
-    "version": "1.11.0",
+    "version": "1.12.0",
     "scheme": "deped-tracker",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/wow.png",
