@@ -198,8 +198,9 @@ function AppShell() {
       Alert.alert('Downloading Update', 'Downloading APK, please wait…');
       const dest = FileSystem.documentDirectory + 'doctracker-update.apk';
       const { uri } = await FileSystem.downloadAsync(url, dest);
+      const contentUri = await FileSystem.getContentUriAsync(uri);
       await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-        data: uri,
+        data: contentUri,
         flags: 1,
         type: 'application/vnd.android.package-archive',
       });
