@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-API_URL="https://doctracker.depedleytepersonnelunit.com/api/app-version"
+API_URL="http://localhost:7001/api/app-version"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_JSON="$SCRIPT_DIR/../app.json"
 
