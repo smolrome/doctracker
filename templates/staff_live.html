@@ -316,9 +316,11 @@ function buildCard(s, maxTotal) {
   );
 }
 
+var LIVE_TOKEN = {{ live_token | tojson }};
+
 // ── Data refresh (every 30 s) ─────────────────────────────────────────────────
 function refreshData() {
-  fetch('/api/staff-live-data')
+  fetch('/api/staff-live-data?token=' + encodeURIComponent(LIVE_TOKEN))
     .then(function(r) { return r.json(); })
     .then(function(data) {
       // Totals

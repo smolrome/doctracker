@@ -17,7 +17,9 @@ from services.email import (
 from services.misc import audit_log, get_activity_logs
 from services.documents import load_docs, save_doc, get_doc, delete_doc, backfill_logged_by_office
 from utils import admin_required, get_client_ip
-from config import ADMIN_USERNAME, MAIL_ENABLED, APP_URL
+import secrets
+
+from config import ADMIN_USERNAME, MAIL_ENABLED, APP_URL, STAFF_LIVE_TOKEN
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -211,21 +213,26 @@ def _compute_staff_live_stats():
 
 
 @admin_bp.route("/staff-live")
-@admin_required
 def staff_live():
-    """TV dashboard — live staff activity monitor."""
+    """TV dashboard — accessible via secret token, no admin login required."""
+    token = request.args.get("token", "")
+    if not STAFF_LIVE_TOKEN or not token or not secrets.compare_digest(token, STAFF_LIVE_TOKEN):
+        return "Access denied", 403
     stats, totals = _compute_staff_live_stats()
     last_updated = datetime.now().strftime("%b %d, %Y %I:%M %p")
     return render_template("staff_live.html",
                            staff_stats=stats,
                            totals=totals,
-                           last_updated=last_updated)
+                           last_updated=last_updated,
+                           live_token=token)
 
 
 @admin_bp.route("/api/staff-live-data")
-@admin_required
 def staff_live_data():
     """JSON refresh endpoint for the TV dashboard (polled every 30 s)."""
+    token = request.args.get("token", "")
+    if not STAFF_LIVE_TOKEN or not token or not secrets.compare_digest(token, STAFF_LIVE_TOKEN):
+        return jsonify(error="Access denied"), 403
     stats, totals = _compute_staff_live_stats()
     return jsonify({
         "staff":        stats,

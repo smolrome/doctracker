@@ -175,3 +175,13 @@ STATUS_OPTIONS = [
     "Logged", "Pending", "Received", "In Review",
     "Routed", "Released", "On Hold", "Archived",
 ]
+
+# ── Staff Live Dashboard token ─────────────────────────────────────────────────
+
+STAFF_LIVE_TOKEN = os.environ.get("STAFF_LIVE_TOKEN", "")
+if not STAFF_LIVE_TOKEN:
+    warnings.warn(
+        "STAFF_LIVE_TOKEN not set — /staff-live will return 403 for all requests. "
+        "Set STAFF_LIVE_TOKEN in your environment.",
+        stacklevel=2,
+    )
