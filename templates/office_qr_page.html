@@ -220,6 +220,146 @@
 })();
 </script>
 
+<!-- ── EXCEL IMPORT OFFICES ── -->
+<div class="gen-card" style="margin-top:18px;">
+  <div class="gen-title" style="cursor:pointer;user-select:none;" onclick="toggleExcelImport()">
+    📥 Import Offices from Excel
+    <span id="excel-import-chevron" style="font-size:13px;margin-left:8px;color:#64748B;">▼ expand</span>
+  </div>
+  <div id="excel-import-section" style="display:none;margin-top:16px;">
+    <div style="font-size:13px;color:#64748B;margin-bottom:12px;">
+      Upload an <strong>.xlsx</strong> or <strong>.xls</strong> file with columns:
+      <code>Office Name</code> and optionally <code>Primary Recipient</code> (username or name).
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+      <input type="file" id="office-excel-file" accept=".xlsx,.xls"
+        style="flex:1;min-width:0;font-size:14px;padding:8px;border:1.5px solid #E2E8F0;border-radius:8px;background:#fff;"/>
+      <button type="button" class="btn btn-secondary" onclick="uploadOfficeExcel()" style="font-size:14px;white-space:nowrap;">
+        🔍 Upload &amp; Preview
+      </button>
+    </div>
+
+    <div id="excel-import-status" style="font-size:13px;color:#64748B;margin-bottom:8px;"></div>
+
+    <div id="excel-preview-wrap" style="display:none;">
+      <div style="overflow-x:auto;margin-bottom:12px;">
+        <table id="excel-preview-table" style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#F1F5F9;">
+              <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #E2E8F0;font-weight:700;color:#0038A8;">#</th>
+              <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #E2E8F0;font-weight:700;color:#0038A8;">Office Name</th>
+              <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #E2E8F0;font-weight:700;color:#0038A8;">Primary Recipient</th>
+            </tr>
+          </thead>
+          <tbody id="excel-preview-body"></tbody>
+        </table>
+      </div>
+      <button type="button" class="btn btn-primary" onclick="importOfficeExcel()" style="font-size:14px;">
+        💾 Import All
+      </button>
+      <div id="excel-import-result" style="margin-top:12px;font-size:14px;font-weight:600;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var _parsedOfficeRows = [];
+
+  window.toggleExcelImport = function () {
+    var sec  = document.getElementById('excel-import-section');
+    var chev = document.getElementById('excel-import-chevron');
+    var open = sec.style.display === 'none';
+    sec.style.display = open ? 'block' : 'none';
+    chev.textContent  = open ? '▲ collapse' : '▼ expand';
+  };
+
+  window.uploadOfficeExcel = function () {
+    var fileInput   = document.getElementById('office-excel-file');
+    var statusEl    = document.getElementById('excel-import-status');
+    var previewWrap = document.getElementById('excel-preview-wrap');
+    var resultEl    = document.getElementById('excel-import-result');
+
+    if (!fileInput.files || !fileInput.files[0]) {
+      statusEl.style.color = '#EF4444';
+      statusEl.textContent = 'Please select a file first.';
+      return;
+    }
+
+    statusEl.style.color = '#64748B';
+    statusEl.textContent = 'Parsing…';
+    previewWrap.style.display = 'none';
+    resultEl.textContent = '';
+    _parsedOfficeRows = [];
+
+    var fd = new FormData();
+    fd.append('file', fileInput.files[0]);
+
+    fetch('/api/parse-excel-offices', {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': window.CSRF_TOKEN || '' },
+      body: fd,
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.error) {
+          statusEl.style.color = '#EF4444';
+          statusEl.textContent = 'Error: ' + d.error;
+          return;
+        }
+        _parsedOfficeRows = d.rows || [];
+        statusEl.style.color = '#16A34A';
+        statusEl.textContent = _parsedOfficeRows.length + ' row' + (_parsedOfficeRows.length !== 1 ? 's' : '') + ' found. Review below then click Import All.';
+
+        var tbody = document.getElementById('excel-preview-body');
+        tbody.innerHTML = '';
+        _parsedOfficeRows.forEach(function (row, i) {
+          var tr = document.createElement('tr');
+          tr.style.borderBottom = '1px solid #F1F5F9';
+          tr.innerHTML =
+            '<td style="padding:7px 12px;color:#94A3B8;">' + (i + 1) + '</td>' +
+            '<td style="padding:7px 12px;color:#1E293B;font-weight:600;">' + _esc(row.office_name) + '</td>' +
+            '<td style="padding:7px 12px;color:#64748B;">' + (_esc(row.primary_recipient) || '—') + '</td>';
+          tbody.appendChild(tr);
+        });
+        previewWrap.style.display = 'block';
+      })
+      .catch(function () {
+        statusEl.style.color = '#EF4444';
+        statusEl.textContent = 'Network error — could not reach server.';
+      });
+  };
+
+  window.importOfficeExcel = function () {
+    if (!_parsedOfficeRows.length) return;
+    var resultEl = document.getElementById('excel-import-result');
+    resultEl.style.color = '#64748B';
+    resultEl.textContent = 'Importing…';
+
+    fetch('/bulk-create-offices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || '' },
+      body: JSON.stringify(_parsedOfficeRows),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.error) { resultEl.style.color = '#EF4444'; resultEl.textContent = 'Error: ' + d.error; return; }
+        var msg = '✅ ' + d.created + ' office' + (d.created !== 1 ? 's' : '') + ' created.';
+        if (d.skipped) msg += ' ' + d.skipped + ' skipped (blank name).';
+        if (d.errors && d.errors.length) msg += ' ' + d.errors.length + ' failed.';
+        resultEl.style.color = d.errors && d.errors.length ? '#F59E0B' : '#16A34A';
+        resultEl.textContent = msg;
+      })
+      .catch(function () { resultEl.style.color = '#EF4444'; resultEl.textContent = 'Network error.'; });
+  };
+
+  function _esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+})();
+</script>
+
 {% if qr_data %}
 <!-- ── TRAFFIC COUNTER ── -->
 {% if office_traffic %}

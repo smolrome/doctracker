@@ -856,6 +856,51 @@ def parse_excel_users():
         return jsonify({"error": f"Could not read file: {e}"}), 400
 
 
+@admin_bp.route("/api/parse-excel-offices", methods=["POST"])
+@admin_required
+def parse_excel_offices():
+    """Parse an uploaded Excel file and return office_name + primary_recipient rows as JSON."""
+    import openpyxl, io
+    f = request.files.get("file")
+    if not f:
+        return jsonify({"error": "No file uploaded."}), 400
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(f.read()), data_only=True)
+        ws = wb.active
+
+        # Find header row (first row with at least 1 non-null cell)
+        name_col = recipient_col = header_row = None
+        for row in ws.iter_rows(min_row=1, max_row=10):
+            for cell in row:
+                h = str(cell.value or "").strip().lower()
+                if name_col is None and ("office" in h or ("name" in h and "recipient" not in h)):
+                    name_col = cell.column
+                if recipient_col is None and any(k in h for k in ("recipient", "staff", "assigned")):
+                    recipient_col = cell.column
+            if name_col:
+                header_row = row[0].row
+                break
+
+        if not header_row:
+            return jsonify({"error": "Could not find an office name column in the file."}), 422
+
+        rows = []
+        for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+            office_name = str(row[name_col - 1] or "").strip()
+            recipient   = str(row[recipient_col - 1] or "").strip() if recipient_col else ""
+            if office_name and office_name.lower() not in ("none", "nan"):
+                rows.append({"office_name": office_name, "primary_recipient": recipient})
+            if len(rows) >= 200:
+                break
+
+        if not rows:
+            return jsonify({"error": "No data rows found after the header."}), 422
+
+        return jsonify({"rows": rows})
+    except Exception as e:
+        return jsonify({"error": f"Could not read file: {e}"}), 400
+
+
 @admin_bp.route("/bulk-create-users", methods=["GET", "POST"])
 @admin_required
 def bulk_create_users():
