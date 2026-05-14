@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, Alert,
   Modal, FlatList, Platform, KeyboardAvoidingView, ActivityIndicator,
-  StatusBar, Clipboard,
+  StatusBar, Clipboard, RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -93,7 +93,7 @@ export default function AdminUsers() {
 
   // ── Data ───────────────────────────────────────────────────────────────────
 
-  const { data: users = [], isLoading } = useQuery<User[]>({
+  const { data: users = [], isLoading, isRefetching, refetch } = useQuery<User[]>({
     queryKey: ['admin-users'],
     queryFn: async () => {
       const res = await api.get('/admin/users');
@@ -101,6 +101,14 @@ export default function AdminUsers() {
     },
     retry: false,
   });
+
+  const { data: offices = [] } = useQuery<any[]>({
+    queryKey: ['offices'],
+    queryFn: () => api.get('/offices').then((r: any) => r.data ?? []),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const [officePickerOpen, setOfficePickerOpen] = useState(false);
 
   const filtered = useMemo(() => {
     let list = users;
@@ -448,6 +456,14 @@ export default function AdminUsers() {
           renderItem={renderUser}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={refetch}
+              colors={['#0038A8']}
+              tintColor="#0038A8"
+            />
+          }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', paddingTop: 60 }}>
               <Users size={40} color="#CBD5E1" />
@@ -595,9 +611,46 @@ export default function AdminUsers() {
                   options={ROLES} placeholder="Select role…" label="Role" />
 
                 <Text style={S.labelMuted}>Office / Unit</Text>
-                <TextInput value={editForm.office}
-                  onChangeText={(v) => setEditForm((f) => ({ ...f, office: v }))}
-                  placeholder="e.g. Personnel Unit" style={S.input} placeholderTextColor="#CBD5E1" />
+                <TouchableOpacity
+                  onPress={() => setOfficePickerOpen(v => !v)}
+                  style={{
+                    backgroundColor: '#fff', borderRadius: 12,
+                    paddingHorizontal: 14, paddingVertical: 13, marginBottom: 4,
+                    borderWidth: 1.5, borderColor: officePickerOpen ? '#0038A8' : '#E2E8F0',
+                    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ fontSize: 14.5, color: editForm.office ? '#1E293B' : '#CBD5E1' }} numberOfLines={1}>
+                    {editForm.office || 'e.g. Personnel Unit'}
+                  </Text>
+                  <Text style={{ color: '#94A3B8', fontSize: 12 }}>{officePickerOpen ? '▲' : '▼'}</Text>
+                </TouchableOpacity>
+                {officePickerOpen && (
+                  <ScrollView
+                    style={{ maxHeight: 180, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12 }}
+                    nestedScrollEnabled
+                  >
+                    {(offices as any[]).map((o: any, i: number) => (
+                      <TouchableOpacity
+                        key={o.office_slug || i}
+                        onPress={() => {
+                          setEditForm((f) => ({ ...f, office: o.office_name }));
+                          setOfficePickerOpen(false);
+                        }}
+                        style={{
+                          paddingHorizontal: 12, paddingVertical: 10,
+                          borderBottomWidth: i < (offices as any[]).length - 1 ? 1 : 0,
+                          borderBottomColor: '#F1F5F9',
+                          backgroundColor: editForm.office === o.office_name ? '#EFF6FF' : '#fff',
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, color: '#1E293B', fontWeight: editForm.office === o.office_name ? '700' : '400' }}>
+                          {o.office_name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
 
                 <Text style={S.labelMuted}>Documents Handled</Text>
                 <TextInput value={editForm.documentsHandled}
