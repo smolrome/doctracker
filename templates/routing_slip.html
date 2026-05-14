@@ -25,10 +25,6 @@
       border: 1px solid #E2E8F0;
       border-radius: 6px;
     }
-    .qr-img-sm {
-      width: 120px;
-      height: 120px;
-    }
     .qr-label {
       font-size: 11px;
       font-weight: 700;
@@ -181,7 +177,7 @@
         {% endif %}
         {% if rel_qr_b64 %}
         <div class="qr-block">
-          <img class="qr-img qr-img-sm"
+          <img class="qr-img"
                src="data:image/png;base64,{{ rel_qr_b64 }}"
                alt="Release QR"/>
           <div class="qr-label">Scan to Release</div>
