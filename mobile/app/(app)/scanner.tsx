@@ -10,6 +10,7 @@ import {
   Modal,
   ScrollView,
   TextInput,
+  Image,
 } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { useRouter } from 'expo-router';
@@ -18,6 +19,13 @@ import { useAuthStore } from '../../lib/store';
 import { useQueryClient } from '@tanstack/react-query';
 
 type ScanState = 'scanning' | 'loading' | 'error';
+
+interface SlipScanResult {
+  slip: { slip_no?: string; [key: string]: any };
+  docs_updated: any[];
+  token_type: 'SLIP_RECEIVE' | 'SLIP_RELEASE';
+  next_qr_b64: string | null;
+}
 
 interface ScannedDoc {
   id: string;
@@ -57,6 +65,8 @@ export default function Scanner() {
   const [rejectModal, setRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [acceptedDocTitle, setAcceptedDocTitle] = useState<string | null>(null);
+  const [slipResult, setSlipResult]       = useState<SlipScanResult | null>(null);
+  const [slipActioning, setSlipActioning] = useState(false);
 
   const lastScanned = useRef<string>('');
   const cooldown = useRef<boolean>(false);
@@ -90,6 +100,17 @@ export default function Scanner() {
     if (data.includes('/')) {
       const parts = data.split('/');
       docId = parts[parts.length - 1];
+    }
+
+    // Routing slip tokens start with 'SLIP_' (SLIP_REC-… / SLIP_REL-…).
+    // Detect before calling /qr/scan — that endpoint calls use_doc_token()
+    // which shares the same token table and would consume the slip token,
+    // making the subsequent /qr/slip-scan call fail with 401.
+    if (docId.startsWith('SLIP_')) {
+      const slipErr: any = new Error('Routing slip QR detected');
+      slipErr.isSlipToken = true;
+      slipErr.token = docId;
+      throw slipErr;
     }
 
     // Try direct doc ID lookup first
@@ -128,6 +149,28 @@ export default function Scanner() {
     throw new Error('Document not found');
   };
 
+  // ── Routing slip scan ───────────────────────────────────────────────────────
+
+  const handleSlipScan = async (token: string) => {
+    setSlipActioning(true);
+    try {
+      const res = await api.post('/qr/slip-scan', { token });
+      const result: SlipScanResult = res.data;
+      Vibration.vibrate([0, 80, 60, 80]);
+      queryClient.invalidateQueries({ queryKey: ['routing-slips'] });
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      setSlipResult(result);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'Could not process routing slip QR.';
+      Alert.alert('Slip Scan Failed', msg, [
+        { text: 'Try Again', onPress: () => resetScanner(500) },
+      ]);
+      resetScanner(0);
+    } finally {
+      setSlipActioning(false);
+    }
+  };
+
   // ── Reset scanner to ready state ──────────────────────────────────────────
 
   const resetScanner = (delay = 0) => {
@@ -137,6 +180,7 @@ export default function Scanner() {
       setScanState('scanning');
       setScannedDoc(null);
       setAcceptedDocTitle(null);
+      setSlipResult(null);
     }, delay);
   };
 
@@ -163,6 +207,11 @@ export default function Scanner() {
         resetScanner(3000);
       }
     } catch (err: any) {
+      if (err?.isSlipToken) {
+        setScanState('scanning');
+        handleSlipScan(err.token);
+        return;
+      }
       setScanState('error');
       const msg = err.response?.data?.error || 'Could not find document for this QR code.';
       Alert.alert('Scan Failed', msg, [{
@@ -221,6 +270,10 @@ export default function Scanner() {
         router.push(`/(app)/documents/${doc.id}`);
       }
     } catch (err: any) {
+      if (err?.isSlipToken) {
+        handleSlipScan(err.token);
+        return;
+      }
       const msg = err?.response?.data?.error || err?.message || 'Could not read QR code from image.';
       Alert.alert('Upload Failed', msg);
     } finally {
@@ -369,11 +422,13 @@ export default function Scanner() {
           <View style={[styles.corner, styles.bottomLeft]} />
           <View style={[styles.corner, styles.bottomRight]} />
 
-          {(scanState === 'loading' || uploading) && (
+          {(scanState === 'loading' || uploading || slipActioning) && (
             <View style={styles.loadingOverlay}>
               <ActivityIndicator size="large" color="#fff" />
               <Text style={{ color: '#fff', marginTop: 8, fontWeight: '600' }}>
-                {uploading ? 'Reading QR from image…' : 'Looking up document…'}
+                {uploading ? 'Reading QR from image…'
+                  : slipActioning ? 'Processing routing slip…'
+                  : 'Looking up document…'}
               </Text>
             </View>
           )}
@@ -576,6 +631,75 @@ export default function Scanner() {
           <Text style={styles.successSubText} numberOfLines={1}>{acceptedDocTitle}</Text>
         </View>
       )}
+
+      {/* ── Routing slip scan result ──────────────────────────────────────── */}
+      <Modal
+        visible={!!slipResult}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { setSlipResult(null); resetScanner(500); }}
+      >
+        <View style={styles.overlayBackdrop}>
+          <View style={styles.overlaySheet}>
+            <View style={styles.overlayHandle} />
+            <View style={styles.overlayHeader}>
+              <Text style={styles.overlayTitle}>
+                {slipResult?.token_type === 'SLIP_RECEIVE' ? '📦 Routing Slip Received' : '✅ Routing Slip Released'}
+              </Text>
+              <TouchableOpacity
+                onPress={() => { setSlipResult(null); resetScanner(500); }}
+                style={styles.overlayClose}
+              >
+                <Text style={{ color: '#6B7280', fontSize: 16 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.docCard}>
+                <Text style={styles.docTitle}>
+                  Slip #{slipResult?.slip?.slip_no || '—'}
+                </Text>
+                <View style={styles.docMetaRow}>
+                  <Text style={styles.docMetaLabel}>Documents Updated</Text>
+                  <Text style={styles.docMetaValue}>{slipResult?.docs_updated?.length ?? 0}</Text>
+                </View>
+                <View style={styles.docMetaRow}>
+                  <Text style={styles.docMetaLabel}>Action</Text>
+                  <Text style={styles.docMetaValue}>
+                    {slipResult?.token_type === 'SLIP_RECEIVE' ? 'Marked Received' : 'Marked Released'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Release QR — shown after RECEIVE so the office can scan-out later */}
+              {slipResult?.token_type === 'SLIP_RECEIVE' && slipResult?.next_qr_b64 && (
+                <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E40AF', marginBottom: 10, textAlign: 'center' }}>
+                    Save this QR to release documents later
+                  </Text>
+                  <Image
+                    source={{ uri: slipResult.next_qr_b64.startsWith('data:')
+                      ? slipResult.next_qr_b64
+                      : `data:image/png;base64,${slipResult.next_qr_b64}` }}
+                    style={{ width: 200, height: 200, borderRadius: 8 }}
+                    resizeMode="contain"
+                  />
+                  <Text style={{ color: '#64748B', fontSize: 11, marginTop: 8, textAlign: 'center' }}>
+                    Screenshot this QR — scan it when the documents leave your office
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={styles.acceptBtn}
+                onPress={() => { setSlipResult(null); resetScanner(500); }}
+              >
+                <Text style={styles.acceptBtnText}>Done — Scan Next</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Reject modal ──────────────────────────────────────────────────── */}
       <Modal visible={rejectModal} transparent animationType="fade" onRequestClose={() => setRejectModal(false)}>

@@ -175,7 +175,7 @@ export default function Submit() {
 
   // ── Data queries
   const { data: offices = [], isLoading: officesLoading } = useQuery({
-    queryKey: ['saved-offices'],
+    queryKey: ['offices'],
     queryFn: async () => {
       const res = await api.get('/offices');
       return (res.data ?? []) as SavedOffice[];
@@ -212,18 +212,26 @@ export default function Submit() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: categoryOptions = CATEGORIES } = useQuery({
-    queryKey: ['dropdown-category'],
+  // queryKey matches prefetch.ts exactly so the prefetched cache is reused offline.
+  // The stored shape is Record<string, string[]> — same normalization as prefetch.ts.
+  const { data: dropdownOptions } = useQuery<Record<string, string[]>>({
+    queryKey: ['dropdown-options'],
     queryFn: async () => {
-      try {
-        const res = await api.get('/dropdown-options');
-        // API flattens the config: res.data.category is already an array of strings
-        const opts = res.data?.category;
-        return Array.isArray(opts) && opts.length ? opts : CATEGORIES;
-      } catch { return CATEGORIES; }
+      const res = await api.get('/dropdown-options');
+      const raw: Record<string, unknown> = res.data ?? {};
+      const normalized: Record<string, string[]> = {};
+      for (const [key, val] of Object.entries(raw)) {
+        if (Array.isArray(val)) {
+          normalized[key] = val as string[];
+        } else if (val && typeof val === 'object' && Array.isArray((val as any).options)) {
+          normalized[key] = (val as any).options as string[];
+        }
+      }
+      return normalized;
     },
     staleTime: 1000 * 60 * 10,
   });
+  const categoryOptions = dropdownOptions?.category?.length ? dropdownOptions.category : CATEGORIES;
 
   // ── Submit mutation (offline-aware)
   const submitMutation = useMutation({
@@ -254,6 +262,9 @@ export default function Submit() {
       // ── Offline path: document queued, not yet submitted
       if (res?._queued) {
         setCart([]);
+        // Tell my-docs.tsx to re-read the queue immediately so the amber
+        // "Queued" card appears without waiting for a manual screen refresh.
+        queryClient.invalidateQueries({ queryKey: ['offline-queue'] });
         Alert.alert(
           '📵 Saved for Later',
           `You're offline. Your ${cart.length} document${cart.length !== 1 ? 's' : ''} will be automatically submitted once you reconnect.`,

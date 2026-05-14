@@ -151,6 +151,8 @@ function AppShell() {
           // Invalidate docs so My Docs refreshes with the newly submitted doc
           queryClient.invalidateQueries({ queryKey: ['client-docs'] });
           queryClient.invalidateQueries({ queryKey: ['client-docs-all'] });
+          // Invalidate queue state so My Docs drops the synthetic row immediately
+          queryClient.invalidateQueries({ queryKey: ['offline-queue'] });
           console.log(`[OfflineSync] Synced queued submission ${item.queueId}`);
         } catch (err) {
           await offlineQueue.incrementRetry(item.queueId);

@@ -647,6 +647,104 @@ def api_scan_qr():
     return jsonify(serialize({"doc": doc, "token_type": token_type}))
 
 
+@api_bp.route('/qr/slip-scan', methods=['POST'])
+@jwt_required()
+def api_scan_slip_qr():
+    """
+    Consume a routing slip QR token and batch-update all docs on the slip.
+    SLIP_RECEIVE → marks each doc Received, returns a new SLIP_RELEASE QR.
+    SLIP_RELEASE → marks each doc Released.
+    """
+    from services.qr import use_slip_token, create_slip_token, make_slip_qr_png
+    from services.misc import get_routing_slip, audit_log
+    from utils import get_client_ip
+
+    data = request.get_json() or {}
+    token = data.get('token')
+    if not token:
+        return jsonify(error='No token provided'), 400
+
+    slip_id, token_type = use_slip_token(token)
+    if not slip_id:
+        return jsonify(error='Invalid or expired routing slip QR'), 401
+
+    slip = get_routing_slip(slip_id)
+    if not slip:
+        return jsonify(error='Routing slip not found'), 404
+
+    user_id     = get_jwt_identity()
+    user        = get_user_by_username(user_id)
+    actor       = (user.get('full_name') or user_id) if user else user_id
+    user_office = (user.get('office') or '') if user else ''
+    slip_no     = slip.get('slip_no', slip_id)
+    destination = slip.get('destination', user_office)
+    from_office = slip.get('from_office', '')
+
+    docs_updated = []
+    for doc_id in slip.get('doc_ids', []):
+        doc = get_doc(doc_id)
+        if not doc:
+            continue
+
+        if token_type == 'SLIP_RECEIVE':
+            doc['status']        = 'Received'
+            doc['received_by']   = actor
+            doc['date_received'] = now_str()[:16].replace('T', ' ')
+            doc['updated_at']    = now_str()
+            doc['updated_by']    = user_id
+            doc.setdefault('travel_log', []).append({
+                'office':    destination,
+                'action':    'Received via Routing Slip',
+                'officer':   actor,
+                'timestamp': now_str(),
+                'remarks':   f'Auto-updated via routing slip {slip_no} RECEIVE scan.',
+            })
+
+        elif token_type == 'SLIP_RELEASE':
+            doc['status']        = 'Released'
+            doc['date_released'] = now_str()[:16].replace('T', ' ')
+            doc['updated_at']    = now_str()
+            doc['updated_by']    = user_id
+            doc.setdefault('travel_log', []).append({
+                'office':    from_office,
+                'action':    'Released via Routing Slip',
+                'officer':   actor,
+                'timestamp': now_str(),
+                'remarks':   f'Auto-updated via routing slip {slip_no} RELEASE scan.',
+            })
+
+        save_doc(doc)
+        docs_updated.append(doc)
+
+    # For SLIP_RECEIVE: generate a fresh RELEASE token so the receiving
+    # office can later scan-out when the documents leave.
+    next_qr_b64 = None
+    if token_type == 'SLIP_RECEIVE':
+        from services.qr import get_base_url
+        base_url      = get_base_url(request.host_url)
+        new_rel_token = create_slip_token(slip_id, 'SLIP_RELEASE')
+        png           = make_slip_qr_png(
+            new_rel_token, 'SLIP_RELEASE',
+            slip_no, destination, from_office,
+            base_url=base_url,
+        )
+        next_qr_b64 = base64.b64encode(png).decode()
+
+    audit_log(
+        f'slip_scan_{token_type.lower()}',
+        f'slip={slip_no} docs={len(docs_updated)} by={user_id}',
+        username=user_id,
+        ip=get_client_ip(),
+    )
+
+    return jsonify(serialize({
+        'slip':         slip,
+        'docs_updated': docs_updated,
+        'token_type':   token_type,
+        'next_qr_b64':  next_qr_b64,   # None for SLIP_RELEASE scans
+    }))
+
+
 @api_bp.route('/offices', methods=['GET'])
 @jwt_required()
 def api_get_offices():

@@ -3,6 +3,7 @@ import {
   View, Text, FlatList, TouchableOpacity, TextInput,
   ActivityIndicator, StatusBar, RefreshControl, Alert,
 } from 'react-native';
+import { offlineQueue, QueuedSubmission } from '../../lib/offlineQueue';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -35,6 +36,8 @@ type Doc = {
   category?: string;
   created_at?: string;
   remarks?: string;
+  office_name?: string;
+  _isQueued?: boolean;
 };
 
 export default function MyDocs() {
@@ -63,6 +66,30 @@ export default function MyDocs() {
 
   const docs = data ?? [];
 
+  // ── Offline queue overlay ──────────────────────────────────────────────────
+  // Reactive: invalidated by _layout.tsx after each queue item syncs, so the
+  // amber "Queued" cards disappear the moment the server confirms success.
+  const { data: queueItems = [] } = useQuery<QueuedSubmission[]>({
+    queryKey: ['offline-queue'],
+    queryFn:  () => offlineQueue.getAll(),
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
+
+  const queuedDocs: Doc[] = queueItems.map((item) => ({
+    id:          item.queueId,
+    doc_id:      'Pending Sync',
+    doc_name:    item.payload.items[0]?.doc_name ?? 'Queued Document',
+    status:      'Queued',
+    created_at:  new Date(item.queuedAt).toISOString(),
+    category:    item.payload.items[0]?.category ?? '',
+    office_name: item.payload.office_name,
+    _isQueued:   true,
+  }));
+
+  const combinedDocs = [...queuedDocs, ...docs];
+
   // Stats computed from full (unfiltered) list
   const { data: allDocs = [], refetch: refetchAll } = useQuery({
     queryKey: ['client-docs-all'],
@@ -74,7 +101,10 @@ export default function MyDocs() {
   });
 
   useFocusEffect(
-    useCallback(() => { refetchAll(); }, [refetchAll])
+    useCallback(() => {
+      refetchAll();
+      queryClient.invalidateQueries({ queryKey: ['offline-queue'] });
+    }, [refetchAll, queryClient])
   );
 
   const statTotal    = allDocs.length;
@@ -113,6 +143,48 @@ export default function MyDocs() {
 
   // ── List item ─────────────────────────────────────────────────────────────
   const renderItem = ({ item }: { item: Doc }) => {
+    // ── Offline-queued row (not yet on server) ──────────────────────────────
+    if (item._isQueued) {
+      return (
+        <View
+          style={{
+            backgroundColor: '#FFFBEB', borderRadius: 14, padding: 16,
+            marginBottom: 10, borderWidth: 1, borderColor: '#FDE68A',
+            flexDirection: 'row', alignItems: 'center', gap: 12,
+          }}
+        >
+          {/* Amber left accent bar */}
+          <View style={{ width: 3, height: 52, borderRadius: 2, backgroundColor: '#F59E0B' }} />
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+              <Text style={{ fontWeight: '800', color: '#92400E', fontSize: 13 }}>
+                Pending Sync
+              </Text>
+              <View style={{ backgroundColor: '#FEF3C7', borderRadius: 20, paddingHorizontal: 9, paddingVertical: 3 }}>
+                <Text style={{ color: '#B45309', fontSize: 11, fontWeight: '700' }}>⏳ Queued</Text>
+              </View>
+            </View>
+            <Text style={{ color: '#334155', fontSize: 13, marginBottom: 3 }} numberOfLines={2}>
+              {item.doc_name}
+            </Text>
+            <Text style={{ color: '#B45309', fontSize: 11, fontStyle: 'italic', marginBottom: 4 }}>
+              Waiting to sync when you reconnect
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Clock size={11} color="#94A3B8" />
+              <Text style={{ color: '#94A3B8', fontSize: 11 }}>
+                {item.created_at?.slice(0, 10) || '—'}
+              </Text>
+              {item.category ? (
+                <Text style={{ color: '#CBD5E1', fontSize: 11 }}> · {item.category}</Text>
+              ) : null}
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    // ── Normal server doc row ───────────────────────────────────────────────
     const s          = getStatus(item.status ?? '');
     const docStatus  = (item.status || '').toLowerCase();
     const isPending  = docStatus === 'pending';
@@ -281,7 +353,7 @@ export default function MyDocs() {
         </View>
       ) : (
         <FlatList
-          data={docs} keyExtractor={(d) => d.id} renderItem={renderItem}
+          data={combinedDocs} keyExtractor={(d) => d.id} renderItem={renderItem}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}
           refreshControl={
             <RefreshControl
