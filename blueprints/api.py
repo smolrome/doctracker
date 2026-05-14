@@ -675,6 +675,19 @@ def api_preview_slip_qr():
     if not slip:
         return jsonify(error='Routing slip not found'), 404
 
+    user_office = (user.get('office') or '') if user else ''
+
+    # Office validation — staff only
+    if user.get('role') == 'staff':
+        if token_type == 'SLIP_RECEIVE':
+            expected = slip.get('destination', '')
+            if expected and user_office.lower() != expected.lower():
+                return jsonify(error=f"This slip is not for your office. It is addressed to {expected}."), 403
+        elif token_type == 'SLIP_RELEASE':
+            expected = slip.get('from_office', '')
+            if expected and user_office.lower() != expected.lower():
+                return jsonify(error=f"This slip was not sent from your office. It was sent from {expected}."), 403
+
     return jsonify(serialize({
         'slip':       slip,
         'token_type': token_type,
