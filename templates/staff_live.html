@@ -140,6 +140,10 @@
     .sc-bar      { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--blue), var(--cyan)); transition: width 0.6s ease; min-width: 4px; }
     .sc-bar.active { background: linear-gradient(90deg, var(--amber), var(--rose)); }
 
+    .online-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+    .online-dot.online  { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+    .online-dot.offline { background: rgba(255,255,255,0.18); }
+
     /* ── Footer ── */
     .footer {
       text-align: center; padding: 10px;
@@ -212,9 +216,13 @@
       {% set bar_pct = ((s.total / max_total) * 100) | int %}
       <div class="staff-card {% if s.pending > 0 %}has-pending{% endif %}">
         <div class="sc-header">
-          <div>
-            <div class="sc-name">{{ s.full_name }}</div>
-            <div class="sc-office">{{ s.office }}</div>
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span class="online-dot {% if s.is_online %}online{% else %}offline{% endif %}"
+                  title="{% if s.is_online %}Online{% else %}Offline{% endif %}"></span>
+            <div>
+              <div class="sc-name">{{ s.full_name }}</div>
+              <div class="sc-office">{{ s.office }}</div>
+            </div>
           </div>
           <div class="sc-pending-badge {% if s.pending == 0 %}zero{% endif %}">
             ⏳ {{ s.pending }}
@@ -284,9 +292,12 @@ function buildCard(s, maxTotal) {
   return (
     '<div class="staff-card ' + (hasPending ? 'has-pending' : '') + '">' +
       '<div class="sc-header">' +
-        '<div>' +
-          '<div class="sc-name">'   + s.full_name + '</div>' +
-          '<div class="sc-office">' + s.office    + '</div>' +
+        '<div style="display:flex;align-items:center;gap:7px;">' +
+          '<span class="online-dot ' + (s.is_online ? 'online' : 'offline') + '" title="' + (s.is_online ? 'Online' : 'Offline') + '"></span>' +
+          '<div>' +
+            '<div class="sc-name">'   + s.full_name + '</div>' +
+            '<div class="sc-office">' + s.office    + '</div>' +
+          '</div>' +
         '</div>' +
         '<div class="sc-pending-badge ' + (hasPending ? '' : 'zero') + '">⏳ ' + s.pending + '</div>' +
       '</div>' +

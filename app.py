@@ -27,6 +27,7 @@ Security fixes applied:
 import os
 import secrets
 import time
+import threading
 from datetime import timedelta
 try:
     from dotenv import load_dotenv
@@ -75,6 +76,18 @@ CSRF_EXEMPT_PREFIXES = (
     "/logout", 
     "/api/",# GET-based logout can stay; POST logout gets CSRF from form
 )
+
+# ── Online presence tracker ───────────────────────────────────────────────────
+
+_user_last_active: dict = {}           # username → float (time.time())
+_user_last_active_lock = threading.Lock()
+
+
+def get_online_users(threshold_seconds: int = 300) -> set:
+    """Return set of usernames active within the last threshold_seconds (default 5 min)."""
+    cutoff = time.time() - threshold_seconds
+    with _user_last_active_lock:
+        return {u for u, t in _user_last_active.items() if t >= cutoff}
 
 
 # ── Application factory ────────────────────────────────────────────────────────
@@ -224,6 +237,10 @@ def create_app() -> Flask:
             flash("Your session expired. Please log in again.", "error")
             return redirect(url_for("auth.login"))
         session["last_active"] = time.time()
+        _uname = session.get("username")
+        if _uname:
+            with _user_last_active_lock:
+                _user_last_active[_uname] = time.time()
 
     @app.before_request
     def log_write_requests():
