@@ -839,6 +839,71 @@ def api_get_offices():
     return jsonify(serialize(offices))
 
 
+@api_bp.route('/offices/<office_slug>', methods=['PATCH'])
+@jwt_required()
+def api_update_office(office_slug: str):
+    from services.misc import update_office_primary_recipient
+    user_id = get_jwt_identity()
+    user    = get_user_by_username(user_id)
+    if not user or user.get('role') != 'admin':
+        return jsonify(error='Forbidden'), 403
+    data              = request.get_json() or {}
+    primary_recipient = (data.get('primary_recipient') or '').strip()
+    try:
+        update_office_primary_recipient(office_slug, primary_recipient)
+        return jsonify(success=True)
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+
+
+@api_bp.route('/parse-excel-offices', methods=['POST'])
+@jwt_required()
+def api_parse_excel_offices():
+    """JWT-authenticated Excel parser for mobile — same logic as web /api/parse-excel-offices."""
+    import openpyxl, io
+    user_id = get_jwt_identity()
+    user    = get_user_by_username(user_id)
+    if not user or user.get('role') != 'admin':
+        return jsonify(error='Forbidden'), 403
+    f = request.files.get('file')
+    if not f:
+        return jsonify(error='No file uploaded.'), 400
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(f.read()), data_only=True)
+        ws = wb.active
+
+        name_col = recipient_col = header_row = None
+        for row in ws.iter_rows(min_row=1, max_row=10):
+            for cell in row:
+                h = str(cell.value or '').strip().lower()
+                if name_col is None and ('office' in h or ('name' in h and 'recipient' not in h)):
+                    name_col = cell.column
+                if recipient_col is None and any(k in h for k in ('recipient', 'staff', 'assigned')):
+                    recipient_col = cell.column
+            if name_col:
+                header_row = row[0].row
+                break
+
+        if not header_row:
+            return jsonify(error='Could not find an office name column in the file.'), 422
+
+        rows = []
+        for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+            office_name = str(row[name_col - 1] or '').strip()
+            recipient   = str(row[recipient_col - 1] or '').strip() if recipient_col else ''
+            if office_name and office_name.lower() not in ('none', 'nan'):
+                rows.append({'office_name': office_name, 'primary_recipient': recipient})
+            if len(rows) >= 200:
+                break
+
+        if not rows:
+            return jsonify(error='No data rows found after the header.'), 422
+
+        return jsonify(rows=rows)
+    except Exception as e:
+        return jsonify(error=f'Could not read file: {e}'), 400
+
+
 @api_bp.route('/offices/<office_slug>/staff', methods=['GET'])
 @jwt_required()
 def api_get_office_staff(office_slug: str):
