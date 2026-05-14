@@ -38,7 +38,8 @@ def office_qr_page():
 
     office_name = (request.args.get("office", "").strip()
                    or request.form.get("office_name", "").strip())
-    primary_recipient = request.form.get("primary_recipient", "").strip()
+    primary_recipient = (request.args.get("primary_recipient", "")
+                         or request.form.get("primary_recipient", "")).strip()
     qr_data = None
 
     def make_slug(name, suffix):
@@ -139,6 +140,36 @@ def delete_office(slug):
         flash("Office removed successfully.", "success")
     
     return redirect(url_for("offices.office_staff"))
+
+
+# ── Bulk office creation ──────────────────────────────────────────────────────
+
+@offices_bp.route("/bulk-create-offices", methods=["POST"])
+@admin_required
+def bulk_create_offices():
+    """Create multiple offices from a JSON array: [{office_name, primary_recipient}]."""
+    from flask import jsonify
+    data = request.get_json(silent=True) or []
+    if not isinstance(data, list):
+        return jsonify(error="Expected a JSON array"), 400
+
+    created = 0
+    skipped = 0
+    errors  = []
+
+    for i, row in enumerate(data):
+        name      = (row.get("office_name") or "").strip()
+        recipient = (row.get("primary_recipient") or "").strip()
+        if not name:
+            skipped += 1
+            continue
+        try:
+            save_office(name, session.get("username", ""), recipient)
+            created += 1
+        except Exception as e:
+            errors.append({"office_name": name, "error": str(e)})
+
+    return jsonify(created=created, skipped=skipped, errors=errors)
 
 
 # ── Welcome / public page ─────────────────────────────────────────────────────

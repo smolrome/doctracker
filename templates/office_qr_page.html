@@ -128,6 +128,98 @@
   </form>
 </div>
 
+<!-- ── BULK ADD OFFICES ── -->
+<div class="gen-card" style="margin-top:18px;">
+  <div class="gen-title" style="cursor:pointer;user-select:none;" onclick="toggleBulk()">
+    📋 Bulk Add Offices
+    <span id="bulk-chevron" style="font-size:13px;margin-left:8px;color:#64748B;">▼ expand</span>
+  </div>
+  <div id="bulk-section" style="display:none;margin-top:16px;">
+    <div id="bulk-rows"></div>
+    <div style="display:flex;gap:10px;margin-top:10px;">
+      <button type="button" class="btn btn-secondary" onclick="addBulkRow()" style="font-size:14px;">
+        + Add Row
+      </button>
+      <button type="button" class="btn btn-primary" onclick="saveBulkOffices()" style="font-size:14px;">
+        💾 Save All
+      </button>
+    </div>
+    <div id="bulk-result" style="margin-top:12px;font-size:14px;font-weight:600;"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var staffOptions = {{ staff_members | tojson | safe }};
+
+  function buildRecipientSelect(selectedVal) {
+    var opts = '<option value="">— None —</option>';
+    staffOptions.forEach(function (s) {
+      var val = s.username;
+      var label = (s.full_name || s.username) + ' (' + s.username + ')';
+      var sel = val === selectedVal ? ' selected' : '';
+      opts += '<option value="' + val + '"' + sel + '>' + label + '</option>';
+    });
+    return '<select class="bulk-recipient" style="flex:0 0 220px;min-height:38px;border:1.5px solid #E2E8F0;border-radius:8px;padding:0 10px;font-size:14px;">' + opts + '</select>';
+  }
+
+  window.addBulkRow = function (name, recipient) {
+    var row = document.createElement('div');
+    row.className = 'bulk-row';
+    row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+    row.innerHTML =
+      '<input type="text" class="bulk-name" placeholder="Office / School / Unit name" value="' + (name || '') + '" ' +
+        'style="flex:1;min-height:38px;border:1.5px solid #E2E8F0;border-radius:8px;padding:0 12px;font-size:14px;"/>' +
+      buildRecipientSelect(recipient || '') +
+      '<button type="button" onclick="this.closest(\'.bulk-row\').remove()" ' +
+        'style="background:#FEF2F2;border:none;border-radius:8px;padding:6px 12px;color:#EF4444;font-size:18px;cursor:pointer;line-height:1;">✕</button>';
+    document.getElementById('bulk-rows').appendChild(row);
+  };
+
+  window.toggleBulk = function () {
+    var sec = document.getElementById('bulk-section');
+    var chev = document.getElementById('bulk-chevron');
+    var open = sec.style.display === 'none';
+    sec.style.display = open ? 'block' : 'none';
+    chev.textContent = open ? '▲ collapse' : '▼ expand';
+    if (open && document.getElementById('bulk-rows').children.length === 0) {
+      addBulkRow();
+    }
+  };
+
+  window.saveBulkOffices = function () {
+    var rows = document.querySelectorAll('.bulk-row');
+    var payload = [];
+    rows.forEach(function (row) {
+      var name = row.querySelector('.bulk-name').value.trim();
+      var recipient = row.querySelector('.bulk-recipient').value;
+      if (name) payload.push({ office_name: name, primary_recipient: recipient });
+    });
+    if (!payload.length) {
+      document.getElementById('bulk-result').textContent = 'No offices to save.';
+      return;
+    }
+    var resultEl = document.getElementById('bulk-result');
+    resultEl.textContent = 'Saving…';
+    fetch('/bulk-create-offices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || '' },
+      body: JSON.stringify(payload),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.error) { resultEl.style.color = '#EF4444'; resultEl.textContent = 'Error: ' + d.error; return; }
+        var msg = '✅ ' + d.created + ' office' + (d.created !== 1 ? 's' : '') + ' saved.';
+        if (d.skipped) msg += ' ' + d.skipped + ' skipped (blank name).';
+        if (d.errors && d.errors.length) msg += ' ' + d.errors.length + ' failed.';
+        resultEl.style.color = d.errors && d.errors.length ? '#F59E0B' : '#16A34A';
+        resultEl.textContent = msg;
+      })
+      .catch(function () { resultEl.style.color = '#EF4444'; resultEl.textContent = 'Network error.'; });
+  };
+})();
+</script>
+
 {% if qr_data %}
 <!-- ── TRAFFIC COUNTER ── -->
 {% if office_traffic %}

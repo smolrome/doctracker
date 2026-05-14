@@ -501,6 +501,15 @@ export default function Profile() {
                 <ChevronRight size={16} color="#CBD5E1" />
               </TouchableOpacity>
 
+              <TouchableOpacity onPress={() => router.push('/(app)/manage-offices' as any)} style={actionRow}>
+                <Text style={{ fontSize: 20 }}>🏢</Text>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={{ fontWeight: '600', color: '#111', fontSize: 14 }}>Manage Offices</Text>
+                  <Text style={{ color: '#6B7280', fontSize: 12 }}>Create and manage office units</Text>
+                </View>
+                <ChevronRight size={16} color="#CBD5E1" />
+              </TouchableOpacity>
+
               <TouchableOpacity onPress={() => router.push('/(app)/admin-users')} style={[actionRow, { borderBottomWidth: 0 }]}>
                 <Text style={{ fontSize: 20 }}>🛡️</Text>
                 <View style={{ flex: 1, marginLeft: 12 }}>
