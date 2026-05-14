@@ -146,6 +146,90 @@ def staff_document_stats():
     )
 
 
+# ── Staff Live Dashboard ───────────────────────────────────────────────────────
+
+def _compute_staff_live_stats():
+    """Shared computation for both the page render and the JSON refresh endpoint."""
+    from datetime import date as _date
+    all_users = get_all_users()
+    docs      = load_docs()
+    today     = str(_date.today())
+
+    staff_users = [u for u in all_users
+                   if u.get("role") in ("staff", "admin") and u.get("active", True)]
+
+    stats = []
+    for u in staff_users:
+        uname     = u.get("username", "")
+        full_name = u.get("full_name") or uname
+        if not uname:
+            continue
+
+        logged      = sum(1 for d in docs
+                          if d.get("logged_by") == uname or d.get("original_logged_by") == uname)
+        accepted    = sum(1 for d in docs if d.get("accepted_by") == uname)
+        transferred = sum(1 for d in docs if d.get("transferred_by") == uname)
+        released    = sum(1 for d in docs if d.get("released_by") == uname)
+        received    = sum(1 for d in docs if d.get("received_by") == full_name)
+        pending     = sum(1 for d in docs
+                          if d.get("pending_at_staff") == uname
+                          and (d.get("status") or "") not in ("Released", "Archived", "Rejected"))
+
+        stats.append({
+            "username":    uname,
+            "full_name":   full_name,
+            "office":      u.get("office") or "—",
+            "logged":      logged,
+            "accepted":    accepted,
+            "transferred": transferred,
+            "released":    released,
+            "received":    received,
+            "pending":     pending,
+            "total":       logged,
+        })
+
+    stats.sort(key=lambda x: -x["total"])
+
+    total_docs        = len([d for d in docs if not d.get("deleted")])
+    today_docs        = sum(1 for d in docs
+                            if (d.get("created_at") or "")[:10] == today and not d.get("deleted"))
+    active_staff      = len(stats)
+    pending_transfers = sum(1 for d in docs
+                            if d.get("transfer_status") == "pending" and not d.get("deleted"))
+
+    totals = {
+        "total_docs":        total_docs,
+        "today_docs":        today_docs,
+        "active_staff":      active_staff,
+        "pending_transfers": pending_transfers,
+    }
+    return stats, totals
+
+
+@admin_bp.route("/staff-live")
+@admin_required
+def staff_live():
+    """TV dashboard — live staff activity monitor."""
+    stats, totals = _compute_staff_live_stats()
+    last_updated = datetime.now().strftime("%b %d, %Y %I:%M %p")
+    return render_template("staff_live.html",
+                           staff_stats=stats,
+                           totals=totals,
+                           last_updated=last_updated)
+
+
+@admin_bp.route("/api/staff-live-data")
+@admin_required
+def staff_live_data():
+    """JSON refresh endpoint for the TV dashboard (polled every 30 s)."""
+    stats, totals = _compute_staff_live_stats()
+    return jsonify({
+        "staff":        stats,
+        "totals":       totals,
+        "last_updated": datetime.now().strftime("%b %d, %Y %I:%M %p"),
+    })
+
+
 @admin_bp.route("/assign-doc/<doc_id>", methods=["POST"])
 @admin_required
 def assign_doc(doc_id):
