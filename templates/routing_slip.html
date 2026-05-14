@@ -328,7 +328,10 @@
 <script>
 function deleteSlip(slipId) {
   if (!confirm('Permanently delete this routing slip? This cannot be undone.')) return;
-  fetch('/routing-slip/' + slipId + '/delete', { method: 'POST' })
+  fetch('/routing-slip/' + slipId + '/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '{{ csrf_token }}' }
+  })
     .then(r => r.json())
     .then(data => {
       if (data.success) {
