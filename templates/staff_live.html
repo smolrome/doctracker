@@ -142,6 +142,7 @@
 
     .online-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
     .online-dot.online  { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+    .online-dot.idle    { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
     .online-dot.offline { background: rgba(255,255,255,0.18); }
 
     /* ── Footer ── */
@@ -217,8 +218,8 @@
       <div class="staff-card {% if s.pending > 0 %}has-pending{% endif %}">
         <div class="sc-header">
           <div style="display:flex; align-items:center; gap:7px;">
-            <span class="online-dot {% if s.is_online %}online{% else %}offline{% endif %}"
-                  title="{% if s.is_online %}Online{% else %}Offline{% endif %}"></span>
+            <span class="online-dot {% if s.presence == 'online' %}online{% elif s.presence == 'idle' %}idle{% else %}offline{% endif %}"
+                  title="{% if s.presence == 'online' %}Online{% elif s.presence == 'idle' %}Idle (2–5 min){% else %}Offline{% endif %}"></span>
             <div>
               <div class="sc-name">{{ s.full_name }}</div>
               <div class="sc-office">{{ s.office }}</div>
@@ -293,7 +294,7 @@ function buildCard(s, maxTotal) {
     '<div class="staff-card ' + (hasPending ? 'has-pending' : '') + '">' +
       '<div class="sc-header">' +
         '<div style="display:flex;align-items:center;gap:7px;">' +
-          '<span class="online-dot ' + (s.is_online ? 'online' : 'offline') + '" title="' + (s.is_online ? 'Online' : 'Offline') + '"></span>' +
+          '<span class="online-dot ' + (s.presence === 'online' ? 'online' : s.presence === 'idle' ? 'idle' : 'offline') + '" title="' + (s.presence === 'online' ? 'Online' : s.presence === 'idle' ? 'Idle (2–5 min)' : 'Offline') + '"></span>' +
           '<div>' +
             '<div class="sc-name">'   + s.full_name + '</div>' +
             '<div class="sc-office">' + s.office    + '</div>' +

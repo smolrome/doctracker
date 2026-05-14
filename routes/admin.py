@@ -151,14 +151,15 @@ def staff_document_stats():
 def _compute_staff_live_stats():
     """Shared computation for both the page render and the JSON refresh endpoint."""
     from datetime import date as _date
-    from app import get_online_users
-    all_users    = get_all_users()
-    docs         = load_docs()
-    today        = str(_date.today())
-    online_users = get_online_users(300)
+    from app import get_user_presence
+    all_users = get_all_users()
+    docs      = load_docs()
+    today     = str(_date.today())
 
     staff_users = [u for u in all_users
                    if u.get("role") in ("staff", "admin") and u.get("active", True)]
+
+    presence = get_user_presence({u.get("username", "") for u in staff_users})
 
     stats = []
     for u in staff_users:
@@ -188,7 +189,7 @@ def _compute_staff_live_stats():
             "received":    received,
             "pending":     pending,
             "total":       logged,
-            "is_online":   uname in online_users,
+            "presence":    presence.get(uname, "offline"),
         })
 
     stats.sort(key=lambda x: -x["total"])

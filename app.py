@@ -83,11 +83,27 @@ _user_last_active: dict = {}           # username → float (time.time())
 _user_last_active_lock = threading.Lock()
 
 
-def get_online_users(threshold_seconds: int = 300) -> set:
-    """Return set of usernames active within the last threshold_seconds (default 5 min)."""
-    cutoff = time.time() - threshold_seconds
+def get_user_presence(usernames: set) -> dict:
+    """Return presence state for each username in the given set.
+
+    States:
+      'online'  — active within the last 120 s (2 min)
+      'idle'    — active between 120 s and 300 s ago (2–5 min)
+      'offline' — not seen, or last seen more than 300 s ago
+    """
+    now = time.time()
     with _user_last_active_lock:
-        return {u for u, t in _user_last_active.items() if t >= cutoff}
+        snapshot = dict(_user_last_active)
+    result = {}
+    for uname in usernames:
+        t = snapshot.get(uname)
+        if t is None or (now - t) > 300:
+            result[uname] = 'offline'
+        elif (now - t) <= 120:
+            result[uname] = 'online'
+        else:
+            result[uname] = 'idle'
+    return result
 
 
 # ── Application factory ────────────────────────────────────────────────────────
