@@ -429,23 +429,6 @@ function checkPendingDocuments() {
 
 var _pendingTotalCount = 0;
 
-function _populatePendingCategorySelect() {
-  var sel = document.getElementById('pending-cat-select');
-  if (!sel || sel.options.length > 1) return; // already populated
-  fetch('/api/dropdown-options?field=category')
-    .then(function (r) { return r.json(); })
-    .then(function (opts) {
-      var options = Array.isArray(opts) ? opts : (opts.options || []);
-      options.forEach(function (cat) {
-        var o = document.createElement('option');
-        o.value = cat;
-        o.textContent = cat;
-        sel.appendChild(o);
-      });
-    })
-    .catch(function () { /* silently ignore */ });
-}
-
 function _getPendingFilterParams() {
   var cat  = ((document.getElementById('pending-cat-select')  || {}).value  || '');
   var date = ((document.getElementById('pending-date-input')  || {}).value  || '');
@@ -531,7 +514,6 @@ function showPendingDocumentsModal() {
   if (!listContainer) return;
 
   openModal('pending-documents-modal');
-  _populatePendingCategorySelect();
 
   // Fetch unfiltered total first so count display is always accurate
   fetch('/pending-documents')

@@ -181,6 +181,7 @@ def create_app() -> Flask:
     @app.context_processor
     def inject_auth():
         from datetime import datetime
+        from services.dropdown_options import get_dropdown_options
         return dict(
             logged_in         = is_logged_in(),
             current_user      = session.get("username", ""),
@@ -189,6 +190,7 @@ def create_app() -> Flask:
             current_office    = session.get("office", ""),
             now               = datetime.now,
             session           = session,
+            category_options  = get_dropdown_options("category") if is_logged_in() else [],
         )
 
     # FIX 1: CSRF token injected globally using the unified key name

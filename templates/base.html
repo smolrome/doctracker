@@ -168,6 +168,9 @@
     <div class="pending-filter-bar" id="pending-filter-bar">
       <select id="pending-cat-select" class="pending-filter-select" onchange="reloadPendingDocs()" aria-label="Filter by category">
         <option value="">All Categories</option>
+        {% for cat in category_options %}
+        <option value="{{ cat }}">{{ cat }}</option>
+        {% endfor %}
       </select>
       <input type="date" id="pending-date-input" class="pending-filter-date" onchange="reloadPendingDocs()" aria-label="Filter by date" />
       <button id="pending-clear-btn" class="pending-filter-clear" onclick="clearPendingFilters()" style="display:none" aria-label="Clear filters">✕ Clear</button>
