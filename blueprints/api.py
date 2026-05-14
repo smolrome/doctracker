@@ -664,8 +664,6 @@ def api_preview_slip_qr():
 
     user_id = get_jwt_identity()
     user    = get_user_by_username(user_id)
-    # DEBUG — temporary: confirm role lookup
-    return jsonify(debug_role=user.get('role') if user else None, debug_user=user_id), 200
     if not user or user.get('role') not in ('staff', 'admin'):
         return jsonify(error='Forbidden'), 403
 
@@ -705,9 +703,6 @@ def api_scan_slip_qr():
     user    = get_user_by_username(user_id)
     if not user or user.get('role') not in ('staff', 'admin'):
         return jsonify(error='Forbidden'), 403
-
-    # DEBUG — temporary: confirm what role this user actually has
-    return jsonify(debug_role=user.get('role'), debug_user=user_id), 200
 
     # --- Pre-validation: peek at token WITHOUT consuming it ---
     slip_id, token_type = peek_slip_token(token)

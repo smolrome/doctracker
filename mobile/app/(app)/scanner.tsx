@@ -237,6 +237,7 @@ export default function Scanner() {
 
   useEffect(() => {
     if (!slipPreview || !offices.length) return;
+    if (!slipPreview?.slip) return;
     const targetOfficeName = slipPreview.token_type === 'SLIP_RECEIVE'
       ? slipPreview.slip.destination
       : slipPreview.slip.from_office;
