@@ -1283,6 +1283,27 @@ def get_pending_documents():
     else:
         pending = [d for d in docs if _is_pending_for(d, current_user, current_office)]
 
+    # ── Optional filters ──────────────────────────────────────────────────────
+    filter_cat  = request.args.get("cat",  "").strip()
+    filter_date = request.args.get("date", "").strip()
+
+    if filter_cat:
+        pending = [d for d in pending
+                   if (d.get("category") or "").strip().lower() == filter_cat.lower()]
+
+    if filter_date:
+        def _pending_date(d):
+            # Use last transfer travel_log entry first, then updated_at, then created_at
+            tl = d.get("travel_log") or []
+            for entry in reversed(tl):
+                if "transfer" in (entry.get("action") or "").lower():
+                    ts = entry.get("timestamp", "")
+                    if ts:
+                        return ts.replace("T", " ")[:10]
+            return (d.get("updated_at") or d.get("created_at") or "")[:10]
+
+        pending = [d for d in pending if _pending_date(d) == filter_date]
+
     return jsonify(pending)
 
 

@@ -427,51 +427,131 @@ function checkPendingDocuments() {
     .catch(function (err) { console.error('Error checking pending documents:', err); });
 }
 
-function showPendingDocumentsModal() {
-  const listContainer = document.getElementById('pending-documents-list');
+var _pendingTotalCount = 0;
+
+function _populatePendingCategorySelect() {
+  var sel = document.getElementById('pending-cat-select');
+  if (!sel || sel.options.length > 1) return; // already populated
+  fetch('/api/dropdown-options?field=category')
+    .then(function (r) { return r.json(); })
+    .then(function (opts) {
+      var options = Array.isArray(opts) ? opts : (opts.options || []);
+      options.forEach(function (cat) {
+        var o = document.createElement('option');
+        o.value = cat;
+        o.textContent = cat;
+        sel.appendChild(o);
+      });
+    })
+    .catch(function () { /* silently ignore */ });
+}
+
+function _getPendingFilterParams() {
+  var cat  = ((document.getElementById('pending-cat-select')  || {}).value  || '');
+  var date = ((document.getElementById('pending-date-input')  || {}).value  || '');
+  return { cat: cat, date: date };
+}
+
+function _updatePendingFilterUI(filteredCount) {
+  var params     = _getPendingFilterParams();
+  var isFiltered = params.cat || params.date;
+
+  var dot      = document.getElementById('pending-filter-dot');
+  var clearBtn = document.getElementById('pending-clear-btn');
+  var countEl  = document.getElementById('pending-filter-count');
+
+  if (dot)      dot.style.display      = isFiltered ? 'inline-block' : 'none';
+  if (clearBtn) clearBtn.style.display = isFiltered ? 'inline-block' : 'none';
+
+  if (countEl) {
+    if (isFiltered) {
+      countEl.textContent = 'Showing ' + filteredCount + ' of ' + _pendingTotalCount + ' document' + (_pendingTotalCount !== 1 ? 's' : '');
+    } else {
+      countEl.textContent = _pendingTotalCount + ' document' + (_pendingTotalCount !== 1 ? 's' : '') + ' pending';
+    }
+    countEl.style.display = 'block';
+  }
+}
+
+function reloadPendingDocs() {
+  var listContainer = document.getElementById('pending-documents-list');
   if (!listContainer) return;
 
-  openModal('pending-documents-modal');
-  listContainer.innerHTML = '<div class="modal-loading-state"><span>📭</span><p>Loading documents…</p></div>';
+  var params = _getPendingFilterParams();
+  var qs = [];
+  if (params.cat)  qs.push('cat='  + encodeURIComponent(params.cat));
+  if (params.date) qs.push('date=' + encodeURIComponent(params.date));
+  var url = '/pending-documents' + (qs.length ? '?' + qs.join('&') : '');
 
-  fetch('/pending-documents')
+  listContainer.innerHTML = '<div class="modal-loading-state"><span>📭</span><p>Loading…</p></div>';
+
+  fetch(url)
     .then(function (r) { return r.json(); })
     .then(function (docs) {
+      _updatePendingFilterUI(docs.length);
       if (!docs.length) {
-        listContainer.innerHTML = '<div class="modal-loading-state"><span>✅</span><p>No pending documents</p></div>';
+        var isFiltered = params.cat || params.date;
+        listContainer.innerHTML = '<div class="modal-loading-state"><span>' + (isFiltered ? '🔍' : '✅') + '</span><p>' + (isFiltered ? 'No documents match these filters.' : 'No pending documents') + '</p></div>';
         return;
       }
       listContainer.innerHTML = docs.map(function (doc) {
-        const docId = doc.id || doc.doc_id;
-        return `
-          <div class="pending-doc-card">
-            <div class="pending-doc-top">
-              <div>
-                <h4 class="pending-doc-name">${doc.doc_name || 'Unnamed Document'}</h4>
-                <p class="pending-doc-id">${docId}</p>
-              </div>
-              <span class="badge badge-pending">Pending</span>
-            </div>
-            <div class="pending-doc-meta">
-              ${doc.doc_id ? `<strong>Ref:</strong> ${doc.doc_id}<br>` : ''}
-              ${doc.sender_name || doc.sender_org ? `<strong>Sender:</strong> ${doc.sender_name || doc.sender_org}<br>` : ''}
-              ${doc.category ? `<strong>Category:</strong> ${doc.category}<br>` : ''}
-              <strong>From:</strong> ${doc.transferred_by || 'Unknown'}<br>
-              <strong>Office:</strong> ${doc.transferred_to_office || doc.pending_at_office || 'N/A'}<br>
-              <strong>Transferred:</strong> ${doc.transferred_at || 'Unknown'}
-            </div>
-            <div class="pending-doc-actions">
-              <a href="/view/${docId}" target="_blank" class="btn btn-ghost btn-sm">👁 View</a>
-              <button class="btn btn-success btn-sm" onclick="openAcceptModal('${docId}')">✓ Accept</button>
-              <button class="btn btn-danger  btn-sm" onclick="showRejectionModal('${docId}')">✕ Reject</button>
-            </div>
-          </div>`;
+        var docId = doc.id || doc.doc_id;
+        return '<div class="pending-doc-card">' +
+          '<div class="pending-doc-top">' +
+            '<div>' +
+              '<h4 class="pending-doc-name">' + (doc.doc_name || 'Unnamed Document') + '</h4>' +
+              '<p class="pending-doc-id">' + (docId || '') + '</p>' +
+            '</div>' +
+            '<span class="badge badge-pending">Pending</span>' +
+          '</div>' +
+          '<div class="pending-doc-meta">' +
+            (doc.doc_id ? '<strong>Ref:</strong> ' + doc.doc_id + '<br>' : '') +
+            (doc.sender_name || doc.sender_org ? '<strong>Sender:</strong> ' + (doc.sender_name || doc.sender_org) + '<br>' : '') +
+            (doc.category ? '<strong>Category:</strong> ' + doc.category + '<br>' : '') +
+            '<strong>From:</strong> ' + (doc.transferred_by || 'Unknown') + '<br>' +
+            '<strong>Office:</strong> ' + (doc.transferred_to_office || doc.pending_at_office || 'N/A') + '<br>' +
+            '<strong>Transferred:</strong> ' + (doc.transferred_at || 'Unknown') +
+          '</div>' +
+          '<div class="pending-doc-actions">' +
+            '<a href="/view/' + docId + '" target="_blank" class="btn btn-ghost btn-sm">👁 View</a>' +
+            '<button class="btn btn-success btn-sm" onclick="openAcceptModal(\'' + docId + '\')">✓ Accept</button>' +
+            '<button class="btn btn-danger  btn-sm" onclick="showRejectionModal(\'' + docId + '\')">✕ Reject</button>' +
+          '</div>' +
+        '</div>';
       }).join('');
     })
     .catch(function (err) {
       console.error('Error loading pending documents:', err);
       listContainer.innerHTML = '<div class="modal-loading-state" style="color:#DC2626;"><span>⚠️</span><p>Error loading documents. Please refresh.</p></div>';
     });
+}
+
+function showPendingDocumentsModal() {
+  var listContainer = document.getElementById('pending-documents-list');
+  if (!listContainer) return;
+
+  openModal('pending-documents-modal');
+  _populatePendingCategorySelect();
+
+  // Fetch unfiltered total first so count display is always accurate
+  fetch('/pending-documents')
+    .then(function (r) { return r.json(); })
+    .then(function (all) {
+      _pendingTotalCount = all.length;
+      reloadPendingDocs();
+    })
+    .catch(function () {
+      _pendingTotalCount = 0;
+      reloadPendingDocs();
+    });
+}
+
+function clearPendingFilters() {
+  var sel   = document.getElementById('pending-cat-select');
+  var input = document.getElementById('pending-date-input');
+  if (sel)   sel.value   = '';
+  if (input) input.value = '';
+  reloadPendingDocs();
 }
 
 function closePendingDocumentsModal() { closeModal('pending-documents-modal'); }

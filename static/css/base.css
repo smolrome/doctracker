@@ -461,6 +461,71 @@ nav::after {
 }
 .modal-loading-state span { font-size: 48px; display: block; margin-bottom: 12px; }
 
+/* ── Pending documents filter bar ── */
+.pending-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--surface-alt, #F8FAFC);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.pending-filter-select {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  background: var(--surface);
+  cursor: pointer;
+}
+.pending-filter-select:focus { outline: none; border-color: var(--accent, #0038A8); }
+.pending-filter-date {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  background: var(--surface);
+}
+.pending-filter-date:focus { outline: none; border-color: var(--accent, #0038A8); }
+.pending-filter-clear {
+  padding: 6px 12px;
+  border: 1.5px solid #FECACA;
+  border-radius: 8px;
+  background: #FEF2F2;
+  color: #DC2626;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pending-filter-clear:hover { background: #FEE2E2; }
+.pending-filter-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0038A8;
+  flex-shrink: 0;
+}
+.pending-filter-count {
+  padding: 5px 16px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  background: var(--surface-alt, #F8FAFC);
+  border-bottom: 1px solid var(--border);
+}
+[data-theme="dark"] .pending-filter-bar    { background: #1A2535; }
+[data-theme="dark"] .pending-filter-count  { background: #1A2535; }
+[data-theme="dark"] .pending-filter-select,
+[data-theme="dark"] .pending-filter-date   { background: #1E2A3A; border-color: #2E3D52; color: #E2E8F0; }
+[data-theme="dark"] .pending-filter-clear  { background: #3B1111; border-color: #7F1D1D; color: #FCA5A5; }
+
 /* ── Pending document card inside modal ── */
 .pending-doc-card {
   background: var(--surface);

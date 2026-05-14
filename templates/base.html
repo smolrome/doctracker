@@ -160,9 +160,19 @@
       <div class="modal-header-content">
         <span class="modal-header-icon" aria-hidden="true">📥</span>
         <h2 class="modal-title" id="pending-modal-title">Documents to Receive</h2>
+        <span id="pending-filter-dot" class="pending-filter-dot" style="display:none" aria-hidden="true"></span>
       </div>
       <button class="modal-close-btn" onclick="closePendingDocumentsModal()" aria-label="Close">✕</button>
     </div>
+    <!-- Filter bar -->
+    <div class="pending-filter-bar" id="pending-filter-bar">
+      <select id="pending-cat-select" class="pending-filter-select" onchange="reloadPendingDocs()" aria-label="Filter by category">
+        <option value="">All Categories</option>
+      </select>
+      <input type="date" id="pending-date-input" class="pending-filter-date" onchange="reloadPendingDocs()" aria-label="Filter by date" />
+      <button id="pending-clear-btn" class="pending-filter-clear" onclick="clearPendingFilters()" style="display:none" aria-label="Clear filters">✕ Clear</button>
+    </div>
+    <div id="pending-filter-count" class="pending-filter-count" style="display:none"></div>
     <div id="pending-documents-list" class="modal-body">
       <div class="modal-loading-state">
         <span aria-hidden="true">📭</span>
