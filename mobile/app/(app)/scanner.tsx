@@ -27,6 +27,13 @@ interface SlipScanResult {
   next_qr_b64: string | null;
 }
 
+interface SlipPreview {
+  slip: { slip_no?: string; destination?: string; from_office?: string; [key: string]: any };
+  token_type: 'SLIP_RECEIVE' | 'SLIP_RELEASE';
+  docs_count: number;
+  token: string;
+}
+
 interface ScannedDoc {
   id: string;
   title: string;
@@ -67,6 +74,7 @@ export default function Scanner() {
   const [acceptedDocTitle, setAcceptedDocTitle] = useState<string | null>(null);
   const [slipResult, setSlipResult]       = useState<SlipScanResult | null>(null);
   const [slipActioning, setSlipActioning] = useState(false);
+  const [slipPreview, setSlipPreview]     = useState<SlipPreview | null>(null);
 
   const lastScanned = useRef<string>('');
   const cooldown = useRef<boolean>(false);
@@ -151,19 +159,37 @@ export default function Scanner() {
 
   // ── Routing slip scan ───────────────────────────────────────────────────────
 
-  const handleSlipScan = async (token: string) => {
+  const handleSlipPreview = async (token: string) => {
     setSlipActioning(true);
     try {
-      const res = await api.post('/qr/slip-scan', { token });
+      const res = await api.post('/qr/slip-preview', { token });
+      setSlipPreview({ ...res.data, token });
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'Could not read routing slip QR.';
+      Alert.alert('Slip Scan Failed', msg, [
+        { text: 'Try Again', onPress: () => resetScanner(500) },
+      ]);
+      resetScanner(0);
+    } finally {
+      setSlipActioning(false);
+    }
+  };
+
+  const handleSlipConfirm = async () => {
+    if (!slipPreview) return;
+    setSlipActioning(true);
+    try {
+      const res = await api.post('/qr/slip-scan', { token: slipPreview.token });
       const result: SlipScanResult = res.data;
       Vibration.vibrate([0, 80, 60, 80]);
       queryClient.invalidateQueries({ queryKey: ['routing-slips'] });
       queryClient.invalidateQueries({ queryKey: ['documents'] });
+      setSlipPreview(null);
       setSlipResult(result);
     } catch (err: any) {
       const msg = err?.response?.data?.error || 'Could not process routing slip QR.';
       Alert.alert('Slip Scan Failed', msg, [
-        { text: 'Try Again', onPress: () => resetScanner(500) },
+        { text: 'OK', onPress: () => resetScanner(500) },
       ]);
       resetScanner(0);
     } finally {
@@ -180,6 +206,7 @@ export default function Scanner() {
       setScanState('scanning');
       setScannedDoc(null);
       setAcceptedDocTitle(null);
+      setSlipPreview(null);
       setSlipResult(null);
     }, delay);
   };
@@ -209,7 +236,7 @@ export default function Scanner() {
     } catch (err: any) {
       if (err?.isSlipToken) {
         setScanState('scanning');
-        handleSlipScan(err.token);
+        handleSlipPreview(err.token);
         return;
       }
       setScanState('error');
@@ -271,7 +298,7 @@ export default function Scanner() {
       }
     } catch (err: any) {
       if (err?.isSlipToken) {
-        handleSlipScan(err.token);
+        handleSlipPreview(err.token);
         return;
       }
       const msg = err?.response?.data?.error || err?.message || 'Could not read QR code from image.';
@@ -404,7 +431,7 @@ export default function Scanner() {
         style={StyleSheet.absoluteFillObject}
         facing="back"
         enableTorch={torchOn}
-        onBarcodeScanned={scanState === 'scanning' && !scannedDoc ? handleScan : undefined}
+        onBarcodeScanned={scanState === 'scanning' && !scannedDoc && !slipPreview ? handleScan : undefined}
         barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
       />
 
@@ -427,7 +454,7 @@ export default function Scanner() {
               <ActivityIndicator size="large" color="#fff" />
               <Text style={{ color: '#fff', marginTop: 8, fontWeight: '600' }}>
                 {uploading ? 'Reading QR from image…'
-                  : slipActioning ? 'Processing routing slip…'
+                  : slipActioning ? (slipPreview ? 'Processing routing slip…' : 'Checking routing slip…')
                   : 'Looking up document…'}
               </Text>
             </View>
@@ -631,6 +658,78 @@ export default function Scanner() {
           <Text style={styles.successSubText} numberOfLines={1}>{acceptedDocTitle}</Text>
         </View>
       )}
+
+      {/* ── Routing slip confirmation modal ──────────────────────────────── */}
+      <Modal
+        visible={!!slipPreview}
+        transparent
+        animationType="slide"
+        onRequestClose={() => resetScanner(0)}
+      >
+        <View style={styles.overlayBackdrop}>
+          <View style={styles.overlaySheet}>
+            <View style={styles.overlayHandle} />
+            <View style={styles.overlayHeader}>
+              <Text style={styles.overlayTitle}>
+                {slipPreview?.token_type === 'SLIP_RECEIVE' ? '📦 Receive Routing Slip' : '✅ Release Routing Slip'}
+              </Text>
+              <TouchableOpacity onPress={() => resetScanner(0)} style={styles.overlayClose}>
+                <Text style={{ color: '#6B7280', fontSize: 16 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.docCard}>
+                <Text style={styles.docTitle}>Slip #{slipPreview?.slip?.slip_no || '—'}</Text>
+                {slipPreview?.slip?.from_office ? (
+                  <View style={styles.docMetaRow}>
+                    <Text style={styles.docMetaLabel}>From Office</Text>
+                    <Text style={styles.docMetaValue}>{slipPreview.slip.from_office}</Text>
+                  </View>
+                ) : null}
+                {slipPreview?.slip?.destination ? (
+                  <View style={styles.docMetaRow}>
+                    <Text style={styles.docMetaLabel}>Destination</Text>
+                    <Text style={styles.docMetaValue}>{slipPreview.slip.destination}</Text>
+                  </View>
+                ) : null}
+                <View style={styles.docMetaRow}>
+                  <Text style={styles.docMetaLabel}>Documents</Text>
+                  <Text style={styles.docMetaValue}>{slipPreview?.docs_count ?? 0}</Text>
+                </View>
+              </View>
+
+              <Text style={styles.receivePrompt}>
+                {slipPreview?.token_type === 'SLIP_RECEIVE'
+                  ? `Confirm receipt of ${slipPreview?.docs_count ?? 0} document${(slipPreview?.docs_count ?? 0) !== 1 ? 's' : ''}. This will mark them as Received in the system.`
+                  : `Confirm release of ${slipPreview?.docs_count ?? 0} document${(slipPreview?.docs_count ?? 0) !== 1 ? 's' : ''}. This will mark them as Released in the system.`
+                }
+              </Text>
+
+              <TouchableOpacity
+                style={[styles.acceptBtn, slipActioning && { opacity: 0.7 }]}
+                onPress={handleSlipConfirm}
+                disabled={slipActioning}
+              >
+                {slipActioning
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.acceptBtnText}>
+                      {slipPreview?.token_type === 'SLIP_RECEIVE' ? '✓  Confirm Receive' : '✓  Confirm Release'}
+                    </Text>
+                }
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.cancelBtn, slipActioning && { opacity: 0.5 }]}
+                onPress={() => resetScanner(0)}
+                disabled={slipActioning}
+              >
+                <Text style={styles.cancelBtnText}>Cancel — Scan Again</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Routing slip scan result ──────────────────────────────────────── */}
       <Modal

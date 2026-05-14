@@ -647,6 +647,41 @@ def api_scan_qr():
     return jsonify(serialize({"doc": doc, "token_type": token_type}))
 
 
+@api_bp.route('/qr/slip-preview', methods=['POST'])
+@jwt_required()
+def api_preview_slip_qr():
+    """
+    Non-destructive slip token lookup — returns slip metadata without
+    consuming the token or updating any document status.
+    """
+    from services.qr import peek_slip_token
+    from services.misc import get_routing_slip
+
+    data = request.get_json() or {}
+    token = data.get('token')
+    if not token:
+        return jsonify(error='No token provided'), 400
+
+    user_id = get_jwt_identity()
+    user    = get_user_by_username(user_id)
+    if not user or user.get('role') not in ('staff', 'admin'):
+        return jsonify(error='Forbidden'), 403
+
+    slip_id, token_type = peek_slip_token(token)
+    if not slip_id:
+        return jsonify(error='Invalid or expired routing slip QR'), 401
+
+    slip = get_routing_slip(slip_id)
+    if not slip:
+        return jsonify(error='Routing slip not found'), 404
+
+    return jsonify(serialize({
+        'slip':       slip,
+        'token_type': token_type,
+        'docs_count': len(slip.get('doc_ids', [])),
+    }))
+
+
 @api_bp.route('/qr/slip-scan', methods=['POST'])
 @jwt_required()
 def api_scan_slip_qr():

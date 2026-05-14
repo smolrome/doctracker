@@ -525,6 +525,44 @@ def use_slip_token(token: str):
         return slip_id, entry["token_type"]
 
 
+def peek_slip_token(token: str):
+    """
+    Read a slip token's metadata without consuming it.
+    Returns (slip_id, token_type) or (None, None).
+    """
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT doc_id, token_type FROM doc_qr_tokens "
+                        "WHERE token=%s AND used=FALSE",
+                        (token,)
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        return None, None
+                    raw = row["doc_id"]
+                    slip_id = raw.removeprefix("SLIP:") if raw.startswith("SLIP:") else None
+                    return slip_id, row["token_type"]
+        except Exception:
+            return None, None
+    else:
+        path = "doc_qr_tokens.json"
+        try:
+            if os.path.exists(path):
+                with open(path) as f:
+                    tokens = json.load(f)
+        except Exception:
+            return None, None
+        entry = tokens.get(token)
+        if not entry or entry.get("used"):
+            return None, None
+        raw = entry["doc_id"]
+        slip_id = raw.removeprefix("SLIP:") if raw.startswith("SLIP:") else None
+        return slip_id, entry["token_type"]
+
+
 def make_slip_qr_png(token: str, token_type: str,
                      slip_no: str, destination: str, from_office: str,
                      box_size: int = 10, base_url: str = "") -> bytes:
