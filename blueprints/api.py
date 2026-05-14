@@ -690,7 +690,7 @@ def api_scan_slip_qr():
     SLIP_RECEIVE → marks each doc Received, returns a new SLIP_RELEASE QR.
     SLIP_RELEASE → marks each doc Released.
     """
-    from services.qr import use_slip_token, make_slip_qr_png
+    from services.qr import peek_slip_token, use_slip_token, make_slip_qr_png
     from services.misc import get_routing_slip, audit_log
     from utils import get_client_ip
 
@@ -704,7 +704,11 @@ def api_scan_slip_qr():
     if not user or user.get('role') not in ('staff', 'admin'):
         return jsonify(error='Forbidden'), 403
 
-    slip_id, token_type = use_slip_token(token)
+    # DEBUG — temporary: confirm what role this user actually has
+    return jsonify(debug_role=user.get('role'), debug_user=user_id), 200
+
+    # --- Pre-validation: peek at token WITHOUT consuming it ---
+    slip_id, token_type = peek_slip_token(token)
     if not slip_id:
         return jsonify(error='Invalid or expired routing slip QR'), 401
 
@@ -721,7 +725,7 @@ def api_scan_slip_qr():
     destination = slip.get('destination', user_office)
     from_office = slip.get('from_office', '')
 
-    # Office validation — staff only
+    # Office validation — staff only (runs BEFORE token is consumed)
     if user.get('role') == 'staff':
         if token_type == 'SLIP_RECEIVE':
             expected = slip.get('destination', '')
@@ -731,6 +735,11 @@ def api_scan_slip_qr():
             expected = slip.get('from_office', '')
             if expected and user_office.lower() != expected.lower():
                 return jsonify(error=f"This slip was not sent from your office. It was sent from {expected}."), 403
+
+    # --- All checks passed — now consume the token ---
+    slip_id, token_type = use_slip_token(token)
+    if not slip_id:
+        return jsonify(error='Token expired between preview and confirm'), 401
 
     # Admin override — replace destination/from_office for travel log attribution
     if user.get('role') == 'admin' and override_office:
