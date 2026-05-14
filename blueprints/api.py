@@ -655,7 +655,7 @@ def api_scan_slip_qr():
     SLIP_RECEIVE → marks each doc Received, returns a new SLIP_RELEASE QR.
     SLIP_RELEASE → marks each doc Released.
     """
-    from services.qr import use_slip_token, create_slip_token, make_slip_qr_png
+    from services.qr import use_slip_token, make_slip_qr_png
     from services.misc import get_routing_slip, audit_log
     from utils import get_client_ip
 
@@ -663,6 +663,11 @@ def api_scan_slip_qr():
     token = data.get('token')
     if not token:
         return jsonify(error='No token provided'), 400
+
+    user_id = get_jwt_identity()
+    user    = get_user_by_username(user_id)
+    if not user or user.get('role') not in ('staff', 'admin'):
+        return jsonify(error='Forbidden'), 403
 
     slip_id, token_type = use_slip_token(token)
     if not slip_id:
@@ -672,8 +677,6 @@ def api_scan_slip_qr():
     if not slip:
         return jsonify(error='Routing slip not found'), 404
 
-    user_id     = get_jwt_identity()
-    user        = get_user_by_username(user_id)
     actor       = (user.get('full_name') or user_id) if user else user_id
     user_office = (user.get('office') or '') if user else ''
     slip_no     = slip.get('slip_no', slip_id)
@@ -722,7 +725,7 @@ def api_scan_slip_qr():
     if token_type == 'SLIP_RECEIVE':
         from services.qr import get_base_url
         base_url      = get_base_url(request.host_url)
-        new_rel_token = create_slip_token(slip_id, 'SLIP_RELEASE')
+        new_rel_token = slip.get('rel_token')
         png           = make_slip_qr_png(
             new_rel_token, 'SLIP_RELEASE',
             slip_no, destination, from_office,
