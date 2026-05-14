@@ -712,7 +712,8 @@ def api_scan_slip_qr():
     if not slip:
         return jsonify(error='Routing slip not found'), 404
 
-    override_office = data.get('override_office', '').strip()
+    override_office     = data.get('override_office', '').strip()
+    override_recipient  = data.get('override_recipient', '').strip()
 
     actor       = (user.get('full_name') or user_id) if user else user_id
     user_office = (user.get('office') or '') if user else ''
@@ -738,6 +739,8 @@ def api_scan_slip_qr():
         elif token_type == 'SLIP_RELEASE':
             from_office = override_office
 
+    receiver = override_recipient if override_recipient else actor
+
     docs_updated = []
     for doc_id in slip.get('doc_ids', []):
         doc = get_doc(doc_id)
@@ -746,14 +749,14 @@ def api_scan_slip_qr():
 
         if token_type == 'SLIP_RECEIVE':
             doc['status']        = 'Received'
-            doc['received_by']   = actor
+            doc['received_by']   = receiver
             doc['date_received'] = now_str()[:16].replace('T', ' ')
             doc['updated_at']    = now_str()
             doc['updated_by']    = user_id
             doc.setdefault('travel_log', []).append({
                 'office':    destination,
                 'action':    'Received via Routing Slip',
-                'officer':   actor,
+                'officer':   receiver,
                 'timestamp': now_str(),
                 'remarks':   f'Auto-updated via routing slip {slip_no} RECEIVE scan.',
             })

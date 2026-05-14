@@ -16,7 +16,7 @@ import { CameraView, Camera } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import api from '../../lib/api';
 import { useAuthStore } from '../../lib/store';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 type ScanState = 'scanning' | 'loading' | 'error';
 
@@ -60,6 +60,12 @@ export default function Scanner() {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
 
+  const { data: offices = [] } = useQuery<any[]>({
+    queryKey: ['offices'],
+    queryFn: () => api.get('/offices').then((r: any) => r.data ?? []),
+    staleTime: 1000 * 60 * 5,
+  });
+
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanState, setScanState] = useState<ScanState>('scanning');
   const [torchOn, setTorchOn] = useState(false);
@@ -75,7 +81,9 @@ export default function Scanner() {
   const [slipResult, setSlipResult]       = useState<SlipScanResult | null>(null);
   const [slipActioning, setSlipActioning] = useState(false);
   const [slipPreview, setSlipPreview]         = useState<SlipPreview | null>(null);
-  const [adminOfficeOverride, setAdminOfficeOverride] = useState('');
+  const [adminOfficeOverride, setAdminOfficeOverride]       = useState('');
+  const [adminRecipientOverride, setAdminRecipientOverride] = useState('');
+  const [officePickerOpen, setOfficePickerOpen]             = useState(false);
 
   const lastScanned = useRef<string>('');
   const cooldown = useRef<boolean>(false);
@@ -189,6 +197,9 @@ export default function Scanner() {
       if (user?.role === 'admin' && adminOfficeOverride.trim()) {
         payload.override_office = adminOfficeOverride.trim();
       }
+      if (user?.role === 'admin' && adminRecipientOverride.trim()) {
+        payload.override_recipient = adminRecipientOverride.trim();
+      }
       const res = await api.post('/qr/slip-scan', payload);
       const result: SlipScanResult = res.data;
       Vibration.vibrate([0, 80, 60, 80]);
@@ -218,9 +229,24 @@ export default function Scanner() {
       setAcceptedDocTitle(null);
       setSlipPreview(null);
       setAdminOfficeOverride('');
+      setAdminRecipientOverride('');
+      setOfficePickerOpen(false);
       setSlipResult(null);
     }, delay);
   };
+
+  useEffect(() => {
+    if (!slipPreview || !offices.length) return;
+    const targetOfficeName = slipPreview.token_type === 'SLIP_RECEIVE'
+      ? slipPreview.slip.destination
+      : slipPreview.slip.from_office;
+    const match = offices.find((o: any) =>
+      o.office_name?.toLowerCase() === targetOfficeName?.toLowerCase()
+    );
+    if (match && (match as any).primary_recipient) {
+      setAdminRecipientOverride((match as any).primary_recipient);
+    }
+  }, [slipPreview, offices]);
 
   // ── Camera scan ───────────────────────────────────────────────────────────
 
@@ -710,15 +736,69 @@ export default function Scanner() {
                 </View>
                 {user?.role === 'admin' && (
                   <View style={{ marginTop: 12 }}>
+                    {/* Office picker */}
                     <Text style={[styles.docMetaLabel, { marginBottom: 6 }]}>
                       {slipPreview?.token_type === 'SLIP_RECEIVE' ? 'Receiving Office' : 'Releasing Office'}
                     </Text>
+                    <TouchableOpacity
+                      onPress={() => setOfficePickerOpen(v => !v)}
+                      style={{
+                        backgroundColor: '#fff',
+                        borderRadius: 10,
+                        borderWidth: 1.5,
+                        borderColor: officePickerOpen ? '#0038A8' : '#E2E8F0',
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 4,
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, color: adminOfficeOverride ? '#1E293B' : '#CBD5E1' }} numberOfLines={1}>
+                        {adminOfficeOverride || 'Select office…'}
+                      </Text>
+                      <Text style={{ color: '#94A3B8', fontSize: 12 }}>{officePickerOpen ? '▲' : '▼'}</Text>
+                    </TouchableOpacity>
+                    {officePickerOpen && (
+                      <ScrollView
+                        style={{ maxHeight: 180, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 8 }}
+                        nestedScrollEnabled
+                      >
+                        {offices.map((o: any, i: number) => (
+                          <TouchableOpacity
+                            key={o.office_slug || i}
+                            onPress={() => {
+                              setAdminOfficeOverride(o.office_name);
+                              setAdminRecipientOverride(o.primary_recipient || '');
+                              setOfficePickerOpen(false);
+                            }}
+                            style={{
+                              paddingHorizontal: 12,
+                              paddingVertical: 10,
+                              borderBottomWidth: i < offices.length - 1 ? 1 : 0,
+                              borderBottomColor: '#F1F5F9',
+                              backgroundColor: adminOfficeOverride === o.office_name ? '#EFF6FF' : '#fff',
+                            }}
+                          >
+                            <Text style={{ fontSize: 13, color: '#1E293B', fontWeight: adminOfficeOverride === o.office_name ? '700' : '400' }}>
+                              {o.office_name}
+                            </Text>
+                            {o.primary_recipient ? (
+                              <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                                📥 {o.primary_recipient}
+                              </Text>
+                            ) : null}
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    )}
+                    {/* Recipient override */}
+                    <Text style={[styles.docMetaLabel, { marginBottom: 6, marginTop: 8 }]}>Received By</Text>
                     <TextInput
-                      value={adminOfficeOverride}
-                      onChangeText={setAdminOfficeOverride}
-                      placeholder={slipPreview?.token_type === 'SLIP_RECEIVE'
-                        ? slipPreview?.slip?.destination || 'Enter receiving office'
-                        : slipPreview?.slip?.from_office || 'Enter releasing office'}
+                      value={adminRecipientOverride}
+                      onChangeText={setAdminRecipientOverride}
+                      placeholder="Recipient name or username"
                       placeholderTextColor="#CBD5E1"
                       style={{
                         backgroundColor: '#fff',

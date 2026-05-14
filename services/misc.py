@@ -397,8 +397,8 @@ def save_routing_slip(slip: dict):
                                 doc_ids, notes, slip_date, time_from, time_to,
                                 recv_token, rel_token, from_office, type, logged_at, status,
                                 is_rerouted, archived_at, archived_by, rerouted_to,
-                                original_slip_id, original_slip_no, rerouted_from)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                original_slip_id, original_slip_no, rerouted_from, recipient)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                            ON CONFLICT (id) DO UPDATE SET
                                destination = EXCLUDED.destination,
                                doc_ids     = EXCLUDED.doc_ids,
@@ -418,7 +418,8 @@ def save_routing_slip(slip: dict):
                                rerouted_to = EXCLUDED.rerouted_to,
                                original_slip_id = EXCLUDED.original_slip_id,
                                original_slip_no = EXCLUDED.original_slip_no,
-                               rerouted_from = EXCLUDED.rerouted_from""",
+                               rerouted_from    = EXCLUDED.rerouted_from,
+                               recipient        = EXCLUDED.recipient""",
                         (
                             slip["id"], slip["slip_no"], slip["destination"],
                             slip["prepared_by"], json.dumps(slip["doc_ids"]),
@@ -436,6 +437,7 @@ def save_routing_slip(slip: dict):
                             slip.get("original_slip_id", ""),
                             slip.get("original_slip_no", ""),
                             slip.get("rerouted_from", ""),
+                            slip.get("recipient", ""),
                         )
                     )
                 conn.commit()

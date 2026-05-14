@@ -930,8 +930,8 @@ function submitRouting() {
     var hasEmpty = groupKeys.some(function(k) { return k === '(No Referred To)'; });
     if (hasEmpty) {
       showToast('Some documents have no "Referred To". Enter a destination manually.', 'warning');
-      var el = document.getElementById('route-dest');
-      el.focus(); el.style.borderColor = '#FCA5A5'; el.style.background = 'rgba(220,38,38,.15)';
+      var el = document.getElementById('route-dest-btn');
+      el.style.borderColor = '#FCA5A5'; el.style.background = 'rgba(220,38,38,.15)';
       setTimeout(function() { el.style.borderColor = ''; el.style.background = ''; }, 2500);
       return;
     }
@@ -940,8 +940,8 @@ function submitRouting() {
   if (!useGrouped) {
     var dest = manualDest || groupingInfo.referredTo || '';
     if (!dest) {
-      var el = document.getElementById('route-dest');
-      el.focus(); el.style.borderColor = '#FCA5A5'; el.style.background = 'rgba(220,38,38,.15)';
+      var el = document.getElementById('route-dest-btn');
+      el.style.borderColor = '#FCA5A5'; el.style.background = 'rgba(220,38,38,.15)';
       setTimeout(function() { el.style.borderColor = ''; el.style.background = ''; }, 2500);
       showToast('Please enter a destination office.', 'warning'); return;
     }
@@ -956,6 +956,7 @@ function submitRouting() {
     document.getElementById('routing-slip-date').value  = document.getElementById('slip-date').value;
     document.getElementById('routing-time-from').value  = document.getElementById('time-from').value;
     document.getElementById('routing-time-to').value    = document.getElementById('time-to').value;
+    document.getElementById('routing-recipient').value  = (document.getElementById('route-recipient').value || '').trim();
     document.getElementById('routing-form').submit();
     return;
   }
@@ -976,6 +977,7 @@ function submitRouting() {
   addHidden('grouped_slip_date', document.getElementById('slip-date').value);
   addHidden('grouped_time_from', document.getElementById('time-from').value);
   addHidden('grouped_time_to',   document.getElementById('time-to').value);
+  addHidden('recipient',         (document.getElementById('route-recipient').value || '').trim());
   form.action = '/routing-slip/create-grouped';
   form.submit();
 }

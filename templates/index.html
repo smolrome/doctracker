@@ -19,6 +19,7 @@ var serverSessionData = {
 {# ── DATA INJECTIONS ── #}
 {% set actual_office = current_office if current_office else session.get('office', 'Personnel') %}
 <script type="application/json" id="offices-data">{{ offices_dict | tojson | safe }}</script>
+<script type="application/json" id="saved-offices-data">{{ saved_offices | tojson | safe }}</script>
 <script type="application/json" id="sorted-offices">{{ sorted_offices | tojson | safe }}</script>
 <script type="application/json" id="current-office-data">"{{ actual_office }}"</script>
 <script type="application/json" id="current-user-data">{{ current_user_name | tojson | safe }}</script>
@@ -537,11 +538,28 @@ var serverSessionData = {
     </div>
     <div class="rp-fields">
       <div class="rp-field">
-        <label for="route-dest">📍 Destination Office *</label>
-        <input type="text" class="rp-input" id="route-dest"
-          placeholder="e.g. Budget Section, HR Unit…"
-          list="office-suggestions" autocomplete="off"
-          oninput="document.getElementById('modal-dest-preview').textContent=this.value||'(enter below)'"/>
+        <label>📍 Destination Office *</label>
+        <div style="position:relative;" id="office-dd-wrap">
+          <button type="button" id="route-dest-btn"
+            class="rp-input"
+            onclick="toggleOfficeDd()"
+            style="width:100%;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#fff;">
+            <span id="route-dest-display" style="color:#94A3B8;">Select office…</span>
+            <span id="route-dest-arrow" style="color:#94A3B8;font-size:11px;">▼</span>
+          </button>
+          <div id="office-dd-list"
+            style="display:none;position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;
+                   background:#fff;border:1.5px solid #CBD5E1;border-radius:10px;z-index:999;margin-top:4px;
+                   box-shadow:0 4px 16px rgba(0,0,0,.1);">
+          </div>
+        </div>
+        <input type="hidden" id="route-dest"/>
+      </div>
+      <div class="rp-field">
+        <label for="route-recipient">👤 Received By <span class="rp-optional">(optional)</span></label>
+        <input type="text" class="rp-input" id="route-recipient"
+          placeholder="Auto-filled from office assignment"
+          autocomplete="off"/>
       </div>
       <div class="rp-field">
         <label for="slip-date">📅 Slip Date</label>
@@ -654,6 +672,7 @@ var serverSessionData = {
   <input type="hidden" name="slip_date"   id="routing-slip-date"/>
   <input type="hidden" name="time_from"   id="routing-time-from"/>
   <input type="hidden" name="time_to"     id="routing-time-to"/>
+  <input type="hidden" name="recipient"   id="routing-recipient"/>
   <input type="hidden" name="csrf_token"  value="{{ csrf_token }}"/>
 </form>
 
@@ -703,6 +722,81 @@ document.addEventListener('DOMContentLoaded', function() {
     el.className = 'age-badge ' + (days <= 60 ? 'age-warn' : 'age-old');
   });
 });
+</script>
+
+{# ── Office dropdown for routing slip ── #}
+<script>
+(function() {
+  var _savedOffices = [];
+  try {
+    _savedOffices = JSON.parse(document.getElementById('saved-offices-data').textContent || '[]');
+  } catch(e) {}
+
+  function buildOfficeDd() {
+    var list = document.getElementById('office-dd-list');
+    if (!list) return;
+    list.innerHTML = '';
+    _savedOffices.forEach(function(o, i) {
+      var item = document.createElement('div');
+      item.style.cssText = 'padding:10px 14px;cursor:pointer;border-bottom:' + (i < _savedOffices.length - 1 ? '1px solid #F1F5F9' : 'none') + ';';
+      item.onmouseenter = function() { this.style.background = '#F8FAFC'; };
+      item.onmouseleave = function() { this.style.background = ''; };
+      var name = document.createElement('div');
+      name.textContent = o.office_name;
+      name.style.cssText = 'font-size:13px;color:#1E293B;font-weight:600;';
+      item.appendChild(name);
+      var pr = o.primary_recipient_name || o.primary_recipient || '';
+      if (pr) {
+        var sub = document.createElement('div');
+        sub.textContent = '📥 ' + pr;
+        sub.style.cssText = 'font-size:11px;color:#64748B;margin-top:2px;';
+        item.appendChild(sub);
+      }
+      item.onclick = function() { selectOffice(o.office_name, pr); };
+      list.appendChild(item);
+    });
+  }
+
+  window.toggleOfficeDd = function() {
+    var list  = document.getElementById('office-dd-list');
+    var arrow = document.getElementById('route-dest-arrow');
+    if (!list) return;
+    if (list.style.display === 'none') {
+      buildOfficeDd();
+      list.style.display = 'block';
+      if (arrow) arrow.textContent = '▲';
+      setTimeout(function() {
+        document.addEventListener('click', closeOfficeDdOutside);
+      }, 0);
+    } else {
+      list.style.display = 'none';
+      if (arrow) arrow.textContent = '▼';
+    }
+  };
+
+  function closeOfficeDdOutside(e) {
+    var wrap = document.getElementById('office-dd-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      var list  = document.getElementById('office-dd-list');
+      var arrow = document.getElementById('route-dest-arrow');
+      if (list)  list.style.display = 'none';
+      if (arrow) arrow.textContent  = '▼';
+      document.removeEventListener('click', closeOfficeDdOutside);
+    }
+  }
+
+  window.selectOffice = function(name, recipient) {
+    document.getElementById('route-dest').value               = name;
+    document.getElementById('route-dest-display').textContent = name;
+    document.getElementById('route-dest-display').style.color = '#1E293B';
+    document.getElementById('route-dest-arrow').textContent   = '▼';
+    document.getElementById('office-dd-list').style.display   = 'none';
+    document.getElementById('modal-dest-preview').textContent = name;
+    var recip = document.getElementById('route-recipient');
+    if (recip) recip.value = recipient || '';
+    document.removeEventListener('click', closeOfficeDdOutside);
+  };
+})();
 </script>
 
 {% endblock %}

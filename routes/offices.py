@@ -188,6 +188,7 @@ def create_routing_slip():
     doc_ids_raw = request.form.get("doc_ids", "").strip()
     destination = request.form.get("destination", "").strip()
     notes       = request.form.get("notes", "").strip()
+    recipient   = request.form.get("recipient", "").strip()
 
     if not doc_ids_raw or not destination:
         flash("Please select documents and enter a destination office.", "error")
@@ -227,6 +228,7 @@ def create_routing_slip():
         "created_at":   now_str(),
         "recv_token":   recv_token,
         "rel_token":    rel_token,
+        "recipient":    recipient,
         "status":       "Routed",
     }
     save_routing_slip(slip)
@@ -275,6 +277,7 @@ def create_grouped_routing_slip():
     
     grouped_routing_raw = request.form.get("grouped_routing", "").strip()
     notes = request.form.get("grouped_notes", "").strip()
+    recipient = request.form.get("recipient", "").strip()
     slip_date = request.form.get("grouped_slip_date", "").strip() or now_str()[:10]
     time_from = request.form.get("grouped_time_from", "").strip()
     time_to = request.form.get("grouped_time_to", "").strip()
@@ -331,6 +334,7 @@ def create_grouped_routing_slip():
             "created_at": now_str(),
             "recv_token": recv_token,
             "rel_token": rel_token,
+            "recipient": recipient,
             "status": "Routed",
             "is_grouped": True,
         }
