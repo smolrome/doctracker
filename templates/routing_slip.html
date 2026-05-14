@@ -167,25 +167,22 @@
       </div>
 
       <!-- ── Routing slip QR codes ─────────────────────────────────────────── -->
-      {% if slip.recv_token or slip.rel_token %}
-      <!-- DEBUG: recv={{ slip.recv_token }} rel={{ slip.rel_token }} -->
+      {% if recv_qr_b64 or rel_qr_b64 %}
       <hr class="qr-divider"/>
       <div class="qr-row">
-        {% if slip.recv_token %}
-        {% set recv_url = request.host_url ~ 'slip-scan/' ~ slip.recv_token %}
+        {% if recv_qr_b64 %}
         <div class="qr-block">
           <img class="qr-img"
-               src="https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl={{ recv_url | urlencode }}"
+               src="data:image/png;base64,{{ recv_qr_b64 }}"
                alt="Receive QR"/>
           <div class="qr-label">Scan to Receive</div>
           <div class="qr-sub">{{ slip.slip_no }} · RECEIVE</div>
         </div>
         {% endif %}
-        {% if slip.rel_token %}
-        {% set rel_url = request.host_url ~ 'slip-scan/' ~ slip.rel_token %}
+        {% if rel_qr_b64 %}
         <div class="qr-block">
           <img class="qr-img qr-img-sm"
-               src="https://chart.googleapis.com/chart?chs=120x120&cht=qr&chl={{ rel_url | urlencode }}"
+               src="data:image/png;base64,{{ rel_qr_b64 }}"
                alt="Release QR"/>
           <div class="qr-label">Scan to Release</div>
           <div class="qr-sub">{{ slip.slip_no }} · RELEASE</div>

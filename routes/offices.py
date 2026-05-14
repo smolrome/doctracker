@@ -405,7 +405,34 @@ def view_routing_slip(slip_id):
               username=session.get("username","?"), ip=_ip())
     except Exception:
         pass
-    return render_template("routing_slip.html", slip=slip, docs=docs)
+    import base64
+    from services.qr import make_slip_qr_png, get_base_url
+
+    base_url    = get_base_url(request.host_url)
+    slip_no     = slip.get('slip_no', slip_id)
+    destination = slip.get('destination', '')
+    from_office = slip.get('from_office', '')
+
+    recv_qr_b64 = ''
+    if slip.get('recv_token'):
+        try:
+            png = make_slip_qr_png(slip['recv_token'], 'SLIP_RECEIVE',
+                                   slip_no, destination, from_office, base_url=base_url)
+            recv_qr_b64 = base64.b64encode(png).decode()
+        except Exception:
+            pass
+
+    rel_qr_b64 = ''
+    if slip.get('rel_token'):
+        try:
+            png = make_slip_qr_png(slip['rel_token'], 'SLIP_RELEASE',
+                                   slip_no, destination, from_office, base_url=base_url)
+            rel_qr_b64 = base64.b64encode(png).decode()
+        except Exception:
+            pass
+
+    return render_template("routing_slip.html", slip=slip, docs=docs,
+                           recv_qr_b64=recv_qr_b64, rel_qr_b64=rel_qr_b64)
 
 
 @offices_bp.route("/routed-documents")
