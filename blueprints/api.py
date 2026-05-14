@@ -1520,6 +1520,60 @@ def api_release_document(doc_id):
     return jsonify(serialize(doc))
 
 
+@api_bp.route('/documents/<doc_id>/receive-from-client', methods=['POST'])
+@jwt_required()
+def receive_from_client(doc_id):
+    """
+    Called when a staff member scans a Released document QR from a different office.
+    The client has hand-carried the physical document to a new office.
+    Creates a new leg in the travel log without breaking existing history.
+    """
+    user_id = get_jwt_identity()
+    user = get_user_by_username(user_id)
+    if not user or user.get('role') == 'client':
+        return jsonify(error='Forbidden'), 403
+
+    doc = get_doc(doc_id)
+    if not doc:
+        return jsonify(error='Document not found'), 404
+
+    # Only works on Released documents
+    if doc.get('status') != 'Released':
+        return jsonify(error='Document must be Released to receive from client'), 400
+
+    # Prevent same office from using this (use normal accept instead)
+    staff_office = (user.get('office') or '').strip().lower()
+    doc_office = (doc.get('logged_by_office') or '').strip().lower()
+    if staff_office and doc_office and staff_office == doc_office:
+        return jsonify(error='Document was released by your own office. Use normal workflow instead.'), 400
+
+    # Update document
+    doc['status'] = 'Received'
+    doc['received_by'] = user.get('full_name') or user_id
+    doc['date_received'] = now_str()[:16].replace('T', ' ')
+    doc['pending_at_office'] = user.get('office') or ''
+    doc['pending_at_staff'] = user_id
+    doc['transfer_status'] = 'accepted'
+    doc['updated_at'] = now_str()
+    doc['updated_by'] = user_id
+
+    doc.setdefault('travel_log', []).append({
+        'action': 'Received from Client',
+        'office': user.get('office') or '',
+        'officer': user.get('full_name') or user_id,
+        'timestamp': now_str(),
+        'remarks': f'Document hand-carried by client and received at {user.get("office") or "this office"}.'
+    })
+
+    save_doc(doc)
+
+    return jsonify(serialize({
+        'success': True,
+        'message': f'Document received at {user.get("office")}',
+        'doc': doc
+    }))
+
+
 @api_bp.route('/documents/<doc_id>/quick-note', methods=['POST'])
 @jwt_required()
 def api_quick_note(doc_id):

@@ -260,6 +260,15 @@ export default function DocumentDetail() {
     onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to save note.'),
   });
 
+  const receiveFromClientMutation = useMutation({
+    mutationFn: () => api.post(`/documents/${id}/receive-from-client`),
+    onSuccess: () => {
+      invalidate();
+      Alert.alert('Received', 'Document successfully received from client.');
+    },
+    onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to receive document.'),
+  });
+
   const handleDelete = () => {
     Alert.alert(
       'Delete Document',
@@ -800,6 +809,44 @@ export default function DocumentDetail() {
             <Text style={{ color: '#FDBA74', fontSize: 20 }}>›</Text>
           </TouchableOpacity>
         )}
+
+        {/* ── Receive from Client ───────────────────────────────────────── */}
+        {doc.status === 'Released' &&
+         user?.office &&
+         doc.logged_by_office &&
+         user.office.toLowerCase() !== doc.logged_by_office.toLowerCase() ? (
+          <View style={{
+            backgroundColor: '#007F3E',
+            borderRadius: 14,
+            padding: 16,
+            marginBottom: 12,
+          }}>
+            {receiveFromClientMutation.isPending ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() =>
+                  Alert.alert(
+                    'Confirm Receipt',
+                    `This document was released from ${doc.logged_by_office}. Receive it here at ${user.office}?`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Confirm', onPress: () => receiveFromClientMutation.mutate() },
+                    ]
+                  )
+                }
+              >
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, marginBottom: 4 }}>
+                  Receive from Client
+                </Text>
+                <Text style={{ color: '#D1FAE5', fontSize: 13 }}>
+                  Document was released from {doc.logged_by_office} — tap to receive here at {user.office}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : null}
 
         {/* ── Update Status ─────────────────────────────────────────────── */}
         <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: isAdmin ? 12 : 24, borderWidth: 0.5, borderColor: '#E2E8F0' }}>
