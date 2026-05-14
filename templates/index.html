@@ -538,15 +538,13 @@ var serverSessionData = {
     </div>
     <div class="rp-fields">
       <div class="rp-field">
-        <label>📍 Destination Office *</label>
+        <label for="route-dest-input">📍 Destination Office *</label>
         <div style="position:relative;" id="office-dd-wrap">
-          <button type="button" id="route-dest-btn"
-            class="rp-input"
-            onclick="toggleOfficeDd()"
-            style="width:100%;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#fff;">
-            <span id="route-dest-display" style="color:#94A3B8;">Select office…</span>
-            <span id="route-dest-arrow" style="color:#94A3B8;font-size:11px;">▼</span>
-          </button>
+          <input type="text" class="rp-input" id="route-dest-input"
+            placeholder="Type to search offices…"
+            autocomplete="off"
+            oninput="filterOfficeDd(this.value)"
+            style="width:100%;box-sizing:border-box;"/>
           <div id="office-dd-list"
             style="display:none;position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;
                    background:#fff;border:1.5px solid #CBD5E1;border-radius:10px;z-index:999;margin-top:4px;
@@ -732,13 +730,14 @@ document.addEventListener('DOMContentLoaded', function() {
     _savedOffices = JSON.parse(document.getElementById('saved-offices-data').textContent || '[]');
   } catch(e) {}
 
-  function buildOfficeDd() {
+  function renderOfficeDd(matches) {
     var list = document.getElementById('office-dd-list');
     if (!list) return;
     list.innerHTML = '';
-    _savedOffices.forEach(function(o, i) {
+    if (!matches.length) { list.style.display = 'none'; return; }
+    matches.forEach(function(o, i) {
       var item = document.createElement('div');
-      item.style.cssText = 'padding:10px 14px;cursor:pointer;border-bottom:' + (i < _savedOffices.length - 1 ? '1px solid #F1F5F9' : 'none') + ';';
+      item.style.cssText = 'padding:10px 14px;cursor:pointer;border-bottom:' + (i < matches.length - 1 ? '1px solid #F1F5F9' : 'none') + ';';
       item.onmouseenter = function() { this.style.background = '#F8FAFC'; };
       item.onmouseleave = function() { this.style.background = ''; };
       var name = document.createElement('div');
@@ -752,44 +751,52 @@ document.addEventListener('DOMContentLoaded', function() {
         sub.style.cssText = 'font-size:11px;color:#64748B;margin-top:2px;';
         item.appendChild(sub);
       }
-      item.onclick = function() { selectOffice(o.office_name, pr); };
+      // onmousedown + preventDefault keeps focus on input; onclick would fire after blur
+      item.onmousedown = function(e) { e.preventDefault(); selectOffice(o.office_name, pr); };
       list.appendChild(item);
     });
+    list.style.display = 'block';
   }
 
-  window.toggleOfficeDd = function() {
-    var list  = document.getElementById('office-dd-list');
-    var arrow = document.getElementById('route-dest-arrow');
-    if (!list) return;
-    if (list.style.display === 'none') {
-      buildOfficeDd();
-      list.style.display = 'block';
-      if (arrow) arrow.textContent = '▲';
-      setTimeout(function() {
-        document.addEventListener('click', closeOfficeDdOutside);
-      }, 0);
-    } else {
-      list.style.display = 'none';
-      if (arrow) arrow.textContent = '▼';
-    }
+  window.filterOfficeDd = function(q) {
+    var lower = (q || '').trim().toLowerCase();
+    var matches = lower
+      ? _savedOffices.filter(function(o) { return o.office_name.toLowerCase().indexOf(lower) !== -1; })
+      : _savedOffices.slice();
+    renderOfficeDd(matches);
   };
 
   function closeOfficeDdOutside(e) {
     var wrap = document.getElementById('office-dd-wrap');
     if (wrap && !wrap.contains(e.target)) {
-      var list  = document.getElementById('office-dd-list');
-      var arrow = document.getElementById('route-dest-arrow');
-      if (list)  list.style.display = 'none';
-      if (arrow) arrow.textContent  = '▼';
+      var list = document.getElementById('office-dd-list');
+      if (list) list.style.display = 'none';
       document.removeEventListener('click', closeOfficeDdOutside);
     }
   }
 
+  document.addEventListener('DOMContentLoaded', function() {
+    var inp = document.getElementById('route-dest-input');
+    if (!inp) return;
+    inp.addEventListener('focus', function() {
+      filterOfficeDd(this.value);
+      setTimeout(function() { document.addEventListener('click', closeOfficeDdOutside); }, 0);
+    });
+    inp.addEventListener('blur', function() {
+      // Free-typed value: mirror to hidden field (selectOffice already sets it for list picks)
+      var hidden = document.getElementById('route-dest');
+      if (hidden) hidden.value = this.value.trim();
+      setTimeout(function() {
+        var list = document.getElementById('office-dd-list');
+        if (list) list.style.display = 'none';
+      }, 150);
+    });
+  });
+
   window.selectOffice = function(name, recipient) {
+    var inp = document.getElementById('route-dest-input');
+    if (inp) inp.value = name;
     document.getElementById('route-dest').value               = name;
-    document.getElementById('route-dest-display').textContent = name;
-    document.getElementById('route-dest-display').style.color = '#1E293B';
-    document.getElementById('route-dest-arrow').textContent   = '▼';
     document.getElementById('office-dd-list').style.display   = 'none';
     document.getElementById('modal-dest-preview').textContent = name;
     var recip = document.getElementById('route-recipient');

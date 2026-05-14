@@ -919,7 +919,10 @@ function submitRouting() {
   var groups       = groupingInfo.groups;
   var groupKeys    = Object.keys(groups);
   var useGrouped   = groupKeys.length > 1;
-  var manualDest   = document.getElementById('route-dest').value.trim();
+  var _destInput  = document.getElementById('route-dest-input');
+  var _destHidden = document.getElementById('route-dest');
+  if (_destInput && _destHidden) _destHidden.value = _destInput.value.trim();
+  var manualDest  = _destHidden ? _destHidden.value.trim() : '';
 
   if (manualDest && useGrouped) {
     if (!confirm('Route ALL documents to "' + manualDest + '"?\n\nOK = all to manual destination.\nCancel = separate slips per "Referred To".')) return;
@@ -930,8 +933,8 @@ function submitRouting() {
     var hasEmpty = groupKeys.some(function(k) { return k === '(No Referred To)'; });
     if (hasEmpty) {
       showToast('Some documents have no "Referred To". Enter a destination manually.', 'warning');
-      var el = document.getElementById('route-dest-btn');
-      el.style.borderColor = '#FCA5A5'; el.style.background = 'rgba(220,38,38,.15)';
+      var el = document.getElementById('route-dest-input');
+      el.focus(); el.style.borderColor = '#FCA5A5'; el.style.background = 'rgba(220,38,38,.15)';
       setTimeout(function() { el.style.borderColor = ''; el.style.background = ''; }, 2500);
       return;
     }
@@ -940,8 +943,8 @@ function submitRouting() {
   if (!useGrouped) {
     var dest = manualDest || groupingInfo.referredTo || '';
     if (!dest) {
-      var el = document.getElementById('route-dest-btn');
-      el.style.borderColor = '#FCA5A5'; el.style.background = 'rgba(220,38,38,.15)';
+      var el = document.getElementById('route-dest-input');
+      el.focus(); el.style.borderColor = '#FCA5A5'; el.style.background = 'rgba(220,38,38,.15)';
       setTimeout(function() { el.style.borderColor = ''; el.style.background = ''; }, 2500);
       showToast('Please enter a destination office.', 'warning'); return;
     }
