@@ -712,11 +712,31 @@ def api_scan_slip_qr():
     if not slip:
         return jsonify(error='Routing slip not found'), 404
 
+    override_office = data.get('override_office', '').strip()
+
     actor       = (user.get('full_name') or user_id) if user else user_id
     user_office = (user.get('office') or '') if user else ''
     slip_no     = slip.get('slip_no', slip_id)
     destination = slip.get('destination', user_office)
     from_office = slip.get('from_office', '')
+
+    # Office validation — staff only
+    if user.get('role') == 'staff':
+        if token_type == 'SLIP_RECEIVE':
+            expected = slip.get('destination', '')
+            if expected and user_office.lower() != expected.lower():
+                return jsonify(error=f"This slip is not for your office. It is addressed to {expected}."), 403
+        elif token_type == 'SLIP_RELEASE':
+            expected = slip.get('from_office', '')
+            if expected and user_office.lower() != expected.lower():
+                return jsonify(error=f"This slip was not sent from your office. It was sent from {expected}."), 403
+
+    # Admin override — replace destination/from_office for travel log attribution
+    if user.get('role') == 'admin' and override_office:
+        if token_type == 'SLIP_RECEIVE':
+            destination = override_office
+        elif token_type == 'SLIP_RELEASE':
+            from_office = override_office
 
     docs_updated = []
     for doc_id in slip.get('doc_ids', []):

@@ -74,7 +74,8 @@ export default function Scanner() {
   const [acceptedDocTitle, setAcceptedDocTitle] = useState<string | null>(null);
   const [slipResult, setSlipResult]       = useState<SlipScanResult | null>(null);
   const [slipActioning, setSlipActioning] = useState(false);
-  const [slipPreview, setSlipPreview]     = useState<SlipPreview | null>(null);
+  const [slipPreview, setSlipPreview]         = useState<SlipPreview | null>(null);
+  const [adminOfficeOverride, setAdminOfficeOverride] = useState('');
 
   const lastScanned = useRef<string>('');
   const cooldown = useRef<boolean>(false);
@@ -163,6 +164,11 @@ export default function Scanner() {
     setSlipActioning(true);
     try {
       const res = await api.post('/qr/slip-preview', { token });
+      const destination = res.data.slip?.destination || '';
+      const fromOffice  = res.data.slip?.from_office || '';
+      setAdminOfficeOverride(
+        res.data.token_type === 'SLIP_RECEIVE' ? destination : fromOffice
+      );
       setSlipPreview({ ...res.data, token });
     } catch (err: any) {
       const msg = err?.response?.data?.error || 'Could not read routing slip QR.';
@@ -179,7 +185,11 @@ export default function Scanner() {
     if (!slipPreview) return;
     setSlipActioning(true);
     try {
-      const res = await api.post('/qr/slip-scan', { token: slipPreview.token });
+      const payload: any = { token: slipPreview.token };
+      if (user?.role === 'admin' && adminOfficeOverride.trim()) {
+        payload.override_office = adminOfficeOverride.trim();
+      }
+      const res = await api.post('/qr/slip-scan', payload);
       const result: SlipScanResult = res.data;
       Vibration.vibrate([0, 80, 60, 80]);
       queryClient.invalidateQueries({ queryKey: ['routing-slips'] });
@@ -207,6 +217,7 @@ export default function Scanner() {
       setScannedDoc(null);
       setAcceptedDocTitle(null);
       setSlipPreview(null);
+      setAdminOfficeOverride('');
       setSlipResult(null);
     }, delay);
   };
@@ -697,6 +708,31 @@ export default function Scanner() {
                   <Text style={styles.docMetaLabel}>Documents</Text>
                   <Text style={styles.docMetaValue}>{slipPreview?.docs_count ?? 0}</Text>
                 </View>
+                {user?.role === 'admin' && (
+                  <View style={{ marginTop: 12 }}>
+                    <Text style={[styles.docMetaLabel, { marginBottom: 6 }]}>
+                      {slipPreview?.token_type === 'SLIP_RECEIVE' ? 'Receiving Office' : 'Releasing Office'}
+                    </Text>
+                    <TextInput
+                      value={adminOfficeOverride}
+                      onChangeText={setAdminOfficeOverride}
+                      placeholder={slipPreview?.token_type === 'SLIP_RECEIVE'
+                        ? slipPreview?.slip?.destination || 'Enter receiving office'
+                        : slipPreview?.slip?.from_office || 'Enter releasing office'}
+                      placeholderTextColor="#CBD5E1"
+                      style={{
+                        backgroundColor: '#fff',
+                        borderRadius: 10,
+                        borderWidth: 1.5,
+                        borderColor: '#E2E8F0',
+                        paddingHorizontal: 12,
+                        paddingVertical: 9,
+                        fontSize: 13,
+                        color: '#1E293B',
+                      }}
+                    />
+                  </View>
+                )}
               </View>
 
               <Text style={styles.receivePrompt}>
