@@ -6,6 +6,61 @@
   <!-- <title>Routing Slip {{ slip.slip_no }} — LAKAD</title> -->
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/routing_slip.css') }}"/>
+  <style>
+    /* ── Routing slip QR codes ───────────────────────────── */
+    .qr-row {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      margin: 18px 0 6px;
+    }
+    .qr-block {
+      text-align: center;
+    }
+    .qr-img {
+      display: block;
+      width: 160px;
+      height: 160px;
+      margin: 0 auto 6px;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+    }
+    .qr-img-sm {
+      width: 120px;
+      height: 120px;
+    }
+    .qr-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #1E293B;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+    .qr-sub {
+      font-size: 10px;
+      color: #64748B;
+      margin-top: 2px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .qr-divider {
+      border: none;
+      border-top: 1px dashed #CBD5E1;
+      margin: 18px 0 14px;
+    }
+    .btn-delete-slip {
+      background: #DC2626;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+    .btn-delete-slip:hover { background: #B91C1C; }
+    @media print { .btn-delete-slip { display: none !important; } }
+  </style>
 </head>
 <body>
 
@@ -18,6 +73,9 @@
   <div style="flex:1"></div>
   <a href="/" class="tb-back">← Dashboard</a>
   <button class="btn-print" onclick="window.print()">🖨️ Print Slip</button>
+  {% if session.get('role') == 'admin' %}
+  <button class="btn-delete-slip" onclick="deleteSlip('{{ slip.id }}')">🗑️ Delete Slip</button>
+  {% endif %}
 </div>
 
 <div class="page-wrap">
@@ -107,6 +165,35 @@
           <div class="route-val-to">{{ slip.destination }}</div>
         </div>
       </div>
+
+      <!-- ── Routing slip QR codes ─────────────────────────────────────────── -->
+      {% if slip.recv_token or slip.rel_token %}
+      <!-- DEBUG: recv={{ slip.recv_token }} rel={{ slip.rel_token }} -->
+      <hr class="qr-divider"/>
+      <div class="qr-row">
+        {% if slip.recv_token %}
+        {% set recv_url = request.host_url ~ 'slip-scan/' ~ slip.recv_token %}
+        <div class="qr-block">
+          <img class="qr-img"
+               src="https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl={{ recv_url | urlencode }}"
+               alt="Receive QR"/>
+          <div class="qr-label">Scan to Receive</div>
+          <div class="qr-sub">{{ slip.slip_no }} · RECEIVE</div>
+        </div>
+        {% endif %}
+        {% if slip.rel_token %}
+        {% set rel_url = request.host_url ~ 'slip-scan/' ~ slip.rel_token %}
+        <div class="qr-block">
+          <img class="qr-img qr-img-sm"
+               src="https://chart.googleapis.com/chart?chs=120x120&cht=qr&chl={{ rel_url | urlencode }}"
+               alt="Release QR"/>
+          <div class="qr-label">Scan to Release</div>
+          <div class="qr-sub">{{ slip.slip_no }} · RELEASE</div>
+        </div>
+        {% endif %}
+      </div>
+      <hr class="qr-divider"/>
+      {% endif %}
 
       <!-- Rerouted Info Banner -->
       {% if slip.original_slip_no %}
@@ -241,5 +328,21 @@
 
 </div><!-- /page-wrap -->
 
+<script>
+function deleteSlip(slipId) {
+  if (!confirm('Permanently delete this routing slip? This cannot be undone.')) return;
+  fetch('/routing-slip/' + slipId + '/delete', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        alert('Routing slip deleted.');
+        window.location.href = '/';
+      } else {
+        alert('Error: ' + data.message);
+      }
+    })
+    .catch(() => alert('Request failed. Please try again.'));
+}
+</script>
 </body>
 </html>

@@ -693,11 +693,7 @@ def delete_routing_slip(slip_id):
     slip = get_routing_slip(slip_id)
     if not slip:
         return jsonify({"success": False, "message": "Routing slip not found."}), 404
-    
-    # Only allow deleting archived slips
-    if slip.get('status') != 'Archived':
-        return jsonify({"success": False, "message": "Only archived routing slips can be deleted."}), 403
-    
+
     result = delete_routing_slip(slip_id)
     if result:
         _audit("delete_routing_slip",
