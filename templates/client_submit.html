@@ -133,6 +133,18 @@
         </div>
       </div>
 
+      {% if office_staff_list %}
+      <div class="form-group" style="margin-top:0;">
+        <label>Which Staff Is This For? <span style="color:#6B7280;font-weight:400;font-size:12px;">(optional)</span></label>
+        <select name="referred_to_username" onchange="onStaffForChange(this)">
+          <option value="">— Any / auto-assign —</option>
+          {% for staff in office_staff_list %}
+          <option value="{{ staff.username }}">{{ staff.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
       <div class="form-group">
         <label>Description / Remarks</label>
         <textarea name="description" placeholder="Any additional details..."></textarea>
@@ -346,7 +358,13 @@
 {% endif %}
 
 <script>
-
+function onStaffForChange(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+  var fullName = opt.text.trim();
+  var rtInput = document.querySelector('input[name="referred_to"]');
+  if (rtInput && fullName) rtInput.value = fullName;
+}
 </script>
 
 </body>

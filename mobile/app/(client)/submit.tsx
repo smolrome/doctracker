@@ -47,6 +47,7 @@ type CartItem = {
   category: string;
   description: string;
   notes: string;
+  referred_to_username: string;
 };
 
 type SubmittedDoc = {
@@ -142,6 +143,11 @@ export default function Submit() {
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
 
+  // ── Per-document staff picker
+  const [referredToUsername, setReferredToUsername] = useState('');
+  const [referredToStaffName, setReferredToStaffName] = useState('');
+  const [staffForOpen, setStaffForOpen] = useState(false);
+
   // ── Submitted results
   const [submitted, setSubmitted] = useState<SubmittedDoc[]>([]);
 
@@ -166,6 +172,9 @@ export default function Submit() {
         setCategory('');
         setDescription('');
         setNotes('');
+        setReferredToUsername('');
+        setReferredToStaffName('');
+        setStaffForOpen(false);
         setShowForm(true);
         setSubmitted([]);
         setCatSearch('');
@@ -241,12 +250,13 @@ export default function Submit() {
         office_name:    selectedOffice?.office_name || '',
         selected_staff: selectedStaff || '',
         items: cart.map((item) => ({
-          doc_name:    item.doc_name,
-          referred_to: item.referred_to,
-          unit_office: item.unit_office,
-          category:    item.category,
-          description: item.description,
-          notes:       item.notes,
+          doc_name:             item.doc_name,
+          referred_to:          item.referred_to,
+          unit_office:          item.unit_office,
+          category:             item.category,
+          description:          item.description,
+          notes:                item.notes,
+          referred_to_username: item.referred_to_username || '',
         })),
       };
 
@@ -306,6 +316,10 @@ export default function Submit() {
     setOfficeSearch('');
     // Pre-fill referred_to with office name
     setReferredTo(office.office_name);
+    // Reset per-document staff picker
+    setReferredToUsername('');
+    setReferredToStaffName('');
+    setStaffForOpen(false);
   };
 
   const handleAddToCart = () => {
@@ -314,19 +328,23 @@ export default function Submit() {
     if (!selectedOffice) { Alert.alert('Required', 'Please select an office first.'); return; }
     if (cart.length >= 50) { Alert.alert('Limit Reached', 'Maximum 50 documents per submission.'); return; }
     setCart((prev) => [...prev, {
-      tmp_id:      uid(),
-      doc_name:    docName.trim(),
-      unit_office: unitOffice.trim(),
-      referred_to: referredTo.trim(),
-      category:    category.trim(),
-      description: description.trim(),
-      notes:       notes.trim(),
+      tmp_id:               uid(),
+      doc_name:             docName.trim(),
+      unit_office:          unitOffice.trim(),
+      referred_to:          referredTo.trim(),
+      category:             category.trim(),
+      description:          description.trim(),
+      notes:                notes.trim(),
+      referred_to_username: referredToUsername.trim(),
     }]);
     // Reset doc fields but keep office-related ones
     setDocName('');
     setCategory('');
     setDescription('');
     setNotes('');
+    setReferredToUsername('');
+    setReferredToStaffName('');
+    setStaffForOpen(false);
     setShowForm(false);
   };
 
@@ -404,6 +422,9 @@ export default function Submit() {
     setCategory('');
     setDescription('');
     setNotes('');
+    setReferredToUsername('');
+    setReferredToStaffName('');
+    setStaffForOpen(false);
     setShowForm(true);
     setSubmitted([]);
     setCatSearch('');
@@ -831,6 +852,78 @@ export default function Submit() {
                     />
                   </View>
                 </View>
+
+                {/* Which Staff Is This For? — optional per-document staff picker */}
+                {staffList.length > 0 && (
+                  <View style={{ marginBottom: 14 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
+                      Which Staff Is This For?{' '}
+                      <Text style={{ color: '#94A3B8', fontWeight: '400', textTransform: 'none', fontSize: 11 }}>(optional)</Text>
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setStaffForOpen(!staffForOpen)}
+                      style={{
+                        backgroundColor: '#F8FAFC', borderRadius: 10, borderWidth: 1.5,
+                        borderColor: referredToUsername ? '#0038A8' : '#E2E8F0',
+                        paddingHorizontal: 14, paddingVertical: 12,
+                        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                      }}
+                    >
+                      <Text style={{ color: referredToUsername ? '#1E293B' : '#CBD5E1', fontSize: 14, flex: 1 }}>
+                        {referredToStaffName || '— Any / auto-assign —'}
+                      </Text>
+                      {staffForOpen
+                        ? <ChevronUp size={14} color={referredToUsername ? '#0038A8' : '#94A3B8'} />
+                        : <ChevronDown size={14} color={referredToUsername ? '#0038A8' : '#94A3B8'} />}
+                    </TouchableOpacity>
+                    {staffForOpen && (
+                      <View style={{
+                        backgroundColor: '#fff', borderRadius: 10, marginTop: 4,
+                        borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden',
+                      }}>
+                        {/* Clear / auto-assign option */}
+                        <TouchableOpacity
+                          onPress={() => { setReferredToUsername(''); setReferredToStaffName(''); setStaffForOpen(false); }}
+                          style={{
+                            paddingHorizontal: 14, paddingVertical: 11,
+                            borderBottomWidth: 0.5, borderBottomColor: '#F1F5F9',
+                            backgroundColor: !referredToUsername ? '#EFF6FF' : '#fff',
+                          }}
+                        >
+                          <Text style={{ color: !referredToUsername ? '#0038A8' : '#64748B', fontSize: 13, fontStyle: 'italic' }}>
+                            — Any / auto-assign —
+                          </Text>
+                        </TouchableOpacity>
+                        {staffList.map((s) => {
+                          const isSelected = referredToUsername === s.username;
+                          return (
+                            <TouchableOpacity
+                              key={s.username}
+                              onPress={() => {
+                                setReferredToUsername(s.username);
+                                setReferredToStaffName(s.full_name || s.username);
+                                // Auto-fill referred_to with the staff's full name
+                                setReferredTo(s.full_name || s.username);
+                                setStaffForOpen(false);
+                              }}
+                              style={{
+                                paddingHorizontal: 14, paddingVertical: 11,
+                                borderBottomWidth: 0.5, borderBottomColor: '#F1F5F9',
+                                backgroundColor: isSelected ? '#EFF6FF' : '#fff',
+                                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                              }}
+                            >
+                              <Text style={{ color: isSelected ? '#0038A8' : '#1E293B', fontWeight: isSelected ? '700' : '500', fontSize: 14 }}>
+                                {s.full_name || s.username}
+                              </Text>
+                              {isSelected && <CheckCircle size={16} color="#0038A8" />}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                )}
 
                 {/* Description / Remarks */}
                 <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
