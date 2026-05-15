@@ -1380,9 +1380,11 @@ def accept_document(doc_id):
     if not is_authorized:
         return jsonify({"ok": False, "error": "You are not authorized to accept this document."}), 403
 
-    # Allow acceptance as long as the doc hasn't been accepted yet.
-    # transfer_status may be "pending" or absent (legacy docs) — both are valid.
-    if doc.get("accepted_by"):
+    # Allow acceptance as long as the doc isn't currently in an accepted state.
+    # Checking transfer_status (not accepted_by) ensures that after a transfer
+    # resets transfer_status to "pending", Staff B can accept even if accepted_by
+    # was previously set by the primary recipient.
+    if doc.get("transfer_status") == "accepted":
         return jsonify({"ok": False, "error": "This document has already been accepted."}), 400
 
     try:
