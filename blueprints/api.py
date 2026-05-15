@@ -3277,32 +3277,12 @@ def api_client_submit_mobile():
     sender_name = user.get('full_name') or user_id
 
     for item in items[:50]:
-        doc_name = (item.get('doc_name') or '').strip()
-        unit_office = (item.get('unit_office') or '').strip()
-        referred_to = (item.get('referred_to') or '').strip()
+        doc_name             = (item.get('doc_name') or '').strip()
+        unit_office          = (item.get('unit_office') or '').strip()
+        referred_to          = (item.get('referred_to') or '').strip()
+        referred_to_username = (item.get('referred_to_username') or '').strip()
         if not doc_name or not unit_office or not referred_to:
             continue
-
-        # Per-document staff override: if the client picked a specific staff
-        # member for this document, use that instead of the batch-level staff.
-        doc_ref_username = (item.get('referred_to_username') or '').strip()
-        if doc_ref_username:
-            doc_staff_user = next(
-                (u for u in all_users if u.get('username') == doc_ref_username),
-                None
-            )
-            if doc_staff_user:
-                doc_staff      = doc_ref_username
-                doc_staff_name = doc_staff_user.get('full_name') or doc_ref_username
-                doc_office     = doc_staff_user.get('office') or office_name
-            else:
-                doc_staff      = assigned_staff
-                doc_staff_name = assigned_staff_name
-                doc_office     = office_name
-        else:
-            doc_staff      = assigned_staff
-            doc_staff_name = assigned_staff_name
-            doc_office     = office_name
 
         doc = {
             'id':                    str(uuid.uuid4())[:8].upper(),
@@ -3331,20 +3311,26 @@ def api_client_submit_mobile():
             'submitted_by_name':     sender_name,
             'target_office_slug':    office_slug,
             'target_office_name':    office_name,
-            'pending_at_staff':      doc_staff,
-            'pending_at_staff_name': doc_staff_name,
-            'pending_at_office':     doc_office,
-            'transfer_status':       'pending' if (doc_staff or office_name) else '',
+            'pending_at_staff':      assigned_staff,
+            'pending_at_staff_name': assigned_staff_name,
+            'pending_at_office':     office_name,
+            'transfer_status':       'pending' if (assigned_staff or office_name) else '',
+            'intended_for_username': referred_to_username,
+            'intended_for_name':     next(
+                (u.get('full_name') or u.get('username') for u in all_users
+                 if u.get('username') == referred_to_username),
+                ''
+            ),
         }
         doc['travel_log'].append({
             'office':    office_name or unit_office or 'Client',
-            'action':    'Document Submitted by Client - Pending at ' + (doc_staff_name or doc_staff or 'Office'),
+            'action':    'Document Submitted by Client - Pending at ' + (assigned_staff_name or assigned_staff or 'Office'),
             'officer':   sender_name,
             'timestamp': doc['created_at'],
             'remarks':   (
                 f'Submitted via mobile app. '
                 f'Target office: {office_name or "General"}. '
-                f'Assigned to: {doc_staff_name or doc_staff or "Any staff"}.'
+                f'Assigned to: {assigned_staff_name or assigned_staff or "Any staff"}.'
             ),
         })
         insert_doc(doc)

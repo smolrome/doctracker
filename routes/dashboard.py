@@ -1310,6 +1310,10 @@ def get_pending_documents():
         if ps and not d.get('pending_at_staff_name'):
             ps_user = _gub(ps)
             d['pending_at_staff_name'] = (ps_user.get('full_name') or ps) if ps_user else ps
+        ifu = d.get('intended_for_username')
+        if ifu and not d.get('intended_for_name'):
+            ifu_user = _gub(ifu)
+            d['intended_for_name'] = (ifu_user.get('full_name') or ifu) if ifu_user else ifu
     return jsonify(pending)
 
 

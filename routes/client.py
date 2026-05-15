@@ -618,27 +618,9 @@ def submit():
 
                 # FIX 7 – hard cap just before insertion too
                 for item in cart[:_MAX_BATCH]:
-                    # Per-document staff override: if the client picked a specific
-                    # staff member for this document, use that instead of the
-                    # batch-level assigned_staff.
-                    doc_ref_username = item.get("referred_to_username", "").strip()
-                    if doc_ref_username:
-                        doc_staff_user = next(
-                            (u for u in all_users if u.get("username") == doc_ref_username),
-                            None
-                        )
-                        if doc_staff_user:
-                            doc_staff      = doc_ref_username
-                            doc_staff_name = doc_staff_user.get("full_name") or doc_ref_username
-                            doc_office     = doc_staff_user.get("office") or office_name
-                        else:
-                            doc_staff      = assigned_staff
-                            doc_staff_name = assigned_staff_name
-                            doc_office     = office_name
-                    else:
-                        doc_staff      = assigned_staff
-                        doc_staff_name = assigned_staff_name
-                        doc_office     = office_name
+                    doc_staff      = assigned_staff
+                    doc_staff_name = assigned_staff_name
+                    doc_office     = office_name
 
                     doc = {
                         "id":                    str(uuid.uuid4())[:8].upper(),
@@ -671,6 +653,12 @@ def submit():
                         "pending_at_staff_name": doc_staff_name,
                         "pending_at_office":     doc_office,
                         "transfer_status":       "pending" if doc_staff or office_name else "",
+                        "intended_for_username": item.get("referred_to_username", "").strip(),
+                        "intended_for_name":     next(
+                            (u.get("full_name") or u.get("username") for u in all_users
+                             if u.get("username") == item.get("referred_to_username", "").strip()),
+                            ""
+                        ),
                     }
                     doc["travel_log"].append({
                         "office":    office_name or item["unit_office"] or "Client",

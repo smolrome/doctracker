@@ -481,12 +481,12 @@ function reloadPendingDocs() {
       listContainer.innerHTML = docs.map(function (doc) {
         var docId = doc.id || doc.doc_id;
         _pendingDocStaffMap[docId] = {
-          staff:     doc.pending_at_staff      || '',
-          staffName: doc.pending_at_staff_name || doc.pending_at_staff || '',
+          staff:     doc.intended_for_username || '',
+          staffName: doc.intended_for_name     || '',
           office:    doc.pending_at_office     || '',
         };
-        var forLine = (doc.pending_at_staff_name || doc.pending_at_staff)
-          ? '<br><strong style="color:#0038A8;">For:</strong> ' + (doc.pending_at_staff_name || doc.pending_at_staff)
+        var forLine = doc.intended_for_name
+          ? '<br><strong style="color:#0038A8;">Intended for:</strong> ' + doc.intended_for_name
           : '';
         return '<div class="pending-doc-card">' +
           '<div class="pending-doc-top">' +

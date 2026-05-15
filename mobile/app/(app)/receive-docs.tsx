@@ -27,6 +27,8 @@ type PendingDoc = {
   pending_at_staff?: string;
   pending_at_staff_name?: string;
   pending_at_office?: string;
+  intended_for_username?: string;
+  intended_for_name?: string;
   updated_at?: string;
   updated_by?: string;
   travel_log?: { officer?: string; office?: string; timestamp?: string; action?: string }[];
@@ -137,16 +139,16 @@ export default function ReceiveDocs() {
   const acceptMutation = useMutation({
     mutationFn: (doc: PendingDoc) => api.post(`/documents/${doc.id}/accept`),
     onSuccess: (_, acceptedDoc) => {
-      const staffUsername = acceptedDoc.pending_at_staff || '';
-      const staffName     = acceptedDoc.pending_at_staff_name || staffUsername;
-      if (staffUsername && staffUsername !== user?.username) {
+      const intendedUsername = acceptedDoc.intended_for_username || '';
+      const intendedName     = acceptedDoc.intended_for_name || intendedUsername;
+      if (intendedUsername && intendedUsername !== user?.username) {
         Alert.alert(
           'Forward to Intended Recipient?',
-          `This document was intended for ${staffName}. Transfer it to them now?`,
+          `This document was intended for ${intendedName}. Transfer it to them now?`,
           [
             {
-              text: `Transfer to ${staffName}`,
-              onPress: () => transferMutation.mutate({ docId: acceptedDoc.id, toStaff: staffUsername }),
+              text: `Transfer to ${intendedName}`,
+              onPress: () => transferMutation.mutate({ docId: acceptedDoc.id, toStaff: intendedUsername }),
             },
             {
               text: 'Choose Staff',
@@ -263,10 +265,10 @@ export default function ReceiveDocs() {
               </Text>
             </View>
           ) : null}
-          {doc.pending_at_staff && doc.pending_at_staff !== user?.username ? (
+          {doc.intended_for_name ? (
             <Text style={{ fontSize: 11.5, color: '#0038A8', fontWeight: '600' }}>
-              <Text style={{ color: '#94A3B8', fontWeight: '400' }}>For: </Text>
-              {doc.pending_at_staff_name || doc.pending_at_staff}
+              <Text style={{ color: '#94A3B8', fontWeight: '400' }}>Intended for: </Text>
+              {doc.intended_for_name}
             </Text>
           ) : null}
           {doc.pending_at_office && !doc.pending_at_staff ? (
