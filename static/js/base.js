@@ -578,8 +578,9 @@ function submitAccept() {
     },
     body: 'csrf_token=' + encodeURIComponent(csrfToken),
   })
-  .then(function (r) {
-    if (r.ok) {
+  .then(function (r) { return r.json(); })
+  .then(function (data) {
+    if (data.ok) {
       closeAcceptModal();
       closePendingDocumentsModal();
       var currentUser  = window.CURRENT_USERNAME || '';
@@ -591,7 +592,7 @@ function submitAccept() {
         window.location.reload();
       }
     } else {
-      alert('Error accepting document. Please try again.');
+      alert(data.error || 'Error accepting document. Please try again.');
     }
   })
   .catch(function (err) {

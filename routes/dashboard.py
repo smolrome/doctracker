@@ -1365,28 +1365,25 @@ def accept_document(doc_id):
     
     doc = get_doc(doc_id)
     if not doc:
-        flash("Document not found.", "error")
-        return redirect(url_for("dashboard.index"))
-    
+        return jsonify({"ok": False, "error": "Document not found."}), 404
+
     # Verify this document is pending for the current user OR pending at their office
     pending_staff = doc.get("pending_at_staff", "")
     pending_office = doc.get("pending_at_office", "").strip().lower()
     current_office_lower = current_office.strip().lower()
-    
+
     is_authorized = (
         pending_staff == current_user  # Specifically assigned to this staff
         or (pending_staff == "" and pending_office == current_office_lower and current_office_lower)  # Pending at office, any staff can accept
     )
-    
+
     if not is_authorized:
-        flash(f"You are not authorized to accept this document. Document is pending for: {doc.get('pending_at_staff') or doc.get('pending_at_office')}", "error")
-        return redirect(url_for("dashboard.index"))
-    
+        return jsonify({"ok": False, "error": "You are not authorized to accept this document."}), 403
+
     # Allow acceptance as long as the doc hasn't been accepted yet.
     # transfer_status may be "pending" or absent (legacy docs) — both are valid.
     if doc.get("accepted_by"):
-        flash("This document has already been accepted.", "error")
-        return redirect(url_for("dashboard.index"))
+        return jsonify({"ok": False, "error": "This document has already been accepted."}), 400
 
     try:
         receiving_office = doc.get("pending_at_office", "") or doc.get("transferred_to_office", "")
@@ -1412,18 +1409,16 @@ def accept_document(doc_id):
                 f"Routing cycle {doc.get('routing_cycle', 0) + 1} in progress."
             ),
         })
-        
+
         save_doc(doc)
-        
+
         audit_log("doc_accepted",
                   f"doc_id={doc_id} accepted_by={current_user} doc_name={doc.get('doc_name','')[:60]}",
                   username=current_user, ip=get_client_ip())
-        
-        flash("Document accepted successfully!", "success")
-        return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
+
+        return jsonify({"ok": True, "doc_id": doc_id})
     except Exception as e:
-        flash(f"Error accepting document: {e}", "error")
-        return redirect(url_for("dashboard.index"))
+        return jsonify({"ok": False, "error": f"Error accepting document: {e}"}), 500
 
 
 @dashboard_bp.route("/reject-document/<doc_id>", methods=["POST"])
