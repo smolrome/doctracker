@@ -1304,7 +1304,7 @@ def get_pending_documents():
 
         pending = [d for d in pending if _pending_date(d) == filter_date]
 
-    from services.auth import get_user_by_username as _gub
+    from services.auth import get_user as _gub
     for d in pending:
         ps = d.get('pending_at_staff')
         if ps and not d.get('pending_at_staff_name'):
