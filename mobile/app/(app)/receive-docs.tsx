@@ -128,7 +128,7 @@ export default function ReceiveDocs() {
 
   const transferMutation = useMutation({
     mutationFn: ({ docId, toStaff }: { docId: string; toStaff: string }) =>
-      api.post(`/documents/${docId}/transfer`, { to_staff: toStaff }),
+      api.post(`/documents/${docId}/transfer`, { to_staff: toStaff, transfer_type: 'inside_office' }),
     onSuccess: () => {
       invalidate();
       Alert.alert('Done', 'Document accepted and forwarded successfully.');
@@ -138,9 +138,10 @@ export default function ReceiveDocs() {
 
   const acceptMutation = useMutation({
     mutationFn: (doc: PendingDoc) => api.post(`/documents/${doc.id}/accept`),
-    onSuccess: (_, acceptedDoc) => {
-      const intendedUsername = acceptedDoc.intended_for_username || '';
-      const intendedName     = acceptedDoc.intended_for_name || intendedUsername;
+    onSuccess: (response, acceptedDoc) => {
+      const doc            = response.data;
+      const intendedUsername = (doc?.intended_for_username || '');
+      const intendedName     = doc?.intended_for_name || intendedUsername;
       if (intendedUsername && intendedUsername !== user?.username) {
         Alert.alert(
           'Forward to Intended Recipient?',
