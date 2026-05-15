@@ -1433,6 +1433,14 @@ def api_transfer_document(doc_id):
     user_full_name = (user.get('full_name') or user_id) if user else user_id
     user_office = (user.get('office') or '') if user else ''
     recipient_display = to_staff or to_office
+    recipient_full_name = recipient_display
+    if to_staff:
+        target_user = next(
+            (u for u in get_all_users() if u.get('username') == to_staff),
+            None
+        )
+        if target_user:
+            recipient_full_name = target_user.get('full_name') or to_staff
 
     doc['transfer_status'] = 'pending'
     doc['pending_at_staff'] = to_staff
@@ -1445,10 +1453,10 @@ def api_transfer_document(doc_id):
 
     doc.setdefault('travel_log', []).append({
         'office': user_office,
-        'action': f'Transferred to {recipient_display}',
+        'action': f'Transferred to {recipient_full_name}',
         'officer': user_full_name,
         'timestamp': now_str(),
-        'remarks': remarks or f'Document transferred to {recipient_display} by {user_full_name}',
+        'remarks': remarks or f'Document transferred to {recipient_full_name} by {user_full_name}',
     })
 
     save_doc(doc)

@@ -915,7 +915,7 @@ def transfer_doc(doc_id):
             doc["routing_cycle"] = new_cycle
         else:
             # ── ROUTING FORWARD TO ANOTHER OFFICE ──
-            action_label = f"{'Transferred' if transfer_type == 'inside_office' else 'Routed'} — {status_note} (Cycle {cycle + 1})"
+            action_label = f"{'Transferred to ' + new_staff_full_name if transfer_type == 'inside_office' else 'Routed'} — {status_note} (Cycle {cycle + 1})"
             new_status   = "Transferred" if transfer_type == "inside_office" else "Routed"
 
         doc["status"]                = new_status
@@ -943,8 +943,7 @@ def transfer_doc(doc_id):
                 f"Re-routed from {new_staff_office or 'receiving office'} back to "
                 f"originating staff. Cycle {doc['routing_cycle']} completed."
                 if routing_back_to_origin else
-                f"Routed from {current_office} → {new_staff_office or 'N/A'} "
-                f"{status_note}. Previous status: {old_status}."
+                f"Transferred to {new_staff_full_name} ({new_staff_office or 'N/A'}) from {current_office}. Previous status: {old_status}."
             ),
         })
 
