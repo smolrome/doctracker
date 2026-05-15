@@ -477,8 +477,17 @@ function reloadPendingDocs() {
         listContainer.innerHTML = '<div class="modal-loading-state"><span>' + (isFiltered ? '🔍' : '✅') + '</span><p>' + (isFiltered ? 'No documents match these filters.' : 'No pending documents') + '</p></div>';
         return;
       }
+      _pendingDocStaffMap = {};
       listContainer.innerHTML = docs.map(function (doc) {
         var docId = doc.id || doc.doc_id;
+        _pendingDocStaffMap[docId] = {
+          staff:     doc.pending_at_staff      || '',
+          staffName: doc.pending_at_staff_name || doc.pending_at_staff || '',
+          office:    doc.pending_at_office     || '',
+        };
+        var forLine = (doc.pending_at_staff_name || doc.pending_at_staff)
+          ? '<br><strong style="color:#0038A8;">For:</strong> ' + (doc.pending_at_staff_name || doc.pending_at_staff)
+          : '';
         return '<div class="pending-doc-card">' +
           '<div class="pending-doc-top">' +
             '<div>' +
@@ -494,6 +503,7 @@ function reloadPendingDocs() {
             '<strong>From:</strong> ' + (doc.transferred_by || 'Unknown') + '<br>' +
             '<strong>Office:</strong> ' + (doc.transferred_to_office || doc.pending_at_office || 'N/A') + '<br>' +
             '<strong>Transferred:</strong> ' + (doc.transferred_at || 'Unknown') +
+            forLine +
           '</div>' +
           '<div class="pending-doc-actions">' +
             '<a href="/view/' + docId + '" target="_blank" class="btn btn-ghost btn-sm">👁 View</a>' +
@@ -540,16 +550,25 @@ function closePendingDocumentsModal() { closeModal('pending-documents-modal'); }
 
 
 // ── Accept flow — uses confirmation modal instead of browser confirm() ────
+var _pendingDocStaffMap  = {};
+var _acceptPendingStaff  = '';
+var _acceptPendingStaffName = '';
+var _acceptPendingOffice = '';
+
 function openAcceptModal(docId) {
   document.getElementById('accept-doc-id').value = docId;
+  var info = _pendingDocStaffMap[docId] || {};
+  _acceptPendingStaff     = info.staff     || '';
+  _acceptPendingStaffName = info.staffName || '';
+  _acceptPendingOffice    = info.office    || '';
   openModal('accept-confirm-modal');
 }
 
 function closeAcceptModal() { closeModal('accept-confirm-modal'); }
 
 function submitAccept() {
-  const docId      = document.getElementById('accept-doc-id').value;
-  const csrfToken  = window.CSRF_TOKEN || '';
+  var docId     = document.getElementById('accept-doc-id').value;
+  var csrfToken = window.CSRF_TOKEN || '';
 
   fetch('/accept-document/' + docId, {
     method: 'POST',
@@ -563,7 +582,14 @@ function submitAccept() {
     if (r.ok) {
       closeAcceptModal();
       closePendingDocumentsModal();
-      window.location.reload();
+      var currentUser  = window.CURRENT_USERNAME || '';
+      var pendingStaff = _acceptPendingStaff;
+      var staffName    = _acceptPendingStaffName || pendingStaff;
+      if (currentUser && pendingStaff && pendingStaff !== currentUser) {
+        _showPostAcceptDialog(docId, pendingStaff, staffName, _acceptPendingOffice);
+      } else {
+        window.location.reload();
+      }
     } else {
       alert('Error accepting document. Please try again.');
     }
@@ -572,6 +598,85 @@ function submitAccept() {
     console.error('Accept error:', err);
     alert('Network error. Please try again.');
   });
+}
+
+function _showPostAcceptDialog(docId, toStaff, staffName, office) {
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);">' +
+      '<h3 style="margin:0 0 8px;font-size:16px;font-weight:700;color:#1E293B;">Forward to Intended Recipient?</h3>' +
+      '<p style="margin:0 0 20px;font-size:14px;color:#64748B;">This document was intended for <strong>' + staffName + '</strong>. Transfer it to them now?</p>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;">' +
+        '<button id="_pad-confirm" style="background:#10B981;color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">✓ Transfer to ' + staffName + '</button>' +
+        '<button id="_pad-change" style="background:#F1F5F9;color:#0038A8;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">⇄ Choose different staff</button>' +
+        '<button id="_pad-skip" style="background:transparent;color:#94A3B8;border:1px solid #E2E8F0;border-radius:10px;padding:12px;font-size:14px;cursor:pointer;">Skip — I\'ll route manually</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  document.getElementById('_pad-confirm').addEventListener('click', function () {
+    overlay.remove();
+    _doTransferAfterAccept(docId, toStaff);
+  });
+  document.getElementById('_pad-change').addEventListener('click', function () {
+    overlay.remove();
+    _showStaffPicker(docId, office);
+  });
+  document.getElementById('_pad-skip').addEventListener('click', function () {
+    overlay.remove();
+    window.location.reload();
+  });
+}
+
+function _doTransferAfterAccept(docId, toStaff) {
+  var csrfToken = window.CSRF_TOKEN || '';
+  var body = new URLSearchParams();
+  body.append('new_staff', toStaff);
+  body.append('transfer_type', 'inside_office');
+  body.append('csrf_token', csrfToken);
+  fetch('/transfer/' + docId, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+    body: body,
+  })
+  .then(function () { window.location.reload(); })
+  .catch(function () { window.location.reload(); });
+}
+
+function _showStaffPicker(docId, office) {
+  fetch('/api/office-staff' + (office ? '?office=' + encodeURIComponent(office) : ''))
+    .then(function (r) { return r.json(); })
+    .then(function (staffList) {
+      var overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+      var rows = (staffList || []).map(function (s) {
+        return '<button class="_spd-btn" data-uname="' + s.username + '" style="display:block;width:100%;text-align:left;padding:12px 14px;border:1px solid #E2E8F0;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;margin-bottom:8px;">' +
+          (s.full_name || s.username) + ' <span style="color:#94A3B8;font-size:12px;">@' + s.username + '</span>' +
+        '</button>';
+      }).join('');
+      overlay.innerHTML =
+        '<div style="background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;max-height:70vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">' +
+            '<h3 style="margin:0;font-size:16px;font-weight:700;color:#1E293B;">Select Staff</h3>' +
+            '<button id="_spd-cancel" style="background:none;border:none;font-size:20px;color:#94A3B8;cursor:pointer;">✕</button>' +
+          '</div>' +
+          (rows || '<p style="color:#94A3B8;text-align:center;padding:20px 0;">No staff found.</p>') +
+        '</div>';
+      document.body.appendChild(overlay);
+      document.getElementById('_spd-cancel').addEventListener('click', function () {
+        overlay.remove();
+        window.location.reload();
+      });
+      overlay.querySelectorAll('._spd-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          overlay.remove();
+          _doTransferAfterAccept(docId, btn.getAttribute('data-uname'));
+        });
+      });
+    })
+    .catch(function () {
+      window.location.href = '/transfer/' + docId;
+    });
 }
 
 

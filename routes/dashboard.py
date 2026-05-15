@@ -1304,6 +1304,12 @@ def get_pending_documents():
 
         pending = [d for d in pending if _pending_date(d) == filter_date]
 
+    from services.auth import get_user_by_username as _gub
+    for d in pending:
+        ps = d.get('pending_at_staff')
+        if ps and not d.get('pending_at_staff_name'):
+            ps_user = _gub(ps)
+            d['pending_at_staff_name'] = (ps_user.get('full_name') or ps) if ps_user else ps
     return jsonify(pending)
 
 
@@ -1326,6 +1332,24 @@ def get_pending_count():
         count = sum(1 for d in docs if _is_pending_for(d, current_user, current_office))
 
     return jsonify({"count": count})
+
+
+@dashboard_bp.route("/api/office-staff")
+@login_required
+def api_office_staff_list():
+    """Return staff/admin users for a given office (session-protected).
+    Used by the post-accept forward dialog in base.js."""
+    office = request.args.get("office", "").strip().lower()
+    from services.auth import get_all_users
+    all_users = get_all_users()
+    staff = [
+        {"username": u.get("username", ""), "full_name": u.get("full_name") or u.get("username", "")}
+        for u in all_users
+        if u.get("role") in ("staff", "admin")
+        and (not office or (u.get("office") or "").strip().lower() == office)
+    ]
+    staff.sort(key=lambda s: (s.get("full_name") or "").lower())
+    return jsonify(staff)
 
 
 @dashboard_bp.route("/accept-document/<doc_id>", methods=["POST"])

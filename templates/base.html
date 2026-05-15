@@ -13,7 +13,10 @@
 </head>
 <body>
 {% if logged_in %}
-<script>window.CSRF_TOKEN = "{{ csrf_token }}";</script>
+<script>
+  window.CSRF_TOKEN = "{{ csrf_token }}";
+  window.CURRENT_USERNAME = "{{ session.get('username', '') }}";
+</script>
 {% endif %}
 
 <!-- ═══ NAV ═══ -->

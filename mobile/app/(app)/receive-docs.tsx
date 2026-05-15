@@ -23,12 +23,19 @@ type PendingDoc = {
   referred_to?: string;
   category?: string;
   status?: string;
+  target_office_slug?: string;
   pending_at_staff?: string;
   pending_at_staff_name?: string;
   pending_at_office?: string;
   updated_at?: string;
   updated_by?: string;
   travel_log?: { officer?: string; office?: string; timestamp?: string; action?: string }[];
+};
+
+type StaffMember = {
+  username: string;
+  full_name: string;
+  is_primary?: boolean;
 };
 
 function formatDate(ts?: string) {
@@ -53,6 +60,9 @@ export default function ReceiveDocs() {
   const [showFilters, setShowFilters] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [staffPickerDoc, setStaffPickerDoc]         = useState<PendingDoc | null>(null);
+  const [staffPickerList, setStaffPickerList]       = useState<StaffMember[] | null>(null);
+  const [staffPickerLoading, setStaffPickerLoading] = useState(false);
 
   // ── Data ──────────────────────────────────────────────────────────────────
 
@@ -100,11 +110,62 @@ export default function ReceiveDocs() {
     queryClient.invalidateQueries({ queryKey: ['stats'] });
   };
 
-  const acceptMutation = useMutation({
-    mutationFn: (docId: string) => api.post(`/documents/${docId}/accept`),
+  const openStaffPicker = async (doc: PendingDoc) => {
+    setStaffPickerDoc(doc);
+    setStaffPickerList(null);
+    setStaffPickerLoading(true);
+    try {
+      const slug = doc.target_office_slug || '_';
+      const res = await api.get(`/offices/${slug}/staff`);
+      setStaffPickerList((res.data ?? []) as StaffMember[]);
+    } catch {
+      setStaffPickerList([]);
+    }
+    setStaffPickerLoading(false);
+  };
+
+  const transferMutation = useMutation({
+    mutationFn: ({ docId, toStaff }: { docId: string; toStaff: string }) =>
+      api.post(`/documents/${docId}/transfer`, { to_staff: toStaff }),
     onSuccess: () => {
       invalidate();
-      Alert.alert('Accepted', 'Document accepted and marked as Received.');
+      Alert.alert('Done', 'Document accepted and forwarded successfully.');
+    },
+    onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Transfer failed.'),
+  });
+
+  const acceptMutation = useMutation({
+    mutationFn: (doc: PendingDoc) => api.post(`/documents/${doc.id}/accept`),
+    onSuccess: (_, acceptedDoc) => {
+      const staffUsername = acceptedDoc.pending_at_staff || '';
+      const staffName     = acceptedDoc.pending_at_staff_name || staffUsername;
+      if (staffUsername && staffUsername !== user?.username) {
+        Alert.alert(
+          'Forward to Intended Recipient?',
+          `This document was intended for ${staffName}. Transfer it to them now?`,
+          [
+            {
+              text: `Transfer to ${staffName}`,
+              onPress: () => transferMutation.mutate({ docId: acceptedDoc.id, toStaff: staffUsername }),
+            },
+            {
+              text: 'Choose Staff',
+              onPress: () => { invalidate(); openStaffPicker(acceptedDoc); },
+            },
+            {
+              text: 'Skip',
+              style: 'cancel',
+              onPress: () => {
+                invalidate();
+                Alert.alert('Accepted', 'Document accepted and marked as Received.');
+              },
+            },
+          ],
+        );
+      } else {
+        invalidate();
+        Alert.alert('Accepted', 'Document accepted and marked as Received.');
+      }
     },
     onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to accept.'),
   });
@@ -137,7 +198,7 @@ export default function ReceiveDocs() {
 
     Alert.alert('Accept Document', message, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Accept', onPress: () => acceptMutation.mutate(doc.id) },
+      { text: 'Accept', onPress: () => acceptMutation.mutate(doc) },
     ]);
   };
 
@@ -159,7 +220,7 @@ export default function ReceiveDocs() {
 
   const renderDoc = ({ item: doc }: { item: PendingDoc }) => {
     const transfer = lastTransferEntry(doc);
-    const isBusy = acceptMutation.isPending || rejectMutation.isPending;
+    const isBusy = acceptMutation.isPending || rejectMutation.isPending || transferMutation.isPending;
 
     return (
       <View style={{
@@ -203,8 +264,9 @@ export default function ReceiveDocs() {
             </View>
           ) : null}
           {doc.pending_at_staff && doc.pending_at_staff !== user?.username ? (
-            <Text style={{ fontSize: 11.5, color: '#64748B' }}>
-              <Text style={{ color: '#94A3B8' }}>For: </Text>{doc.pending_at_staff}
+            <Text style={{ fontSize: 11.5, color: '#0038A8', fontWeight: '600' }}>
+              <Text style={{ color: '#94A3B8', fontWeight: '400' }}>For: </Text>
+              {doc.pending_at_staff_name || doc.pending_at_staff}
             </Text>
           ) : null}
           {doc.pending_at_office && !doc.pending_at_staff ? (
@@ -447,6 +509,76 @@ export default function ReceiveDocs() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Staff Picker Modal ───────────────────────────────────────────── */}
+      <Modal
+        visible={staffPickerDoc !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { setStaffPickerDoc(null); setStaffPickerList(null); }}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+          <TouchableOpacity
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            onPress={() => { setStaffPickerDoc(null); setStaffPickerList(null); }}
+            activeOpacity={1}
+          />
+          <View style={{ backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '70%' }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 20 }} />
+            <Text style={{ fontSize: 17, fontWeight: '800', color: '#1E293B', marginBottom: 4 }}>Choose Staff</Text>
+            <Text style={{ color: '#64748B', fontSize: 13, marginBottom: 20 }}>
+              Select who to forward this document to
+            </Text>
+            {staffPickerLoading ? (
+              <ActivityIndicator size="large" color="#0038A8" style={{ marginVertical: 32 }} />
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {(staffPickerList ?? []).length === 0 ? (
+                  <Text style={{ color: '#94A3B8', textAlign: 'center', paddingVertical: 24 }}>No staff found.</Text>
+                ) : (
+                  (staffPickerList ?? []).map((s) => (
+                    <TouchableOpacity
+                      key={s.username}
+                      disabled={transferMutation.isPending}
+                      onPress={() => {
+                        const target = staffPickerDoc!;
+                        setStaffPickerDoc(null);
+                        setStaffPickerList(null);
+                        transferMutation.mutate({ docId: target.id, toStaff: s.username });
+                      }}
+                      style={{
+                        paddingVertical: 14,
+                        paddingHorizontal: 16,
+                        borderRadius: 12,
+                        marginBottom: 8,
+                        backgroundColor: '#fff',
+                        borderWidth: 1,
+                        borderColor: '#E2E8F0',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        opacity: transferMutation.isPending ? 0.5 : 1,
+                      }}
+                    >
+                      <View>
+                        <Text style={{ color: '#1E293B', fontWeight: '700', fontSize: 14 }}>
+                          {s.full_name || s.username}
+                        </Text>
+                        <Text style={{ color: '#94A3B8', fontSize: 12 }}>@{s.username}</Text>
+                      </View>
+                      {s.is_primary && (
+                        <View style={{ backgroundColor: '#FEF3C7', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
+                          <Text style={{ color: '#B45309', fontSize: 11, fontWeight: '700' }}>Assigned</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
