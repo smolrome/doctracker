@@ -1435,6 +1435,7 @@ def api_transfer_document(doc_id):
     recipient_display = to_staff or to_office
     recipient_full_name = recipient_display
     if to_staff:
+        from services.auth import get_all_users
         target_user = next(
             (u for u in get_all_users() if u.get('username') == to_staff),
             None
