@@ -256,6 +256,7 @@ document.getElementById('ss-btn-accept').addEventListener('click', async () => {
       const intendedUsername = overlay.dataset.intendedUsername || '';
       const intendedName     = overlay.dataset.intendedName     || '';
       if(intendedUsername && intendedUsername !== (window.CURRENT_USERNAME || '')){
+        setOverlayLoading(false);
         setTimeout(() => { showForwardStep(intendedUsername, intendedName, id); }, 800);
       } else {
         overlay.classList.remove('ss-overlay-visible');
