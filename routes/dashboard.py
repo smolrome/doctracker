@@ -1427,36 +1427,45 @@ def accept_document(doc_id):
 @login_required
 def reject_document(doc_id):
     """Reject a transferred document with a reason."""
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
     current_user = session.get("username", "")
     current_full_name = session.get("full_name", "")
     current_office = session.get("office", "") or ""
     rejection_reason = request.form.get("rejection_reason", "").strip()
-    
+
     if not rejection_reason:
+        if is_ajax:
+            return jsonify({"ok": False, "error": "Rejection reason is required"}), 400
         flash("Please provide a reason for rejection.", "error")
         return redirect(url_for("dashboard.index"))
-    
+
     doc = get_doc(doc_id)
     if not doc:
+        if is_ajax:
+            return jsonify({"ok": False, "error": "Document not found"}), 404
         flash("Document not found.", "error")
         return redirect(url_for("dashboard.index"))
-    
+
     # Verify this document is pending for the current user OR pending at their office
     pending_staff = doc.get("pending_at_staff", "")
     pending_office = doc.get("pending_at_office", "").strip().lower()
     current_office_lower = current_office.strip().lower()
-    
+
     is_authorized = (
         pending_staff == current_user  # Specifically assigned to this staff
         or (pending_staff == "" and pending_office == current_office_lower and current_office_lower)  # Pending at office, any staff can reject
     )
-    
+
     if not is_authorized:
+        if is_ajax:
+            return jsonify({"ok": False, "error": "Not authorized to reject this document"}), 403
         flash("You are not authorized to reject this document.", "error")
         return redirect(url_for("dashboard.index"))
-    
+
     # Allow rejection as long as the doc hasn't already been accepted.
     if doc.get("accepted_by"):
+        if is_ajax:
+            return jsonify({"ok": False, "error": "Document already accepted and cannot be rejected"}), 400
         flash("This document has already been accepted and cannot be rejected.", "error")
         return redirect(url_for("dashboard.index"))
 
@@ -1483,7 +1492,7 @@ def reject_document(doc_id):
     doc["logged_by"]         = original_sender
     doc["pending_at_office"] = ""
     doc["pending_at_staff"]  = ""
-    
+
     # Add to travel log
     doc.setdefault("travel_log", []).append({
         "office":    rejecting_office,
@@ -1492,13 +1501,15 @@ def reject_document(doc_id):
         "timestamp": now_str(),
         "remarks":   f"Document rejected by {current_full_name or current_user}. Reason: {rejection_reason}",
     })
-    
+
     save_doc(doc)
-    
+
     audit_log("doc_rejected",
               f"doc_id={doc_id} rejected_by={current_user} reason={rejection_reason[:50]} doc_name={doc.get('doc_name','')[:60]}",
               username=current_user, ip=get_client_ip())
-    
+
+    if is_ajax:
+        return jsonify({"ok": True})
     flash("Document rejected and returned to sender.", "success")
     return redirect(url_for("dashboard.index"))
 

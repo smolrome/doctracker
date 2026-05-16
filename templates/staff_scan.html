@@ -70,6 +70,53 @@
   .staff-btn:active { opacity: .8; }
   .staff-btn-found { background: #16A34A; color: #fff; }
   .staff-btn-back  { background: #F1F5F9; color: #334155; }
+
+  /* ── Quick-action overlay ─────────────────────────────── */
+  .ss-overlay {
+    position: fixed; inset: 0; z-index: 999;
+    background: rgba(0,0,0,0); pointer-events: none;
+    display: flex; align-items: flex-end;
+    transition: background .25s;
+  }
+  .ss-overlay.ss-overlay-visible { background: rgba(0,0,0,.55); pointer-events: auto; }
+  .ss-card {
+    background: #fff; width: 100%;
+    border-radius: 20px 20px 0 0;
+    padding: 20px 20px 32px;
+    transform: translateY(100%);
+    transition: transform .3s cubic-bezier(.32,.72,0,1);
+  }
+  .ss-overlay.ss-overlay-visible .ss-card { transform: translateY(0); }
+  .ss-card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+  .ss-card-title  { font-family:Outfit,sans-serif; font-size:16px; font-weight:800; color:#1E293B; }
+  .ss-card-ref    { font-size:13px; color:#64748B; margin-top:2px; }
+  .ss-status-badge { font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; white-space:nowrap; flex-shrink:0; }
+  .ss-status-pending     { background:#FEF9C3; color:#854D0E; }
+  .ss-status-received    { background:#DCFCE7; color:#166534; }
+  .ss-status-released    { background:#DBEAFE; color:#1E40AF; }
+  .ss-status-transferred { background:#F3E8FF; color:#6B21A8; }
+  .ss-status-routed      { background:#E0F2FE; color:#075985; }
+  .ss-status-rejected    { background:#FEE2E2; color:#991B1B; }
+  .ss-intended-row   { display:flex; align-items:center; gap:8px; background:#F8FAFC; border-radius:8px; padding:8px 12px; margin-bottom:14px; }
+  .ss-intended-label { font-size:12px; color:#64748B; }
+  .ss-intended-name  { font-size:13px; font-weight:700; color:#1E293B; }
+  .ss-actions { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+  .ss-action-btn {
+    display:flex; align-items:center; justify-content:center;
+    padding:13px 20px; border-radius:12px; border:none;
+    font-family:Outfit,sans-serif; font-size:15px; font-weight:700;
+    cursor:pointer; transition:opacity .15s;
+  }
+  .ss-action-btn:active   { opacity:.8; }
+  .ss-action-btn:disabled { opacity:.5; pointer-events:none; }
+  .ss-btn-accept  { background:#16A34A; color:#fff; }
+  .ss-btn-reject  { background:#FEE2E2; color:#991B1B; }
+  .ss-btn-receive { background:#0EA5E9; color:#fff; }
+  .ss-btn-view    { background:#F1F5F9; color:#334155; }
+  .ss-btn-cancel  { display:block; width:100%; padding:10px; background:none; border:none; font-family:Outfit,sans-serif; font-size:14px; color:#94A3B8; cursor:pointer; text-align:center; }
+  .ss-reject-title { font-family:Outfit,sans-serif; font-size:15px; font-weight:800; color:#1E293B; margin-bottom:10px; }
+  .ss-reject-input { width:100%; padding:12px; border:1.5px solid #E2E8F0; border-radius:10px; font-family:Outfit,sans-serif; font-size:14px; color:#1E293B; margin-bottom:12px; resize:vertical; box-sizing:border-box; }
+  @keyframes ss-spin { to { transform: rotate(360deg); } }
 </style>
 
 <div class="page-header">
@@ -100,6 +147,49 @@
   <div class="staff-btn-group">
     <a href="#" id="staff-result-btn" class="staff-btn staff-btn-found" style="display:none;">⚡ Open</a>
     <a href="/" class="staff-btn staff-btn-back">← Back to Dashboard</a>
+  </div>
+</div>
+
+<div id="ss-loader" style="display:none; position:fixed; inset:0; z-index:998; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:16px; padding:28px 36px; display:flex; flex-direction:column; align-items:center; gap:14px;">
+    <div style="width:36px; height:36px; border:3px solid #E2E8F0; border-top-color:#0038A8; border-radius:50%; animation:ss-spin 0.8s linear infinite;"></div>
+    <span style="font-size:14px; font-weight:600; color:#1E293B; font-family:Outfit,sans-serif;">Loading document...</span>
+  </div>
+</div>
+
+<div id="ss-overlay" class="ss-overlay">
+  <div class="ss-card">
+
+    <div id="ss-main-step">
+      <div class="ss-card-header">
+        <div style="min-width:0;flex:1;margin-right:12px;">
+          <div class="ss-card-title" id="ss-doc-name">Document Name</div>
+          <div class="ss-card-ref"   id="ss-doc-ref">Ref: —</div>
+        </div>
+        <span class="ss-status-badge" id="ss-doc-status"></span>
+      </div>
+      <div class="ss-intended-row" id="ss-intended-row">
+        <span class="ss-intended-label">Intended for</span>
+        <span class="ss-intended-name" id="ss-intended-name"></span>
+      </div>
+      <div class="ss-actions">
+        <button id="ss-btn-accept"         class="ss-action-btn ss-btn-accept">✅ Accept Document</button>
+        <button id="ss-btn-reject"         class="ss-action-btn ss-btn-reject">✕ Reject Document</button>
+        <button id="ss-btn-receive-client" class="ss-action-btn ss-btn-receive">📥 Receive from Client</button>
+        <button id="ss-btn-view"           class="ss-action-btn ss-btn-view">🔍 View Details</button>
+      </div>
+      <button id="ss-btn-cancel" class="ss-btn-cancel">Cancel — continue scanning</button>
+    </div>
+
+    <div id="ss-reject-step" style="display:none;">
+      <div class="ss-reject-title">Rejection Reason</div>
+      <textarea id="ss-reject-reason" class="ss-reject-input" placeholder="Enter reason for rejection..." rows="3"></textarea>
+      <div class="ss-actions">
+        <button id="ss-btn-reject-submit" class="ss-action-btn ss-btn-reject">Confirm Reject</button>
+        <button id="ss-btn-reject-back"   class="ss-action-btn ss-btn-view">← Back</button>
+      </div>
+    </div>
+
   </div>
 </div>
 

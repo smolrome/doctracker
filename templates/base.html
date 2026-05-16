@@ -16,6 +16,7 @@
 <script>
   window.CSRF_TOKEN = "{{ csrf_token }}";
   window.CURRENT_USERNAME = "{{ session.get('username', '') }}";
+  window.CURRENT_OFFICE   = "{{ session.get('office',   '') }}";
 </script>
 {% endif %}
 

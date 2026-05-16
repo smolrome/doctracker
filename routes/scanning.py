@@ -12,7 +12,7 @@ import base64
 import re
 import urllib.parse
 
-from flask import (Blueprint, flash, redirect, render_template,
+from flask import (Blueprint, flash, jsonify, redirect, render_template,
                    request, send_file, session, url_for)
 from io import BytesIO
 
@@ -293,6 +293,65 @@ Return ONLY a valid JSON object with these exact keys (use empty string if not f
 "date_received":"","date_released":"","notes":""}
 Return ONLY the JSON. No markdown, no explanation.
 """
+
+@scanning_bp.route("/api/doc-lookup/<doc_id>", methods=["GET"])
+@login_required
+def web_doc_lookup(doc_id):
+    """Session-authenticated doc lookup for the staff scanner overlay."""
+    doc = get_doc(doc_id)
+    if not doc or doc.get("deleted"):
+        return jsonify({"ok": False, "error": "Document not found"}), 404
+    return jsonify({
+        "ok":                    True,
+        "id":                    doc.get("id"),
+        "doc_id":                doc.get("doc_id"),
+        "doc_name":              doc.get("doc_name"),
+        "status":                doc.get("status"),
+        "transfer_status":       doc.get("transfer_status"),
+        "pending_at_staff":      doc.get("pending_at_staff", ""),
+        "pending_at_office":     doc.get("pending_at_office", ""),
+        "logged_by_office":      doc.get("logged_by_office", ""),
+        "intended_for_name":     doc.get("intended_for_name", ""),
+        "intended_for_username": doc.get("intended_for_username", ""),
+    })
+
+
+@scanning_bp.route("/web/receive-from-client/<doc_id>", methods=["POST"])
+@login_required
+def web_receive_from_client(doc_id):
+    """Session-authenticated receive-from-client for the staff scanner overlay."""
+    current_user   = session.get("username", "")
+    current_name   = session.get("full_name") or current_user
+    current_office = session.get("office", "") or ""
+    if session.get("role") == "client":
+        return jsonify({"ok": False, "error": "Forbidden"}), 403
+    doc = get_doc(doc_id)
+    if not doc:
+        return jsonify({"ok": False, "error": "Document not found"}), 404
+    if doc.get("status") != "Released":
+        return jsonify({"ok": False, "error": "Document must be Released to receive from client"}), 400
+    staff_office = current_office.strip().lower()
+    doc_office   = (doc.get("logged_by_office") or "").strip().lower()
+    if staff_office and doc_office and staff_office == doc_office:
+        return jsonify({"ok": False, "error": "Document was released by your own office"}), 400
+    doc["status"]            = "Received"
+    doc["received_by"]       = current_name
+    doc["date_received"]     = now_str()[:16].replace("T", " ")
+    doc["pending_at_office"] = current_office
+    doc["pending_at_staff"]  = current_user
+    doc["transfer_status"]   = "accepted"
+    doc["updated_at"]        = now_str()
+    doc["updated_by"]        = current_user
+    doc.setdefault("travel_log", []).append({
+        "action":    "Received from Client",
+        "office":    current_office,
+        "officer":   current_name,
+        "timestamp": now_str(),
+        "remarks":   f"Document hand-carried by client and received at {current_office or 'this office'}.",
+    })
+    save_doc(doc)
+    return jsonify({"ok": True, "message": f"Document received at {current_office}"})
+
 
 @scanning_bp.route("/staff-scan", methods=["GET"])
 @login_required
