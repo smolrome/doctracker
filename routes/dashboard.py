@@ -854,8 +854,10 @@ def bulk_update_status():
 @dashboard_bp.route("/transfer/<doc_id>", methods=["GET", "POST"])
 @login_required
 def transfer_doc(doc_id):
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
     doc = get_doc(doc_id)
     if not doc:
+        if is_ajax: return jsonify({"ok": False, "error": "Document not found"}), 404
         flash("Document not found.", "error")
         return redirect(url_for("dashboard.index"))
 
@@ -868,6 +870,7 @@ def transfer_doc(doc_id):
     is_accepted  = doc.get("accepted_by") == current_user
 
     if user_role != "admin" and not is_original and not is_current and not is_accepted:
+        if is_ajax: return jsonify({"ok": False, "error": "Not authorized to route this document"}), 403
         flash("You are not authorized to route this document.", "error")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
 
@@ -876,10 +879,12 @@ def transfer_doc(doc_id):
         new_staff     = request.form.get("new_staff", "").strip()
 
         if not new_staff:
+            if is_ajax: return jsonify({"ok": False, "error": "Please select a staff member"}), 400
             flash("Please select a staff member.", "error")
             return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
 
         if new_staff == current_user:
+            if is_ajax: return jsonify({"ok": False, "error": "You cannot route to yourself"}), 400
             flash("You cannot route to yourself.", "error")
             return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
 
@@ -887,6 +892,7 @@ def transfer_doc(doc_id):
         valid_staff = [u["username"] for u in all_users if u.get("role") != "client"]
 
         if new_staff not in valid_staff:
+            if is_ajax: return jsonify({"ok": False, "error": "Invalid staff member selected"}), 400
             flash("Invalid staff member selected.", "error")
             return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
 
@@ -966,6 +972,7 @@ def transfer_doc(doc_id):
                 f"{new_staff_office or 'N/A'} {status_note}.", "success"
             )
 
+        if is_ajax: return jsonify({"ok": True})
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id) + "?cart_cleared=1")
 
     # ── GET ──

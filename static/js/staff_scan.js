@@ -200,8 +200,10 @@ function showOverlay(id, doc){
   document.getElementById('ss-btn-reject').style.display         = showAccRej     ? '' : 'none';
   document.getElementById('ss-btn-receive-client').style.display = showReceiveCli ? '' : 'none';
 
-  // Store doc id for button handlers
-  overlay.dataset.docId = id;
+  // Store doc id and intended recipient for button handlers
+  overlay.dataset.docId           = id;
+  overlay.dataset.intendedUsername = doc.intended_for_username || '';
+  overlay.dataset.intendedName     = doc.intended_for_name     || '';
 
   // Reset to main step, clear reject textarea
   document.getElementById('ss-main-step').style.display  = '';
@@ -249,10 +251,16 @@ document.getElementById('ss-btn-accept').addEventListener('click', async () => {
     });
     const data = await res.json();
     if(data.ok){
-      overlay.classList.remove('ss-overlay-visible');
       showToast('✅ Document accepted!', 'success');
       speak('Document accepted successfully.');
-      setTimeout(dismissOverlay, 1500);
+      const intendedUsername = overlay.dataset.intendedUsername || '';
+      const intendedName     = overlay.dataset.intendedName     || '';
+      if(intendedUsername && intendedUsername !== (window.CURRENT_USERNAME || '')){
+        setTimeout(() => { showForwardStep(intendedUsername, intendedName, id); }, 800);
+      } else {
+        overlay.classList.remove('ss-overlay-visible');
+        setTimeout(dismissOverlay, 1500);
+      }
     } else {
       showToast('❌ ' + (data.error || 'Failed to accept'), 'error');
       setOverlayLoading(false);
@@ -340,5 +348,110 @@ document.getElementById('ss-btn-view').addEventListener('click', () => {
 });
 
 document.getElementById('ss-btn-cancel').addEventListener('click', dismissOverlay);
+
+// ── Forward step ──────────────────────────────────────────────────────────────
+function showForwardStep(toUsername, toName, docId){
+  document.getElementById('ss-main-step').style.display    = 'none';
+  document.getElementById('ss-reject-step').style.display  = 'none';
+  document.getElementById('ss-forward-step').style.display = '';
+  document.getElementById('ss-forward-name').textContent     = toName;
+  document.getElementById('ss-forward-name-btn').textContent = toName;
+  speak('Document accepted. Forward to ' + toName + '?');
+
+  document.getElementById('ss-btn-forward-confirm').onclick = async () => {
+    speak('Transferring to ' + toName);
+    setOverlayLoading(true);
+    const csrfToken = window.CSRF_TOKEN || '';
+    const body = new URLSearchParams();
+    body.append('new_staff', toUsername);
+    body.append('transfer_type', 'inside_office');
+    try {
+      const res  = await fetch('/transfer/' + docId, {
+        method: 'POST', credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': csrfToken },
+        body
+      });
+      const data = await res.json();
+      if(data.ok){
+        showToast('✅ Forwarded to ' + toName, 'success');
+        speak('Document forwarded to ' + toName);
+        setTimeout(dismissOverlay, 1500);
+      } else {
+        showToast('❌ ' + (data.error || 'Transfer failed'), 'error');
+        setOverlayLoading(false);
+      }
+    } catch(e){
+      showToast('❌ Transfer failed', 'error');
+      setOverlayLoading(false);
+    }
+  };
+
+  document.getElementById('ss-btn-forward-change').onclick = () => {
+    speak('Please choose a staff member.');
+    _showStaffPickerOverlay(docId);
+  };
+
+  document.getElementById('ss-btn-forward-skip').onclick = () => {
+    speak('Skipped. Document kept in queue.');
+    dismissOverlay();
+  };
+}
+
+function _showStaffPickerOverlay(docId){
+  const office = window.CURRENT_OFFICE || '';
+  fetch('/api/office-staff' + (office ? '?office=' + encodeURIComponent(office) : ''), { credentials: 'include' })
+    .then(r => r.json())
+    .then(staffList => {
+      const fwd = document.getElementById('ss-forward-step');
+      fwd.innerHTML =
+        '<div style="font-size:15px;font-weight:800;color:#1E293B;margin-bottom:14px;">Choose Staff</div>' +
+        '<div style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">' +
+        (staffList || []).map(s =>
+          '<button class="_spk-btn ss-action-btn ss-btn-view" data-uname="' + s.username + '" data-fname="' + (s.full_name || s.username) + '">' +
+            (s.full_name || s.username) +
+          '</button>'
+        ).join('') +
+        '</div>' +
+        '<button class="ss-btn-cancel" style="margin-top:10px;" id="_spk-back">← Back</button>';
+
+      document.getElementById('_spk-back').addEventListener('click', () => {
+        fwd.innerHTML = '';
+        showForwardStep(overlay.dataset.intendedUsername, overlay.dataset.intendedName, docId);
+      });
+
+      fwd.querySelectorAll('._spk-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const uname = btn.dataset.uname;
+          const fname = btn.dataset.fname;
+          speak('Transferring to ' + fname);
+          setOverlayLoading(true);
+          const csrfToken = window.CSRF_TOKEN || '';
+          const body = new URLSearchParams();
+          body.append('new_staff', uname);
+          body.append('transfer_type', 'inside_office');
+          try {
+            const res  = await fetch('/transfer/' + docId, {
+              method: 'POST', credentials: 'include',
+              headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': csrfToken },
+              body
+            });
+            const data = await res.json();
+            if(data.ok){
+              showToast('✅ Forwarded to ' + fname, 'success');
+              speak('Document forwarded to ' + fname);
+              setTimeout(dismissOverlay, 1500);
+            } else {
+              showToast('❌ ' + (data.error || 'Transfer failed'), 'error');
+              setOverlayLoading(false);
+            }
+          } catch(e){
+            showToast('❌ Transfer failed', 'error');
+            setOverlayLoading(false);
+          }
+        });
+      });
+    })
+    .catch(() => { showToast('❌ Could not load staff list', 'error'); });
+}
 
 startCamera();
