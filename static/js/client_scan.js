@@ -49,21 +49,57 @@ function tick(){
 }
 
 function onDetected(data){
-  const m = data.match(/\/receive\/([A-Z0-9]{8})/i);
-  if(m){
-    const url = '/receive/'+m[1].toUpperCase();
+  // ── /receive/<doc_id> ────────────────────────────────────────────────────
+  const mReceive = data.match(/\/receive\/([A-Z0-9]{8})/i);
+  if(mReceive){
+    const url = '/receive/'+mReceive[1].toUpperCase();
     scanning = false;
     statusEl.className = 'scan-status status-found';
     statusEl.textContent = '✅ Document found! Opening...';
     resultBtn.href = url;
-    resultBtn.textContent = '⚡ Open Document '+m[1].toUpperCase();
+    resultBtn.textContent = '⚡ Open Document '+mReceive[1].toUpperCase();
     resultBtn.style.display = 'flex';
     if(navigator.vibrate) navigator.vibrate([100,50,100]);
     setTimeout(()=>{ window.location.href = url; }, 1200);
-  } else {
-    lastDetected = null;
-    requestAnimationFrame(tick);
+    return;
   }
+
+  // ── /office-action/<slug>-sub  (office submission QR) ────────────────────
+  const mSub = data.match(/\/office-action\/([\w-]+-sub)/i);
+  if(mSub){
+    const action     = mSub[1].toLowerCase();
+    const url        = '/office-action/' + action;
+    const officeName = action.slice(0, -4).replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    scanning = false;
+    statusEl.className = 'scan-status status-found';
+    statusEl.textContent = '🏢 ' + officeName + ' — redirecting to submission...';
+    resultBtn.href = url;
+    resultBtn.textContent = '✓ Submit to ' + officeName;
+    resultBtn.style.display = 'flex';
+    if(navigator.vibrate) navigator.vibrate([100,50,100]);
+    setTimeout(()=>{ window.location.href = url; }, 1200);
+    return;
+  }
+
+  // ── /office-action/<slug>-reg  (office registration QR) ──────────────────
+  const mReg = data.match(/\/office-action\/([\w-]+-reg)/i);
+  if(mReg){
+    const action     = mReg[1].toLowerCase();
+    const url        = '/office-action/' + action;
+    const officeName = action.slice(0, -4).replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    scanning = false;
+    statusEl.className = 'scan-status status-found';
+    statusEl.textContent = '📝 ' + officeName + ' — redirecting to registration...';
+    resultBtn.href = url;
+    resultBtn.textContent = '📝 Register / Login for ' + officeName;
+    resultBtn.style.display = 'flex';
+    if(navigator.vibrate) navigator.vibrate([100,50,100]);
+    setTimeout(()=>{ window.location.href = url; }, 1200);
+    return;
+  }
+
+  lastDetected = null;
+  requestAnimationFrame(tick);
 }
 
 startCamera();

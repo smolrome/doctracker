@@ -33,15 +33,24 @@
     </div>
   </div>
 
-  <!-- Delete Button for Rejected Documents -->
-  {% if status == 'Rejected' %}
+  <!-- Action Card for Rejected / Pending Documents -->
+  {% if status in ('Rejected', 'Pending') %}
   <div class="card" style="background:#FEF2F2;border:2px solid #FECACA;">
     <div style="text-align:center;">
-      <p style="color:#991B1B;margin-bottom:12px;font-weight:600;">This document was rejected. Would you like to delete it?</p>
-      <form method="POST" action="/client/delete/{{ doc.id }}" onsubmit="return confirm('Move this document to trash?');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button type="submit" style="background:#DC2626;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-weight:700;cursor:pointer;font-size:15px;">🗑️ Move to Trash</button>
-      </form>
+      {% if status == 'Rejected' %}
+        <p style="color:#991B1B;margin-bottom:12px;font-weight:600;">This document was rejected. Would you like to delete it?</p>
+        <form method="POST" action="/client/delete/{{ doc.id }}" onsubmit="return confirm('Move this document to trash?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" style="background:#DC2626;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-weight:700;cursor:pointer;font-size:15px;">🗑️ Move to Trash</button>
+        </form>
+      {% else %}
+        <p style="color:#991B1B;margin-bottom:4px;font-weight:700;font-size:15px;">Cancel this submission?</p>
+        <p style="color:#B91C1C;margin-bottom:16px;font-size:13px;">This will move the document to trash. The office will no longer receive it.</p>
+        <form method="POST" action="/client/delete/{{ doc.id }}" onsubmit="return confirm('Cancel this submission and move it to trash? The office will no longer receive this document.');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" style="background:#DC2626;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-weight:700;cursor:pointer;font-size:15px;">✕ Cancel Submission</button>
+        </form>
+      {% endif %}
     </div>
   </div>
   {% endif %}
