@@ -7,18 +7,6 @@ let scanning = true, lastDetected = null;
 const c = document.createElement('canvas');
 const ctx = c.getContext('2d', { willReadFrequently: true });
 
-// ── Voice ─────────────────────────────────────────────────────────────────────
-function speak(text){
-  if(!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang   = 'en-PH';
-  u.rate   = 1.0;
-  u.pitch  = 1.0;
-  u.volume = 1.0;
-  window.speechSynthesis.speak(u);
-}
-
 // ── Camera ────────────────────────────────────────────────────────────────────
 async function startCamera(){
   try {
@@ -30,7 +18,6 @@ async function startCamera(){
     statusEl.textContent = '📷 Scanning — point at a QR code';
     statusEl.className = 'staff-scan-status staff-status-idle';
     requestAnimationFrame(tick);
-    speak('Scanner ready. Please scan a document QR code.');
   } catch(err) {
     statusEl.className = 'staff-scan-status staff-status-error';
     statusEl.textContent = '❌ Camera access denied';
@@ -78,7 +65,6 @@ function onDetected(data){
     if(navigator.vibrate) navigator.vibrate([100,50,100]);
     statusEl.className  = 'staff-scan-status staff-status-found';
     statusEl.textContent = '⏳ Document found — loading...';
-    speak('Document found. Loading...');
     document.getElementById('ss-loader').style.display = 'flex';
     fetchAndShowOverlay(id);
     return;
@@ -151,7 +137,6 @@ async function fetchAndShowOverlay(id){
     document.getElementById('ss-loader').style.display = 'none';
     statusEl.className  = 'staff-scan-status staff-status-error';
     statusEl.textContent = '❌ Could not load document. Redirecting...';
-    speak('Document not found. Redirecting.');
     setTimeout(() => { window.location.href = '/view/' + id; }, 1200);
   }
 }
@@ -213,11 +198,9 @@ function showOverlay(id, doc){
 
   // Show overlay
   overlay.classList.add('ss-overlay-visible');
-  speak('Document loaded. Please select an action.');
 }
 
 function dismissOverlay(){
-  speak('Cancelled. Ready to scan.');
   overlay.classList.remove('ss-overlay-visible');
   setOverlayLoading(false);
   lastDetected = null;
@@ -242,7 +225,6 @@ function showToast(msg, type){
 // ── Button handlers ───────────────────────────────────────────────────────────
 document.getElementById('ss-btn-accept').addEventListener('click', async () => {
   const id = overlay.dataset.docId;
-  speak('Document accepted.');
   setOverlayLoading(true);
   try {
     const res  = await fetch('/accept-document/' + id, {
@@ -252,7 +234,6 @@ document.getElementById('ss-btn-accept').addEventListener('click', async () => {
     const data = await res.json();
     if(data.ok){
       showToast('✅ Document accepted!', 'success');
-      speak('Document accepted successfully.');
       const intendedUsername = overlay.dataset.intendedUsername || '';
       const intendedName     = overlay.dataset.intendedName     || '';
       if(intendedUsername && intendedUsername !== (window.CURRENT_USERNAME || '')){
@@ -275,7 +256,6 @@ document.getElementById('ss-btn-accept').addEventListener('click', async () => {
 document.getElementById('ss-btn-reject').addEventListener('click', () => {
   document.getElementById('ss-main-step').style.display   = 'none';
   document.getElementById('ss-reject-step').style.display = '';
-  speak('Please enter a rejection reason.');
 });
 
 document.getElementById('ss-btn-reject-back').addEventListener('click', () => {
@@ -303,7 +283,6 @@ document.getElementById('ss-btn-reject-submit').addEventListener('click', async 
     if(data.ok){
       overlay.classList.remove('ss-overlay-visible');
       showToast('📤 Document rejected and returned to sender.', 'success');
-      speak('Document rejected.');
       setTimeout(dismissOverlay, 1500);
     } else {
       showToast('❌ ' + (data.error || 'Failed to reject'), 'error');
@@ -317,7 +296,6 @@ document.getElementById('ss-btn-reject-submit').addEventListener('click', async 
 
 document.getElementById('ss-btn-receive-client').addEventListener('click', async () => {
   const id = overlay.dataset.docId;
-  speak('Document received from client.');
   setOverlayLoading(true);
   try {
     const res  = await fetch('/web/receive-from-client/' + id, {
@@ -328,7 +306,6 @@ document.getElementById('ss-btn-receive-client').addEventListener('click', async
     if(data.ok){
       overlay.classList.remove('ss-overlay-visible');
       showToast('✅ ' + (data.message || 'Document received!'), 'success');
-      speak('Document received from client successfully.');
       setTimeout(dismissOverlay, 1500);
     } else {
       showToast('❌ ' + (data.error || 'Failed'), 'error');
@@ -357,10 +334,8 @@ function showForwardStep(toUsername, toName, docId){
   document.getElementById('ss-forward-step').style.display = '';
   document.getElementById('ss-forward-name').textContent     = toName;
   document.getElementById('ss-forward-name-btn').textContent = toName;
-  speak('Document accepted. Forward to ' + toName + '?');
 
   document.getElementById('ss-btn-forward-confirm').onclick = async () => {
-    speak('Transferring to ' + toName);
     setOverlayLoading(true);
     const csrfToken = window.CSRF_TOKEN || '';
     const body = new URLSearchParams();
@@ -375,7 +350,6 @@ function showForwardStep(toUsername, toName, docId){
       const data = await res.json();
       if(data.ok){
         showToast('✅ Forwarded to ' + toName, 'success');
-        speak('Document forwarded to ' + toName);
         setTimeout(dismissOverlay, 1500);
       } else {
         showToast('❌ ' + (data.error || 'Transfer failed'), 'error');
@@ -388,12 +362,10 @@ function showForwardStep(toUsername, toName, docId){
   };
 
   document.getElementById('ss-btn-forward-change').onclick = () => {
-    speak('Please choose a staff member.');
     _showStaffPickerOverlay(docId);
   };
 
   document.getElementById('ss-btn-forward-skip').onclick = () => {
-    speak('Skipped. Document kept in queue.');
     dismissOverlay();
   };
 }
@@ -424,7 +396,6 @@ function _showStaffPickerOverlay(docId){
         btn.addEventListener('click', async () => {
           const uname = btn.dataset.uname;
           const fname = btn.dataset.fname;
-          speak('Transferring to ' + fname);
           setOverlayLoading(true);
           const csrfToken = window.CSRF_TOKEN || '';
           const body = new URLSearchParams();
@@ -439,7 +410,6 @@ function _showStaffPickerOverlay(docId){
             const data = await res.json();
             if(data.ok){
               showToast('✅ Forwarded to ' + fname, 'success');
-              speak('Document forwarded to ' + fname);
               setTimeout(dismissOverlay, 1500);
             } else {
               showToast('❌ ' + (data.error || 'Transfer failed'), 'error');
