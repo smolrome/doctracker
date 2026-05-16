@@ -283,6 +283,7 @@ def api_get_documents():
         docs = [d for d in docs if
             d.get('logged_by') == user_id
             or d.get('accepted_by') == user_id
+            or d.get('accepted_by_username') == user_id
             or d.get('transferred_by') == user_id
             or d.get('pending_at_staff') == user_id
             or d.get('assigned_to') == user_id
@@ -1228,12 +1229,19 @@ def api_accept_document(doc_id):
             f'Routing cycle {new_cycle} in progress.'
         )
 
-    doc['transfer_status'] = 'accepted'
-    doc['status'] = 'Received'
-    doc['date_received'] = now_str()[:16].replace('T', ' ')
-    doc['accepted_by'] = accepted_by_label
-    doc['accepted_at'] = now_str()
-    doc['routing_cycle'] = new_cycle
+    doc['transfer_status']      = 'accepted'
+    doc['status']               = 'Received'
+    doc['date_received']        = now_str()[:16].replace('T', ' ')
+    doc['accepted_by']          = accepted_by_label
+    doc['accepted_by_username'] = user_id
+    doc['accepted_at']          = now_str()
+    doc['routing_cycle']        = new_cycle
+    if is_proxy:
+        doc['logged_by']        = pending_staff
+        doc['logged_by_office'] = proxy_target_user.get('office', '') if proxy_target_user else user_office
+    else:
+        doc['logged_by']        = user_id
+        doc['logged_by_office'] = user_office
 
     doc.setdefault('travel_log', []).append({
         'office': user_office or doc.get('pending_at_office', ''),
