@@ -947,9 +947,11 @@ def transfer_doc(doc_id):
             "timestamp": now_str(),
             "remarks":   (
                 f"Re-routed from {new_staff_office or 'receiving office'} back to "
-                f"originating staff. Cycle {doc['routing_cycle']} completed."
+                f"originating staff. Cycle {doc['routing_cycle']} completed. "
+                f"Transferred by {current_full_name}."
                 if routing_back_to_origin else
-                f"Transferred to {new_staff_full_name} ({new_staff_office or 'N/A'}) from {current_office}. Previous status: {old_status}."
+                f"Transferred to {new_staff_full_name} ({new_staff_office or 'N/A'}) from {current_office}. "
+                f"Previous status: {old_status}. Transferred by {current_full_name}."
             ),
         })
 

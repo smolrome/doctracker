@@ -1461,12 +1461,26 @@ def api_transfer_document(doc_id):
     doc['updated_at'] = now_str()
     doc['updated_by'] = user_id
 
+    old_status       = doc.get('status', '')
+    new_cycle        = doc.get('routing_cycle', 0) + 1
+    recipient_office = (target_user.get('office', '') if target_user else '') or to_office
+    action_label     = (
+        f"Transferred to {recipient_full_name} — (Inside Office) (Cycle {new_cycle})"
+        if transfer_type == 'inside_office' else
+        f"Routed to {recipient_full_name} — (Outside Office) (Cycle {new_cycle})"
+    )
+    remarks_text = (
+        remarks or
+        f"Transferred to {recipient_full_name} ({recipient_office or 'N/A'}) from {user_office}. "
+        f"Previous status: {old_status}. Transferred by {user_full_name}."
+    )
+
     doc.setdefault('travel_log', []).append({
-        'office': user_office,
-        'action': f'Transferred to {recipient_full_name}',
-        'officer': user_full_name,
+        'office':    recipient_office or user_office,
+        'action':    action_label,
+        'officer':   user_full_name,
         'timestamp': now_str(),
-        'remarks': remarks or f'Document transferred to {recipient_full_name} by {user_full_name}',
+        'remarks':   remarks_text,
     })
 
     save_doc(doc)

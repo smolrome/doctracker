@@ -15,6 +15,7 @@ import {
 import { CameraView, Camera } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import api from '../../lib/api';
+import { CheckCircle } from 'lucide-react-native';
 import { useAuthStore } from '../../lib/store';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -78,6 +79,8 @@ export default function Scanner() {
   const [rejectModal, setRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [acceptedDocTitle, setAcceptedDocTitle] = useState<string | null>(null);
+  const [forwardDoc, setForwardDoc] = useState<{ id: string; intendedUsername: string; intendedName: string } | null>(null);
+  const [forwardLoading, setForwardLoading] = useState(false);
   const [slipResult, setSlipResult]       = useState<SlipScanResult | null>(null);
   const [slipActioning, setSlipActioning] = useState(false);
   const [slipPreview, setSlipPreview]         = useState<SlipPreview | null>(null);
@@ -370,6 +373,13 @@ export default function Scanner() {
       queryClient.invalidateQueries({ queryKey: ['stats'] });
 
       const intendedUsername = doc?.intended_for_username || '';
+      console.log('FORWARD DEBUG:', JSON.stringify({
+        intended_for_username: doc?.intended_for_username,
+        intended_for_name:     doc?.intended_for_name,
+        intendedUsername,
+        currentUser:           user?.username,
+        shouldShowForward:     !!(intendedUsername && intendedUsername !== user?.username),
+      }));
 
       // Always show the success flash first
       const docTitle = scannedDoc.title || scannedDoc.tracking_number || 'Document';
@@ -377,10 +387,12 @@ export default function Scanner() {
       setAcceptedDocTitle(docTitle);
 
       if (intendedUsername && intendedUsername !== user?.username) {
-        // Navigate to document detail with forward dialog flag after the flash is visible
         setTimeout(() => {
-          router.push({ pathname: '/(app)/documents/[id]', params: { id: doc.id, showForward: '1' } });
-          resetScanner(0);
+          setForwardDoc({
+            id: doc.id,
+            intendedUsername,
+            intendedName: doc?.intended_for_name || intendedUsername,
+          });
         }, 800);
       } else {
         // No intended staff — flash and reset as before
@@ -391,6 +403,25 @@ export default function Scanner() {
       Alert.alert('Accept Failed', msg);
     } finally {
       setAccepting(false);
+    }
+  };
+
+  // ── Forward transfer ──────────────────────────────────────────────────────
+
+  const handleForwardTransfer = async (toStaff: string, staffName: string) => {
+    setForwardLoading(true);
+    try {
+      await api.post(`/documents/${forwardDoc!.id}/transfer`, {
+        to_staff: toStaff,
+        transfer_type: 'inside_office',
+      });
+      setForwardDoc(null);
+      setForwardLoading(false);
+      setAcceptedDocTitle('Forwarded to ' + staffName);
+      resetScanner(2500);
+    } catch (e: any) {
+      Alert.alert('Transfer Failed', e?.response?.data?.error || 'Could not transfer.');
+      setForwardLoading(false);
     }
   };
 
@@ -698,6 +729,53 @@ export default function Scanner() {
                 <Text style={styles.cancelBtnText}>Cancel — Scan Again</Text>
               </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Forward dialog ────────────────────────────────────────────────── */}
+      <Modal visible={!!forwardDoc} transparent animationType="slide" onRequestClose={() => { setForwardDoc(null); resetScanner(0); }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 20 }} />
+            <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 14 }}>
+              <CheckCircle size={28} color="#16A34A" />
+            </View>
+            <Text style={{ fontSize: 17, fontWeight: '800', color: '#1E293B', textAlign: 'center', marginBottom: 8 }}>Forward to Intended Recipient?</Text>
+            <Text style={{ fontSize: 13.5, color: '#64748B', textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
+              {'This document was intended for '}
+              <Text style={{ color: '#1E293B', fontWeight: '700' }}>{forwardDoc?.intendedName}</Text>
+              {'. Transfer it to them now?'}
+            </Text>
+            <View style={{ gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => handleForwardTransfer(forwardDoc!.intendedUsername, forwardDoc!.intendedName)}
+                disabled={forwardLoading}
+                style={{ backgroundColor: '#10B981', borderRadius: 12, paddingVertical: 14, alignItems: 'center', opacity: forwardLoading ? 0.7 : 1 }}
+              >
+                {forwardLoading
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Transfer to {forwardDoc?.intendedName}</Text>
+                }
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  const docId = forwardDoc!.id;
+                  setForwardDoc(null);
+                  router.push({ pathname: '/(app)/documents/[id]', params: { id: docId } });
+                  resetScanner(0);
+                }}
+                style={{ borderWidth: 1.5, borderColor: '#0038A8', borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#0038A8', fontWeight: '700', fontSize: 14 }}>Choose Different Staff</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { setForwardDoc(null); resetScanner(0); }}
+                style={{ paddingVertical: 14, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#94A3B8', fontSize: 14 }}>Skip — Keep in My Queue</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
