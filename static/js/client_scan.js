@@ -3,6 +3,8 @@ const statusEl  = document.getElementById('scan-status');
 const resultBtn = document.getElementById('result-btn');
 const cameraBox = document.getElementById('camera-box');
 let scanning = true, lastDetected = null;
+const c = document.createElement('canvas');
+const ctx = c.getContext('2d');
 
 async function startCamera(){
   try {
@@ -33,12 +35,14 @@ async function startCamera(){
 function tick(){
   if(!scanning) return;
   if(video.readyState === video.HAVE_ENOUGH_DATA){
-    const c = document.createElement('canvas');
-    c.width = video.videoWidth; c.height = video.videoHeight;
-    const ctx = c.getContext('2d');
+    if(c.width !== video.videoWidth || c.height !== video.videoHeight){
+      c.width = video.videoWidth; c.height = video.videoHeight;
+    }
     ctx.drawImage(video,0,0,c.width,c.height);
     const img = ctx.getImageData(0,0,c.width,c.height);
-    const code = jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert'});
+    const code = jsQR(img.data,img.width,img.height,{inversionAttempts:'attemptBoth'});
+    if(code) console.log('[scan] detected:', code.data);
+    else if(Math.random() < 0.01) console.log('[scan] scanning... no code yet');
     if(code && code.data !== lastDetected){
       lastDetected = code.data;
       onDetected(code.data);
