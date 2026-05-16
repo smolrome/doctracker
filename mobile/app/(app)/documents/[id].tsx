@@ -117,6 +117,7 @@ export default function DocumentDetail() {
   // Forward-to-intended modal (auto-shown when navigated from scanner with showForward param)
   const [forwardModal, setForwardModal] = useState(false);
   const forwardShownRef = useRef(false);
+  const [successModal, setSuccessModal] = useState<{ title: string; message: string } | null>(null);
 
   // ── Data for transfer ─────────────────────────────────────────────────────
 
@@ -201,11 +202,16 @@ export default function DocumentDetail() {
         remarks,
         transfer_type: to_staff && !to_office ? 'inside_office' : '',
       }),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       invalidate();
       queryClient.invalidateQueries({ queryKey: ['pending-count'] });
       closeTransferModal();
-      Alert.alert('Transferred', 'Document has been routed successfully.');
+      const isStaff = variables.to_staff && !variables.to_office;
+      setSuccessModal({
+        title: isStaff ? 'Transferred' : 'Routed',
+        message: isStaff ? 'Document transferred successfully.' : 'Document routed successfully.',
+      });
+      setTimeout(() => setSuccessModal(null), 2500);
     },
     onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to transfer document.'),
   });
@@ -1447,6 +1453,37 @@ export default function DocumentDetail() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Transfer Success Modal ───────────────────────────────────── */}
+      <Modal visible={!!successModal} transparent animationType="fade" onRequestClose={() => setSuccessModal(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+          <View style={{
+            backgroundColor: '#fff', borderRadius: 20, padding: 28,
+            alignItems: 'center', width: '100%',
+            shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.18, shadowRadius: 24, elevation: 12,
+          }}>
+            <View style={{
+              width: 60, height: 60, borderRadius: 30,
+              backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+            }}>
+              <CheckCircle size={30} color="#10B981" />
+            </View>
+            <Text style={{ fontSize: 17, fontWeight: '800', color: '#1E293B', marginBottom: 8, textAlign: 'center' }}>
+              {successModal?.title}
+            </Text>
+            <Text style={{ fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 21, marginBottom: 24 }}>
+              {successModal?.message}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setSuccessModal(null)}
+              style={{ backgroundColor: '#10B981', borderRadius: 12, paddingVertical: 14, alignItems: 'center', width: '100%' }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
 
       {/* ── Forward to Intended Recipient Modal ──────────────────────── */}
