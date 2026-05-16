@@ -251,7 +251,8 @@ document.getElementById('ss-btn-accept').addEventListener('click', async () => {
     if(data.ok){
       overlay.classList.remove('ss-overlay-visible');
       showToast('✅ Document accepted!', 'success');
-      setTimeout(() => { window.location.href = '/view/' + id; }, 1500);
+      speak('Document accepted successfully.');
+      setTimeout(dismissOverlay, 1500);
     } else {
       showToast('❌ ' + (data.error || 'Failed to accept'), 'error');
       setOverlayLoading(false);
@@ -293,7 +294,8 @@ document.getElementById('ss-btn-reject-submit').addEventListener('click', async 
     if(data.ok){
       overlay.classList.remove('ss-overlay-visible');
       showToast('📤 Document rejected and returned to sender.', 'success');
-      setTimeout(dismissOverlay, 2500);
+      speak('Document rejected.');
+      setTimeout(dismissOverlay, 1500);
     } else {
       showToast('❌ ' + (data.error || 'Failed to reject'), 'error');
       setOverlayLoading(false);
@@ -317,7 +319,8 @@ document.getElementById('ss-btn-receive-client').addEventListener('click', async
     if(data.ok){
       overlay.classList.remove('ss-overlay-visible');
       showToast('✅ ' + (data.message || 'Document received!'), 'success');
-      setTimeout(() => { window.location.href = '/view/' + id; }, 1500);
+      speak('Document received from client successfully.');
+      setTimeout(dismissOverlay, 1500);
     } else {
       showToast('❌ ' + (data.error || 'Failed'), 'error');
       setOverlayLoading(false);
