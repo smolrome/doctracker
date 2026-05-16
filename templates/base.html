@@ -200,7 +200,9 @@
       <button class="modal-close-btn" onclick="closeAcceptModal()" aria-label="Close">✕</button>
     </div>
     <div class="modal-body">
-      <p class="modal-body-text">Are you sure you want to <strong>accept</strong> this document? It will be marked as Received and added to your dashboard.</p>
+      <p id="accept-modal-doc-name" style="margin:0 0 6px;font-size:15px;font-weight:700;color:#1E293B;"></p>
+      <p id="accept-modal-intended-for" style="margin:0 0 10px;font-size:13px;color:#0038A8;font-weight:600;display:none;"></p>
+      <p class="modal-body-text">Mark this document as <strong>received</strong>? It will be added to your dashboard.</p>
       <input type="hidden" id="accept-doc-id" value="">
     </div>
     <div class="modal-footer">

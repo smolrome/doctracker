@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, Alert,
   ActivityIndicator, StatusBar, TextInput, Modal,
-  RefreshControl, ScrollView,
+  RefreshControl, ScrollView, Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -66,6 +66,31 @@ export default function ReceiveDocs() {
   const [staffPickerList, setStaffPickerList]       = useState<StaffMember[] | null>(null);
   const [staffPickerLoading, setStaffPickerLoading] = useState(false);
 
+  // ── Accept / forward modals ───────────────────────────────────────────────
+  const [acceptTarget, setAcceptTarget]   = useState<PendingDoc | null>(null);
+  const [forwardTarget, setForwardTarget] = useState<{ responseDoc: any; pendingDoc: PendingDoc } | null>(null);
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType]       = useState<'success' | 'error'>('success');
+  const toastAnim    = useRef(new Animated.Value(0)).current;
+  const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    if (toastTimeout.current) clearTimeout(toastTimeout.current);
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+    toastAnim.setValue(0);
+    Animated.timing(toastAnim, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+    toastTimeout.current = setTimeout(() => {
+      Animated.timing(toastAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+        setToastVisible(false);
+      });
+    }, 2500);
+  };
+
   // ── Data ──────────────────────────────────────────────────────────────────
 
   const { data: dropdownOpts } = useDropdownOptions();
@@ -127,47 +152,28 @@ export default function ReceiveDocs() {
   };
 
   const transferMutation = useMutation({
-    mutationFn: ({ docId, toStaff }: { docId: string; toStaff: string }) =>
+    mutationFn: ({ docId, toStaff }: { docId: string; toStaff: string; staffName?: string }) =>
       api.post(`/documents/${docId}/transfer`, { to_staff: toStaff, transfer_type: 'inside_office' }),
-    onSuccess: () => {
-      invalidate();
-      Alert.alert('Done', 'Document accepted and forwarded successfully.');
+    onSuccess: (_, vars) => {
+      setForwardTarget(null);
+      showToast(vars.staffName ? `Document forwarded to ${vars.staffName}` : 'Document forwarded successfully');
+      setTimeout(() => { invalidate(); }, 1000);
     },
-    onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Transfer failed.'),
+    onError: (e: any) => Alert.alert('Transfer Failed', e?.response?.data?.error || 'Transfer failed.'),
   });
 
   const acceptMutation = useMutation({
     mutationFn: (doc: PendingDoc) => api.post(`/documents/${doc.id}/accept`),
     onSuccess: (response, acceptedDoc) => {
-      const doc            = response.data;
-      const intendedUsername = (doc?.intended_for_username || '');
-      const intendedName     = doc?.intended_for_name || intendedUsername;
+      const responseDoc      = response.data;
+      const intendedUsername = (responseDoc?.intended_for_username || '');
+      setAcceptTarget(null);
+      invalidate();
+      showToast('Document received successfully');
       if (intendedUsername && intendedUsername !== user?.username) {
-        Alert.alert(
-          'Forward to Intended Recipient?',
-          `This document was intended for ${intendedName}. Transfer it to them now?`,
-          [
-            {
-              text: `Transfer to ${intendedName}`,
-              onPress: () => transferMutation.mutate({ docId: acceptedDoc.id, toStaff: intendedUsername }),
-            },
-            {
-              text: 'Choose Staff',
-              onPress: () => { invalidate(); openStaffPicker(acceptedDoc); },
-            },
-            {
-              text: 'Skip',
-              style: 'cancel',
-              onPress: () => {
-                invalidate();
-                Alert.alert('Accepted', 'Document accepted and marked as Received.');
-              },
-            },
-          ],
-        );
-      } else {
-        invalidate();
-        Alert.alert('Accepted', 'Document accepted and marked as Received.');
+        setTimeout(() => {
+          setForwardTarget({ responseDoc, pendingDoc: acceptedDoc });
+        }, 800);
       }
     },
     onError: (e: any) => Alert.alert('Error', e?.response?.data?.error || 'Failed to accept.'),
@@ -188,21 +194,7 @@ export default function ReceiveDocs() {
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleAccept = (doc: PendingDoc) => {
-    const isProxy =
-      user?.role === 'admin' &&
-      !!doc.pending_at_staff &&
-      doc.pending_at_staff !== user?.username;
-
-    const staffLabel = doc.pending_at_staff_name || doc.pending_at_staff;
-
-    const message = isProxy
-      ? `Accept on behalf of ${staffLabel}?\n\n"${doc.doc_name || doc.doc_id}" will be marked as Received.`
-      : `Mark "${doc.doc_name || doc.doc_id}" as received?`;
-
-    Alert.alert('Accept Document', message, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Accept', onPress: () => acceptMutation.mutate(doc) },
-    ]);
+    setAcceptTarget(doc);
   };
 
   const openReject = (doc: PendingDoc) => {
@@ -550,7 +542,7 @@ export default function ReceiveDocs() {
                         const target = staffPickerDoc!;
                         setStaffPickerDoc(null);
                         setStaffPickerList(null);
-                        transferMutation.mutate({ docId: target.id, toStaff: s.username });
+                        transferMutation.mutate({ docId: target.id, toStaff: s.username, staffName: s.full_name || s.username });
                       }}
                       style={{
                         paddingVertical: 14,
@@ -582,6 +574,104 @@ export default function ReceiveDocs() {
                 )}
               </ScrollView>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Accept Confirm Modal ─────────────────────────────────────────── */}
+      <Modal visible={!!acceptTarget} transparent animationType="fade" onRequestClose={() => setAcceptTarget(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 10 }}>
+            <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 }}>
+              <CheckCircle size={28} color="#16A34A" />
+            </View>
+            <Text style={{ fontSize: 17, fontWeight: '800', color: '#1E293B', textAlign: 'center', marginBottom: 8 }}>Accept Document</Text>
+            <Text style={{ fontSize: 14.5, fontWeight: '700', color: '#1E293B', textAlign: 'center', marginBottom: 4 }} numberOfLines={2}>
+              {acceptTarget?.doc_name || acceptTarget?.doc_id}
+            </Text>
+            {acceptTarget?.intended_for_name ? (
+              <Text style={{ fontSize: 13, color: '#0038A8', textAlign: 'center', fontWeight: '600', marginBottom: 4 }}>
+                Intended for: <Text style={{ fontWeight: '700' }}>{acceptTarget.intended_for_name}</Text>
+              </Text>
+            ) : null}
+            <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 24 }}>
+              {acceptTarget?.pending_at_staff && acceptTarget.pending_at_staff !== user?.username
+                ? `Accept on behalf of ${acceptTarget.pending_at_staff_name || acceptTarget.pending_at_staff}?`
+                : 'Mark this document as received?'}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setAcceptTarget(null)}
+                style={{ flex: 1, borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff' }}
+              >
+                <Text style={{ color: '#64748B', fontWeight: '600', fontSize: 14 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => acceptMutation.mutate(acceptTarget!)}
+                disabled={acceptMutation.isPending}
+                style={{ flex: 1, backgroundColor: '#10B981', borderRadius: 12, paddingVertical: 13, alignItems: 'center', opacity: acceptMutation.isPending ? 0.7 : 1 }}
+              >
+                {acceptMutation.isPending
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Receive Document</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Forward Dialog Modal ─────────────────────────────────────────── */}
+      <Modal visible={!!forwardTarget} transparent animationType="fade" onRequestClose={() => { setForwardTarget(null); invalidate(); }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 10 }}>
+            <Text style={{ fontSize: 17, fontWeight: '800', color: '#1E293B', textAlign: 'center', marginBottom: 8 }}>Forward to Intended Recipient?</Text>
+            <Text style={{ fontSize: 13.5, color: '#64748B', textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
+              {'This document was intended for '}
+              <Text style={{ color: '#1E293B', fontWeight: '700' }}>
+                {forwardTarget?.responseDoc?.intended_for_name || forwardTarget?.responseDoc?.intended_for_username}
+              </Text>
+              {'. Transfer it to them now?'}
+            </Text>
+            <View style={{ gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  if (!forwardTarget) return;
+                  transferMutation.mutate({
+                    docId: forwardTarget.pendingDoc.id,
+                    toStaff: forwardTarget.responseDoc.intended_for_username,
+                    staffName: forwardTarget.responseDoc.intended_for_name,
+                  });
+                }}
+                disabled={transferMutation.isPending}
+                style={{ backgroundColor: '#10B981', borderRadius: 12, paddingVertical: 14, alignItems: 'center', opacity: transferMutation.isPending ? 0.7 : 1 }}
+              >
+                {transferMutation.isPending
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                      Transfer to {forwardTarget?.responseDoc?.intended_for_name || forwardTarget?.responseDoc?.intended_for_username}
+                    </Text>
+                }
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  if (!forwardTarget) return;
+                  const doc = forwardTarget.pendingDoc;
+                  setForwardTarget(null);
+                  invalidate();
+                  openStaffPicker(doc);
+                }}
+                style={{ borderWidth: 1.5, borderColor: '#0038A8', borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#0038A8', fontWeight: '700', fontSize: 14 }}>Choose Different Staff</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { setForwardTarget(null); invalidate(); }}
+                style={{ paddingVertical: 14, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#94A3B8', fontSize: 14 }}>Skip — I'll route manually</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -639,6 +729,23 @@ export default function ReceiveDocs() {
           </View>
         </View>
       </Modal>
+
+      {/* ── Toast ────────────────────────────────────────────────────────── */}
+      {toastVisible && (
+        <Animated.View style={{
+          position: 'absolute', top: 100, left: 16, right: 16,
+          backgroundColor: toastType === 'success' ? '#16A34A' : '#DC2626',
+          borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12,
+          flexDirection: 'row', alignItems: 'center', gap: 10,
+          opacity: toastAnim,
+          transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }],
+          zIndex: 9999,
+          shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 8,
+        }}>
+          <CheckCircle size={18} color="#fff" />
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14, flex: 1 }}>{toastMessage}</Text>
+        </Animated.View>
+      )}
     </View>
   );
 }

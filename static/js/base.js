@@ -484,6 +484,7 @@ function reloadPendingDocs() {
           staff:     doc.intended_for_username || '',
           staffName: doc.intended_for_name     || '',
           office:    doc.pending_at_office     || '',
+          docName:   doc.doc_name              || '',
         };
         var forLine = doc.intended_for_name
           ? '<br><strong style="color:#0038A8;">Intended for:</strong> ' + doc.intended_for_name
@@ -549,6 +550,36 @@ function clearPendingFilters() {
 function closePendingDocumentsModal() { closeModal('pending-documents-modal'); }
 
 
+// ── Toast notifications ────────────────────────────────────────────────────
+function showToast(message, type) {
+  var existing = document.getElementById('_global-toast');
+  if (existing) existing.remove();
+  var bg   = type === 'error' ? '#DC2626' : '#16A34A';
+  var icon = type === 'error' ? '✕' : '✓';
+  var toast = document.createElement('div');
+  toast.id = '_global-toast';
+  toast.style.cssText =
+    'position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-20px);' +
+    'background:' + bg + ';color:#fff;padding:12px 20px;border-radius:12px;' +
+    'font-size:14px;font-weight:700;z-index:99999;opacity:0;' +
+    'transition:opacity 0.25s ease,transform 0.25s ease;' +
+    'box-shadow:0 4px 16px rgba(0,0,0,0.2);white-space:nowrap;' +
+    'display:flex;align-items:center;gap:8px;pointer-events:none;';
+  toast.innerHTML = '<span>' + icon + '</span><span>' + message + '</span>';
+  document.body.appendChild(toast);
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+    });
+  });
+  setTimeout(function () {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(-20px)';
+    setTimeout(function () { if (toast.parentNode) toast.remove(); }, 300);
+  }, 2500);
+}
+
 // ── Accept flow — uses confirmation modal instead of browser confirm() ────
 var _pendingDocStaffMap  = {};
 var _acceptPendingStaff  = '';
@@ -561,6 +592,17 @@ function openAcceptModal(docId) {
   _acceptPendingStaff     = info.staff     || '';
   _acceptPendingStaffName = info.staffName || '';
   _acceptPendingOffice    = info.office    || '';
+  var nameEl = document.getElementById('accept-modal-doc-name');
+  if (nameEl) nameEl.textContent = info.docName || '';
+  var forEl = document.getElementById('accept-modal-intended-for');
+  if (forEl) {
+    if (info.staffName) {
+      forEl.textContent = 'Intended for: ' + info.staffName;
+      forEl.style.display = '';
+    } else {
+      forEl.style.display = 'none';
+    }
+  }
   openModal('accept-confirm-modal');
 }
 
@@ -582,14 +624,20 @@ function submitAccept() {
   .then(function (data) {
     if (data.ok) {
       closeAcceptModal();
-      closePendingDocumentsModal();
+      showToast('Document received successfully');
       var currentUser  = window.CURRENT_USERNAME || '';
       var pendingStaff = _acceptPendingStaff;
       var staffName    = _acceptPendingStaffName || pendingStaff;
       if (currentUser && pendingStaff && pendingStaff !== currentUser) {
-        _showPostAcceptDialog(docId, pendingStaff, staffName, _acceptPendingOffice);
+        setTimeout(function () {
+          closePendingDocumentsModal();
+          _showPostAcceptDialog(docId, pendingStaff, staffName, _acceptPendingOffice);
+        }, 800);
       } else {
-        window.location.reload();
+        setTimeout(function () {
+          closePendingDocumentsModal();
+          window.location.reload();
+        }, 800);
       }
     } else {
       alert(data.error || 'Error accepting document. Please try again.');
@@ -605,19 +653,20 @@ function _showPostAcceptDialog(docId, toStaff, staffName, office) {
   var overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
   overlay.innerHTML =
-    '<div style="background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);">' +
-      '<h3 style="margin:0 0 8px;font-size:16px;font-weight:700;color:#1E293B;">Forward to Intended Recipient?</h3>' +
-      '<p style="margin:0 0 20px;font-size:14px;color:#64748B;">This document was intended for <strong>' + staffName + '</strong>. Transfer it to them now?</p>' +
+    '<div style="background:#fff;border-radius:20px;padding:28px;max-width:400px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.25);">' +
+      '<div style="width:52px;height:52px;border-radius:26px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;line-height:1;">✓</div>' +
+      '<h3 style="margin:0 0 8px;font-size:17px;font-weight:800;color:#1E293B;text-align:center;">Forward to Intended Recipient?</h3>' +
+      '<p style="margin:0 0 24px;font-size:14px;color:#64748B;text-align:center;line-height:1.5;">This document was intended for <strong style="color:#1E293B;">' + staffName + '</strong>. Transfer it to them now?</p>' +
       '<div style="display:flex;flex-direction:column;gap:10px;">' +
-        '<button id="_pad-confirm" style="background:#10B981;color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">✓ Transfer to ' + staffName + '</button>' +
-        '<button id="_pad-change" style="background:#F1F5F9;color:#0038A8;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">⇄ Choose different staff</button>' +
-        '<button id="_pad-skip" style="background:transparent;color:#94A3B8;border:1px solid #E2E8F0;border-radius:10px;padding:12px;font-size:14px;cursor:pointer;">Skip — I\'ll route manually</button>' +
+        '<button id="_pad-confirm" style="background:#10B981;color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;width:100%;">✓ Transfer to ' + staffName + '</button>' +
+        '<button id="_pad-change" style="background:#fff;color:#0038A8;border:2px solid #0038A8;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;width:100%;">⇄ Choose Different Staff</button>' +
+        '<button id="_pad-skip" style="background:transparent;color:#94A3B8;border:none;border-radius:12px;padding:14px;font-size:14px;cursor:pointer;width:100%;">Skip — I\'ll route manually</button>' +
       '</div>' +
     '</div>';
   document.body.appendChild(overlay);
   document.getElementById('_pad-confirm').addEventListener('click', function () {
     overlay.remove();
-    _doTransferAfterAccept(docId, toStaff);
+    _doTransferAfterAccept(docId, toStaff, staffName);
   });
   document.getElementById('_pad-change').addEventListener('click', function () {
     overlay.remove();
@@ -629,7 +678,7 @@ function _showPostAcceptDialog(docId, toStaff, staffName, office) {
   });
 }
 
-function _doTransferAfterAccept(docId, toStaff) {
+function _doTransferAfterAccept(docId, toStaff, staffName) {
   var csrfToken = window.CSRF_TOKEN || '';
   var body = new URLSearchParams();
   body.append('new_staff', toStaff);
@@ -640,7 +689,10 @@ function _doTransferAfterAccept(docId, toStaff) {
     headers: { 'X-CSRF-Token': csrfToken },
     body: body,
   })
-  .then(function () { window.location.reload(); })
+  .then(function () {
+    showToast('Document forwarded to ' + (staffName || toStaff));
+    setTimeout(function () { window.location.reload(); }, 1500);
+  })
   .catch(function () { window.location.reload(); });
 }
 
@@ -651,7 +703,7 @@ function _showStaffPicker(docId, office) {
       var overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
       var rows = (staffList || []).map(function (s) {
-        return '<button class="_spd-btn" data-uname="' + s.username + '" style="display:block;width:100%;text-align:left;padding:12px 14px;border:1px solid #E2E8F0;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;margin-bottom:8px;">' +
+        return '<button class="_spd-btn" data-uname="' + s.username + '" data-fname="' + (s.full_name || s.username) + '" style="display:block;width:100%;text-align:left;padding:12px 14px;border:1px solid #E2E8F0;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;margin-bottom:8px;">' +
           (s.full_name || s.username) + ' <span style="color:#94A3B8;font-size:12px;">@' + s.username + '</span>' +
         '</button>';
       }).join('');
@@ -671,7 +723,7 @@ function _showStaffPicker(docId, office) {
       overlay.querySelectorAll('._spd-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
           overlay.remove();
-          _doTransferAfterAccept(docId, btn.getAttribute('data-uname'));
+          _doTransferAfterAccept(docId, btn.getAttribute('data-uname'), btn.getAttribute('data-fname'));
         });
       });
     })
