@@ -294,6 +294,12 @@ Return ONLY a valid JSON object with these exact keys (use empty string if not f
 Return ONLY the JSON. No markdown, no explanation.
 """
 
+@scanning_bp.route("/staff-scan", methods=["GET"])
+@login_required
+def staff_scan():
+    return render_template("staff_scan.html")
+
+
 @scanning_bp.route("/scan", methods=["GET", "POST"])
 @login_required
 def ai_scan():

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .staff-scanner-wrap {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 16px 16px 40px;
+  }
+  .staff-camera-box {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #0D1B2A;
+    border-radius: 18px;
+    overflow: hidden;
+    margin-bottom: 18px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.35);
+  }
+  #staff-qr-video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .staff-scan-overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .staff-scan-frame {
+    position: relative;
+    width: 58%; aspect-ratio: 1/1;
+  }
+  .ssc { position: absolute; width: 28px; height: 28px; border-color: #fff; border-style: solid; }
+  .ssc.tl { top:0; left:0;  border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .ssc.tr { top:0; right:0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+  .ssc.bl { bottom:0; left:0;  border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+  .ssc.br { bottom:0; right:0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+  .staff-scan-line {
+    position: absolute; left: 0; right: 0; top: 0;
+    height: 2px; background: rgba(255,255,255,.7);
+    animation: staff-scanline 2s linear infinite;
+  }
+  @keyframes staff-scanline { 0%{top:0} 100%{top:100%} }
+  .staff-scan-title {
+    font-family: Outfit, sans-serif;
+    font-size: 20px; font-weight: 800;
+    color: var(--navy, #0D1B2A);
+    text-align: center; margin-bottom: 4px;
+  }
+  .staff-scan-sub {
+    font-size: 13.5px; color: var(--muted, #64748B);
+    text-align: center; margin-bottom: 16px;
+  }
+  .staff-scan-status {
+    text-align: center; font-size: 14px; font-weight: 600;
+    padding: 10px 16px; border-radius: 10px;
+    margin-bottom: 14px; transition: background .3s, color .3s;
+  }
+  .staff-status-idle  { background: #F1F5F9; color: #475569; }
+  .staff-status-found { background: #DCFCE7; color: #166534; }
+  .staff-status-error { background: #FEE2E2; color: #991B1B; }
+  .staff-btn-group { display: flex; flex-direction: column; gap: 10px; }
+  .staff-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 13px 20px; border-radius: 12px;
+    font-family: Outfit, sans-serif; font-size: 15px; font-weight: 700;
+    text-decoration: none; text-align: center; cursor: pointer;
+    transition: opacity .15s;
+  }
+  .staff-btn:active { opacity: .8; }
+  .staff-btn-found { background: #16A34A; color: #fff; }
+  .staff-btn-back  { background: #F1F5F9; color: #334155; }
+</style>
+
+<div class="page-header">
+  <a href="/" class="page-back">← Dashboard</a>
+  <div>
+    <div class="page-title">📷 Scan Document QR</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:2px;">Point camera at any document or office QR code</div>
+  </div>
+</div>
+
+<div class="staff-scanner-wrap">
+  <div class="staff-camera-box" id="staff-camera-box">
+    <video id="staff-qr-video" playsinline autoplay muted></video>
+    <div class="staff-scan-overlay">
+      <div class="staff-scan-frame">
+        <div class="ssc tl"></div><div class="ssc tr"></div>
+        <div class="ssc bl"></div><div class="ssc br"></div>
+        <div class="staff-scan-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="staff-scan-title">Scan Document QR</div>
+  <div class="staff-scan-sub">Accepts document QRs, office station QRs, and routing slip QRs.</div>
+
+  <div class="staff-scan-status staff-status-idle" id="staff-scan-status">📷 Starting camera...</div>
+
+  <div class="staff-btn-group">
+    <a href="#" id="staff-result-btn" class="staff-btn staff-btn-found" style="display:none;">⚡ Open</a>
+    <a href="/" class="staff-btn staff-btn-back">← Back to Dashboard</a>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/jsQR.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/staff_scan.js') }}"></script>
+{% endblock %}

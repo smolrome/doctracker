@@ -4,7 +4,7 @@ const resultBtn = document.getElementById('result-btn');
 const cameraBox = document.getElementById('camera-box');
 let scanning = true, lastDetected = null;
 const c = document.createElement('canvas');
-const ctx = c.getContext('2d');
+const ctx = c.getContext('2d', { willReadFrequently: true });
 
 async function startCamera(){
   try {
@@ -56,12 +56,27 @@ function onDetected(data){
   // ── /receive/<doc_id> ────────────────────────────────────────────────────
   const mReceive = data.match(/\/receive\/([A-Z0-9]{8})/i);
   if(mReceive){
-    const url = '/receive/'+mReceive[1].toUpperCase();
+    const url = '/client/track/'+mReceive[1].toUpperCase();
     scanning = false;
     statusEl.className = 'scan-status status-found';
     statusEl.textContent = '✅ Document found! Opening...';
     resultBtn.href = url;
     resultBtn.textContent = '⚡ Open Document '+mReceive[1].toUpperCase();
+    resultBtn.style.display = 'flex';
+    if(navigator.vibrate) navigator.vibrate([100,50,100]);
+    setTimeout(()=>{ window.location.href = url; }, 1200);
+    return;
+  }
+
+  // ── bare doc ID (legacy mobile QR codes) ─────────────────────────────────
+  const mBare = data.match(/^([A-Z0-9]{8})$/i);
+  if(mBare){
+    const url = '/client/track/' + mBare[1].toUpperCase();
+    scanning = false;
+    statusEl.className = 'scan-status status-found';
+    statusEl.textContent = '✅ Document found! Opening...';
+    resultBtn.href = url;
+    resultBtn.textContent = '⚡ Open Document ' + mBare[1].toUpperCase();
     resultBtn.style.display = 'flex';
     if(navigator.vibrate) navigator.vibrate([100,50,100]);
     setTimeout(()=>{ window.location.href = url; }, 1200);

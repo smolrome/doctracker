@@ -617,7 +617,8 @@ def api_generate_qr(doc_id):
         box_size=8,
         border=3,
     )
-    qr.add_data(doc['id'])
+    base_url = request.host_url.rstrip('/')
+    qr.add_data(f"{base_url}/receive/{doc['id']}")
     qr.make(fit=True)
     buf = BytesIO()
     img = qr.make_image(fill_color="#0D1B2A", back_color="white")

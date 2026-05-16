@@ -54,9 +54,13 @@
         </div>
         <div class="nav-dropdown-menu">
           <div class="dd-section">
-            <a href="/scan" class="dd-item">
+            <a href="/staff-scan" class="dd-item">
               <span class="dd-icon">📷</span>
-              <span class="dd-text">Scan QR<span class="dd-desc">Scan a document QR code</span></span>
+              <span class="dd-text">Scan QR<span class="dd-desc">Live camera QR scanner</span></span>
+            </a>
+            <a href="/scan" class="dd-item">
+              <span class="dd-icon">🤖</span>
+              <span class="dd-text">AI Doc Scan<span class="dd-desc">Scan a document image with AI</span></span>
             </a>
             <a href="/upload-qr" class="dd-item">
               <span class="dd-icon">📤</span>
@@ -248,7 +252,8 @@
 <div class="nav-drawer" id="nav-drawer" aria-hidden="true">
   {% if logged_in %}
     <div class="nav-drawer-section">Actions</div>
-    <a href="/scan"      class="nav-btn" onclick="closeMenu()">📷 Scan QR</a>
+    <a href="/staff-scan" class="nav-btn" onclick="closeMenu()">📷 Scan QR</a>
+    <a href="/scan"      class="nav-btn" onclick="closeMenu()">🤖 AI Doc Scan</a>
     <a href="/upload-qr" class="nav-btn" onclick="closeMenu()">📤 Upload QR Image</a>
     {% if current_role in ('admin','staff') %}
       <a href="/office-qr-page" class="nav-btn" onclick="closeMenu()">🖨️ Office QR Codes</a>
