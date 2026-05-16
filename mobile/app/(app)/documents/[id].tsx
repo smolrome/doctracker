@@ -145,16 +145,19 @@ export default function DocumentDetail() {
   // ── Auto-show forward modal when arriving from scanner ────────────────────
 
   useEffect(() => {
-    if (
-      showForward === '1'
-      && doc?.intended_for_username
-      && doc.intended_for_username !== user?.username
-      && !forwardShownRef.current
-    ) {
-      forwardShownRef.current = true;
-      const timer = setTimeout(() => setForwardModal(true), 500);
-      return () => clearTimeout(timer);
+    if (showForward === '1') {
+      forwardShownRef.current = false;
     }
+  }, [showForward]);
+
+  useEffect(() => {
+    if (showForward !== '1') return;
+    if (!doc?.intended_for_username) return;
+    if (doc.intended_for_username === user?.username) return;
+    if (forwardShownRef.current) return;
+    forwardShownRef.current = true;
+    const timer = setTimeout(() => setForwardModal(true), 500);
+    return () => clearTimeout(timer);
   }, [showForward, doc?.intended_for_username, user?.username]);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
