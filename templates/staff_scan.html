@@ -112,7 +112,8 @@
   .ss-btn-accept  { background:#16A34A; color:#fff; }
   .ss-btn-reject  { background:#FEE2E2; color:#991B1B; }
   .ss-btn-receive { background:#0EA5E9; color:#fff; }
-  .ss-btn-view    { background:#F1F5F9; color:#334155; }
+  .ss-btn-view     { background:#F1F5F9; color:#334155; }
+  .ss-btn-transfer { background:#EFF6FF; color:#0038A8; }
   .ss-btn-cancel  { display:block; width:100%; padding:10px; background:none; border:none; font-family:Outfit,sans-serif; font-size:14px; color:#94A3B8; cursor:pointer; text-align:center; }
   .ss-reject-title { font-family:Outfit,sans-serif; font-size:15px; font-weight:800; color:#1E293B; margin-bottom:10px; }
   .ss-reject-input { width:100%; padding:12px; border:1.5px solid #E2E8F0; border-radius:10px; font-family:Outfit,sans-serif; font-size:14px; color:#1E293B; margin-bottom:12px; resize:vertical; box-sizing:border-box; }
@@ -168,6 +169,12 @@
         </div>
         <span class="ss-status-badge" id="ss-doc-status"></span>
       </div>
+      <div id="ss-doc-details" style="background:#F8FAFC;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#475569;display:flex;flex-direction:column;gap:4px;">
+        <div><span style="color:#94A3B8;">Category:</span> <span id="ss-doc-category" style="color:#1E293B;font-weight:600;"></span></div>
+        <div><span style="color:#94A3B8;">Sender:</span> <span id="ss-doc-sender" style="color:#1E293B;font-weight:600;"></span></div>
+        <div><span style="color:#94A3B8;">Referred To:</span> <span id="ss-doc-referred" style="color:#1E293B;font-weight:600;"></span></div>
+        <div><span style="color:#94A3B8;">Date:</span> <span id="ss-doc-date" style="color:#1E293B;font-weight:600;"></span></div>
+      </div>
       <div class="ss-intended-row" id="ss-intended-row">
         <span class="ss-intended-label">Intended for</span>
         <span class="ss-intended-name" id="ss-intended-name"></span>
@@ -176,6 +183,7 @@
         <button id="ss-btn-accept"         class="ss-action-btn ss-btn-accept">✅ Accept Document</button>
         <button id="ss-btn-reject"         class="ss-action-btn ss-btn-reject">✕ Reject Document</button>
         <button id="ss-btn-receive-client" class="ss-action-btn ss-btn-receive">📥 Receive from Client</button>
+        <button id="ss-btn-transfer"       class="ss-action-btn ss-btn-transfer">⇄ Transfer Document</button>
         <button id="ss-btn-view"           class="ss-action-btn ss-btn-view">🔍 View Details</button>
       </div>
       <button id="ss-btn-cancel" class="ss-btn-cancel">Cancel — continue scanning</button>

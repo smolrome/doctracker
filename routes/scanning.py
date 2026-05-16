@@ -313,6 +313,11 @@ def web_doc_lookup(doc_id):
         "logged_by_office":      doc.get("logged_by_office", ""),
         "intended_for_name":     doc.get("intended_for_name", ""),
         "intended_for_username": doc.get("intended_for_username", ""),
+        "category":              doc.get("category", ""),
+        "sender_name":           doc.get("sender_name", ""),
+        "sender_org":            doc.get("sender_org", ""),
+        "referred_to":           doc.get("referred_to", ""),
+        "created_at":            doc.get("created_at", "")[:10] if doc.get("created_at") else "",
     })
 
 

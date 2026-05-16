@@ -166,6 +166,11 @@ function showOverlay(id, doc){
   badge.textContent = doc.status || '—';
   badge.className   = 'ss-status-badge ss-status-' + statusKey;
 
+  document.getElementById('ss-doc-category').textContent = doc.category   || '—';
+  document.getElementById('ss-doc-sender').textContent   = doc.sender_name || doc.sender_org || '—';
+  document.getElementById('ss-doc-referred').textContent = doc.referred_to || '—';
+  document.getElementById('ss-doc-date').textContent     = doc.created_at  || '—';
+
   const intendedRow = document.getElementById('ss-intended-row');
   if(doc.intended_for_name){
     document.getElementById('ss-intended-name').textContent = doc.intended_for_name;
@@ -321,6 +326,10 @@ document.getElementById('ss-btn-receive-client').addEventListener('click', async
     showToast('❌ Network error', 'error');
     setOverlayLoading(false);
   }
+});
+
+document.getElementById('ss-btn-transfer').addEventListener('click', () => {
+  window.location.href = '/transfer/' + overlay.dataset.docId;
 });
 
 document.getElementById('ss-btn-view').addEventListener('click', () => {
