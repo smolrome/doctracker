@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -74,7 +74,7 @@ async function fetchQR(id: string) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function DocumentDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, showForward } = useLocalSearchParams<{ id: string; showForward?: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
@@ -114,6 +114,10 @@ export default function DocumentDetail() {
   const [noteModal, setNoteModal] = useState(false);
   const [noteText, setNoteText] = useState('');
 
+  // Forward-to-intended modal (auto-shown when navigated from scanner with showForward param)
+  const [forwardModal, setForwardModal] = useState(false);
+  const forwardShownRef = useRef(false);
+
   // ── Data for transfer ─────────────────────────────────────────────────────
 
   const { data: staffList } = useStaff();
@@ -136,6 +140,21 @@ export default function DocumentDetail() {
     enabled: !!id && !!doc,
     staleTime: Infinity,
   });
+
+  // ── Auto-show forward modal when arriving from scanner ────────────────────
+
+  useEffect(() => {
+    if (
+      showForward === '1'
+      && doc?.intended_for_username
+      && doc.intended_for_username !== user?.username
+      && !forwardShownRef.current
+    ) {
+      forwardShownRef.current = true;
+      const timer = setTimeout(() => setForwardModal(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [showForward, doc?.intended_for_username, user?.username]);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
@@ -176,7 +195,12 @@ export default function DocumentDetail() {
 
   const transferMutation = useMutation({
     mutationFn: ({ to_staff, to_office, remarks }: { to_staff: string; to_office: string; remarks: string }) =>
-      api.post(`/documents/${id}/transfer`, { to_staff, to_office, remarks }),
+      api.post(`/documents/${id}/transfer`, {
+        to_staff,
+        to_office,
+        remarks,
+        transfer_type: to_staff && !to_office ? 'inside_office' : '',
+      }),
     onSuccess: () => {
       invalidate();
       queryClient.invalidateQueries({ queryKey: ['pending-count'] });
@@ -712,7 +736,13 @@ export default function DocumentDetail() {
         {/* ── Transfer Document ─────────────────────────────────────────── */}
         {canTransfer && (
           <TouchableOpacity
-            onPress={() => setTransferModal(true)}
+            onPress={() => {
+              if (doc?.intended_for_name) {
+                setTransferStaff(doc.intended_for_name);
+                setTransferMode('staff');
+              }
+              setTransferModal(true);
+            }}
             activeOpacity={0.8}
             style={{
               backgroundColor: '#EFF6FF',
@@ -1152,17 +1182,17 @@ export default function DocumentDetail() {
             <View style={{ backgroundColor: '#F8FAFC', borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '88%', overflow: 'hidden' }}>
 
               {/* Header */}
-              <View style={{ backgroundColor: '#0038A8', paddingTop: 20, paddingBottom: 20, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ position: 'absolute', top: 10, left: 0, right: 0, alignItems: 'center' }}>
-                  <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.30)' }} />
+              <View style={{ paddingTop: 12, paddingBottom: 16, paddingHorizontal: 20, borderBottomWidth: 0.5, borderBottomColor: '#F1F5F9' }}>
+                <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 16 }} />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View>
+                    <Text style={{ fontSize: 17, fontWeight: '800', color: '#1E293B' }}>Transfer Document</Text>
+                    <Text style={{ fontSize: 12.5, color: '#64748B', marginTop: 2 }}>Route to staff or office</Text>
+                  </View>
+                  <TouchableOpacity onPress={closeTransferModal} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+                    <X size={18} color="#64748B" />
+                  </TouchableOpacity>
                 </View>
-                <View>
-                  <Text style={{ fontSize: 17, fontWeight: '800', color: '#fff' }}>Transfer Document</Text>
-                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.60)', marginTop: 2 }}>Route to staff or office</Text>
-                </View>
-                <TouchableOpacity onPress={closeTransferModal} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
-                  <X size={18} color="#fff" />
-                </TouchableOpacity>
               </View>
 
               {/* Toggle: Staff vs Office */}
@@ -1254,9 +1284,9 @@ export default function DocumentDetail() {
                 <TouchableOpacity
                   onPress={closeTransferModal}
                   disabled={transferMutation.isPending}
-                  style={{ borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 13, paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff' }}
+                  style={{ paddingVertical: 13, alignItems: 'center' }}
                 >
-                  <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+                  <Text style={{ color: '#94A3B8', fontSize: 15, fontWeight: '500' }}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1417,6 +1447,80 @@ export default function DocumentDetail() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Forward to Intended Recipient Modal ──────────────────────── */}
+      <Modal visible={forwardModal} transparent animationType="fade" onRequestClose={() => setForwardModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+          <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => setForwardModal(false)} activeOpacity={1} />
+          <View style={{ backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 20 }} />
+
+            {/* Green check + heading */}
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View style={{
+                width: 56, height: 56, borderRadius: 28,
+                backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+              }}>
+                <CheckCircle size={28} color="#16A34A" />
+              </View>
+              <Text style={{ fontSize: 17, fontWeight: '800', color: '#1E293B', textAlign: 'center', marginBottom: 8 }}>
+                Document Received ✓
+              </Text>
+              <Text style={{ fontSize: 13.5, color: '#64748B', textAlign: 'center', lineHeight: 20 }}>
+                This document was intended for{' '}
+                <Text style={{ fontWeight: '700', color: '#1E293B' }}>
+                  {doc?.intended_for_name || doc?.intended_for_username}
+                </Text>
+                .{'\n'}Forward it to them now?
+              </Text>
+            </View>
+
+            {/* Transfer to intended recipient */}
+            <TouchableOpacity
+              onPress={() => {
+                setForwardModal(false);
+                transferMutation.mutate({
+                  to_staff: doc?.intended_for_username || '',
+                  to_office: '',
+                  remarks: '',
+                });
+              }}
+              disabled={transferMutation.isPending}
+              style={{
+                backgroundColor: '#16A34A', borderRadius: 14,
+                paddingVertical: 15, alignItems: 'center', marginBottom: 10,
+              }}
+            >
+              {transferMutation.isPending
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
+                    Transfer to {doc?.intended_for_name || doc?.intended_for_username}
+                  </Text>
+              }
+            </TouchableOpacity>
+
+            {/* Choose a different staff member */}
+            <TouchableOpacity
+              onPress={() => { setForwardModal(false); setTransferModal(true); }}
+              style={{
+                borderWidth: 1.5, borderColor: '#BFDBFE', borderRadius: 14,
+                paddingVertical: 14, alignItems: 'center',
+                marginBottom: 10, backgroundColor: '#EFF6FF',
+              }}
+            >
+              <Text style={{ color: '#0038A8', fontWeight: '700', fontSize: 15 }}>Choose Different Staff</Text>
+            </TouchableOpacity>
+
+            {/* Skip */}
+            <TouchableOpacity
+              onPress={() => setForwardModal(false)}
+              style={{ paddingVertical: 14, alignItems: 'center' }}
+            >
+              <Text style={{ color: '#94A3B8', fontWeight: '500', fontSize: 15 }}>Skip — Keep in My Queue</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
 
       {/* ── Quick Note Modal ───────────────────────────────────────────── */}

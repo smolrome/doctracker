@@ -1456,7 +1456,7 @@ def api_transfer_document(doc_id):
     doc['pending_at_office'] = to_office
     transfer_type = (data.get('transfer_type') or '').strip()
     doc['status'] = 'Transferred' if transfer_type == 'inside_office' else 'Routed'
-    doc['referred_to'] = recipient_display
+    doc['referred_to'] = recipient_full_name
     doc['updated_at'] = now_str()
     doc['updated_by'] = user_id
 

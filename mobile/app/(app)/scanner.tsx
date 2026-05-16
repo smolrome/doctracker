@@ -370,50 +370,20 @@ export default function Scanner() {
       queryClient.invalidateQueries({ queryKey: ['stats'] });
 
       const intendedUsername = doc?.intended_for_username || '';
-      const intendedName     = doc?.intended_for_name || intendedUsername;
 
+      // Always show the success flash first
+      const docTitle = scannedDoc.title || scannedDoc.tracking_number || 'Document';
       setScannedDoc(null);
+      setAcceptedDocTitle(docTitle);
 
       if (intendedUsername && intendedUsername !== user?.username) {
-        Alert.alert(
-          'Forward to Intended Recipient?',
-          `This document was intended for ${intendedName}. Transfer it to them now?`,
-          [
-            {
-              text: `Transfer to ${intendedName}`,
-              onPress: async () => {
-                try {
-                  await api.post(`/documents/${doc.id}/transfer`, {
-                    to_staff: intendedUsername,
-                    transfer_type: 'inside_office',
-                  });
-                  queryClient.invalidateQueries({ queryKey: ['documents'] });
-                  queryClient.invalidateQueries({ queryKey: ['pending-documents'] });
-                  queryClient.invalidateQueries({ queryKey: ['pending-count'] });
-                  queryClient.invalidateQueries({ queryKey: ['stats'] });
-                } catch (e: any) {
-                  Alert.alert('Transfer Failed', e?.response?.data?.error || 'Could not transfer document.');
-                }
-                resetScanner(2500);
-              },
-            },
-            {
-              text: 'Choose Staff',
-              onPress: () => router.push(`/(app)/documents/${doc.id}`),
-            },
-            {
-              text: 'Skip',
-              style: 'cancel',
-              onPress: () => {
-                setAcceptedDocTitle(scannedDoc.title || scannedDoc.tracking_number || 'Document');
-                resetScanner(2500);
-              },
-            },
-          ]
-        );
+        // Navigate to document detail with forward dialog flag after the flash is visible
+        setTimeout(() => {
+          router.push({ pathname: '/(app)/documents/[id]', params: { id: doc.id, showForward: '1' } });
+          resetScanner(0);
+        }, 800);
       } else {
-        // No intended staff — existing success flash behavior
-        setAcceptedDocTitle(scannedDoc.title || scannedDoc.tracking_number || 'Document');
+        // No intended staff — flash and reset as before
         resetScanner(2500);
       }
     } catch (err: any) {
