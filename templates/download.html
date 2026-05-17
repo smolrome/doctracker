@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Download — DepEd LAKAD Mobile</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<!-- QR code generator (no build step needed) -->
+<title>Download LAKAD — DepEd Leyte Division Personnel Unit</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
     --blue:   #0038A8;
+    --blue-l: #1a52c8;
     --gold:   #FCD116;
     --dark:   #0A0F1E;
     --card:   #111827;
@@ -31,137 +31,202 @@
   /* ── Nav ─────────────────────────────────────────────────────────── */
   .nav {
     display: flex; align-items: center; gap: 16px;
-    padding: 0 32px; height: 64px;
-    background: rgba(0,0,0,0.4);
-    backdrop-filter: blur(12px);
+    padding: 0 40px; height: 64px;
+    background: rgba(10,15,30,0.85);
+    backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border);
     position: sticky; top: 0; z-index: 100;
   }
-  .nav-logo { height: 32px; }
-  .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none;
-               font-weight: 800; font-size: 15px; color: #fff; }
-  .nav-sep { flex: 1; }
-  .nav-back { color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600;
-              padding: 7px 16px; border-radius: 8px; border: 1px solid var(--border);
-              transition: all .2s; }
+  .nav-brand {
+    display: flex; align-items: center; gap: 10px;
+    text-decoration: none; font-weight: 800; font-size: 16px; color: #fff;
+  }
+  .nav-logo { height: 30px; border-radius: 50%; }
+  .nav-sep  { flex: 1; }
+  .nav-back {
+    color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600;
+    padding: 7px 16px; border-radius: 8px; border: 1px solid var(--border);
+    transition: all .2s;
+  }
   .nav-back:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
 
   /* ── Hero ────────────────────────────────────────────────────────── */
   .hero {
     position: relative; overflow: hidden;
-    padding: 80px 32px 64px;
+    padding: 72px 40px 60px;
     text-align: center;
-    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,56,168,0.35) 0%, transparent 70%);
+    background: radial-gradient(ellipse 90% 70% at 50% 0%, rgba(0,56,168,0.40) 0%, transparent 70%);
   }
   .hero::before {
-    content: ''; position: absolute; inset: 0;
-    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230038A8' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    pointer-events: none;
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%230038A8' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/svg%3E");
   }
-
-  .app-icon {
-    width: 96px; height: 96px; border-radius: 22px; margin: 0 auto 24px;
-    background: linear-gradient(135deg, var(--blue) 0%, #0052D4 100%);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 48px;
-    box-shadow: 0 24px 48px rgba(0,56,168,0.5), 0 0 0 1px rgba(255,255,255,0.1);
+  .hero-wordmark {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 64px; font-weight: 700;
+    letter-spacing: -1px; color: #fff;
+    margin-bottom: 10px; line-height: 1;
   }
-  .app-name { font-size: 36px; font-weight: 900; letter-spacing: -0.8px; margin-bottom: 6px; }
-  .app-sub  { color: var(--muted); font-size: 16px; margin-bottom: 8px; }
-  .badge-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 40px; }
+  .hero-sub1 { font-size: 18px; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 4px; }
+  .hero-sub2 { font-size: 14px; color: var(--muted); margin-bottom: 32px; letter-spacing: 0.04em; }
+  .badge-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
   .badge {
-    padding: 4px 12px; border-radius: 20px;
-    font-size: 12px; font-weight: 600;
-    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7);
+    padding: 5px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+    background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.75);
     border: 1px solid var(--border);
   }
   .badge.green { background: rgba(16,185,129,0.15); color: #34D399; border-color: rgba(16,185,129,0.3); }
-  .badge.blue  { background: rgba(59,130,246,0.15); color: #93C5FD; border-color: rgba(59,130,246,0.3); }
+  .badge.blue  { background: rgba(0,56,168,0.30);   color: #93C5FD; border-color: rgba(0,56,168,0.5); }
 
-  /* ── Download card ──────────────────────────────────────────────── */
-  .dl-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
-    max-width: 820px; margin: 0 auto; padding: 0 24px 80px;
-  }
-  @media (max-width: 640px) {
-    .dl-grid { grid-template-columns: 1fr; }
-    .hero { padding: 48px 20px 40px; }
-    .app-name { font-size: 26px; }
-    .nav { padding: 0 16px; }
+  /* ── Main 2-col grid ─────────────────────────────────────────────── */
+  .main-wrap {
+    max-width: 900px; margin: 0 auto;
+    padding: 40px 24px 0;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
   }
 
-  .dl-card {
+  /* ── Cards ───────────────────────────────────────────────────────── */
+  .card {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 20px; padding: 32px;
+    border-radius: 20px; padding: 28px;
   }
-  .dl-card h2 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
-  .dl-card p  { color: var(--muted); font-size: 13px; line-height: 1.7; margin-bottom: 24px; }
+  .card-title { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+  .card-sub   { color: var(--muted); font-size: 13px; line-height: 1.6; margin-bottom: 20px; }
 
-  /* Android download button */
-  .btn-android {
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    width: 100%; padding: 16px 24px; border-radius: 14px;
+  /* ── App row inside download card ────────────────────────────────── */
+  .app-row {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 20px; padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .app-icon {
+    width: 60px; height: 60px; border-radius: 14px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--blue) 0%, #1a52c8 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    box-shadow: 0 8px 24px rgba(0,56,168,0.45);
+  }
+  .app-name { font-size: 20px; font-weight: 800; }
+  .app-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .app-meta span { color: rgba(255,255,255,0.65); }
+
+  /* ── Buttons ──────────────────────────────────────────────────────── */
+  .btn-dl {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 15px 20px; border-radius: 13px;
     background: linear-gradient(135deg, #16A34A 0%, #15803D 100%);
-    color: #fff; text-decoration: none; font-weight: 800; font-size: 15px;
-    border: none; cursor: pointer;
-    box-shadow: 0 8px 24px rgba(22,163,74,0.35);
+    color: #fff; font-weight: 800; font-size: 15px;
+    text-decoration: none; border: none; cursor: pointer;
+    box-shadow: 0 8px 20px rgba(22,163,74,0.35);
     transition: transform .15s, box-shadow .15s;
   }
-  .btn-android:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(22,163,74,0.45); }
-  .btn-android:active { transform: translateY(0); }
-  .btn-android.disabled {
-    background: rgba(255,255,255,0.08); color: var(--muted);
+  .btn-dl:hover  { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(22,163,74,0.45); }
+  .btn-dl:active { transform: none; }
+  .btn-dl.disabled {
+    background: rgba(255,255,255,0.07); color: var(--muted);
     box-shadow: none; cursor: not-allowed; pointer-events: none;
   }
-  .btn-android svg { flex-shrink: 0; }
-  .btn-meta { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 10px; text-align: center; }
+  .btn-note { font-size: 11px; color: rgba(255,255,255,0.40); text-align: center; margin-top: 10px; }
 
-  .btn-ios {
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    width: 100%; padding: 14px 24px; border-radius: 14px; margin-top: 10px;
-    background: rgba(255,255,255,0.06); color: var(--muted);
-    text-decoration: none; font-weight: 600; font-size: 14px;
-    border: 1px solid var(--border); cursor: not-allowed;
+  /* ── QR card ──────────────────────────────────────────────────────── */
+  .qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  #qr-canvas { border-radius: 12px; background: #fff; padding: 10px; display: block; }
+  .qr-label  { color: var(--muted); font-size: 12px; text-align: center; line-height: 1.7; }
+
+  /* ── Section header ──────────────────────────────────────────────── */
+  .section-header {
+    font-size: 12px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 12px;
   }
 
-  /* QR card */
-  .qr-wrap {
-    display: flex; flex-direction: column; align-items: center; gap: 16px;
+  /* ── Install steps ───────────────────────────────────────────────── */
+  .steps-wrap { max-width: 900px; margin: 20px auto 0; padding: 0 24px; }
+  .steps-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+  .step-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 18px;
   }
-  #qr-canvas {
-    border-radius: 12px; background: #fff;
-    padding: 12px;
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
-  }
-  .qr-label { color: var(--muted); font-size: 12px; text-align: center; line-height: 1.6; }
-
-  /* Steps card */
-  .steps { list-style: none; display: flex; flex-direction: column; gap: 16px; }
-  .step  { display: flex; gap: 14px; align-items: flex-start; }
   .step-num {
-    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
-    background: rgba(0,56,168,0.35); border: 1px solid rgba(0,56,168,0.6);
+    width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(0,56,168,0.25); border: 1px solid rgba(0,56,168,0.50);
     display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 800; color: #93C5FD;
+    font-size: 13px; font-weight: 800; color: #93C5FD;
+    margin-bottom: 12px;
   }
-  .step-text { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.6; padding-top: 4px; }
-  .step-text strong { color: #fff; font-weight: 700; }
+  .step-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .step-desc  { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .step-desc strong { color: rgba(255,255,255,0.80); }
 
-  /* Features card */
-  .features { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .feat {
-    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
-    border-radius: 12px; padding: 14px 16px;
-    font-size: 13px; color: rgba(255,255,255,0.80);
+  /* ── Features ────────────────────────────────────────────────────── */
+  .features-wrap { max-width: 900px; margin: 20px auto 0; padding: 0 24px; }
+  .features-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+  .feat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 18px;
   }
-  .feat-icon { font-size: 20px; margin-bottom: 6px; display: block; }
-  .feat-label { font-weight: 600; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .feat-icon  { font-size: 24px; margin-bottom: 8px; display: block; }
+  .feat-name  { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .feat-desc  { font-size: 12px; color: var(--muted); line-height: 1.5; }
 
-  /* Footer note */
-  .footer-note {
-    text-align: center; padding: 24px; color: var(--muted); font-size: 12px;
+  /* ── Bottom CTA ──────────────────────────────────────────────────── */
+  .cta-wrap { max-width: 900px; margin: 20px auto 0; padding: 0 24px; }
+  .cta-card {
+    background: linear-gradient(135deg, rgba(0,56,168,0.25) 0%, rgba(0,56,168,0.10) 100%);
+    border: 1px solid rgba(0,56,168,0.35);
+    border-radius: 20px; padding: 36px;
+    text-align: center;
+  }
+  .cta-title { font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+  .cta-sub   { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
+  .cta-btns  { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .cta-btn-solid {
+    padding: 12px 28px; border-radius: 11px;
+    background: var(--blue); color: #fff;
+    font-weight: 700; font-size: 14px;
+    text-decoration: none; transition: background .15s;
+  }
+  .cta-btn-solid:hover { background: var(--blue-l); }
+  .cta-btn-outline {
+    padding: 12px 28px; border-radius: 11px;
+    background: transparent; color: rgba(255,255,255,0.80);
+    font-weight: 700; font-size: 14px;
+    text-decoration: none;
+    border: 1px solid rgba(255,255,255,0.20);
+    transition: border-color .15s, color .15s;
+  }
+  .cta-btn-outline:hover { border-color: rgba(255,255,255,0.45); color: #fff; }
+
+  /* ── Footer ──────────────────────────────────────────────────────── */
+  .footer {
+    text-align: center; padding: 32px 24px;
+    color: var(--muted); font-size: 12px;
     border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+  .footer a { color: #93C5FD; text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+
+  /* ── Responsive ──────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .nav { padding: 0 20px; }
+    .hero { padding: 52px 20px 44px; }
+    .hero-wordmark { font-size: 48px; }
+    .main-wrap { grid-template-columns: 1fr; padding: 24px 16px 0; }
+    .steps-wrap, .features-wrap, .cta-wrap { padding: 0 16px; }
+    .steps-grid { grid-template-columns: repeat(2,1fr); }
+    .features-grid { grid-template-columns: repeat(2,1fr); }
+  }
+  @media (max-width: 480px) {
+    .hero-wordmark { font-size: 36px; }
+    .hero-sub1 { font-size: 15px; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .features-grid { grid-template-columns: 1fr; }
+    .cta-card { padding: 24px 20px; }
   }
 </style>
 </head>
@@ -171,7 +236,7 @@
 <nav class="nav">
   <a href="/" class="nav-brand">
     <img src="/static/logo.png" alt="DepEd" class="nav-logo"/>
-    C.O.R.E
+    LAKAD
   </a>
   <div class="nav-sep"></div>
   <a href="/" class="nav-back">← Back to Web App</a>
@@ -179,146 +244,157 @@
 
 <!-- Hero -->
 <div class="hero">
-  <div class="app-icon">📱</div>
-  <h1 class="app-name">LAKAD Mobile</h1>
-  <p class="app-sub">DepEd Leyte Division · Personnel Unit</p>
+  <div class="hero-wordmark">LAKAD</div>
+  <p class="hero-sub1">Official Client Services System</p>
+  <p class="hero-sub2">DepEd Leyte Division — Personnel Unit</p>
   <div class="badge-row">
     <span class="badge green">● Free</span>
     <span class="badge blue">Android</span>
-    <span class="badge">Offline Support</span>
-    <span class="badge">QR Scanning</span>
-    <span class="badge">Real-Time Tracking</span>
+    <span class="badge">Offline Ready</span>
   </div>
 </div>
 
-<!-- Download grid -->
-<div class="dl-grid">
+<!-- Download + QR -->
+<div class="main-wrap">
 
   <!-- Download card -->
-  <div class="dl-card">
-    <h2>📥 Download App</h2>
-    <p>Install the official mobile app to submit documents, track status, and scan QR codes — all from your phone.</p>
+  <div class="card">
+    <div class="app-row">
+      <div class="app-icon">📱</div>
+      <div>
+        <div class="app-name">LAKAD</div>
+        <div class="app-meta">
+          Version <span>{{ apk_version or '1.0.0' }}</span>
+          {% if apk_size %} · <span>{{ apk_size }} MB</span>{% endif %}
+           · <span>Android 8.0+</span>
+        </div>
+      </div>
+    </div>
 
     {% if apk_available %}
-      <a href="/download/apk" class="btn-android">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zm-2.5-1C2.67 17 2 17.67 2 18.5v-9C2 8.67 2.67 8 3.5 8S5 8.67 5 9.5v9c0 .83-.67 1.5-1.5 1.5zm17 0c-.83 0-1.5-.67-1.5-1.5v-9c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5zM15.53 2.16l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 1.23 12.95 1 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C6.97 3.26 6 5.01 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/>
+      <a href="/download/apk" class="btn-dl">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
-        Download for Android
+        Download APK{% if apk_size %} ({{ apk_size }} MB){% endif %}
       </a>
-      <p class="btn-meta">
-        Version {{ apk_version or '1.0' }} · {{ apk_size or '~35 MB' }} · Android 8.0+
-      </p>
     {% else %}
-      <a class="btn-android disabled">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zm-2.5-1C2.67 17 2 17.67 2 18.5v-9C2 8.67 2.67 8 3.5 8S5 8.67 5 9.5v9c0 .83-.67 1.5-1.5 1.5zm17 0c-.83 0-1.5-.67-1.5-1.5v-9c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5zM15.53 2.16l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 1.23 12.95 1 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C6.97 3.26 6 5.01 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/>
+      <a class="btn-dl disabled">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
         Coming Soon
       </a>
-      <p class="btn-meta">APK build not yet uploaded by admin.</p>
     {% endif %}
-
-    <a class="btn-ios">
-      🍎 &nbsp;iOS — Not Available
-    </a>
-    <p class="btn-meta" style="margin-top:6px;">iPhone users: use the web app instead.</p>
+    <p class="btn-note">Android only · Free · No Play Store needed</p>
   </div>
 
-  <!-- QR Code card -->
-  <div class="dl-card">
-    <h2>📷 Scan to Download</h2>
-    <p>Point your phone camera at this QR code to open the download page directly on your device.</p>
+  <!-- QR card -->
+  <div class="card">
+    <p class="card-title">📷 Scan to Download</p>
+    <p class="card-sub">Point your phone camera at this QR code to open this page on your device.</p>
     <div class="qr-wrap">
       <canvas id="qr-canvas"></canvas>
-      <p class="qr-label">Scan with any camera app<br/>or QR reader</p>
+      <p class="qr-label">Works with any camera app or QR reader</p>
     </div>
   </div>
 
-  <!-- Install steps card -->
-  <div class="dl-card">
-    <h2>⚙️ How to Install</h2>
-    <p>Android blocks unknown APKs by default. Follow these steps after downloading:</p>
-    <ul class="steps">
-      <li class="step">
-        <div class="step-num">1</div>
-        <div class="step-text">Tap the downloaded <strong>DepEd-LAKAD.apk</strong> file in your notifications or Downloads folder.</div>
-      </li>
-      <li class="step">
-        <div class="step-num">2</div>
-        <div class="step-text">If prompted, go to <strong>Settings → Install unknown apps</strong> and allow your browser to install.</div>
-      </li>
-      <li class="step">
-        <div class="step-num">3</div>
-        <div class="step-text">Tap <strong>Install</strong> on the confirmation screen. The app installs in seconds.</div>
-      </li>
-      <li class="step">
-        <div class="step-num">4</div>
-        <div class="step-text">Open the app, <strong>log in</strong> with your existing account credentials, and you're ready.</div>
-      </li>
-    </ul>
-  </div>
+</div>
 
-  <!-- Features card -->
-  <div class="dl-card">
-    <h2>✨ What's Inside</h2>
-    <p>Everything the web app does, optimised for your phone.</p>
-    <div class="features">
-      <div class="feat">
-        <span class="feat-icon">📤</span>
-        Submit documents to any office
-        <div class="feat-label">Client feature</div>
-      </div>
-      <div class="feat">
-        <span class="feat-icon">📍</span>
-        Real-time status tracking
-        <div class="feat-label">Live updates</div>
-      </div>
-      <div class="feat">
-        <span class="feat-icon">🔍</span>
-        QR code scanner
-        <div class="feat-label">Staff feature</div>
-      </div>
-      <div class="feat">
-        <span class="feat-icon">📶</span>
-        Works offline
-        <div class="feat-label">Syncs when online</div>
-      </div>
-      <div class="feat">
-        <span class="feat-icon">🔔</span>
-        Push notifications
-        <div class="feat-label">Status alerts</div>
-      </div>
-      <div class="feat">
-        <span class="feat-icon">🖨️</span>
-        Save &amp; print QR codes
-        <div class="feat-label">PDF export</div>
-      </div>
+<!-- Install steps -->
+<div class="steps-wrap">
+  <p class="section-header">How to Install</p>
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="step-num">1</div>
+      <div class="step-title">Download the APK</div>
+      <div class="step-desc">Tap the Download button above and save the file to your phone.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">2</div>
+      <div class="step-title">Open the File</div>
+      <div class="step-desc">Open the downloaded <strong>DepEd-LAKAD.apk</strong> from your notifications or Downloads folder.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">3</div>
+      <div class="step-title">Tap Install</div>
+      <div class="step-desc">Allow installation from unknown sources if prompted under <strong>Settings → Install unknown apps</strong>.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">4</div>
+      <div class="step-title">Sign In</div>
+      <div class="step-desc">Open LAKAD and sign in with your existing account credentials.</div>
     </div>
   </div>
+</div>
 
-</div><!-- /dl-grid -->
+<!-- Features -->
+<div class="features-wrap">
+  <p class="section-header">What's Inside</p>
+  <div class="features-grid">
+    <div class="feat-card">
+      <span class="feat-icon">📋</span>
+      <div class="feat-name">Submit Documents</div>
+      <div class="feat-desc">Submit to any office from anywhere</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">🔍</span>
+      <div class="feat-name">Track in Real Time</div>
+      <div class="feat-desc">See every movement of your document</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">📷</span>
+      <div class="feat-name">QR Scanner</div>
+      <div class="feat-desc">Scan office and document QR codes instantly</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">📶</span>
+      <div class="feat-name">Works Offline</div>
+      <div class="feat-desc">Access your documents without internet</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">🔔</span>
+      <div class="feat-name">Push Notifications</div>
+      <div class="feat-desc">Get notified when your document moves</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">🖨️</span>
+      <div class="feat-name">Download QR</div>
+      <div class="feat-desc">Save and print your document QR code</div>
+    </div>
+  </div>
+</div>
 
-<div class="footer-note">
-  DepEd Leyte Division · Personnel Unit · C.O.R.E System<br/>
-  Having trouble? Use the <a href="/" style="color:#93C5FD;">web app</a> instead.
+<!-- CTA -->
+<div class="cta-wrap">
+  <div class="cta-card">
+    <p class="cta-title">Ready to get started?</p>
+    <p class="cta-sub">Already have an account? Sign in on the web.<br/>New here? Register for free — no email required.</p>
+    <div class="cta-btns">
+      <a href="/client/login" class="cta-btn-solid">Sign In</a>
+      <a href="/client/register" class="cta-btn-outline">✍️ Register Free</a>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  DepEd Leyte Division · Personnel Unit · LAKAD Client Services System<br/>
+  Having trouble? Use the <a href="/">web app</a> instead.
 </div>
 
 <script>
-  // Generate a QR code for the current page URL
   (function () {
     const url = window.location.origin + '/download';
     QRCode.toCanvas(
       document.getElementById('qr-canvas'),
       url,
-      {
-        width: 180,
-        margin: 1,
-        color: { dark: '#0A0F1E', light: '#FFFFFF' },
-      },
-      function (err) {
-        if (err) console.error('QR error:', err);
-      }
+      { width: 180, margin: 1, color: { dark: '#0A0F1E', light: '#FFFFFF' } },
+      function (err) { if (err) console.error('QR error:', err); }
     );
   })();
 </script>

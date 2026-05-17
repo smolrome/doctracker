@@ -27,7 +27,7 @@ def _apk_size_mb():
     if not os.path.exists(path):
         return None
     size_bytes = os.path.getsize(path)
-    return f'{size_bytes / 1_048_576:.1f} MB'
+    return round(size_bytes / 1_048_576, 1)
 
 
 @download_bp.route('/download')
