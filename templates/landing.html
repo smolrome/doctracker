@@ -35,7 +35,25 @@
       <button class="nav-btn-solid" onclick="openModal('register')">✍️ Register Free</button>
     {% endif %}
   </div>
+  <button class="nav-hamburger" id="navHamburger" aria-label="Open menu" aria-expanded="false" onclick="toggleMobileNav()">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+<!-- Mobile dropdown (mirrors nav-actions for ≤768px) -->
+<div class="nav-mobile-menu" id="navMobileMenu">
+  <a href="/download" class="nav-mobile-item">📱 Get the App</a>
+  {% if logged_in %}
+    {% if current_role in ('admin','staff') %}
+      <a href="/dashboard" class="nav-mobile-item">📊 Dashboard</a>
+    {% else %}
+      <a href="/client" class="nav-mobile-item">📋 My Documents</a>
+      <a href="/logout" class="nav-mobile-item">Sign Out</a>
+    {% endif %}
+  {% else %}
+    <button class="nav-mobile-item" onclick="closeNav();openModal('signin')">Sign In</button>
+    <button class="nav-mobile-item nav-mobile-solid" onclick="closeNav();openModal('register')">✍️ Register Free</button>
+  {% endif %}
+</div>
 
 <!-- ═══ HERO ═══ -->
 <style>
@@ -533,7 +551,7 @@
     </div>
     <form id="signin-form" method="post" action="/client/login" class="lp-modal-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-      <input type="hidden" name="next_url" value="/"/>
+      <input type="hidden" name="next_url" value=""/>
       <div class="lp-form-group">
         <label class="lp-label" for="si-username">Username</label>
         <input class="lp-input" type="text" id="si-username" name="username" placeholder="Enter your username" required autocomplete="username"/>
@@ -587,6 +605,16 @@
 </div>
 
 <script>
+function toggleMobileNav() {
+  var menu = document.getElementById('navMobileMenu');
+  var btn  = document.getElementById('navHamburger');
+  var open = menu.classList.toggle('open');
+  btn.setAttribute('aria-expanded', open);
+}
+function closeNav() {
+  document.getElementById('navMobileMenu').classList.remove('open');
+  document.getElementById('navHamburger').setAttribute('aria-expanded', 'false');
+}
 function openModal(id) {
   document.getElementById('modal-' + id).classList.add('active');
   document.body.style.overflow = 'hidden';
