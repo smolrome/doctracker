@@ -695,6 +695,8 @@ def submit():
                 for u in all_users
                 if u.get("role") in ("staff", "admin")
             ]
+        if not selected_staff and office_staff_list:
+            selected_staff = office_staff_list[0]["username"]
 
     return render_template("client_submit.html",
                            cart=cart, error=error, doc={},
