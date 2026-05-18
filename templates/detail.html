@@ -235,83 +235,11 @@
     {% endif %}
 
     <div class="doc-info-item">
-      <div class="doc-info-label">Date Submitted</div>
-      <div class="doc-info-value">{{ doc.created_at[:10] if doc.created_at else '—' }} <span style="color:#C9A227;font-size:13px;font-weight:500;">{{ doc.created_at | time12 }}</span></div>
-    </div>
-
-    <div class="doc-info-item">
       <div class="doc-info-label">Status</div>
       <div class="doc-info-value">{{ doc.status }}</div>
     </div>
 
-    {% if doc.date_received %}
-    <div class="doc-info-item">
-      <div class="doc-info-label">Date Received</div>
-      <div class="doc-info-value">{{ doc.date_received }}</div>
-    </div>
-    {% endif %}
-
-    {% if doc.received_by %}
-    <div class="doc-info-item">
-      <div class="doc-info-label">Received By</div>
-      <div class="doc-info-value">{{ doc.received_by }}</div>
-    </div>
-    {% endif %}
-
-    {% if doc.date_released %}
-    <div class="doc-info-item">
-      <div class="doc-info-label">Date Released</div>
-      <div class="doc-info-value">{{ doc.date_released }}</div>
-    </div>
-    {% endif %}
-
   </div>
-
-  {% if doc.transferred_to %}
-  <div style="margin-top:16px;padding-top:16px;border-top:1.5px solid #D7CDB5;">
-    <div class="doc-info-label" style="margin-bottom:8px;">🔄 Transfer History</div>
-    <div class="doc-info-value mono" style="font-size:14px;">
-      <div>Transferred to: <strong>{{ transferred_to_name or doc.transferred_to }}</strong></div>
-      {% if doc.pending_at_office %}
-      <div style="color:#1D4ED8;">📍 Pending at: <strong>{{ doc.pending_at_office }}</strong></div>
-      {% elif doc.transferred_to_office %}
-      <div>Office: {{ doc.transferred_to_office }}</div>
-      {% endif %}
-      {% if doc.transferred_by %}
-      <div>Transferred by: {{ transferred_by_name or doc.transferred_by }}</div>
-      {% endif %}
-      {% if doc.transferred_at %}
-      <div>Transfer date: {{ (doc.transferred_at or '')[:16].replace('T', ' ') }}</div>
-      {% endif %}
-      {% if doc.transfer_status %}
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #E2E8F0;">
-        {% if doc.transfer_status == 'accepted' %}
-        <div style="background:#D1FAE5;color:#065F46;padding:8px 12px;border-radius:8px;font-weight:600;">
-          ✅ ACCEPTED
-          {% if doc.accepted_by_name %}<span style="font-weight:normal;"> by {{ doc.accepted_by_name }}</span>{% endif %}
-          {% if doc.accepted_at %} on {{ doc.accepted_at }}{% endif %}
-        </div>
-        {% elif doc.transfer_status == 'rejected' %}
-        <div style="background:#FEE2E2;color:#991B1B;padding:8px 12px;border-radius:8px;font-weight:600;">
-          ❌ REJECTED
-          {% if doc.rejected_by_name %}<span style="font-weight:normal;"> by {{ doc.rejected_by_name }}</span>{% endif %}
-          {% if doc.rejected_at %} on {{ doc.rejected_at }}{% endif %}
-          {% if doc.rejection_reason %}
-          <div style="margin-top:6px;padding-top:6px;border-top:1px solid #FECACA;font-weight:normal;">
-            <strong>Reason:</strong> {{ doc.rejection_reason }}
-          </div>
-          {% endif %}
-        </div>
-        {% elif doc.transfer_status == 'pending' %}
-        <div style="background:#FEF3C7;color:#92400E;padding:8px 12px;border-radius:8px;font-weight:600;">
-          ⏳ AWAITING ACCEPTANCE
-        </div>
-        {% endif %}
-      </div>
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
 
 </div>
 
