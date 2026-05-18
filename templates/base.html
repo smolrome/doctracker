@@ -195,29 +195,6 @@
 </div>
 {% endif %}
 
-<!-- ── Accept Confirmation Modal ── -->
-<div id="accept-confirm-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="accept-modal-title">
-  <div class="modal-sheet modal-sheet-sm">
-    <div class="modal-header modal-header-green">
-      <div class="modal-header-content">
-        <span class="modal-header-icon" aria-hidden="true">✅</span>
-        <h2 class="modal-title" id="accept-modal-title">Accept Document</h2>
-      </div>
-      <button class="modal-close-btn" onclick="closeAcceptModal()" aria-label="Close">✕</button>
-    </div>
-    <div class="modal-body">
-      <p id="accept-modal-doc-name" style="margin:0 0 6px;font-size:15px;font-weight:700;color:#1E293B;"></p>
-      <p id="accept-modal-intended-for" style="margin:0 0 10px;font-size:13px;color:#0038A8;font-weight:600;display:none;"></p>
-      <p class="modal-body-text">Mark this document as <strong>received</strong>? It will be added to your dashboard.</p>
-      <input type="hidden" id="accept-doc-id" value="">
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeAcceptModal()">Cancel</button>
-      <button class="btn btn-success" onclick="submitAccept()">✓ Accept Document</button>
-    </div>
-  </div>
-</div>
-
 <!-- ── Rejection Reason Modal ── -->
 <div id="rejection-reason-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="rejection-modal-title">
   <div class="modal-sheet modal-sheet-sm">
