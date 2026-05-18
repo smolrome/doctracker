@@ -25,7 +25,7 @@ from flask import (Blueprint, abort, flash, jsonify, redirect, render_template,
 from urllib.parse import urlparse
 
 from services.auth import (
-    check_rate_limit, create_user, get_user, reset_rate_limit,
+    approve_user, check_rate_limit, create_user, get_user, reset_rate_limit,
     update_last_login, verify_user,
 )
 from services.documents import (
@@ -228,7 +228,26 @@ def register():
             else:
                 ok, err = create_user(username, password, full_name, role="client", office=office, email=email)
                 if ok:
-                    # Notify admin — never block registration if email fails
+                    _office_slug = request.form.get("office_slug", "").strip()
+                    if _office_slug:
+                        # Walk-in via office QR — auto-approve and log them in immediately
+                        approve_user(username)
+                        _next_url = request.form.get("next_url", "").strip()
+                        _regenerate_session({
+                            'username':  username,
+                            'role':      'client',
+                            'full_name': full_name,
+                            'office':    office,
+                        })
+                        session.permanent = True
+                        audit_log("client_walkin_register",
+                                  f"office_slug={_office_slug}",
+                                  username=username, ip=get_client_ip())
+                        safe_next = _safe_redirect_url(_next_url, "")
+                        if safe_next and safe_next.startswith("/client/submit"):
+                            return redirect(safe_next)
+                        return redirect(url_for("client.portal"))
+                    # Online registration — requires admin approval
                     try:
                         from config import MAIL_ENABLED
                         from services.email import send_admin_notification
@@ -260,9 +279,7 @@ def register():
                     except Exception:
                         pass  # never block registration
                     msg = (
-                        "Registration successful! Your account is pending approval "
-                        "by the administrator. You will be able to login once your "
-                        "account is approved."
+                        "Registration submitted. Awaiting admin approval."
                     )
                     if is_xhr:
                         return jsonify({'success': True, 'message': msg})
