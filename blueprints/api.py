@@ -2977,7 +2977,7 @@ def api_client_register():
         return jsonify(error='username, password, and full_name are required'), 400
     if len(password) < 8:
         return jsonify(error='Password must be at least 8 characters'), 400
-    from services.auth import get_user_by_username as _get_u, create_user as _create_u
+    from services.auth import get_user as _get_u, create_user as _create_u
     if _get_u(username):
         return jsonify(error='Username already taken'), 409
     success, msg = _create_u(
