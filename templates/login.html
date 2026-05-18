@@ -15,18 +15,18 @@
     <img src="/static/logo.png" alt="DepEd Leyte Logo" class="left-logo"/>
     <div class="brand-text">
       <div class="brand-title">LAKAD</div>
-      <div class="brand-subtitle">Staff Portal</div>
+      <div class="brand-subtitle">Client Services System</div>
       <div class="brand-org">DepEd Leyte Division — Personnel Unit</div>
     </div>
     <hr class="brand-rule"/>
-    <p class="brand-tagline">Manage and track documents for the Personnel Unit.</p>
+    <p class="brand-tagline">Your gateway to DepEd Leyte Division Personnel Unit client services.</p>
     <a href="/" class="left-back">← Back to Home</a>
   </div>
 
   <!-- RIGHT PANEL -->
   <div class="login-right">
-    <h1 class="form-heading">Staff Sign In</h1>
-    <p class="form-sub">Enter your credentials to access the system.</p>
+    <h1 class="form-heading">Sign In</h1>
+    <p class="form-sub">Welcome back. Sign in to your account.</p>
 
     {# FIX 1 — XSS: error is server-generated but Jinja auto-escaping is the
        last line of defence; role="alert" announces it to screen readers. #}
@@ -83,6 +83,11 @@
         Sign In
       </button>
     </form>
+
+    <div class="form-divider"><hr/></div>
+    <p class="register-link">Don't have an account?
+      <a href="/client/register">Register</a>
+    </p>
   </div>
 
 </div>

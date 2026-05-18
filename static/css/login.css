@@ -53,6 +53,12 @@ body{font-family:'Inter',sans-serif;min-height:100vh;
 .btn-login:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(201,162,39,.4);background:#b8941f;}
 .btn-login:disabled{opacity:.55;transform:none;cursor:not-allowed;}
 
+.form-divider{margin-top:auto;padding-top:24px;}
+.form-divider hr{border:none;border-top:1px solid #E8DFC8;}
+.register-link{margin-top:14px;font-size:14px;color:#8BA5B5;text-align:center;}
+.register-link a{color:#C9A227;font-weight:700;text-decoration:none;}
+.register-link a:hover{text-decoration:underline;}
+
 /* Password toggle */
 .password-input-wrapper{position:relative;}
 .password-input-wrapper input{padding-right:46px;}
@@ -73,6 +79,27 @@ body{font-family:'Inter',sans-serif;min-height:100vh;
   animation:spin .7s linear infinite;margin:0 auto 14px;}
 .loading-text{font-family:'Libre Baskerville',serif;font-size:17px;font-weight:700;color:#0E2A47;}
 @keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── Register page additions ── */
+.req{color:#CE1126;margin-left:2px;}
+.opt{font-weight:400;color:#9AAEBC;font-size:12px;margin-left:4px;}
+.hint{font-size:13px;color:#8BA5B5;margin-top:5px;}
+
+.steps{display:flex;gap:8px;margin-bottom:20px;}
+.step{flex:1;text-align:center;padding:10px 6px;border-radius:10px;
+  background:#FAF8F3;border:2px solid #D7CDB5;}
+.step.active{background:#0E2A47;border-color:transparent;}
+.step-num{font-family:'Libre Baskerville',serif;font-size:17px;font-weight:700;color:#8BA5B5;}
+.step.active .step-num{color:#fff;}
+.step-label{font-size:12px;font-weight:700;color:#8BA5B5;margin-top:2px;}
+.step.active .step-label{color:rgba(255,255,255,.8);}
+
+.office-banner{background:#FAF8F3;border:2px solid #D7CDB5;border-radius:10px;
+  padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px;}
+.ob-icon{font-size:22px;flex-shrink:0;}
+.ob-label{font-size:11px;font-weight:700;color:#9AAEBC;
+  text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+.ob-name{font-family:'Libre Baskerville',serif;font-size:15px;font-weight:700;color:#0E2A47;}
 
 /* Mobile */
 @media(max-width:680px){
