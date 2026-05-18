@@ -51,8 +51,7 @@
   background:var(--surface);color:var(--muted);border:2px solid var(--border);}
 .route-arrow{color:var(--muted);font-size:16px;}
 
-/* ── INFO GRID ── */
-.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+/* ── INFO CARD (used by QR section) ── */
 .info-card{background:#fff;border:2px solid var(--border);border-radius:16px;padding:20px;}
 .info-card.full{grid-column:1/-1;}
 .info-card-title{font-family:'Inter',sans-serif;font-size:13px;font-weight:700;
@@ -60,14 +59,15 @@
   margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--border);
   display:flex;align-items:center;gap:8px;}
 
-.field{margin-bottom:12px;}
-.field:last-child{margin-bottom:0;}
-.field-label{font-size:12px;font-weight:700;text-transform:uppercase;
-  letter-spacing:.06em;color:var(--muted);margin-bottom:4px;}
-.field-val{font-size:16px;color:var(--navy);font-weight:600;line-height:1.5;
+/* ── DOCUMENT INFORMATION GRID ── */
+.doc-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 24px;}
+.doc-info-item{display:flex;flex-direction:column;gap:3px;}
+.doc-info-label{font-size:11px;font-weight:700;color:#5B7FA8;
+  text-transform:uppercase;letter-spacing:.08em;}
+.doc-info-value{font-size:15px;font-weight:600;color:#0E2A47;line-height:1.5;
   word-break:break-word;}
-.field-val.empty{color:var(--muted);font-weight:400;font-style:italic;}
-.field-val.mono{font-family:monospace;font-size:14px;}
+.doc-info-value.empty{color:var(--muted);font-weight:400;font-style:italic;}
+.doc-info-value.mono{font-family:monospace;font-size:14px;}
 
 /* Source type badge */
 .source-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;
@@ -417,10 +417,10 @@
 .qr-btns{display:flex;gap:10px;flex-wrap:wrap;}
 
 @media(max-width:768px){
-  .info-grid{grid-template-columns:1fr;}
   .routing-grid{grid-template-columns:1fr;}
 }
 @media(max-width:600px){
+  .doc-info-grid{grid-template-columns:1fr;}
   .doc-hero-name{font-size:20px;}
   .doc-hero{padding:18px;}
   .timeline{display:none;}
@@ -441,7 +441,6 @@
 @media print{
   .actions-bar,.status-update-card,.page-header{display:none!important;}
   .doc-hero{background:#fff!important;border-left-color:#C9A227!important;-webkit-print-color-adjust:exact;}
-  .info-grid{grid-template-columns:1fr 1fr;}
 }
 
 /* ── BUTTON VARIANTS ── */
@@ -471,7 +470,7 @@
 [data-theme="dark"] .info-card,
 [data-theme="dark"] .route-card,
 [data-theme="dark"] .status-update-card { background:#1E2A3A; border-color:#2E3D52; }
-[data-theme="dark"] .field-val { color:#C8D8EA; }
+[data-theme="dark"] .doc-info-value { color:#C8D8EA; }
 [data-theme="dark"] .status-update-card select { background:#1E2A3A; color:#E2EAF4; }
 
 /* ═══ TRAVEL TIMELINE (vertical) ═══ */

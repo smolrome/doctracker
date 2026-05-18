@@ -161,172 +161,157 @@
 </div>
 {% endif %}
 
-<!-- ── INFO GRID ── -->
-<div class="info-grid">
+<!-- ── DOCUMENT INFORMATION ── -->
+<div class="card">
+  <div class="card-title"><span class="icon">📄</span> Document Information</div>
+  <hr class="card-divider"/>
 
-  <!-- Document Details -->
-  <div class="info-card">
-    <div class="info-card-title">📄 Document Details</div>
+  {% if doc.submitted_by %}
+  <div class="source-badge source-client">📱 Submitted by Client</div>
+  {% elif doc.logged_by %}
+  <div class="source-badge source-staff">🖊️ Logged by Staff</div>
+  {% endif %}
 
-    {% if doc.submitted_by %}
-    <div class="source-badge source-client">📱 Submitted by Client</div>
-    {% elif doc.logged_by %}
-    <div class="source-badge source-staff">🖊️ Logged by Staff</div>
-    {% endif %}
+  <div class="doc-info-grid">
 
-    <div class="field">
-      <div class="field-label">Reference Number</div>
-      <div class="field-val {% if not doc.doc_id %}empty{% endif %} mono">
-        {{ doc.doc_id or 'Not assigned' }}
-      </div>
+    <div class="doc-info-item">
+      <div class="doc-info-label">Reference No.</div>
+      <div class="doc-info-value mono {% if not doc.doc_id %}empty{% endif %}">{{ doc.doc_id or 'Not assigned' }}</div>
     </div>
-    <div class="field">
-      <div class="field-label">Document Type</div>
-      <div class="field-val {% if not doc.category %}empty{% endif %}">
-        {{ doc.category or '—' }}
-      </div>
+
+    <div class="doc-info-item">
+      <div class="doc-info-label">Document Type / Category</div>
+      <div class="doc-info-value {% if not doc.category %}empty{% endif %}">{{ doc.category or '—' }}</div>
     </div>
-    {% if doc.doc_date %}
-    <div class="field">
-      <div class="field-label">Document Date</div>
-      <div class="field-val">{{ doc.doc_date }}</div>
+
+    <div class="doc-info-item">
+      <div class="doc-info-label">Document Date</div>
+      <div class="doc-info-value {% if not doc.doc_date %}empty{% endif %}">{{ doc.doc_date or '—' }}</div>
     </div>
-    {% endif %}
+
+    <div class="doc-info-item">
+      <div class="doc-info-label">Referred To</div>
+      <div class="doc-info-value {% if not doc.referred_to %}empty{% endif %}">{{ doc.referred_to or '—' }}</div>
+    </div>
+
     {% if doc.description %}
-    <div class="field">
-      <div class="field-label">Description / Remarks</div>
-      <div class="field-val" style="white-space:pre-line;">{{ doc.description }}</div>
+    <div class="doc-info-item" style="grid-column:1/-1;">
+      <div class="doc-info-label">Description / Particulars</div>
+      <div class="doc-info-value" style="white-space:pre-line;">{{ doc.description }}</div>
     </div>
     {% endif %}
+
     {% if doc.notes %}
-    <div class="field">
-      <div class="field-label">Notes</div>
-      <div class="field-val" style="white-space:pre-line;">{{ doc.notes }}</div>
+    <div class="doc-info-item" style="grid-column:1/-1;">
+      <div class="doc-info-label">Notes</div>
+      <div class="doc-info-value" style="white-space:pre-line;">{{ doc.notes }}</div>
     </div>
     {% endif %}
-  </div>
 
-  <!-- Timeline & Dates -->
-  <div class="info-card">
-    <div class="info-card-title">📅 Dates</div>
-    <div class="field">
-      <div class="field-label">Date Submitted / Logged</div>
-      <div class="field-val">{{ doc.created_at[:10] if doc.created_at else '—' }} <span style="color:var(--teal);font-size:14px;">{{ doc.created_at | time12 }}</span></div>
+    <div class="doc-info-item">
+      <div class="doc-info-label">Sender Office / School</div>
+      <div class="doc-info-value {% if not doc.sender_org %}empty{% endif %}">{{ doc.sender_org or '—' }}</div>
     </div>
-    <div class="field">
-      <div class="field-label">Date Received</div>
-      <div class="field-val {% if not doc.date_received %}empty{% endif %}">
-        {{ doc.date_received or 'Not yet received' }}
-      </div>
-    </div>
-    <div class="field">
-      <div class="field-label">Date Released</div>
-      <div class="field-val {% if not doc.date_released %}empty{% endif %}">
-        {{ doc.date_released or 'Not yet released' }}
-      </div>
-    </div>
-    <div class="field">
-      <div class="field-label">Received By</div>
-      <div class="field-val {% if not doc.received_by %}empty{% endif %}">
-        {{ doc.received_by or '—' }}
-      </div>
-    </div>
-    <div class="field">
-      <div class="field-label">System ID</div>
-      <div class="field-val mono" style="font-size:13px;">{{ doc.id }}</div>
-    </div>
-  </div>
 
-  <!-- Source / Sender -->
-  <div class="info-card">
-    <div class="info-card-title">📤 Source / Sender</div>
-    <div class="field">
-      <div class="field-label">Unit / Office / School</div>
-      <div class="field-val {% if not doc.sender_org %}empty{% endif %}">
-        {{ doc.sender_org or '—' }}
-      </div>
+    <div class="doc-info-item">
+      <div class="doc-info-label">Sender Name</div>
+      <div class="doc-info-value {% if not doc.sender_name %}empty{% endif %}">{{ doc.sender_name or '—' }}</div>
     </div>
-    <div class="field">
-      <div class="field-label">Sender Name &amp; Designation</div>
-      <div class="field-val {% if not doc.sender_name %}empty{% endif %}">
-        {{ doc.sender_name or '—' }}
-      </div>
-    </div>
-    {% if doc.sender_contact %}
-    <div class="field">
-      <div class="field-label">Contact / Address</div>
-      <div class="field-val">{{ doc.sender_contact }}</div>
-    </div>
-    {% endif %}
-    {% if doc.submitted_by %}
-    <div class="field">
-      <div class="field-label">Client Account</div>
-      <div class="field-val mono" style="font-size:14px;">
-        {{ doc.submitted_by_name or doc.submitted_by }}
-        <span style="font-weight:400;color:var(--muted);font-size:13px;">({{ doc.submitted_by }})</span>
-      </div>
-    </div>
-    {% endif %}
+
     {% if doc.logged_by %}
-    <div class="field">
-      <div class="field-label">Logged By</div>
-      <div class="field-val mono" style="font-size:14px;">
-        {{ doc.logged_by }}
-        {% if doc.logged_by_office %}
-        <span style="font-weight:400;color:var(--muted);font-size:13px;">· {{ doc.logged_by_office }}</span>
-        {% endif %}
-      </div>
+    <div class="doc-info-item">
+      <div class="doc-info-label">Logged By</div>
+      <div class="doc-info-value mono">{{ doc.logged_by }}{% if doc.logged_by_office %} <span style="font-weight:400;color:var(--muted);font-size:13px;">· {{ doc.logged_by_office }}</span>{% endif %}</div>
     </div>
     {% endif %}
-    {% if doc.transferred_to %}
-    <div class="field">
-      <div class="field-label">🔄 Transfer History</div>
-      <div class="field-val mono" style="font-size:14px;">
-        <div>Transferred to: <strong>{{ doc.transferred_to }}</strong></div>
-        {% if doc.pending_at_office %}
-        <div style="color:#1D4ED8;">📍 Pending at: <strong>{{ doc.pending_at_office }}</strong></div>
-        {% elif doc.transferred_to_office %}
-        <div>Office: {{ doc.transferred_to_office }}</div>
-        {% endif %}
-        {% if doc.transferred_by %}
-        <div>Transferred by: {{ doc.transferred_by }}</div>
-        {% endif %}
-        {% if doc.transferred_at %}
-        <div>Transfer date: {{ doc.transferred_at }}</div>
-        {% endif %}
-        {% if doc.transfer_status %}
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #E2E8F0;">
-          {% if doc.transfer_status == 'accepted' %}
-          <div style="background:#D1FAE5;color:#065F46;padding:8px 12px;border-radius:8px;font-weight:600;">
-            ✅ ACCEPTED
-            {% if doc.accepted_by_name %}<span style="font-weight:normal;"> by {{ doc.accepted_by_name }}</span>{% endif %}
-            {% if doc.accepted_at %} on {{ doc.accepted_at }}{% endif %}
-          </div>
-          {% elif doc.transfer_status == 'rejected' %}
-          <div style="background:#FEE2E2;color:#991B1B;padding:8px 12px;border-radius:8px;font-weight:600;">
-            ❌ REJECTED
-            {% if doc.rejected_by_name %}<span style="font-weight:normal;"> by {{ doc.rejected_by_name }}</span>{% endif %}
-            {% if doc.rejected_at %} on {{ doc.rejected_at }}{% endif %}
-            {% if doc.rejection_reason %}
-            <div style="margin-top:6px;padding-top:6px;border-top:1px solid #FECACA;font-weight:normal;">
-              <strong>Reason:</strong> {{ doc.rejection_reason }}
-            </div>
-            {% endif %}
-          </div>
-          {% elif doc.transfer_status == 'pending' %}
-          <div style="background:#FEF3C7;color:#92400E;padding:8px 12px;border-radius:8px;font-weight:600;">
-            ⏳ AWAITING ACCEPTANCE
+
+    {% if doc.submitted_by %}
+    <div class="doc-info-item">
+      <div class="doc-info-label">Client Account</div>
+      <div class="doc-info-value mono">{{ doc.submitted_by_name or doc.submitted_by }} <span style="font-weight:400;color:var(--muted);font-size:13px;">({{ doc.submitted_by }})</span></div>
+    </div>
+    {% endif %}
+
+    <div class="doc-info-item">
+      <div class="doc-info-label">Date Submitted</div>
+      <div class="doc-info-value">{{ doc.created_at[:10] if doc.created_at else '—' }} <span style="color:#C9A227;font-size:13px;font-weight:500;">{{ doc.created_at | time12 }}</span></div>
+    </div>
+
+    <div class="doc-info-item">
+      <div class="doc-info-label">Status</div>
+      <div class="doc-info-value">{{ doc.status }}</div>
+    </div>
+
+    {% if doc.date_received %}
+    <div class="doc-info-item">
+      <div class="doc-info-label">Date Received</div>
+      <div class="doc-info-value">{{ doc.date_received }}</div>
+    </div>
+    {% endif %}
+
+    {% if doc.received_by %}
+    <div class="doc-info-item">
+      <div class="doc-info-label">Received By</div>
+      <div class="doc-info-value">{{ doc.received_by }}</div>
+    </div>
+    {% endif %}
+
+    {% if doc.date_released %}
+    <div class="doc-info-item">
+      <div class="doc-info-label">Date Released</div>
+      <div class="doc-info-value">{{ doc.date_released }}</div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  {% if doc.transferred_to %}
+  <div style="margin-top:16px;padding-top:16px;border-top:1.5px solid #D7CDB5;">
+    <div class="doc-info-label" style="margin-bottom:8px;">🔄 Transfer History</div>
+    <div class="doc-info-value mono" style="font-size:14px;">
+      <div>Transferred to: <strong>{{ doc.transferred_to }}</strong></div>
+      {% if doc.pending_at_office %}
+      <div style="color:#1D4ED8;">📍 Pending at: <strong>{{ doc.pending_at_office }}</strong></div>
+      {% elif doc.transferred_to_office %}
+      <div>Office: {{ doc.transferred_to_office }}</div>
+      {% endif %}
+      {% if doc.transferred_by %}
+      <div>Transferred by: {{ doc.transferred_by }}</div>
+      {% endif %}
+      {% if doc.transferred_at %}
+      <div>Transfer date: {{ doc.transferred_at }}</div>
+      {% endif %}
+      {% if doc.transfer_status %}
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #E2E8F0;">
+        {% if doc.transfer_status == 'accepted' %}
+        <div style="background:#D1FAE5;color:#065F46;padding:8px 12px;border-radius:8px;font-weight:600;">
+          ✅ ACCEPTED
+          {% if doc.accepted_by_name %}<span style="font-weight:normal;"> by {{ doc.accepted_by_name }}</span>{% endif %}
+          {% if doc.accepted_at %} on {{ doc.accepted_at }}{% endif %}
+        </div>
+        {% elif doc.transfer_status == 'rejected' %}
+        <div style="background:#FEE2E2;color:#991B1B;padding:8px 12px;border-radius:8px;font-weight:600;">
+          ❌ REJECTED
+          {% if doc.rejected_by_name %}<span style="font-weight:normal;"> by {{ doc.rejected_by_name }}</span>{% endif %}
+          {% if doc.rejected_at %} on {{ doc.rejected_at }}{% endif %}
+          {% if doc.rejection_reason %}
+          <div style="margin-top:6px;padding-top:6px;border-top:1px solid #FECACA;font-weight:normal;">
+            <strong>Reason:</strong> {{ doc.rejection_reason }}
           </div>
           {% endif %}
         </div>
+        {% elif doc.transfer_status == 'pending' %}
+        <div style="background:#FEF3C7;color:#92400E;padding:8px 12px;border-radius:8px;font-weight:600;">
+          ⏳ AWAITING ACCEPTANCE
+        </div>
         {% endif %}
       </div>
+      {% endif %}
     </div>
-    {% endif %}
   </div>
+  {% endif %}
 
 </div>
-<!-- ── END INFO GRID ── -->
 
 
 <!-- ═══ TRAVEL LOG ═══ -->
