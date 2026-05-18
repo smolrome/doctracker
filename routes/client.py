@@ -548,6 +548,15 @@ def scan():
     return render_template("client_scan.html")
 
 
+# ── Logout ────────────────────────────────────────────────────────────────────
+
+@client_bp.route("/logout")
+def client_logout():
+    session.clear()
+    flash("You have been logged out.", "success")
+    return redirect(url_for("client.login"))
+
+
 # ── Document submission (cart flow) ──────────────────────────────────────────
 
 @client_bp.route("/submit", methods=["GET", "POST"])
