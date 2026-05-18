@@ -1163,4 +1163,66 @@ def bulk_create_users():
         saved_offices=saved_offices,
     )
 
+
+# ── Appointments ──────────────────────────────────────────────────────────────
+
+@admin_bp.route("/appointments")
+@admin_required
+def admin_appointments():
+    from services.appointments import get_all_appointments
+    from services.misc import load_saved_offices
+    date   = request.args.get('date', '')
+    office = request.args.get('office', '')
+    status = request.args.get('status', '')
+    appointments = get_all_appointments(
+        date=date or None,
+        office=office or None,
+        status=status or None,
+    )
+    offices = load_saved_offices()
+    from datetime import datetime as _dt
+    return render_template('admin_appointments.html',
+        appointments=appointments,
+        offices=offices,
+        filter_date=date,
+        filter_office=office,
+        filter_status=status,
+        today_date=_dt.now().strftime('%Y-%m-%d'),
+    )
+
+
+@admin_bp.route("/appointments/<apt_id>/confirm", methods=["POST"])
+@admin_required
+def confirm_appointment(apt_id):
+    from services.appointments import get_appointment, update_appointment
+    from services.queue_bridge import push_appointment_ticket
+    apt = get_appointment(apt_id)
+    if not apt:
+        flash("Appointment not found.", "error")
+        return redirect(url_for('admin.admin_appointments'))
+    result = push_appointment_ticket(
+        service_code=apt.get('service_code', 'GENERAL'),
+        client_name=apt.get('client_name', ''),
+        lakad_ref=apt.get('id', ''),
+        appointment_id=apt.get('id', ''),
+        priority=1,
+    )
+    updates = {'status': 'confirmed'}
+    if result:
+        updates['queue_ticket']    = result['ticket_number']
+        updates['queue_ticket_id'] = result['ticket_id']
+    update_appointment(apt_id, updates)
+    ticket_label = result['ticket_number'] if result else 'N/A'
+    flash(f"Appointment confirmed. Queue ticket: {ticket_label}", "success")
+    return redirect(url_for('admin.admin_appointments'))
+
+
+@admin_bp.route("/appointments/<apt_id>/cancel", methods=["POST"])
+@admin_required
+def admin_cancel_appointment(apt_id):
+    from services.appointments import cancel_appointment
+    cancel_appointment(apt_id)
+    flash("Appointment cancelled.", "success")
+    return redirect(url_for('admin.admin_appointments'))
+
     return redirect(url_for("dashboard.index"))
