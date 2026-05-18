@@ -203,41 +203,11 @@ def _compute_staff_live_stats():
     pending_transfers = sum(1 for d in docs
                             if d.get("transfer_status") == "pending" and not d.get("deleted"))
 
-    # office_breakdown — sum logged docs per office, sorted desc
-    office_map = {}
-    for s in stats:
-        o = s["office"] or "—"
-        office_map[o] = office_map.get(o, 0) + s["total"]
-    office_breakdown = sorted(
-        [{"office": k, "count": v} for k, v in office_map.items()],
-        key=lambda x: -x["count"]
-    )
-
-    # status_breakdown — today's non-deleted docs grouped by status
-    from collections import Counter
-    today_status_counter = Counter(
-        (d.get("status") or "Pending")
-        for d in docs
-        if (d.get("created_at") or "")[:10] == today and not d.get("deleted")
-    )
-    status_breakdown = [{"status": k, "count": v} for k, v in today_status_counter.most_common()]
-
-    # rankings — top 10 staff by combined action total
-    def _rank_total(s):
-        return s["logged"] + s["accepted"] + s["received"] + s["transferred"] + s["released"]
-    rankings = sorted(
-        [dict(s, rank_total=_rank_total(s)) for s in stats],
-        key=lambda x: -x["rank_total"]
-    )[:10]
-
     totals = {
         "total_docs":        total_docs,
         "today_docs":        today_docs,
         "active_staff":      active_staff,
         "pending_transfers": pending_transfers,
-        "office_breakdown":  office_breakdown,
-        "status_breakdown":  status_breakdown,
-        "rankings":          rankings,
     }
     return stats, totals
 
