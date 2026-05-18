@@ -4,7 +4,7 @@ import {
   ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { User, Mail, Lock, Eye, EyeOff, ArrowLeft, AlertCircle } from 'lucide-react-native';
+import { User, Mail, Lock, Eye, EyeOff, ArrowLeft, AlertCircle, Building2 } from 'lucide-react-native';
 import api from '../../lib/api';
 
 export default function Register() {
@@ -13,6 +13,7 @@ export default function Register() {
   const [fullName, setFullName]         = useState('');
   const [username, setUsername]         = useState('');
   const [email, setEmail]               = useState('');
+  const [office, setOffice]             = useState('');
   const [password, setPassword]         = useState('');
   const [confirmPw, setConfirmPw]       = useState('');
   const [showPw, setShowPw]             = useState(false);
@@ -54,6 +55,7 @@ export default function Register() {
         full_name: fullName.trim(),
         username:  username.trim().toLowerCase(),
         email:     email.trim(),
+        office:    office.trim(),
         password,
       });
       Alert.alert(
@@ -160,6 +162,21 @@ export default function Register() {
               placeholderTextColor="#CBD5E1"
               keyboardType="email-address"
               autoCapitalize="none"
+              style={{ flex: 1, paddingVertical: 13, fontSize: 15, color: '#1E293B' }}
+            />
+          </View>
+
+          {/* School / Office (optional) */}
+          <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
+            School / Office <Text style={{ color: '#94A3B8', fontWeight: '400', textTransform: 'none' }}>(optional)</Text>
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: '#E2E8F0', paddingHorizontal: 14 }}>
+            <Building2 color="#94A3B8" size={18} style={{ marginRight: 10 }} />
+            <TextInput
+              value={office}
+              onChangeText={setOffice}
+              placeholder="e.g. San Ricardo ES, Baybay City"
+              placeholderTextColor="#CBD5E1"
               style={{ flex: 1, paddingVertical: 13, fontSize: 15, color: '#1E293B' }}
             />
           </View>

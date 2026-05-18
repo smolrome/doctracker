@@ -558,7 +558,12 @@
       </div>
       <div class="lp-form-group">
         <label class="lp-label" for="si-password">Password</label>
-        <input class="lp-input" type="password" id="si-password" name="password" placeholder="Enter your password" required autocomplete="current-password"/>
+        <div style="position:relative;">
+          <input class="lp-input" type="password" id="si-password" name="password" placeholder="Enter your password" required autocomplete="current-password" style="padding-right:44px;width:100%;box-sizing:border-box;"/>
+          <button type="button" onclick="toggleLpPw('si-password','si-pw-eye')" tabindex="-1" aria-label="Toggle password visibility" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;line-height:1;font-size:17px;color:#94A3B8;">
+            <span id="si-pw-eye">👁</span>
+          </button>
+        </div>
       </div>
       <div class="lp-error-box" id="signin-error" style="display:none"></div>
       <button type="submit" class="lp-submit-btn">Sign In</button>
@@ -590,12 +595,30 @@
         <input class="lp-input" type="text" id="rg-username" name="username" placeholder="Choose a username" required autocomplete="username"/>
       </div>
       <div class="lp-form-group">
+        <label class="lp-label" for="rg-office">School / Office <span style="font-weight:400;color:#94A3B8;">(optional)</span></label>
+        <input class="lp-input" type="text" id="rg-office" name="office" placeholder="e.g. San Ricardo ES, Baybay City" autocomplete="organization"/>
+      </div>
+      <div class="lp-form-group">
+        <label class="lp-label" for="rg-email">Email <span style="font-weight:400;color:#94A3B8;">(optional)</span></label>
+        <input class="lp-input" type="email" id="rg-email" name="email" placeholder="your@email.com" autocomplete="email"/>
+      </div>
+      <div class="lp-form-group">
         <label class="lp-label" for="rg-password">Password</label>
-        <input class="lp-input" type="password" id="rg-password" name="password" placeholder="Minimum 8 characters" required autocomplete="new-password" minlength="8"/>
+        <div style="position:relative;">
+          <input class="lp-input" type="password" id="rg-password" name="password" placeholder="Minimum 8 characters" required autocomplete="new-password" minlength="8" style="padding-right:44px;width:100%;box-sizing:border-box;"/>
+          <button type="button" onclick="toggleLpPw('rg-password','rg-pw-eye')" tabindex="-1" aria-label="Toggle password visibility" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;line-height:1;font-size:17px;color:#94A3B8;">
+            <span id="rg-pw-eye">👁</span>
+          </button>
+        </div>
       </div>
       <div class="lp-form-group">
         <label class="lp-label" for="rg-confirm">Confirm Password</label>
-        <input class="lp-input" type="password" id="rg-confirm" name="confirm_password" placeholder="Re-enter your password" required autocomplete="new-password"/>
+        <div style="position:relative;">
+          <input class="lp-input" type="password" id="rg-confirm" name="confirm_password" placeholder="Re-enter your password" required autocomplete="new-password" style="padding-right:44px;width:100%;box-sizing:border-box;"/>
+          <button type="button" onclick="toggleLpPw('rg-confirm','rg-confirm-eye')" tabindex="-1" aria-label="Toggle password visibility" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;line-height:1;font-size:17px;color:#94A3B8;">
+            <span id="rg-confirm-eye">👁</span>
+          </button>
+        </div>
       </div>
       <div class="lp-error-box" id="register-error" style="display:none"></div>
       <button type="submit" class="lp-submit-btn">Create Account</button>
@@ -605,6 +628,13 @@
 </div>
 
 <script>
+function toggleLpPw(inputId, eyeId) {
+  var inp = document.getElementById(inputId);
+  var eye = document.getElementById(eyeId);
+  if (!inp || !eye) return;
+  if (inp.type === 'password') { inp.type = 'text';     eye.textContent = '🙈'; }
+  else                         { inp.type = 'password'; eye.textContent = '👁'; }
+}
 function toggleMobileNav() {
   var menu = document.getElementById('navMobileMenu');
   var btn  = document.getElementById('navHamburger');

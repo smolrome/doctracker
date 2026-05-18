@@ -296,6 +296,8 @@ def register():
             full_name = request.form.get("full_name", "").strip()
             password  = request.form.get("password", "").strip()
             confirm   = request.form.get("confirm_password", "").strip()
+            email     = request.form.get("email", "").strip()
+            office    = request.form.get("office", "").strip()
             if not full_name:
                 error = "Full name is required."
             elif not username:
@@ -305,7 +307,7 @@ def register():
             elif password != confirm:
                 error = "Passwords do not match."
             else:
-                ok, err = create_user(username, password, full_name, role="client")
+                ok, err = create_user(username, password, full_name, role="client", office=office, email=email)
                 if ok:
                     # Notify admin — never block registration if email fails
                     try:

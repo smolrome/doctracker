@@ -2971,6 +2971,7 @@ def api_client_register():
     password  = data.get('password', '')
     full_name = data.get('full_name', '').strip()
     email     = data.get('email', '').strip()
+    office    = data.get('office', '').strip()
     if not username or not password or not full_name:
         return jsonify(error='username, password, and full_name are required'), 400
     if len(password) < 8:
@@ -2981,7 +2982,7 @@ def api_client_register():
     success, msg = _create_u(
         username=username, full_name=full_name,
         password=password, role='client',
-        office='', email=email,
+        office=office, email=email,
     )
     if not success:
         return jsonify(error=msg or 'Registration failed'), 400
