@@ -62,6 +62,30 @@ var serverSessionData = {
   </div>
 
 
+  {# ── POST-LOG PRINT MODAL ── #}
+  {% if pending_print_ids %}
+  <div id="print-modal" class="modal-overlay open">
+    <div class="modal-sheet modal-sheet-sm">
+      <div class="modal-header modal-header-green">
+        <div class="modal-header-content">
+          <span class="modal-header-icon" aria-hidden="true">🖨</span>
+          <h2 class="modal-title">{{ pending_print_count }} Document{{ 's' if pending_print_count != 1 else '' }} Logged</h2>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:15px;color:#4A6070;line-height:1.6;">Your documents have been logged successfully. Print QR codes now to attach to the physical documents.</p>
+      </div>
+      <div class="modal-footer" style="justify-content:flex-end;gap:10px;">
+        <button class="btn btn-secondary" onclick="dismissPrintModal()">Later</button>
+        <a href="/staff/print-qr-sheet?ids={{ pending_print_ids|join(',') }}"
+           target="_blank"
+           class="btn btn-success"
+           onclick="dismissPrintModal()">🖨 Print QR Codes</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {# ── FILTER BAR ── #}
   <div class="filter-strip" id="filter-sticky-bar" role="search" aria-label="Filter documents">
   <form method="get" action="/" id="filter-form">
@@ -154,6 +178,29 @@ var serverSessionData = {
   </form>
   </div>
 
+
+  {# ── QR PRINT QUEUE ── #}
+  {% if unprinted_docs %}
+  <div class="print-queue-card">
+    <div class="pq-header">
+      <span class="pq-title">🖨 QR Print Queue</span>
+      <span class="pq-count">{{ unprinted_docs|length }} unprinted</span>
+    </div>
+    <div class="pq-list">
+      {% for doc in unprinted_docs %}
+      <label class="pq-item">
+        <input type="checkbox" class="pq-check" value="{{ doc.id }}" checked/>
+        <span class="pq-name">{{ doc.doc_name or 'Unnamed' }}</span>
+        <span class="pq-ref">{{ doc.doc_id }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <div class="pq-actions">
+      <button class="btn btn-ghost btn-sm" onclick="markAllPrinted()">Mark All as Printed</button>
+      <button class="btn btn-primary btn-sm" onclick="printSelectedQR()">🖨 Print Selected</button>
+    </div>
+  </div>
+  {% endif %}
 
   {# ── STATS ROW ── #}
   <div class="dash-stats-row" role="navigation" aria-label="Filter by status">
@@ -756,5 +803,98 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 })();
 </script>
+
+<script>
+// ── Print modal ──
+function dismissPrintModal() {
+  var m = document.getElementById('print-modal');
+  if (m) m.style.display = 'none';
+  fetch('/staff/mark-qr-printed', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || ''},
+    body: JSON.stringify({ids: {{ pending_print_ids | tojson }}})
+  });
+}
+
+// ── Print queue ──
+function printSelectedQR() {
+  var ids = Array.from(document.querySelectorAll('.pq-check:checked')).map(function(c) { return c.value; });
+  if (!ids.length) return;
+  window.open('/staff/print-qr-sheet?ids=' + ids.join(','), '_blank');
+  setTimeout(function() {
+    fetch('/staff/mark-qr-printed', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || ''},
+      body: JSON.stringify({ids: ids})
+    }).then(function() { location.reload(); });
+  }, 2000);
+}
+
+function markAllPrinted() {
+  var ids = Array.from(document.querySelectorAll('.pq-check')).map(function(c) { return c.value; });
+  fetch('/staff/mark-qr-printed', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || ''},
+    body: JSON.stringify({ids: ids})
+  }).then(function() { location.reload(); });
+}
+</script>
+
+<style>
+/* ── Print queue card ── */
+.print-queue-card {
+  background: #fff;
+  border-left: 3px solid #C9A227;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(14,42,71,.07);
+}
+.pq-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.pq-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0E2A47;
+}
+.pq-count {
+  background: #C9A227;
+  color: #0E2A47;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.pq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.pq-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.pq-item:hover { background: #FAF8F3; }
+.pq-check { flex-shrink: 0; accent-color: #C9A227; width: 15px; height: 15px; cursor: pointer; }
+.pq-name { flex: 1; font-weight: 600; color: #0E2A47; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pq-ref  { font-family: 'Courier New', monospace; font-size: 11px; color: #8BA5B5; flex-shrink: 0; }
+.pq-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+</style>
 
 {% endblock %}
