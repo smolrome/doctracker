@@ -31,7 +31,7 @@
         <a href="/logout" class="nav-btn-ghost">Sign Out</a>
       {% endif %}
     {% else %}
-      <a href="/client/login" class="nav-btn-ghost">Sign In</a>
+      <a href="/login" class="nav-btn-ghost">Sign In</a>
       <a class="nav-btn-solid" href="/client/register">✍️ Register Free</a>
     {% endif %}
   </div>
@@ -50,7 +50,7 @@
       <a href="/logout" class="nav-mobile-item">Sign Out</a>
     {% endif %}
   {% else %}
-    <a href="/client/login" class="nav-mobile-item">Sign In</a>
+    <a href="/login" class="nav-mobile-item">Sign In</a>
     <a class="nav-mobile-item nav-mobile-solid" href="/client/register">✍️ Register Free</a>
   {% endif %}
 </div>
@@ -181,7 +181,7 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             Register Free
           </a>
-          <a href="/client/login" class="hero-btn hero-btn-outline"
+          <a href="/login" class="hero-btn hero-btn-outline"
              style="display:inline-flex;align-items:center;gap:9px;padding:14px 30px;min-height:44px;
                     background:transparent;color:rgba(255,255,255,0.82);font-weight:600;font-size:14px;
                     border-radius:7px;text-decoration:none;
@@ -422,7 +422,7 @@
           {% elif logged_in and current_role in ('admin','staff') %}
             <a href="/office-action/{{ sub_slug }}" class="btn-submit">📋 Open Office Page</a>
           {% else %}
-            <a href="/client/login" class="btn-submit">🔑 Sign In to Submit</a>
+            <a href="/login" class="btn-submit">🔑 Sign In to Submit</a>
           {% endif %}
           <a href="/office-qr/{{ sub_slug }}.png" download="{{ sub_slug }}.png" class="btn-dl">⬇️ Download QR</a>
         </div>

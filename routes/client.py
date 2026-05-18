@@ -161,97 +161,13 @@ def _get_owned_doc(doc_id: str):
 
 @client_bp.route("/login", methods=["GET", "POST"])
 def login():
-    if is_logged_in():
-        role = session.get("role")
-        return redirect(url_for("client.portal") if role == "client"
-                        else url_for("dashboard.index"))
-
-    csrf_token = _getcsrf_token()
-    error = None
-    lockout_remaining = 0
-
-    if request.method == "POST":
-        # FIX 2 – validate CSRF on login POST too (prevents login CSRF)
-        _require_csrf()
-        is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "").strip()
-        ip = get_client_ip()
-        allowed, wait = check_rate_limit("login", f"{ip}:{username.lower()}")
-        if not allowed:
-            mins = max(1, wait // 60)
-            error = f"Too many failed attempts. Try again in {mins} minute{'s' if mins != 1 else ''}."
-            lockout_remaining = wait
-            audit_log("client_login_blocked", f"username={username}",
-                      username=username, ip=ip)
-            if is_xhr:
-                return jsonify({'success': False, 'error': error})
-        else:
-            # NOTE (FIX 5): verify_user MUST perform a constant-time dummy bcrypt
-            # compare even when the username is not found so that timing differences
-            # cannot be used to enumerate valid usernames.
-            full_name, role, office = verify_user(username, password)
-            if full_name:
-                reset_rate_limit("login", f"{ip}:{username.lower()}")
-
-                # Check if client account is pending approval
-                if role == "client":
-                    from services.auth import get_user
-                    user = get_user(username.lower().strip())
-                    if user and not user.get("approved", True):
-                        error = "Your account is pending approval. Please wait for the administrator to approve your registration."
-                        if is_xhr:
-                            return jsonify({'success': False, 'error': error})
-                        return render_template("client_login.html", error=error,
-                                               lockout_remaining=0,
-                                               csrf_token=csrf_token,
-                                               office_slug=request.args.get("office_slug", ""),
-                                               office_name=request.args.get("office_name", ""),
-                                               next_url=request.args.get("next", ""))
-
-                # FIX 4 – regenerate session to prevent session fixation
-                _regenerate_session({
-                    "logged_in":   True,
-                    "username":    username.lower().strip(),
-                    "full_name":   full_name,
-                    "role":        role,
-                    "office":      office,
-                    "last_active": time.time(),
-                })
-                # NOTE: set PERMANENT_SESSION_LIFETIME in app config to e.g. 30 min
-                session.permanent = True
-                update_last_login(username.lower().strip())
-                audit_log("client_login_ok", f"role={role}",
-                          username=username, ip=ip)
-                raw_next = (request.form.get("next_url", "").strip()
-                            or request.args.get("next", "").strip())
-                # FIX 1 – validate next_url before redirecting
-                safe_next = _safe_redirect_url(
-                    raw_next,
-                    fallback=url_for("client.portal") if role == "client"
-                             else url_for("dashboard.index"),
-                )
-                redirect_url = (
-                    (safe_next if safe_next != url_for("client.portal") else url_for("client.portal"))
-                    if role == "client" else url_for("dashboard.index")
-                )
-                if is_xhr:
-                    return jsonify({'success': True, 'redirect': redirect_url})
-                return redirect(redirect_url)
-            else:
-                error = "Invalid username or password."
-                audit_log("client_login_fail", f"username={username}",
-                          username=username, ip=ip)
-                if is_xhr:
-                    return jsonify({'success': False, 'error': error})
-
-    return render_template("client_login.html", error=error,
-                           lockout_remaining=lockout_remaining,
-                           csrf_token=csrf_token,
-                           office_slug=request.args.get("office_slug", ""),
-                           office_name=request.args.get("office_name", ""),
-                           next_url=request.args.get("next", ""))
+    # Login is centralised at /login (auth.login).
+    # Carry any ?next= param through so QR-scan redirect flows still work.
+    next_param = request.args.get("next", "")
+    target = url_for("auth.login")
+    if next_param:
+        target = f"{target}?next={next_param}"
+    return redirect(target)
 
 
 @client_bp.route("/register", methods=["GET", "POST"])
