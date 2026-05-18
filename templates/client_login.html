@@ -16,8 +16,8 @@
 
   <div class="header">
     <img src="/static/logo.png" alt="DepEd Leyte" class="logo"/>
-    <div class="header-title">Client Portal</div>
-    <div class="header-sub">DepEd Leyte Division — Submit &amp; Track Documents</div>
+    <div class="header-title">LAKAD</div>
+    <div class="header-sub">DepEd Leyte Division — Client Services</div>
   </div>
 
   <!-- Show office context when coming from a QR scan -->
@@ -112,27 +112,15 @@
       <button type="submit" class="btn-login"
               id="login-submit"
               {% if lockout_remaining and lockout_remaining > 0 %}disabled{% endif %}>
-        🔑 Sign In &amp; Continue
+        Sign In
       </button>
     </form>
-
-    <div class="divider-or"><hr/><span>Don't have an account?</span><hr/></div>
-
-    {#
-      FIX 4 — Open Redirect: office_slug, office_name, and next_url are all
-      URL-encoded via Jinja's urlencode filter so they cannot inject extra query
-      parameters or path segments. next_url is additionally validated server-side.
-    #}
-    <a href="/client/register?office_slug={{ office_slug | urlencode }}&amp;office_name={{ office_name | urlencode }}&amp;next={{ next_url | urlencode }}"
-       class="btn-register">
-      ✨ Register — it's free &amp; instant
-    </a>
   </div>
 
   <div class="footer-links">
-    <a href="/">🏠 Home</a>
-    <a href="/login">🔐 Staff Login</a>
-    <a href="/client/register">✍️ Register Free</a>
+    <a href="/">Home</a>
+    <a href="/login">Staff Login</a>
+    <a href="/client/register">Register</a>
   </div>
 </div>
 
