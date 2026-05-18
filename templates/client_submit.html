@@ -58,6 +58,7 @@
           <label style="font-weight:600;color:rgba(255,255,255,.6);font-size:13px;">👤 Receiving Staff:</label>
           <select name="selected_staff"
                   style="padding:8px 12px;border:1.5px solid rgba(255,255,255,.2);border-radius:8px;font-size:14px;min-width:200px;background:rgba(255,255,255,.1);color:#fff;"
+                  class="staff-select-dropdown"
                   onchange="this.form.submit()">
             <option value="">-- Auto-assign --</option>
             {% for staff in office_staff_list %}
