@@ -234,6 +234,32 @@ def send_credentials_email(to_email: str, to_name: str,
         return False, f"Email error: {e}"
 
 
+def send_admin_notification(subject: str, body: str) -> tuple[bool, str]:
+    """Send a plain-text notification to the admin (MAIL_SENDER address).
+
+    Used for events that need admin attention but don't have a dedicated
+    recipient — e.g. new client registrations awaiting approval.
+    Returns (success, error_or_empty).
+    """
+    if not MAIL_ENABLED:
+        return False, "Email not configured."
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"]    = f"DepEd LAKAD <{MAIL_SENDER}>"
+    msg["To"]      = MAIL_SENDER          # admin's own address
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP_SSL(GMAIL_SMTP_HOST, GMAIL_SMTP_PORT, context=ctx) as server:
+            server.login(MAIL_SENDER, GMAIL_APP_PASSWORD)
+            server.sendmail(MAIL_SENDER, MAIL_SENDER, msg.as_string())
+        return True, ""
+    except Exception as e:
+        return False, f"Email error: {e}"
+
+
 # ── JSON fallback helpers ─────────────────────────────────────────────────────
 
 def _load_tokens_json() -> list[dict]:

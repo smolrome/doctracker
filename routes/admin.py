@@ -471,6 +471,13 @@ def pending_clients():
                            admin_username=ADMIN_USERNAME)
 
 
+@admin_bp.route("/api/admin/pending-clients-count")
+@admin_required
+def pending_clients_count():
+    """JSON: count of unapproved client accounts. Polled by the nav badge."""
+    return jsonify(count=len(get_pending_clients()))
+
+
 @admin_bp.route("/office-documents")
 @admin_required
 def office_documents():

@@ -307,6 +307,37 @@ def register():
             else:
                 ok, err = create_user(username, password, full_name, role="client")
                 if ok:
+                    # Notify admin — never block registration if email fails
+                    try:
+                        from config import MAIL_ENABLED
+                        from services.email import send_admin_notification
+                        if MAIL_ENABLED:
+                            send_admin_notification(
+                                subject='New Client Registration — Pending Approval',
+                                body=(
+                                    f'A new client has registered and is awaiting your approval.\n\n'
+                                    f'Name:     {full_name}\n'
+                                    f'Username: {username}\n\n'
+                                    f'Login to LAKAD to approve or reject this account:\n'
+                                    f'/pending-clients'
+                                )
+                            )
+                    except Exception:
+                        pass
+                    # Push notification to all admin users
+                    try:
+                        from services.auth import get_all_users
+                        from blueprints.api import send_push_notification
+                        for _admin in get_all_users():
+                            if _admin.get('role') == 'admin' and _admin.get('username'):
+                                send_push_notification(
+                                    username=_admin['username'],
+                                    title='New Client Registration',
+                                    body=f'{full_name} (@{username}) has registered and is awaiting approval.',
+                                    data={'screen': '/pending-clients'},
+                                )
+                    except Exception:
+                        pass  # never block registration
                     msg = (
                         "Registration successful! Your account is pending approval "
                         "by the administrator. You will be able to login once your "

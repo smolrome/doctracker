@@ -89,6 +89,7 @@
             <a href="/pending-clients" class="dd-item">
               <span class="dd-icon">⏳</span>
               <span class="dd-text">Pending Clients<span class="dd-desc">Approve new client registrations</span></span>
+              <span id="pending-clients-badge" style="display:none;background:#DC2626;color:#fff;font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;margin-left:auto;min-width:20px;text-align:center;line-height:18px;flex-shrink:0;" aria-label="pending client registrations"></span>
             </a>
             <a href="/manage-users" class="dd-item">
               <span class="dd-icon">👥</span>
@@ -361,5 +362,32 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/base.js') }}"></script>
+
+{% if logged_in and current_role == 'admin' %}
+<script>
+/* ── Pending clients badge ──────────────────────────────────────────────── */
+(function pollPendingClientsBadge() {
+  function refresh() {
+    fetch('/api/admin/pending-clients-count', {credentials: 'same-origin'})
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(d) {
+        if (!d) return;
+        var el = document.getElementById('pending-clients-badge');
+        if (!el) return;
+        if (d.count > 0) {
+          el.textContent = d.count;
+          el.style.display = '';
+          el.setAttribute('aria-label', d.count + ' pending client registration' + (d.count === 1 ? '' : 's'));
+        } else {
+          el.style.display = 'none';
+        }
+      })
+      .catch(function() {});
+  }
+  refresh();
+  setInterval(refresh, 60000);   // re-poll every 60 s
+})();
+</script>
+{% endif %}
 </body>
 </html>
