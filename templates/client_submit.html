@@ -129,7 +129,9 @@
         <div class="form-group">
           <label>Referred To <span class="req">*</span></label>
           <input type="text" name="referred_to"
-                 placeholder="e.g. SDS, Budget Officer" required/>
+                 placeholder="e.g. SDS, Budget Officer"
+                 value="{{ office_name }}"
+                 required/>
         </div>
       </div>
 
@@ -225,7 +227,9 @@
           </div>
           <div class="cmp-edit-field">
             <label>Referred To <span class="req">*</span></label>
-            <input type="text" name="referred_to" id="edit-referred-to" required/>
+            <input type="text" name="referred_to" id="edit-referred-to"
+                   value="{{ office_name }}"
+                   required/>
           </div>
         </div>
         <div class="cmp-edit-field">
