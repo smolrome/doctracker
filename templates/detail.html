@@ -24,6 +24,30 @@
         <div class="hero-tag">🏢 {{ doc.target_office_name }}</div>
       {% endif %}
     </div>
+    <div class="hero-info-grid">
+      <div class="hero-info-item">
+        <span class="hero-info-label">Reference</span>
+        <span class="hero-info-value mono">{{ doc.doc_id or doc.id }}</span>
+      </div>
+      <div class="hero-info-item">
+        <span class="hero-info-label">Category</span>
+        <span class="hero-info-value">{{ doc.category or '—' }}</span>
+      </div>
+      <div class="hero-info-item">
+        <span class="hero-info-label">Referred To</span>
+        <span class="hero-info-value">{{ doc.referred_to or '—' }}</span>
+      </div>
+      <div class="hero-info-item">
+        <span class="hero-info-label">From</span>
+        <span class="hero-info-value">{{ doc.sender_name or doc.sender_org or '—' }}</span>
+      </div>
+      {% if doc.intended_for_name %}
+      <div class="hero-info-item">
+        <span class="hero-info-label">Intended For</span>
+        <span class="hero-info-value">{{ doc.intended_for_name }}</span>
+      </div>
+      {% endif %}
+    </div>
   </div>
   <div class="doc-hero-status">
     {% set s = doc.status %}
