@@ -154,21 +154,6 @@ var serverSessionData = {
   </form>
   </div>
 
-  {# ── INCOMING BANNER ── #}
-  {% if logged_in and session.get('role') in ('staff', 'admin') %}
-  <div id="incoming-banner" class="dash-incoming" style="display:none;"
-       role="alert" tabindex="0"
-       onclick="showPendingDocumentsModal()"
-       onkeydown="if(event.key==='Enter'||event.key===' ')showPendingDocumentsModal()">
-    <div class="ib-icon">📥</div>
-    <div class="ib-body">
-      <div class="ib-title">Documents awaiting your acceptance</div>
-      <div class="ib-sub" id="ib-sub-text">Click to review and accept</div>
-    </div>
-    <span class="ib-badge" id="ib-badge">0</span>
-    <span class="ib-cta">Review ›</span>
-  </div>
-  {% endif %}
 
   {# ── STATS ROW ── #}
   <div class="dash-stats-row" role="navigation" aria-label="Filter by status">
