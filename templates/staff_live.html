@@ -5,25 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Live Staff Monitor — LAKAD</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:       #0A1628;
-      --surface:  #0E2A47;
-      --card:     #0E2A47;
-      --card-pend:#1a1a2e;
-      --border:   rgba(255,255,255,0.10);
-      --text:     #FFFFFF;
-      --muted:    rgba(255,255,255,0.55);
-      --gold:     #C9A227;
-      --gold-l:   #F0C040;
-      --blue:     #0038A8;
-      --blue-l:   #4A7FD4;
-      --green:    #007F3E;
-      --green-l:  #10B981;
-      --red:      #CE1126;
-      --amber:    #F59E0B;
+      --bg:        #0A1628;
+      --surface:   #0E2A47;
+      --card:      #0E2A47;
+      --card-pend: #1a1a2e;
+      --border:    rgba(255,255,255,0.10);
+      --text:      #FFFFFF;
+      --muted:     rgba(255,255,255,0.55);
+      --gold:      #C9A227;
+      --gold-l:    #F0C040;
+      --blue:      #0038A8;
+      --blue-l:    #4A7FD4;
+      --green:     #007F3E;
+      --green-l:   #10B981;
+      --red:       #CE1126;
+      --amber:     #F59E0B;
     }
 
     html, body {
@@ -31,184 +32,273 @@
       background: var(--bg);
       color: var(--text);
       font-family: 'DM Sans', sans-serif;
-      overflow-x: hidden;
+      overflow: hidden;
     }
+    body { display: flex; flex-direction: column; }
 
-    /* ── Header ─────────────────────────────────────────────────────── */
+    /* ── Header ──────────────────────────────────────────────────────────── */
     .hdr {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 32px;
+      padding: 14px 32px;
       background: linear-gradient(135deg, #0038A8 0%, #001F6B 100%);
       border-bottom: 3px solid var(--gold);
-      gap: 24px;
+      gap: 24px; flex-shrink: 0;
     }
     .hdr-brand { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-    .hdr-logo  { height: 48px; width: 48px; border-radius: 50%; object-fit: cover;
+    .hdr-logo  { height: 44px; width: 44px; border-radius: 50%; object-fit: cover;
                  border: 2px solid rgba(255,255,255,0.25); flex-shrink: 0; }
-    .hdr-title { line-height: 1.2; }
     .hdr-title strong { display: block; font-family: 'Syne', sans-serif;
-                        font-size: 18px; font-weight: 800; color: #fff; }
-    .hdr-title small  { display: block; font-family: 'DM Sans', sans-serif;
-                        font-size: 13px; font-weight: 600; color: var(--gold); margin-top: 3px; }
+                        font-size: 17px; font-weight: 800; color: #fff; }
+    .hdr-title small  { display: block; font-size: 12px; font-weight: 600;
+                        color: var(--gold); margin-top: 2px; }
     .hdr-center { flex: 1; text-align: center; }
-    .hdr-clock  { font-family: 'Syne', sans-serif; font-size: 48px; font-weight: 800;
+    .hdr-clock  { font-family: 'Syne', sans-serif; font-size: 44px; font-weight: 800;
                   letter-spacing: 3px; color: #fff; line-height: 1; }
-    .hdr-date   { font-size: 16px; font-weight: 600; color: var(--gold); margin-top: 4px; }
+    .hdr-date   { font-size: 14px; font-weight: 600; color: var(--gold); margin-top: 3px; }
     .hdr-meta   { text-align: right; flex-shrink: 0; }
     .hdr-badge  {
       display: inline-flex; align-items: center; gap: 6px;
       background: rgba(255,255,255,0.12); border-radius: 20px;
-      padding: 6px 14px; font-size: 13px; font-weight: 700; color: #fff;
+      padding: 5px 13px; font-size: 13px; font-weight: 700; color: #fff;
     }
     .hdr-badge .dot {
       width: 9px; height: 9px; border-radius: 50%;
-      background: var(--green-l);
-      animation: pulse 2s infinite;
+      background: var(--green-l); animation: pulse 2s infinite;
     }
-    .hdr-updated { font-size: 11px; color: var(--muted); margin-top: 6px; }
+    .hdr-updated { font-size: 11px; color: var(--muted); margin-top: 5px; }
 
     @keyframes pulse {
       0%,100% { opacity: 1; transform: scale(1); }
       50%      { opacity: 0.5; transform: scale(1.3); }
     }
 
-    /* ── Stats bar ───────────────────────────────────────────────────── */
+    /* ── Stats bar ───────────────────────────────────────────────────────── */
     .totals-bar {
       display: grid; grid-template-columns: repeat(4,1fr);
       gap: 1px; background: var(--border);
       border-bottom: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
     }
     .total-cell {
-      background: var(--surface); padding: 20px 28px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+      background: var(--surface); padding: 16px 24px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     }
-    .total-num   { font-family: 'Syne', sans-serif; font-size: 48px; font-weight: 800; line-height: 1; }
-    .total-label { font-size: 11px; font-weight: 700; text-transform: uppercase;
-                   letter-spacing: 1px; color: var(--muted); margin-top: 4px; }
+    .total-num   { font-family: 'Syne', sans-serif; font-size: 40px; font-weight: 800; line-height: 1; }
+    .total-label { font-size: 10px; font-weight: 700; text-transform: uppercase;
+                   letter-spacing: 1px; color: var(--muted); }
     .total-cell.c-gold  .total-num { color: var(--gold); }
     .total-cell.c-green .total-num { color: var(--green-l); }
     .total-cell.c-blue  .total-num { color: var(--blue-l); }
     .total-cell.c-red   .total-num { color: var(--red); }
 
-    /* ── Grid wrapper ────────────────────────────────────────────────── */
-    .grid-wrap  { padding: 20px 24px 24px; }
+    /* ── Screen title bar ────────────────────────────────────────────────── */
+    .screen-title-bar {
+      background: rgba(0,0,0,0.25);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 6px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .screen-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.6px; color: var(--gold);
+    }
+    .screen-counter { font-size: 11px; color: var(--muted); }
+
+    /* ── Slideshow container ─────────────────────────────────────────────── */
+    .screen-wrap { flex: 1; position: relative; overflow: hidden; }
+    .screen {
+      position: absolute; inset: 0;
+      opacity: 0;
+      transition: opacity 300ms ease;
+      overflow-y: auto;
+      pointer-events: none;
+      padding: 18px 24px 20px;
+    }
+    .screen.active { opacity: 1; pointer-events: auto; }
+
+    /* ── Bottom bar (dots + footer text) ─────────────────────────────────── */
+    .bottom-bar {
+      background: var(--surface);
+      border-top: 1px solid var(--gold);
+      padding: 7px 24px 8px;
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      flex-shrink: 0;
+    }
+    .slide-dots { display: flex; gap: 10px; align-items: center; }
+    .slide-dot {
+      height: 8px; width: 8px; border-radius: 4px;
+      background: rgba(255,255,255,0.22);
+      border: none; cursor: pointer;
+      transition: all 220ms ease; padding: 0; flex-shrink: 0;
+    }
+    .slide-dot.active { width: 26px; background: var(--blue); }
+    .slide-dot:hover:not(.active) { background: rgba(255,255,255,0.45); }
+    .footer-text { font-size: 11px; color: var(--muted); }
+
+    /* ── Refresh flash ───────────────────────────────────────────────────── */
+    .refresh-flash { animation: flashin 0.4s ease; }
+    @keyframes flashin { from { opacity: 0; } to { opacity: 1; } }
+
+    /* ─────────────────────────────────────────────────────────────────────
+       SCREEN 0 — Staff Activity Grid
+    ───────────────────────────────────────────────────────────────────── */
     .grid-title {
       font-size: 11px; font-weight: 700; text-transform: uppercase;
       letter-spacing: 1.4px; color: var(--gold);
-      margin-bottom: 16px; display: inline-block;
-      border-bottom: 2px solid var(--gold); padding-bottom: 5px;
+      margin-bottom: 14px; display: inline-block;
+      border-bottom: 2px solid var(--gold); padding-bottom: 4px;
     }
     .staff-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px,1fr));
-      gap: 14px;
+      gap: 12px;
     }
-
-    /* ── Staff card ──────────────────────────────────────────────────── */
     .staff-card {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-      position: relative;
-      overflow: hidden;
+      border-radius: 12px; padding: 14px;
+      position: relative; overflow: hidden;
       transition: border-color .2s;
     }
     .staff-card:hover { border-color: rgba(255,255,255,0.22); }
     .staff-card::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
       background: var(--blue);
     }
     .staff-card.has-pending { background: var(--card-pend); }
     .staff-card.has-pending::before { background: var(--red); }
-
-    /* Card header row */
-    .sc-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 5px; gap: 8px;
-    }
+    .sc-header { display: flex; justify-content: space-between; align-items: center;
+                 margin-bottom: 4px; gap: 8px; }
     .sc-name-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .sc-name {
-      font-size: 15px; font-weight: 700; color: var(--text);
-      text-transform: uppercase; letter-spacing: 0.04em;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .sc-pending-badge {
-      flex-shrink: 0;
-      background: var(--red); color: #fff;
-      font-size: 12px; font-weight: 700;
-      border-radius: 20px; padding: 3px 10px;
-      display: flex; align-items: center; gap: 4px;
-    }
+    .sc-name { font-size: 14px; font-weight: 700; color: var(--text);
+               text-transform: uppercase; letter-spacing: 0.04em;
+               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sc-pending-badge { flex-shrink: 0; background: var(--red); color: #fff;
+                        font-size: 11px; font-weight: 700; border-radius: 20px;
+                        padding: 2px 9px; }
     .sc-pending-badge.zero { background: rgba(255,255,255,0.07); color: var(--muted); }
-
-    /* Card sub-row */
-    .sc-sub-row {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 10px;
-    }
+    .sc-sub-row { display: flex; justify-content: space-between; align-items: center;
+                  margin-bottom: 9px; }
     .sc-office   { font-size: 12px; font-weight: 600; color: var(--gold); }
     .sc-presence { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
     .sc-presence.online  { color: var(--green-l); }
     .sc-presence.idle    { color: var(--amber); }
     .sc-presence.offline { color: var(--muted); }
-
-    /* Divider */
-    .sc-divider { border: none; border-top: 1px solid var(--border); margin-bottom: 12px; }
-
-    /* Stat grid */
-    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; margin-bottom: 12px; }
-    .stat-col  { display: flex; flex-direction: column; gap: 10px; }
-    .stat-item { display: flex; flex-direction: column; gap: 2px; }
-    .stat-num  { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; line-height: 1; }
-    .stat-lbl  { font-size: 10px; font-weight: 600; text-transform: uppercase;
-                 letter-spacing: 0.06em; color: var(--muted); }
-
-    /* Progress bar */
-    .sc-bar-wrap { height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; margin-top: 12px; }
+    .sc-divider { border: none; border-top: 1px solid var(--border); margin-bottom: 10px; }
+    .stat-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; margin-bottom: 10px; }
+    .stat-col   { display: flex; flex-direction: column; gap: 8px; }
+    .stat-item  { display: flex; flex-direction: column; gap: 1px; }
+    .stat-num   { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; line-height: 1; }
+    .stat-lbl   { font-size: 10px; font-weight: 600; text-transform: uppercase;
+                  letter-spacing: 0.06em; color: var(--muted); }
+    .sc-bar-wrap { height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; margin-top: 10px; }
     .sc-bar      { height: 100%; border-radius: 2px; background: var(--blue);
                    transition: width 0.6s ease; min-width: 4px; }
     .sc-bar.active { background: var(--red); }
-
-    /* Presence dot */
-    .online-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+    .online-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
     .online-dot.online  { background: var(--green-l); box-shadow: 0 0 6px var(--green-l); animation: pulse 2s infinite; }
-    .online-dot.idle    { background: var(--amber);   box-shadow: 0 0 6px var(--amber); }
+    .online-dot.idle    { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
     .online-dot.offline { background: rgba(255,255,255,0.25); }
-
-    /* ── Footer ──────────────────────────────────────────────────────── */
-    .footer {
-      text-align: center; padding: 12px 24px;
-      font-size: 12px; color: var(--muted);
-      background: var(--surface);
-      border-top: 1px solid var(--gold);
-    }
-
-    /* ── Empty state ─────────────────────────────────────────────────── */
     .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 15px; }
 
-    /* ── Refresh flash ───────────────────────────────────────────────── */
-    .refresh-flash { animation: flashin 0.4s ease; }
-    @keyframes flashin { from { opacity: 0; } to { opacity: 1; } }
+    /* ─────────────────────────────────────────────────────────────────────
+       SCREEN 1 — Office Statistics (horizontal bar chart)
+    ───────────────────────────────────────────────────────────────────── */
+    .s2-list  { display: flex; flex-direction: column; gap: 10px; max-width: 860px; margin: 0 auto; }
+    .s2-row   { display: flex; align-items: center; gap: 12px; }
+    .s2-label { font-size: 13px; font-weight: 600; color: var(--text);
+                width: 210px; flex-shrink: 0;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+    .s2-track { flex: 1; height: 30px; background: rgba(255,255,255,0.07);
+                border-radius: 5px; overflow: hidden; }
+    .s2-fill  { height: 100%; background: var(--blue); border-radius: 5px;
+                transition: width 600ms ease; min-width: 4px;
+                display: flex; align-items: center; padding-left: 10px; }
+    .s2-count { font-size: 14px; font-weight: 700; color: var(--text);
+                width: 36px; flex-shrink: 0; }
+    .s2-empty { text-align: center; padding: 60px; color: var(--muted); font-size: 15px; }
+
+    /* ─────────────────────────────────────────────────────────────────────
+       SCREEN 2 — Staff Leaderboard
+    ───────────────────────────────────────────────────────────────────── */
+    .s3-list { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 7px; }
+    .s3-row  { display: flex; align-items: center; gap: 16px;
+               background: rgba(255,255,255,0.04); border-radius: 10px;
+               padding: 11px 18px; border: 1px solid var(--border); }
+    .s3-rank { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800;
+               width: 40px; flex-shrink: 0; text-align: center; }
+    .s3-rank.r1 { color: #FFD700; }
+    .s3-rank.r2 { color: #C0C0C0; }
+    .s3-rank.r3 { color: #CD7F32; }
+    .s3-rank.rn { color: var(--muted); }
+    .s3-info    { flex: 1; min-width: 0; }
+    .s3-name    { font-size: 15px; font-weight: 700; color: var(--text);
+                  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .s3-office  { font-size: 12px; color: var(--gold); margin-top: 2px; }
+    .s3-total   { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800;
+                  color: var(--blue-l); flex-shrink: 0; min-width: 48px; text-align: right; }
+    .s3-empty   { text-align: center; padding: 60px; color: var(--muted); font-size: 15px; }
+
+    /* ─────────────────────────────────────────────────────────────────────
+       SCREEN 3 — Document Status Donut
+    ───────────────────────────────────────────────────────────────────── */
+    .s4-wrap      { display: flex; gap: 48px; align-items: center; justify-content: center;
+                    flex-wrap: wrap; padding: 10px 20px; max-width: 920px; margin: 0 auto; }
+    .s4-chart-box { position: relative; width: 280px; height: 280px; flex-shrink: 0; }
+    .s4-legend    { display: flex; flex-direction: column; gap: 9px; min-width: 220px; }
+    .s4-leg-row   { display: flex; align-items: center; gap: 10px; }
+    .s4-leg-dot   { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .s4-leg-label { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+    .s4-leg-count { font-size: 13px; font-weight: 700; color: var(--text); }
+    .s4-leg-pct   { font-size: 11px; color: var(--muted); margin-left: 4px; }
+    .s4-empty     { text-align: center; padding: 60px; color: var(--muted); font-size: 15px; }
+
+    /* ─────────────────────────────────────────────────────────────────────
+       SCREEN 4 — Today's Summary
+    ───────────────────────────────────────────────────────────────────── */
+    .s5-wrap  { display: flex; flex-direction: column; align-items: center;
+                justify-content: center; gap: 28px; min-height: 100%; padding: 16px; }
+    .s5-grid  { display: grid; grid-template-columns: repeat(2,1fr);
+                gap: 14px; width: 100%; max-width: 720px; }
+    .s5-card  { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.10);
+                border-radius: 16px; padding: 24px 16px; text-align: center; }
+    .s5-num   { font-family: 'Syne', sans-serif; font-size: 68px; font-weight: 800; line-height: 1; }
+    .s5-lbl   { font-size: 11px; font-weight: 700; text-transform: uppercase;
+                letter-spacing: 1px; color: var(--muted); margin-top: 6px; }
+    .s5-clock { font-family: 'Syne', sans-serif; font-size: 48px; font-weight: 800;
+                color: #fff; letter-spacing: 3px; }
+    .s5-msg   { font-size: 17px; color: var(--muted); font-weight: 500; }
+
+    /* ── Screen section title (shared) ──────────────────────────────────── */
+    .sec-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.4px; color: var(--gold);
+      margin-bottom: 14px; display: inline-block;
+      border-bottom: 2px solid var(--gold); padding-bottom: 4px;
+    }
 
     @media (max-width: 960px) {
-      .hdr-clock { font-size: 36px; }
-      .hdr-date  { font-size: 13px; }
-      .total-num { font-size: 36px; }
-      .staff-grid { grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 10px; }
+      .hdr-clock { font-size: 34px; }
+      .total-num { font-size: 32px; }
+      .staff-grid { grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 9px; }
+      .s5-num { font-size: 52px; }
+      .s5-clock { font-size: 36px; }
     }
     @media (max-width: 640px) {
-      .hdr { flex-wrap: wrap; padding: 12px 16px; }
+      .hdr { flex-wrap: wrap; padding: 10px 14px; }
       .hdr-center { order: 3; width: 100%; }
-      .hdr-clock { font-size: 28px; }
+      .hdr-clock { font-size: 26px; }
       .totals-bar { grid-template-columns: repeat(2,1fr); }
+      .s2-label { width: 130px; font-size: 11px; }
+      .s5-grid { grid-template-columns: repeat(2,1fr); }
+      .s5-num { font-size: 40px; }
     }
   </style>
 </head>
 <body>
 
-<!-- ── Header ── -->
+<!-- ── Header ───────────────────────────────────────────────────────────── -->
 <header class="hdr">
   <div class="hdr-brand">
     <img src="/static/logo.png" alt="DepEd" class="hdr-logo"/>
@@ -227,7 +317,7 @@
   </div>
 </header>
 
-<!-- ── Stats Bar ── -->
+<!-- ── Stats Bar ─────────────────────────────────────────────────────────── -->
 <div class="totals-bar">
   <div class="total-cell c-gold">
     <div class="total-num" id="t-total">{{ totals.total_docs }}</div>
@@ -247,158 +337,400 @@
   </div>
 </div>
 
-<!-- ── Staff Grid ── -->
-<div class="grid-wrap">
-  <div class="grid-title">Staff Activity</div>
-  <div class="staff-grid" id="staff-grid">
-    {% if staff_stats %}
-      {% set max_total = staff_stats[0].total if staff_stats[0].total > 0 else 1 %}
-      {% for s in staff_stats %}
-      {% set bar_pct = ((s.total / max_total) * 100) | int %}
-      {% set pres = s.presence %}
-      <div class="staff-card {% if s.pending > 0 %}has-pending{% endif %}">
+<!-- ── Screen title bar ──────────────────────────────────────────────────── -->
+<div class="screen-title-bar">
+  <span class="screen-label" id="screen-label">Staff Activity</span>
+  <span class="screen-counter" id="screen-counter">1 / 5</span>
+</div>
 
-        <div class="sc-header">
-          <div class="sc-name-row">
-            <span class="online-dot {% if pres == 'online' %}online{% elif pres == 'idle' %}idle{% else %}offline{% endif %}"></span>
-            <span class="sc-name">{{ s.full_name }}</span>
+<!-- ── Screen Wrap ───────────────────────────────────────────────────────── -->
+<div class="screen-wrap">
+
+  <!-- ── Screen 0: Staff Activity ── -->
+  <div class="screen active" id="screen-0">
+    <div class="sec-title">Staff Activity</div>
+    <div class="staff-grid" id="staff-grid">
+      {% if staff_stats %}
+        {% set max_total = staff_stats[0].total if staff_stats[0].total > 0 else 1 %}
+        {% for s in staff_stats %}
+        {% set bar_pct = ((s.total / max_total) * 100) | int %}
+        {% set pres = s.presence %}
+        <div class="staff-card {% if s.pending > 0 %}has-pending{% endif %}">
+          <div class="sc-header">
+            <div class="sc-name-row">
+              <span class="online-dot {% if pres == 'online' %}online{% elif pres == 'idle' %}idle{% else %}offline{% endif %}"></span>
+              <span class="sc-name">{{ s.full_name }}</span>
+            </div>
+            <div class="sc-pending-badge {% if s.pending == 0 %}zero{% endif %}">⏳ {{ s.pending }}</div>
           </div>
-          <div class="sc-pending-badge {% if s.pending == 0 %}zero{% endif %}">⏳ {{ s.pending }}</div>
-        </div>
-
-        <div class="sc-sub-row">
-          <span class="sc-office">{{ s.office }}</span>
-          <span class="sc-presence {% if pres == 'online' %}online{% elif pres == 'idle' %}idle{% else %}offline{% endif %}">
-            {% if pres == 'online' %}ONLINE{% elif pres == 'idle' %}IDLE{% else %}OFFLINE{% endif %}
-          </span>
-        </div>
-
-        <hr class="sc-divider"/>
-
-        <div class="stat-grid">
-          <div class="stat-col">
-            <div class="stat-item">
-              <span class="stat-num" style="color:#FFFFFF">{{ s.logged }}</span>
-              <span class="stat-lbl">Logged</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-num" style="color:#10B981">{{ s.accepted }}</span>
-              <span class="stat-lbl">Accepted</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-num" style="color:#34D399">{{ s.released }}</span>
-              <span class="stat-lbl">Released</span>
-            </div>
+          <div class="sc-sub-row">
+            <span class="sc-office">{{ s.office }}</span>
+            <span class="sc-presence {% if pres == 'online' %}online{% elif pres == 'idle' %}idle{% else %}offline{% endif %}">
+              {% if pres == 'online' %}ONLINE{% elif pres == 'idle' %}IDLE{% else %}OFFLINE{% endif %}
+            </span>
           </div>
-          <div class="stat-col">
-            <div class="stat-item">
-              <span class="stat-num" style="color:#C9A227">{{ s.received }}</span>
-              <span class="stat-lbl">Received</span>
+          <hr class="sc-divider"/>
+          <div class="stat-grid">
+            <div class="stat-col">
+              <div class="stat-item"><span class="stat-num" style="color:#FFFFFF">{{ s.logged }}</span><span class="stat-lbl">Logged</span></div>
+              <div class="stat-item"><span class="stat-num" style="color:#10B981">{{ s.accepted }}</span><span class="stat-lbl">Accepted</span></div>
+              <div class="stat-item"><span class="stat-num" style="color:#34D399">{{ s.released }}</span><span class="stat-lbl">Released</span></div>
             </div>
-            <div class="stat-item">
-              <span class="stat-num" style="color:#F59E0B">{{ s.transferred }}</span>
-              <span class="stat-lbl">Transferred</span>
+            <div class="stat-col">
+              <div class="stat-item"><span class="stat-num" style="color:#C9A227">{{ s.received }}</span><span class="stat-lbl">Received</span></div>
+              <div class="stat-item"><span class="stat-num" style="color:#F59E0B">{{ s.transferred }}</span><span class="stat-lbl">Transferred</span></div>
             </div>
           </div>
+          <div class="sc-bar-wrap">
+            <div class="sc-bar {% if s.pending > 0 %}active{% endif %}" style="width:{{ bar_pct }}%"></div>
+          </div>
         </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">No staff activity data available.</div>
+      {% endif %}
+    </div>
+  </div><!-- /screen-0 -->
 
-        <div class="sc-bar-wrap">
-          <div class="sc-bar {% if s.pending > 0 %}active{% endif %}" style="width:{{ bar_pct }}%"></div>
-        </div>
+  <!-- ── Screen 1: Office Statistics ── -->
+  <div class="screen" id="screen-1">
+    <div class="sec-title">Documents by Office — Today</div>
+    <div id="office-list" class="s2-list"></div>
+  </div>
 
+  <!-- ── Screen 2: Staff Leaderboard ── -->
+  <div class="screen" id="screen-2">
+    <div class="sec-title">Staff Leaderboard — Today</div>
+    <div id="leaderboard-list" class="s3-list"></div>
+  </div>
+
+  <!-- ── Screen 3: Document Status Donut ── -->
+  <div class="screen" id="screen-3">
+    <div class="sec-title">Document Status Overview</div>
+    <div class="s4-wrap">
+      <div class="s4-chart-box">
+        <canvas id="status-chart"></canvas>
       </div>
-      {% endfor %}
-    {% else %}
-      <div class="empty-state">No staff activity data available.</div>
-    {% endif %}
+      <div class="s4-legend" id="status-legend"></div>
+    </div>
+    <div id="s4-empty" class="s4-empty" style="display:none;">No documents processed today yet.</div>
+  </div>
+
+  <!-- ── Screen 4: Today's Summary ── -->
+  <div class="screen" id="screen-4">
+    <div class="s5-wrap">
+      <div class="s5-grid">
+        <div class="s5-card">
+          <div class="s5-num" id="s5-today" style="color:var(--gold);">—</div>
+          <div class="s5-lbl">Documents Today</div>
+        </div>
+        <div class="s5-card">
+          <div class="s5-num" id="s5-total" style="color:var(--blue-l);">—</div>
+          <div class="s5-lbl">Total Documents</div>
+        </div>
+        <div class="s5-card">
+          <div class="s5-num" id="s5-staff" style="color:var(--green-l);">—</div>
+          <div class="s5-lbl">Active Staff</div>
+        </div>
+        <div class="s5-card">
+          <div class="s5-num" id="s5-pending" style="color:var(--red);">—</div>
+          <div class="s5-lbl">Pending Transfers</div>
+        </div>
+      </div>
+      <div class="s5-clock" id="s5-clock">--:--</div>
+      <div class="s5-msg">Have a productive day!</div>
+    </div>
+  </div>
+
+</div><!-- /screen-wrap -->
+
+<!-- ── Bottom bar: slide dots + footer ──────────────────────────────────── -->
+<div class="bottom-bar">
+  <div class="slide-dots">
+    <button class="slide-dot active" onclick="goToScreen(0)" title="Staff Activity"   aria-label="Staff Activity"></button>
+    <button class="slide-dot"        onclick="goToScreen(1)" title="Office Stats"     aria-label="Office Stats"></button>
+    <button class="slide-dot"        onclick="goToScreen(2)" title="Rankings"         aria-label="Rankings"></button>
+    <button class="slide-dot"        onclick="goToScreen(3)" title="Status Overview"  aria-label="Status Overview"></button>
+    <button class="slide-dot"        onclick="goToScreen(4)" title="Today's Summary"  aria-label="Today's Summary"></button>
+  </div>
+  <div class="footer-text">
+    DepEd Leyte Division &middot; Personnel Unit &middot; Live Staff Monitor &middot; Auto-refreshes every 30 seconds
   </div>
 </div>
 
-<!-- ── Footer ── -->
-<footer class="footer">
-  DepEd Leyte Division &middot; Personnel Unit &middot; Live Staff Monitor &middot; Auto-refreshes every 30 seconds
-</footer>
-
 <script>
+// ── Screen config ──────────────────────────────────────────────────────────
+var SCREEN_LABELS  = ['Staff Activity','Office Stats','Staff Rankings','Status Overview','Today\'s Summary'];
+var SCREEN_COUNT   = 5;
+var currentScreen  = 0;
+var slideTimer     = null;
+var chartInstance  = null;
+
+// ── Data vars (initialised from Jinja2, updated on refresh) ───────────────
+var officeData   = {{ totals.office_breakdown  | tojson }};
+var statusData   = {{ totals.status_breakdown  | tojson }};
+var rankingsData = {{ totals.rankings          | tojson }};
+var todayTotals  = {
+  today_docs:        {{ totals.today_docs }},
+  total_docs:        {{ totals.total_docs }},
+  active_staff:      {{ totals.active_staff }},
+  pending_transfers: {{ totals.pending_transfers }},
+};
+
+var STATUS_COLORS = {
+  'Pending':   '#F59E0B',
+  'Received':  '#10B981',
+  'In Review': '#4A7FD4',
+  'Routed':    '#06B6D4',
+  'Released':  '#34D399',
+  'On Hold':   '#CE1126',
+  'Archived':  '#6B7280',
+  'Rejected':  '#EF4444',
+};
+function statusColor(s) { return STATUS_COLORS[s] || '#8B9CB8'; }
+
 // ── Live clock ─────────────────────────────────────────────────────────────
 (function clock() {
   var DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var MONTHS = ['January','February','March','April','May','June','July','August',
                 'September','October','November','December'];
   function tick() {
-    var now = new Date();
-    var h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+    var now  = new Date();
+    var h    = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
     var ampm = h >= 12 ? 'PM' : 'AM';
     h = h % 12 || 12;
-    document.getElementById('js-clock').textContent =
-      String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' +
-      String(s).padStart(2,'0') + ' ' + ampm;
-    document.getElementById('js-date').textContent =
-      DAYS[now.getDay()] + ', ' + MONTHS[now.getMonth()] + ' ' +
-      now.getDate() + ', ' + now.getFullYear();
+    var timeStr = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' +
+                  String(s).padStart(2,'0') + ' ' + ampm;
+    var shortStr = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ' ' + ampm;
+    document.getElementById('js-clock').textContent = timeStr;
+    document.getElementById('js-date').textContent  =
+      DAYS[now.getDay()] + ', ' + MONTHS[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear();
+    var s5c = document.getElementById('s5-clock');
+    if (s5c) s5c.textContent = shortStr;
   }
   tick();
   setInterval(tick, 1000);
 })();
 
-// ── Card builder ────────────────────────────────────────────────────────────
+// ── Slideshow ──────────────────────────────────────────────────────────────
+function showScreen(idx) {
+  document.querySelectorAll('.screen').forEach(function(el, i) {
+    el.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('.slide-dot').forEach(function(d, i) {
+    d.classList.toggle('active', i === idx);
+  });
+  document.getElementById('screen-label').textContent  = SCREEN_LABELS[idx];
+  document.getElementById('screen-counter').textContent = (idx + 1) + ' / ' + SCREEN_COUNT;
+  currentScreen = idx;
+  if (idx === 3) renderStatusChart();
+}
+
+function goToScreen(idx) {
+  clearInterval(slideTimer);
+  showScreen(idx);
+  slideTimer = setInterval(function() { showScreen((currentScreen + 1) % SCREEN_COUNT); }, 30000);
+}
+
+function startSlideshow() {
+  slideTimer = setInterval(function() { showScreen((currentScreen + 1) % SCREEN_COUNT); }, 30000);
+}
+
+// ── Screen 1: Office bar chart ─────────────────────────────────────────────
+function renderOfficeScreen() {
+  var el = document.getElementById('office-list');
+  if (!el) return;
+  if (!officeData.length) {
+    el.innerHTML = '<div class="s2-empty">No office data available yet.</div>';
+    return;
+  }
+  var maxCount = officeData[0].count || 1;
+  el.innerHTML = officeData.map(function(row) {
+    var pct = Math.max(Math.round((row.count / maxCount) * 100), 2);
+    return (
+      '<div class="s2-row">' +
+        '<div class="s2-label" title="' + row.office + '">' + row.office + '</div>' +
+        '<div class="s2-track">' +
+          '<div class="s2-fill" style="width:' + pct + '%"></div>' +
+        '</div>' +
+        '<div class="s2-count">' + row.count + '</div>' +
+      '</div>'
+    );
+  }).join('');
+}
+
+// ── Screen 2: Staff leaderboard ────────────────────────────────────────────
+function renderLeaderboardScreen() {
+  var el = document.getElementById('leaderboard-list');
+  if (!el) return;
+  if (!rankingsData.length) {
+    el.innerHTML = '<div class="s3-empty">No rankings data available yet.</div>';
+    return;
+  }
+  el.innerHTML = rankingsData.map(function(s, i) {
+    var rankNum  = i + 1;
+    var rankCls  = rankNum === 1 ? 'r1' : rankNum === 2 ? 'r2' : rankNum === 3 ? 'r3' : 'rn';
+    var rankLbl  = '#' + rankNum;
+    return (
+      '<div class="s3-row">' +
+        '<div class="s3-rank ' + rankCls + '">' + rankLbl + '</div>' +
+        '<div class="s3-info">' +
+          '<div class="s3-name">' + s.full_name + '</div>' +
+          '<div class="s3-office">' + s.office + '</div>' +
+        '</div>' +
+        '<div class="s3-total">' + s.rank_total + '</div>' +
+      '</div>'
+    );
+  }).join('');
+}
+
+// ── Screen 3: Status donut chart ───────────────────────────────────────────
+function renderStatusChart() {
+  var canvas = document.getElementById('status-chart');
+  var emptyEl = document.getElementById('s4-empty');
+  var legendEl = document.getElementById('status-legend');
+  if (!canvas) return;
+
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  if (!statusData.length) {
+    canvas.style.display = 'none';
+    legendEl.innerHTML   = '';
+    if (emptyEl) emptyEl.style.display = '';
+    return;
+  }
+  canvas.style.display = '';
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  var labels = statusData.map(function(d) { return d.status; });
+  var counts = statusData.map(function(d) { return d.count; });
+  var total  = counts.reduce(function(a, b) { return a + b; }, 0);
+  var colors = labels.map(statusColor);
+
+  // Legend
+  legendEl.innerHTML = statusData.map(function(d) {
+    var pct = total > 0 ? Math.round((d.count / total) * 100) : 0;
+    return (
+      '<div class="s4-leg-row">' +
+        '<span class="s4-leg-dot" style="background:' + statusColor(d.status) + '"></span>' +
+        '<span class="s4-leg-label">' + d.status + '</span>' +
+        '<span class="s4-leg-count">' + d.count + '</span>' +
+        '<span class="s4-leg-pct">' + pct + '%</span>' +
+      '</div>'
+    );
+  }).join('');
+
+  chartInstance = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data:            counts,
+        backgroundColor: colors,
+        borderWidth:     2,
+        borderColor:     '#0A1628',
+        hoverOffset:     6,
+      }],
+    },
+    options: {
+      cutout: '65%',
+      plugins: {
+        legend:  { display: false },
+        tooltip: { enabled: true },
+      },
+      animation: { animateRotate: true, duration: 600 },
+    },
+    plugins: [{
+      id: 'centerText',
+      afterDraw: function(chart) {
+        var ctx2 = chart.ctx;
+        var area = chart.chartArea;
+        var cx   = area.left + (area.right  - area.left) / 2;
+        var cy   = area.top  + (area.bottom - area.top)  / 2;
+        ctx2.save();
+        ctx2.textAlign    = 'center';
+        ctx2.textBaseline = 'middle';
+        ctx2.font         = '800 38px Syne, sans-serif';
+        ctx2.fillStyle    = '#FFFFFF';
+        ctx2.fillText(total, cx, cy - 10);
+        ctx2.font      = '600 11px DM Sans, sans-serif';
+        ctx2.fillStyle = 'rgba(255,255,255,0.50)';
+        ctx2.fillText('DOCS TODAY', cx, cy + 14);
+        ctx2.restore();
+      },
+    }],
+  });
+}
+
+// ── Screen 4: Today summary numbers ───────────────────────────────────────
+function renderTodayScreen(t) {
+  var el;
+  el = document.getElementById('s5-today');   if (el) el.textContent = t.today_docs;
+  el = document.getElementById('s5-total');   if (el) el.textContent = t.total_docs;
+  el = document.getElementById('s5-staff');   if (el) el.textContent = t.active_staff;
+  el = document.getElementById('s5-pending'); if (el) el.textContent = t.pending_transfers;
+}
+
+// ── Staff card builder (screen 0 refresh) ─────────────────────────────────
 function buildCard(s, maxTotal) {
-  var pct        = maxTotal > 0 ? Math.round((s.total / maxTotal) * 100) : 0;
-  var hasPending = s.pending > 0;
-  var pres       = s.presence;
-  var dotCls     = pres === 'online' ? 'online' : pres === 'idle' ? 'idle' : 'offline';
-  var presLbl    = pres === 'online' ? 'ONLINE' : pres === 'idle' ? 'IDLE' : 'OFFLINE';
-
+  var pct    = maxTotal > 0 ? Math.round((s.total / maxTotal) * 100) : 0;
+  var hp     = s.pending > 0;
+  var pres   = s.presence;
+  var dotCls = pres === 'online' ? 'online' : pres === 'idle' ? 'idle' : 'offline';
+  var presLbl= pres === 'online' ? 'ONLINE' : pres === 'idle' ? 'IDLE' : 'OFFLINE';
   return (
-    '<div class="staff-card ' + (hasPending ? 'has-pending' : '') + '">' +
-
+    '<div class="staff-card ' + (hp ? 'has-pending' : '') + '">' +
       '<div class="sc-header">' +
         '<div class="sc-name-row">' +
           '<span class="online-dot ' + dotCls + '"></span>' +
           '<span class="sc-name">' + s.full_name + '</span>' +
         '</div>' +
-        '<div class="sc-pending-badge ' + (hasPending ? '' : 'zero') + '">⏳ ' + s.pending + '</div>' +
+        '<div class="sc-pending-badge ' + (hp ? '' : 'zero') + '">⏳ ' + s.pending + '</div>' +
       '</div>' +
-
       '<div class="sc-sub-row">' +
-        '<span class="sc-office">' + s.office + '</span>' +
+        '<span class="sc-office">'   + s.office + '</span>' +
         '<span class="sc-presence ' + dotCls + '">' + presLbl + '</span>' +
       '</div>' +
-
       '<hr class="sc-divider"/>' +
-
       '<div class="stat-grid">' +
         '<div class="stat-col">' +
-          '<div class="stat-item"><span class="stat-num" style="color:#FFFFFF">'  + s.logged      + '</span><span class="stat-lbl">Logged</span></div>' +
-          '<div class="stat-item"><span class="stat-num" style="color:#10B981">'  + s.accepted    + '</span><span class="stat-lbl">Accepted</span></div>' +
-          '<div class="stat-item"><span class="stat-num" style="color:#34D399">'  + s.released    + '</span><span class="stat-lbl">Released</span></div>' +
+          '<div class="stat-item"><span class="stat-num" style="color:#FFFFFF">' + s.logged      + '</span><span class="stat-lbl">Logged</span></div>' +
+          '<div class="stat-item"><span class="stat-num" style="color:#10B981">' + s.accepted    + '</span><span class="stat-lbl">Accepted</span></div>' +
+          '<div class="stat-item"><span class="stat-num" style="color:#34D399">' + s.released    + '</span><span class="stat-lbl">Released</span></div>' +
         '</div>' +
         '<div class="stat-col">' +
-          '<div class="stat-item"><span class="stat-num" style="color:#C9A227">'  + s.received    + '</span><span class="stat-lbl">Received</span></div>' +
-          '<div class="stat-item"><span class="stat-num" style="color:#F59E0B">'  + s.transferred + '</span><span class="stat-lbl">Transferred</span></div>' +
+          '<div class="stat-item"><span class="stat-num" style="color:#C9A227">' + s.received    + '</span><span class="stat-lbl">Received</span></div>' +
+          '<div class="stat-item"><span class="stat-num" style="color:#F59E0B">' + s.transferred + '</span><span class="stat-lbl">Transferred</span></div>' +
         '</div>' +
       '</div>' +
-
       '<div class="sc-bar-wrap">' +
-        '<div class="sc-bar ' + (hasPending ? 'active' : '') + '" style="width:' + pct + '%"></div>' +
+        '<div class="sc-bar ' + (hp ? 'active' : '') + '" style="width:' + pct + '%"></div>' +
       '</div>' +
-
     '</div>'
   );
 }
 
 var LIVE_TOKEN = {{ live_token | tojson }};
 
-// ── Data refresh (every 30 s) ───────────────────────────────────────────────
+// ── Data refresh (every 30 s, independent of slideshow) ───────────────────
 function refreshData() {
   fetch('/api/staff-live-data?token=' + encodeURIComponent(LIVE_TOKEN))
     .then(function(r) { return r.json(); })
     .then(function(data) {
+      // Stats bar
       document.getElementById('t-total').textContent   = data.totals.total_docs;
       document.getElementById('t-today').textContent   = data.totals.today_docs;
       document.getElementById('t-staff').textContent   = data.totals.active_staff;
       document.getElementById('t-pending').textContent = data.totals.pending_transfers;
+      document.getElementById('js-updated').textContent = 'Updated: ' + data.last_updated;
 
+      // Update global data
+      officeData   = data.totals.office_breakdown  || [];
+      statusData   = data.totals.status_breakdown  || [];
+      rankingsData = data.totals.rankings          || [];
+      todayTotals  = data.totals;
+
+      // Screen 0: staff grid
       var grid     = document.getElementById('staff-grid');
       var maxTotal = data.staff.length > 0 ? Math.max(data.staff[0].total, 1) : 1;
       if (!data.staff.length) {
@@ -409,11 +741,24 @@ function refreshData() {
         setTimeout(function() { grid.classList.remove('refresh-flash'); }, 500);
       }
 
-      document.getElementById('js-updated').textContent = 'Updated: ' + data.last_updated;
+      // Screen 1: office bars
+      renderOfficeScreen();
+      // Screen 2: leaderboard
+      renderLeaderboardScreen();
+      // Screen 3: chart (only rebuild if active — avoids flash on hidden canvas)
+      if (currentScreen === 3) renderStatusChart();
+      // Screen 4: today numbers
+      renderTodayScreen(data.totals);
     })
     .catch(function(err) { console.error('Refresh error:', err); });
 }
 
+// ── Boot ──────────────────────────────────────────────────────────────────
+renderOfficeScreen();
+renderLeaderboardScreen();
+renderTodayScreen(todayTotals);
+showScreen(0);
+startSlideshow();
 setInterval(refreshData, 30000);
 </script>
 </body>
