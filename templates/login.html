@@ -8,25 +8,32 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
 </head>
 <body>
-<div class="wrap">
-  <div class="page-nav">
-    <a href="/" class="back-link">← Home</a>
+<div class="login-shell">
+
+  <!-- LEFT PANEL -->
+  <div class="login-left">
+    <img src="/static/logo.png" alt="DepEd Leyte Logo" class="left-logo"/>
+    <div class="brand-text">
+      <div class="brand-title">LAKAD</div>
+      <div class="brand-subtitle">Staff Portal</div>
+      <div class="brand-org">DepEd Leyte Division — Personnel Unit</div>
+    </div>
+    <hr class="brand-rule"/>
+    <p class="brand-tagline">Manage and track documents for the Personnel Unit.</p>
+    <a href="/" class="left-back">← Back to Home</a>
   </div>
 
-  <div class="header">
-    <img src="/static/logo.png" alt="DepEd Leyte Logo" class="header-logo-img"/>
-    <div class="header-title">LAKAD</div>
-    <div class="header-sub">DepEd Leyte Division<br/>Client Services System</div>
-  </div>
+  <!-- RIGHT PANEL -->
+  <div class="login-right">
+    <a href="/client/login" class="right-top-link">Client Portal →</a>
 
-  <div class="card">
-    <div class="card-title">Staff Sign In</div>
-    <div class="card-sub">Enter your credentials to access the system.</div>
+    <h1 class="form-heading">Staff Sign In</h1>
+    <p class="form-sub">Enter your credentials to access the system.</p>
 
     {# FIX 1 — XSS: error is server-generated but Jinja auto-escaping is the
        last line of defence; role="alert" announces it to screen readers. #}
     {% if error %}
-    <div class="error-box" role="alert">❌ {{ error }}</div>
+    <div class="error-box" role="alert">{{ error }}</div>
     {% endif %}
 
     {# FIX 2 — Lockout UI: disable the form and show a live countdown when the
@@ -73,17 +80,13 @@
         </div>
       </div>
 
-      <button type="submit" class="btn" id="login-submit"
+      <button type="submit" class="btn-login" id="login-submit"
               {% if lockout_remaining and lockout_remaining > 0 %}disabled{% endif %}>
-        🔐 Sign In
+        Sign In
       </button>
     </form>
   </div>
 
-  <div class="footer-links">
-    <a href="/">🏠 Home</a>
-    <a href="/client/login">📱 Client Portal</a>
-  </div>
 </div>
 
 <div id="loading-overlay" aria-hidden="true">
