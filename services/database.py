@@ -174,6 +174,26 @@ def _create_tables(cur):
             saved_at   TIMESTAMPTZ DEFAULT NOW()
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS appointments (
+            id              TEXT PRIMARY KEY,
+            client_name     TEXT NOT NULL,
+            client_username TEXT DEFAULT '',
+            office          TEXT DEFAULT '',
+            service_code    TEXT DEFAULT '',
+            service_name    TEXT DEFAULT '',
+            preferred_date  TEXT DEFAULT '',
+            preferred_time  TEXT DEFAULT '',
+            purpose         TEXT DEFAULT '',
+            status          TEXT DEFAULT 'pending',
+            queue_ticket    TEXT DEFAULT NULL,
+            queue_ticket_id INTEGER DEFAULT NULL,
+            source          TEXT DEFAULT 'web',
+            notes           TEXT DEFAULT '',
+            created_at      TEXT DEFAULT '',
+            updated_at      TEXT DEFAULT ''
+        )
+    """)
     # Performance + audit query indexes
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(username)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(ts DESC)""")
