@@ -32,7 +32,7 @@
       {% endif %}
     {% else %}
       <button class="nav-btn-ghost" onclick="openModal('signin')">Sign In</button>
-      <button class="nav-btn-solid" onclick="openModal('register')">✍️ Register Free</button>
+      <a class="nav-btn-solid" href="/client/register">✍️ Register Free</a>
     {% endif %}
   </div>
   <button class="nav-hamburger" id="navHamburger" aria-label="Open menu" aria-expanded="false" onclick="toggleMobileNav()">
@@ -51,7 +51,7 @@
     {% endif %}
   {% else %}
     <button class="nav-mobile-item" onclick="closeNav();openModal('signin')">Sign In</button>
-    <button class="nav-mobile-item nav-mobile-solid" onclick="closeNav();openModal('register')">✍️ Register Free</button>
+    <a class="nav-mobile-item nav-mobile-solid" href="/client/register">✍️ Register Free</a>
   {% endif %}
 </div>
 
@@ -173,14 +173,14 @@
         </div>
       {% else %}
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px;">
-          <button onclick="openModal('register')" class="hero-btn hero-btn-gold"
+          <a href="/client/register" class="hero-btn hero-btn-gold"
              style="display:inline-flex;align-items:center;gap:9px;padding:14px 30px;min-height:44px;
                     background:#c9a227;color:#0f2744;font-weight:700;font-size:14px;border-radius:7px;
-                    border:none;cursor:pointer;transition:opacity 200ms ease;
+                    text-decoration:none;transition:opacity 200ms ease;
                     box-shadow:0 4px 20px rgba(201,162,39,0.36);">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             Register Free
-          </button>
+          </a>
           <button onclick="openModal('signin')" class="hero-btn hero-btn-outline"
              style="display:inline-flex;align-items:center;gap:9px;padding:14px 30px;min-height:44px;
                     background:transparent;color:rgba(255,255,255,0.82);font-weight:600;font-size:14px;
@@ -533,7 +533,6 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     bindModalForm('signin-form', 'signin-error');
-    bindModalForm('register-form', 'register-error');
   });
 })();
 </script>
@@ -568,64 +567,10 @@
       <div class="lp-error-box" id="signin-error" style="display:none"></div>
       <button type="submit" class="lp-submit-btn">Sign In</button>
     </form>
-    <p class="lp-modal-footer-text">No account? <button class="lp-link-btn" onclick="switchModal('signin','register')">Register Free</button></p>
+    <p class="lp-modal-footer-text">No account? <a class="lp-link-btn" href="/client/register">Register Free</a></p>
   </div>
 </div>
 
-<!-- Register Modal -->
-<div id="modal-register" class="lp-modal-overlay" onclick="closeModalOnBackdrop(event, 'register')" aria-modal="true" role="dialog" aria-label="Register">
-  <div class="lp-modal-box">
-    <button class="lp-modal-close" onclick="closeModal('register')" aria-label="Close">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    <div class="lp-modal-header">
-      <img src="/static/logo.png" alt="DepEd seal" class="lp-modal-logo"/>
-      <h2 class="lp-modal-title">Create Account</h2>
-      <p class="lp-modal-sub">No email required — just a username and password</p>
-    </div>
-    <form id="register-form" method="post" action="/client/register" class="lp-modal-form">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-      <input type="hidden" name="next_url" value="/"/>
-      <div class="lp-form-group">
-        <label class="lp-label" for="rg-fullname">Full Name</label>
-        <input class="lp-input" type="text" id="rg-fullname" name="full_name" placeholder="Enter your full name" required autocomplete="name"/>
-      </div>
-      <div class="lp-form-group">
-        <label class="lp-label" for="rg-username">Username</label>
-        <input class="lp-input" type="text" id="rg-username" name="username" placeholder="Choose a username" required autocomplete="username"/>
-      </div>
-      <div class="lp-form-group">
-        <label class="lp-label" for="rg-office">School / Office</label>
-        <input class="lp-input" type="text" id="rg-office" name="office" placeholder="Enter your school or office" required autocomplete="organization"/>
-      </div>
-      <div class="lp-form-group">
-        <label class="lp-label" for="rg-email">Email <span style="font-weight:400;color:#94A3B8;">(optional)</span></label>
-        <input class="lp-input" type="email" id="rg-email" name="email" placeholder="your@email.com" autocomplete="email"/>
-      </div>
-      <div class="lp-form-group">
-        <label class="lp-label" for="rg-password">Password</label>
-        <div style="position:relative;">
-          <input class="lp-input" type="password" id="rg-password" name="password" placeholder="Minimum 8 characters" required autocomplete="new-password" minlength="8" style="padding-right:44px;width:100%;box-sizing:border-box;"/>
-          <button type="button" onclick="toggleLpPw('rg-password','rg-pw-eye')" tabindex="-1" aria-label="Toggle password visibility" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;line-height:1;font-size:17px;color:#94A3B8;">
-            <span id="rg-pw-eye">👁</span>
-          </button>
-        </div>
-      </div>
-      <div class="lp-form-group">
-        <label class="lp-label" for="rg-confirm">Confirm Password</label>
-        <div style="position:relative;">
-          <input class="lp-input" type="password" id="rg-confirm" name="confirm_password" placeholder="Re-enter your password" required autocomplete="new-password" style="padding-right:44px;width:100%;box-sizing:border-box;"/>
-          <button type="button" onclick="toggleLpPw('rg-confirm','rg-confirm-eye')" tabindex="-1" aria-label="Toggle password visibility" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;line-height:1;font-size:17px;color:#94A3B8;">
-            <span id="rg-confirm-eye">👁</span>
-          </button>
-        </div>
-      </div>
-      <div class="lp-error-box" id="register-error" style="display:none"></div>
-      <button type="submit" class="lp-submit-btn">Create Account</button>
-    </form>
-    <p class="lp-modal-footer-text">Already have an account? <button class="lp-link-btn" onclick="switchModal('register','signin')">Sign In</button></p>
-  </div>
-</div>
 
 <script>
 function toggleLpPw(inputId, eyeId) {
