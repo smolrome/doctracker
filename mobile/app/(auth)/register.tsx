@@ -40,6 +40,10 @@ export default function Register() {
       setError('Full name, username, and password are required.');
       return;
     }
+    if (!office.trim()) {
+      setError('School/Office is required.');
+      return;
+    }
     if (password.length < 6) {
       setError('Password must be at least 6 characters.');
       return;
@@ -166,9 +170,9 @@ export default function Register() {
             />
           </View>
 
-          {/* School / Office (optional) */}
+          {/* School / Office */}
           <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
-            School / Office <Text style={{ color: '#94A3B8', fontWeight: '400', textTransform: 'none' }}>(optional)</Text>
+            School / Office <Text style={{ color: '#EF4444' }}>*</Text>
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: '#E2E8F0', paddingHorizontal: 14 }}>
             <Building2 color="#94A3B8" size={18} style={{ marginRight: 10 }} />

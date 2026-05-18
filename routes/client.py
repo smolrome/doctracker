@@ -302,6 +302,8 @@ def register():
                 error = "Full name is required."
             elif not username:
                 error = "Username is required."
+            elif not office:
+                error = "School/Office is required."
             elif len(password) < 8:
                 error = "Password must be at least 8 characters."
             elif password != confirm:
