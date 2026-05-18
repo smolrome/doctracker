@@ -7,38 +7,49 @@ import json
 
 try:
     import psycopg2
+    from psycopg2 import pool as pg_pool
     from psycopg2.extras import RealDictCursor
     from config import DATABASE_URL
     USE_DB = bool(DATABASE_URL)
 except ImportError:
     USE_DB = False
 
+_pool = None
+
+def _get_pool():
+    global _pool
+    if _pool is None:
+        _pool = pg_pool.ThreadedConnectionPool(
+            minconn=2,
+            maxconn=10,
+            dsn=DATABASE_URL,
+            cursor_factory=RealDictCursor,
+        )
+    return _pool
+
 
 class _ConnCtx:
-    """Wraps a psycopg2 connection so `with get_conn() as conn:` auto-closes it."""
-    def __init__(self, conn):
-        self._conn = conn
+    """Borrows a connection from the pool; returns it on exit."""
+    def __init__(self):
+        self._conn = None
+
     def __enter__(self):
+        self._conn = _get_pool().getconn()
+        self._conn.autocommit = False
         return self._conn
+
     def __exit__(self, exc_type, exc_val, exc_tb):
-        try:
-            if exc_type:
-                self._conn.rollback()
-            else:
-                self._conn.commit()
-        finally:
-            self._conn.close()  # ALWAYS close, even if commit/rollback raises
+        if exc_type:
+            self._conn.rollback()
+        else:
+            self._conn.commit()
+        _get_pool().putconn(self._conn)
         return False
-    # Forward attribute access so conn.cursor() etc. work directly too
-    def __getattr__(self, name):
-        return getattr(self._conn, name)
 
 
 def get_conn():
-    """Open a new database connection. Use as context manager — auto commits/closes."""
-    from config import DATABASE_URL
-    raw = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-    return _ConnCtx(raw)
+    """Borrow a connection from the pool. Use as context manager — auto commits/returns."""
+    return _ConnCtx()
 
 
 def init_db():
