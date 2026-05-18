@@ -320,28 +320,40 @@ def create_app() -> Flask:
 
     @app.before_request
     def check_session_active():
-        """Block disabled accounts mid-session before any handler runs."""
-        # Exempt unauthenticated requests and static files
+        """Block disabled accounts mid-session. Re-checks DB at most once per 60 seconds."""
         if not is_logged_in() or request.path.startswith("/static"):
             return
         username = session.get("username", "")
-        if username and USE_DB:
-            try:
-                from services.database import get_conn
-                with get_conn() as conn:
-                    with conn.cursor() as cur:
-                        cur.execute(
-                            "SELECT active FROM users WHERE username=%s",
-                            (username,),
-                        )
-                        row = cur.fetchone()
-                if row and not row["active"]:
-                    session.clear()
-                    flash("Your account has been disabled. Contact the administrator.", "error")
-                    return redirect(url_for("auth.login"))
-            except Exception:
-                import traceback
-                traceback.print_exc()
+        if not username or not USE_DB:
+            return
+
+        import time
+        now = time.time()
+        last_check = session.get("_active_checked_at", 0)
+
+        # Only hit the DB if 60 seconds have passed since last check
+        if now - last_check < 60:
+            return
+
+        try:
+            from services.database import get_conn
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT active FROM users WHERE username=%s",
+                        (username,),
+                    )
+                    row = cur.fetchone()
+            if row and not row["active"]:
+                session.clear()
+                flash("Your account has been disabled. Contact the administrator.", "error")
+                return redirect(url_for("auth.login"))
+            # Update the timestamp only on successful check
+            session["_active_checked_at"] = now
+            session.modified = True
+        except Exception:
+            import traceback
+            traceback.print_exc()
 
     # ── Error handler ──────────────────────────────────────────────────────────
     @app.errorhandler(Exception)
