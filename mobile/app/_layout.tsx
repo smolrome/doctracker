@@ -122,7 +122,13 @@ function AppShell() {
       });
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((r: any) => {
-        console.log('Tapped:', r);
+        const data = r.notification.request.content.data;
+        if (!data) return;
+        if (data.screen === '/pending-clients') {
+          router.push('/(app)/pending-clients');
+        } else if (data.doc_id) {
+          router.push(`/(app)/documents/${data.doc_id}`);
+        }
       });
 
     return () => {

@@ -334,7 +334,7 @@ def register():
                                     username=_admin['username'],
                                     title='New Client Registration',
                                     body=f'{full_name} (@{username}) has registered and is awaiting approval.',
-                                    data={'screen': '/pending-clients'},
+                                    data={'screen': '/pending-clients', 'type': 'pending_client'},
                                 )
                     except Exception:
                         pass  # never block registration
