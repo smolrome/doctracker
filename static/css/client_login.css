@@ -55,6 +55,10 @@ body{font-family:'Inter',sans-serif;min-height:100vh;
   display:flex;align-items:center;justify-content:center;gap:8px;}
 .btn-register:hover{border-color:#C9A227;background:#FFF8E1;color:#C9A227;}
 
+.page-nav{display:flex;gap:20px;margin-bottom:16px;}
+.back-link{font-size:14px;font-weight:600;color:rgba(255,255,255,.75);text-decoration:none;}
+.back-link:hover{color:#fff;}
+
 .footer-links{display:flex;justify-content:center;gap:20px;margin-top:18px;flex-wrap:wrap;}
 .footer-links a{font-size:14px;color:rgba(255,255,255,.75);text-decoration:none;font-weight:600;}
 .footer-links a:hover{color:#fff;}

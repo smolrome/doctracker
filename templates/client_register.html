@@ -10,6 +10,11 @@
 <body>
 <div class="wrap">
 
+  <div class="page-nav">
+    <a href="/" class="back-link">← Home</a>
+    <a href="/client/login?office_slug={{ office_slug | urlencode }}&amp;office_name={{ office_name | urlencode }}&amp;next={{ next_url | urlencode }}" class="back-link">← Sign In</a>
+  </div>
+
   <div class="header">
     <img src="/static/logo.png" alt="DepEd Leyte" class="logo"/>
     <div class="header-title">Create Your Account</div>

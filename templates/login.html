@@ -4,11 +4,15 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Staff Login — DepEd Leyte LAKAD</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
 </head>
 <body>
 <div class="wrap">
+  <div class="page-nav">
+    <a href="/" class="back-link">← Home</a>
+  </div>
+
   <div class="header">
     <img src="/static/logo.png" alt="DepEd Leyte Logo" class="header-logo-img"/>
     <div class="header-title">LAKAD</div>
@@ -77,8 +81,8 @@
   </div>
 
   <div class="footer-links">
+    <a href="/">🏠 Home</a>
     <a href="/client/login">📱 Client Portal</a>
-    <a href="/">👁 View Dashboard</a>
   </div>
 </div>
 
