@@ -234,10 +234,12 @@ def register():
                         approve_user(username)
                         _next_url = request.form.get("next_url", "").strip()
                         _regenerate_session({
-                            'username':  username,
-                            'role':      'client',
-                            'full_name': full_name,
-                            'office':    office,
+                            'username':           username,
+                            'role':               'client',
+                            'full_name':          full_name,
+                            'office':             office,
+                            'submit_office_slug': request.form.get('office_slug', ''),
+                            'submit_office_name': request.form.get('office_name', ''),
                         })
                         session.permanent = True
                         audit_log("client_walkin_register",
