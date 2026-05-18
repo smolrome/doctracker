@@ -53,7 +53,6 @@ function onReady() {
   // Apply stored selections to current page checkboxes
   var restoredCount = applyStoredSelections();
   if (restoredCount > 0) {
-    syncSelectionBar();
     updateCartBadge();
   }
 
@@ -215,7 +214,7 @@ function restoreSelectionsFromUrl() {
   var newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
   window.history.replaceState({}, '', newUrl);
 
-  if (count > 0) { syncSelectionBar(); updateCartBadge(); }
+  if (count > 0) { updateCartBadge(); }
 }
 
 function setupPaginationWithSelection() {
@@ -495,27 +494,11 @@ function updateSelection() {
 
   // ── SAVE FIRST, then sync UI ──
   saveSelectionsToLocalStorage(); // updates localStorage with unchecked removed
-  syncSelectionBar();             // now reads the correct updated count
   updateCartBadge();              // badge also reads updated count
   // ─────────────────────────────
 
   updateSelectedPreview();
   updateSelectAllLabel();
-}
-
-function syncSelectionBar() {
-  // Total = all stored (cross-page) merged with current page
-  var storedIds  = restoreSelectionsFromLocalStorage();
-  var currentIds = getSelectedIds();
-  var total      = Array.from(new Set(storedIds.concat(currentIds))).length;
-
-  var bar = document.getElementById('selection-bar');
-  if (bar) {
-    bar.classList.toggle('visible', total > 0);
-    bar.setAttribute('aria-hidden', total > 0 ? 'false' : 'true');
-  }
-  var lbl = document.getElementById('sel-count-label');
-  if (lbl) lbl.textContent = total;
 }
 
 function deselectAll() {
@@ -530,7 +513,6 @@ function deselectAll() {
   localStorage.removeItem(CART_STORAGE_KEY);
   localStorage.removeItem(CART_DETAILS_KEY);
 
-  syncSelectionBar();
   updateSelectedPreview();
   updateSelectAllLabel();
   updateCartBadge();
@@ -697,7 +679,6 @@ function removeFromCart(docId) {
   if (cb) {
     cb.checked = false;
     cb.closest('tr').classList.remove('row-selected');
-    syncSelectionBar();
     updateSelectAllLabel();
   }
 
@@ -713,7 +694,6 @@ function clearCart() {
   localStorage.removeItem(SELECTION_STORAGE_KEY);
   localStorage.removeItem(CART_STORAGE_KEY);
   localStorage.removeItem(CART_DETAILS_KEY);
-  syncSelectionBar();
   updateSelectAllLabel();
   updateCartBadge();
   renderCartModal();
@@ -727,7 +707,6 @@ function openRoutingModalFromCart() {
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
     if (cb) { cb.checked = true; cb.closest('tr').classList.add('row-selected'); }
   });
-  syncSelectionBar();
   closeCartModal();
   openRoutingModal();
 }
@@ -739,7 +718,6 @@ function openTransferModalFromCart() {
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
     if (cb) { cb.checked = true; cb.closest('tr').classList.add('row-selected'); }
   });
-  syncSelectionBar();
   closeCartModal();
   openTransferModal();
 }
@@ -752,7 +730,6 @@ function toggleCartItem(docId, checked) {
   } else {
     removeFromCart(docId);
   }
-  syncSelectionBar();
 }
 
 function initCart() {
@@ -903,7 +880,6 @@ function autoSelectByTime() {
     row.classList.toggle('row-selected', inRange);
     if (inRange) count++;
   });
-  syncSelectionBar();
   if (count === 0) {
     showToast('No documents found in that range.', 'warning');
   } else {
