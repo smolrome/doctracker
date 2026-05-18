@@ -104,6 +104,22 @@
       gap: 14px;
     }
 
+    /* ── Office section header ─────────────────────────────────────── */
+    .office-section-hdr {
+      grid-column: 1 / -1;
+      padding: 0.4rem 0.75rem;
+      margin-top: 0.5rem;
+      background: rgba(201,162,39,0.12);
+      border-left: 3px solid #C9A227;
+      border-radius: 4px;
+      color: #C9A227;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .office-section-hdr:first-child { margin-top: 0; }
+
     /* ── Staff card ──────────────────────────────────────────────────── */
     .staff-card {
       background: var(--card);
@@ -251,62 +267,65 @@
 <div class="grid-wrap">
   <div class="grid-title">Staff Activity</div>
   <div class="staff-grid" id="staff-grid">
-    {% if staff_stats %}
-      {% set max_total = staff_stats[0].total if staff_stats[0].total > 0 else 1 %}
-      {% for s in staff_stats %}
-      {% set bar_pct = ((s.total / max_total) * 100) | int %}
-      {% set pres = s.presence %}
-      <div class="staff-card {% if s.pending > 0 %}has-pending{% endif %}">
+    {% if office_groups %}
+      {% set max_total = (staff_stats[0].total if staff_stats and staff_stats[0].total > 0 else 1) %}
+      {% for group in office_groups %}
+        <div class="office-section-hdr">{{ group.office }}</div>
+        {% for s in group.staff %}
+        {% set bar_pct = ((s.total / max_total) * 100) | int %}
+        {% set pres = s.presence %}
+        <div class="staff-card {% if s.pending > 0 %}has-pending{% endif %}">
 
-        <div class="sc-header">
-          <div class="sc-name-row">
-            <span class="online-dot {% if pres == 'online' %}online{% elif pres == 'idle' %}idle{% else %}offline{% endif %}"></span>
-            <span class="sc-name">{{ s.full_name }}</span>
+          <div class="sc-header">
+            <div class="sc-name-row">
+              <span class="online-dot {% if pres == 'online' %}online{% elif pres == 'idle' %}idle{% else %}offline{% endif %}"></span>
+              <span class="sc-name">{{ s.full_name }}</span>
+            </div>
+            <div class="sc-pending-badge {% if s.pending == 0 %}zero{% endif %}">⏳ {{ s.pending }}</div>
           </div>
-          <div class="sc-pending-badge {% if s.pending == 0 %}zero{% endif %}">⏳ {{ s.pending }}</div>
-        </div>
 
-        <div class="sc-sub-row">
-          <span class="sc-office">{{ s.office }}</span>
-          <span class="sc-presence {% if pres == 'online' %}online{% elif pres == 'idle' %}idle{% else %}offline{% endif %}">
-            {% if pres == 'online' %}ONLINE{% elif pres == 'idle' %}IDLE{% else %}OFFLINE{% endif %}
-          </span>
-        </div>
+          <div class="sc-sub-row">
+            <span class="sc-office">{{ s.office }}</span>
+            <span class="sc-presence {% if pres == 'online' %}online{% elif pres == 'idle' %}idle{% else %}offline{% endif %}">
+              {% if pres == 'online' %}ONLINE{% elif pres == 'idle' %}IDLE{% else %}OFFLINE{% endif %}
+            </span>
+          </div>
 
-        <hr class="sc-divider"/>
+          <hr class="sc-divider"/>
 
-        <div class="stat-grid">
-          <div class="stat-col">
-            <div class="stat-item">
-              <span class="stat-num" style="color:#FFFFFF">{{ s.logged }}</span>
-              <span class="stat-lbl">Logged</span>
+          <div class="stat-grid">
+            <div class="stat-col">
+              <div class="stat-item">
+                <span class="stat-num" style="color:#FFFFFF">{{ s.logged }}</span>
+                <span class="stat-lbl">Logged</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-num" style="color:#10B981">{{ s.accepted }}</span>
+                <span class="stat-lbl">Accepted</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-num" style="color:#34D399">{{ s.released }}</span>
+                <span class="stat-lbl">Released</span>
+              </div>
             </div>
-            <div class="stat-item">
-              <span class="stat-num" style="color:#10B981">{{ s.accepted }}</span>
-              <span class="stat-lbl">Accepted</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-num" style="color:#34D399">{{ s.released }}</span>
-              <span class="stat-lbl">Released</span>
+            <div class="stat-col">
+              <div class="stat-item">
+                <span class="stat-num" style="color:#C9A227">{{ s.received }}</span>
+                <span class="stat-lbl">Received</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-num" style="color:#F59E0B">{{ s.transferred }}</span>
+                <span class="stat-lbl">Transferred</span>
+              </div>
             </div>
           </div>
-          <div class="stat-col">
-            <div class="stat-item">
-              <span class="stat-num" style="color:#C9A227">{{ s.received }}</span>
-              <span class="stat-lbl">Received</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-num" style="color:#F59E0B">{{ s.transferred }}</span>
-              <span class="stat-lbl">Transferred</span>
-            </div>
+
+          <div class="sc-bar-wrap">
+            <div class="sc-bar {% if s.pending > 0 %}active{% endif %}" style="width:{{ bar_pct }}%"></div>
           </div>
-        </div>
 
-        <div class="sc-bar-wrap">
-          <div class="sc-bar {% if s.pending > 0 %}active{% endif %}" style="width:{{ bar_pct }}%"></div>
         </div>
-
-      </div>
+        {% endfor %}
       {% endfor %}
     {% else %}
       <div class="empty-state">No staff activity data available.</div>
@@ -400,11 +419,16 @@ function refreshData() {
       document.getElementById('t-pending').textContent = data.totals.pending_transfers;
 
       var grid     = document.getElementById('staff-grid');
-      var maxTotal = data.staff.length > 0 ? Math.max(data.staff[0].total, 1) : 1;
-      if (!data.staff.length) {
+      var groups   = data.office_groups || [];
+      var allStaff = data.staff || [];
+      var maxTotal = allStaff.length > 0 ? Math.max(allStaff[0].total, 1) : 1;
+      if (!groups.length) {
         grid.innerHTML = '<div class="empty-state">No staff activity data available.</div>';
       } else {
-        grid.innerHTML = data.staff.map(function(s) { return buildCard(s, maxTotal); }).join('');
+        grid.innerHTML = groups.map(function(g) {
+          return '<div class="office-section-hdr">' + g.office + '</div>' +
+            g.staff.map(function(s) { return buildCard(s, maxTotal); }).join('');
+        }).join('');
         grid.classList.add('refresh-flash');
         setTimeout(function() { grid.classList.remove('refresh-flash'); }, 500);
       }

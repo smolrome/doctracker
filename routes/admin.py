@@ -196,6 +196,16 @@ def _compute_staff_live_stats():
 
     stats.sort(key=lambda x: -x["total"])
 
+    # Group by office (alphabetical office order; within each office, total-desc order preserved)
+    from collections import defaultdict as _dd
+    _groups = _dd(list)
+    for s in stats:
+        _groups[s["office"]].append(s)
+    office_groups = [
+        {"office": k, "staff": v}
+        for k, v in sorted(_groups.items())
+    ]
+
     total_docs        = len([d for d in docs if not d.get("deleted")])
     today_docs        = sum(1 for d in docs
                             if (d.get("created_at") or "")[:10] == today and not d.get("deleted"))
@@ -209,7 +219,7 @@ def _compute_staff_live_stats():
         "active_staff":      active_staff,
         "pending_transfers": pending_transfers,
     }
-    return stats, totals
+    return stats, totals, office_groups
 
 
 @admin_bp.route("/staff-live")
@@ -218,10 +228,11 @@ def staff_live():
     token = request.args.get("token", "")
     if not STAFF_LIVE_TOKEN or not token or not secrets.compare_digest(token, STAFF_LIVE_TOKEN):
         return "Access denied", 403
-    stats, totals = _compute_staff_live_stats()
+    stats, totals, office_groups = _compute_staff_live_stats()
     last_updated = datetime.now().strftime("%b %d, %Y %I:%M %p")
     return render_template("staff_live.html",
                            staff_stats=stats,
+                           office_groups=office_groups,
                            totals=totals,
                            last_updated=last_updated,
                            live_token=token)
@@ -233,11 +244,12 @@ def staff_live_data():
     token = request.args.get("token", "")
     if not STAFF_LIVE_TOKEN or not token or not secrets.compare_digest(token, STAFF_LIVE_TOKEN):
         return jsonify(error="Access denied"), 403
-    stats, totals = _compute_staff_live_stats()
+    stats, totals, office_groups = _compute_staff_live_stats()
     return jsonify({
-        "staff":        stats,
-        "totals":       totals,
-        "last_updated": datetime.now().strftime("%b %d, %Y %I:%M %p"),
+        "staff":         stats,
+        "office_groups": office_groups,
+        "totals":        totals,
+        "last_updated":  datetime.now().strftime("%b %d, %Y %I:%M %p"),
     })
 
 
