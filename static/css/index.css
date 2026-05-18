@@ -241,7 +241,7 @@ body {
 }
 
 .fc-search-wrap {
-  position: relative; flex: 1 1 200px; min-width: 150px;
+  position: relative; flex: 2 1 200px; min-width: 160px;
 }
 .fc-search-wrap input {
   width: 100%; padding: 8px 34px 8px 36px;
@@ -290,6 +290,7 @@ body {
 .chip.src-active { background: var(--navy); border-color: var(--navy); color: #fff; }
 
 .chip-select {
+  flex: 1 1 140px; min-width: 120px; max-width: 200px;
   display: inline-flex; align-items: center; gap: 4px;
   padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
   border: 1.5px solid var(--border); background: var(--surface); color: var(--muted);
@@ -1575,15 +1576,12 @@ tr:hover .status-change-inline { opacity:1; }
 /* fc-row1 layout for full-width filter bar */
 .filter-card .fc-row1 {
   display: flex;
-  gap: 7px;
+  gap: 8px;
+  flex-wrap: wrap;
   align-items: center;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
-.filter-card .fc-row1::-webkit-scrollbar { display: none; }
-.fc-date input { width: 130px; }
-.fc-btns { flex-shrink: 0; }
+.fc-date input { width: 140px; }
+.fc-btns { flex: 0 0 auto; display: flex; gap: 6px; }
 
 
 /* ── Sticky table header ── */
@@ -1607,10 +1605,7 @@ tr:hover .status-change-inline { opacity:1; }
   .dash-stat-card { min-width: 56px; padding: 7px 9px; }
   .dsc-num { font-size: 17px; }
 
-  .filter-card .fc-row1 { flex-wrap: wrap; }
-  .fc-search-wrap { flex: 1 1 100%; min-width: 0; }
   .fc-date, .fc-btns { flex: 0 0 auto; }
-  .chip-select { max-width: 120px; }
 
   /* Table → card view */
   .table-wrap { overflow-x: unset; }
