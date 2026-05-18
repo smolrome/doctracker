@@ -415,7 +415,7 @@ function checkPendingDocuments() {
       const bannerSub     = document.getElementById('ib-sub-text');
       // Only show badge when count > 0
       if (badge) { badge.textContent = data.count > 0 ? data.count : ''; badge.style.display = data.count > 0 ? 'block' : 'none'; }
-      if (headerBadge) { headerBadge.textContent = data.count > 0 ? data.count : ''; headerBadge.style.display = data.count > 0 ? 'block' : 'none'; }
+      if (headerBadge) { headerBadge.textContent = data.count > 0 ? data.count : ''; headerBadge.style.display = ''; headerBadge.classList.toggle('visible', data.count > 0); }
       if (banner && bannerCount) {
         bannerCount.textContent = data.count;
         banner.style.display = data.count > 0 ? 'block' : 'none';

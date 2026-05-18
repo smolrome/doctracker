@@ -1179,7 +1179,7 @@ function checkPendingDocuments() {
     .then(function(data) {
       var count = data.count || 0;
       if (badge) { badge.textContent = count > 0 ? count : ''; badge.style.display = count > 0 ? 'block' : 'none'; }
-      if (headerBadge) { headerBadge.textContent = count > 0 ? count : ''; headerBadge.style.display = count > 0 ? 'block' : 'none'; }
+      if (headerBadge) { headerBadge.textContent = count > 0 ? count : ''; headerBadge.style.display = ''; headerBadge.classList.toggle('visible', count > 0); }
       if (banner) {
         banner.style.display = count > 0 ? 'flex' : 'none';
         if (ibBadge) ibBadge.textContent = count;
