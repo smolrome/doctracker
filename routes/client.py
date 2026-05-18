@@ -31,6 +31,7 @@ from services.auth import (
 from services.documents import (
     get_doc, insert_doc, load_docs, now_str, generate_ref,
 )
+from services.appointments import get_appointments_by_client, create_appointment, get_appointment, cancel_appointment
 from services.misc import audit_log, load_saved_offices
 from services.qr import create_doc_token, generate_qr_b64, make_doc_status_qr_png
 from services.dropdown_options import get_dropdown_options
@@ -729,6 +730,71 @@ def submitted_batch():
     if not qr_list:
         return redirect(url_for("client.portal"))
     return render_template("client_submitted.html", qr_list=qr_list, batch=True)
+
+
+# ── Appointments ──────────────────────────────────────────────────────────────
+
+@client_bp.route("/appointments")
+@_require_client
+def my_appointments():
+    username = session.get('username', '')
+    appointments = get_appointments_by_client(username)
+    return render_template('client_appointments.html',
+                           appointments=appointments,
+                           csrf_token=_getcsrf_token())
+
+
+@client_bp.route("/appointments/book", methods=["GET", "POST"])
+@_require_client
+def book_appointment():
+    from services.queue_bridge import get_queue_services
+    offices = load_saved_offices()
+    services = get_queue_services()
+    if request.method == "POST":
+        _require_csrf()
+        office = request.form.get("office", "").strip()
+        service_code = request.form.get("service_code", "").strip()
+        service_name = next((s['name'] for s in services if s['code'] == service_code), service_code)
+        preferred_date = request.form.get("preferred_date", "").strip()
+        preferred_time = request.form.get("preferred_time", "").strip()
+        purpose = request.form.get("purpose", "").strip()
+        if not all([office, service_code, preferred_date, preferred_time, purpose]):
+            flash("All fields are required.", "error")
+            return render_template('client_book_appointment.html',
+                                   offices=offices, services=services,
+                                   csrf_token=_getcsrf_token())
+        create_appointment({
+            'client_name':     session.get('full_name') or session.get('username'),
+            'client_username': session.get('username'),
+            'office':          office,
+            'service_code':    service_code,
+            'service_name':    service_name,
+            'preferred_date':  preferred_date,
+            'preferred_time':  preferred_time,
+            'purpose':         purpose,
+            'source':          'web',
+        })
+        flash("Appointment booked successfully! An admin will confirm your appointment.", "success")
+        return redirect(url_for('client.my_appointments'))
+    return render_template('client_book_appointment.html',
+                           offices=offices, services=services,
+                           csrf_token=_getcsrf_token())
+
+
+@client_bp.route("/appointments/<apt_id>/cancel", methods=["POST"])
+@_require_client
+def cancel_client_appointment(apt_id):
+    _require_csrf()
+    apt = get_appointment(apt_id)
+    if not apt or apt.get('client_username') != session.get('username'):
+        flash("Appointment not found.", "error")
+        return redirect(url_for('client.my_appointments'))
+    if apt.get('status') not in ('pending', 'confirmed'):
+        flash("This appointment cannot be cancelled.", "error")
+        return redirect(url_for('client.my_appointments'))
+    cancel_appointment(apt_id)
+    flash("Appointment cancelled.", "success")
+    return redirect(url_for('client.my_appointments'))
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

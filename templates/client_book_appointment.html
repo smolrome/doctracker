@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Book an Appointment — LAKAD</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #FAF8F3; color: #1A2E45; min-height: 100vh; }
+
+    /* ── Topbar ── */
+    .topbar {
+      background: #0E2A47;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    }
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: .5px;
+    }
+    .topbar-brand img {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255,255,255,.4);
+      background: #fff;
+      flex-shrink: 0;
+    }
+    .topbar-sub { font-size: 11px; font-weight: 400; opacity: .7; display: block; }
+    .topbar-actions { display: flex; align-items: center; gap: 10px; }
+    .tb-btn {
+      padding: 7px 15px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .tb-back  { color: rgba(255,255,255,.85); border: 1.5px solid rgba(255,255,255,.25); }
+    .tb-back:hover { background: rgba(255,255,255,.1); }
+    .tb-logout { color: #fff; background: rgba(255,255,255,.12); border: 1.5px solid transparent; }
+    .tb-logout:hover { background: rgba(255,255,255,.2); }
+
+    /* ── Page ── */
+    .page { max-width: 680px; margin: 40px auto; padding: 0 16px 60px; }
+
+    /* ── Flash ── */
+    .flash {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .flash.success { background: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; }
+    .flash.error   { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border: 1.5px solid #E8DFC8;
+      border-radius: 14px;
+      padding: 36px 32px;
+      box-shadow: 0 2px 12px rgba(14,42,71,.06);
+    }
+    .card-heading {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #0E2A47;
+      margin-bottom: 6px;
+    }
+    .card-sub {
+      font-size: 14px;
+      color: #5A6E82;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    /* ── Form ── */
+    .form-group { margin-bottom: 20px; }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #0E2A47;
+      margin-bottom: 6px;
+      letter-spacing: .2px;
+    }
+    .form-group label .req { color: #C9601A; margin-left: 2px; }
+    .form-control {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #D6CEBA;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      color: #1A2E45;
+      background: #FDFCFA;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      appearance: none;
+    }
+    .form-control:focus {
+      border-color: #0E2A47;
+      box-shadow: 0 0 0 3px rgba(14,42,71,.1);
+    }
+    textarea.form-control { resize: vertical; min-height: 90px; }
+    select.form-control { cursor: pointer; }
+
+    .btn-submit {
+      width: 100%;
+      padding: 13px;
+      background: #C9A227;
+      color: #0E2A47;
+      border: none;
+      border-radius: 9px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      margin-top: 8px;
+      letter-spacing: .3px;
+      transition: background .15s, transform .1s;
+    }
+    .btn-submit:hover { background: #B8911E; }
+    .btn-submit:active { transform: scale(.99); }
+
+    @media (max-width: 540px) {
+      .card { padding: 24px 18px; }
+      .card-heading { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <img src="/static/logo.png" alt="Logo"/>
+    <div>
+      <div>LAKAD</div>
+      <span class="topbar-sub">DepEd Leyte Division</span>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <a href="/client/appointments" class="tb-btn tb-back">← My Appointments</a>
+    <a href="/client/logout" class="tb-btn tb-logout">Sign Out</a>
+  </div>
+</div>
+
+<div class="page">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="flash {{ cat }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <div class="card">
+    <div class="card-heading">Book an Appointment</div>
+    <div class="card-sub">Fill in the details below. An admin will confirm your appointment.</div>
+
+    <form method="post" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+
+      <div class="form-group">
+        <label for="office">Office <span class="req">*</span></label>
+        <select name="office" id="office" class="form-control" required>
+          <option value="">— Select an office —</option>
+          {% for o in offices %}
+            <option value="{{ o.office_name }}">{{ o.office_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="service_code">Service Type <span class="req">*</span></label>
+        <select name="service_code" id="service_code" class="form-control" required>
+          <option value="">— Select a service —</option>
+          {% if services %}
+            {% for s in services %}
+              <option value="{{ s.code }}">{{ s.name }}</option>
+            {% endfor %}
+          {% else %}
+            <option value="GENERAL">General Appointment</option>
+          {% endif %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="preferred_date">Preferred Date <span class="req">*</span></label>
+        <input type="date" name="preferred_date" id="preferred_date"
+               class="form-control" required/>
+      </div>
+
+      <div class="form-group">
+        <label for="preferred_time">Preferred Time <span class="req">*</span></label>
+        <select name="preferred_time" id="preferred_time" class="form-control" required>
+          <option value="">— Select a time slot —</option>
+          <option value="08:00">8:00 AM</option>
+          <option value="08:30">8:30 AM</option>
+          <option value="09:00">9:00 AM</option>
+          <option value="09:30">9:30 AM</option>
+          <option value="10:00">10:00 AM</option>
+          <option value="10:30">10:30 AM</option>
+          <option value="11:00">11:00 AM</option>
+          <option value="11:30">11:30 AM</option>
+          <option value="12:00">12:00 PM</option>
+          <option value="12:30">12:30 PM</option>
+          <option value="13:00">1:00 PM</option>
+          <option value="13:30">1:30 PM</option>
+          <option value="14:00">2:00 PM</option>
+          <option value="14:30">2:30 PM</option>
+          <option value="15:00">3:00 PM</option>
+          <option value="15:30">3:30 PM</option>
+          <option value="16:00">4:00 PM</option>
+          <option value="16:30">4:30 PM</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="purpose">Purpose / Notes <span class="req">*</span></label>
+        <textarea name="purpose" id="purpose" class="form-control"
+                  rows="3" placeholder="Briefly describe the purpose of your appointment…"
+                  required></textarea>
+      </div>
+
+      <button type="submit" class="btn-submit">Book Appointment</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Set min date to today
+  document.getElementById('preferred_date').min = new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>
