@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Office Status — DepEd Leyte Personnel Unit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --navy:   #0E2A47;
+      --navy-l: #1B3A6B;
+      --gold:   #C9A227;
+      --paper:  #FAF8F3;
+      --border: #D7CDB5;
+      --green:  #16A34A;
+      --red:    #DC2626;
+      --amber:  #D97706;
+      --blue:   #0038A8;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--paper); color: var(--navy); }
+
+    /* ── NAV ── */
+    .os-nav {
+      background: var(--navy);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .os-nav-back {
+      color: rgba(255,255,255,0.65);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 150ms;
+    }
+    .os-nav-back:hover { color: #fff; }
+    .os-nav-brand { color: #fff; font-size: 15px; font-weight: 700; }
+    .os-nav-sub   { color: var(--gold); font-size: 12px; font-weight: 600; }
+
+    /* ── HERO ── */
+    .os-hero {
+      background: var(--navy);
+      padding: 52px 24px 64px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .os-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, var(--gold) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.07;
+      pointer-events: none;
+    }
+    .os-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 22px;
+      position: relative;
+    }
+    .os-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 36px;
+      border-radius: 999px;
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      margin-bottom: 18px;
+      position: relative;
+      transition: background 400ms, border-color 400ms;
+    }
+    .os-badge.open   { background: rgba(22,163,74,0.16);  color: #4ADE80; border: 1.5px solid rgba(22,163,74,0.38); }
+    .os-badge.closed { background: rgba(220,38,38,0.16);  color: #F87171; border: 1.5px solid rgba(220,38,38,0.38); }
+    .os-badge-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+    .os-badge.open   .os-badge-dot { background: #4ADE80; box-shadow: 0 0 10px #4ADE80; animation: pulse 2s infinite; }
+    .os-badge.closed .os-badge-dot { background: #F87171; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+
+    .os-subtitle { color: rgba(255,255,255,0.55); font-size: 15px; font-weight: 600; position: relative; }
+    .os-updated  { color: rgba(255,255,255,0.30); font-size: 12px; margin-top: 10px; position: relative; }
+
+    /* ── STATS ── */
+    .os-stats {
+      max-width: 760px;
+      margin: -30px auto 0;
+      padding: 0 20px 52px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    @media (min-width: 540px) { .os-stats { grid-template-columns: repeat(4, 1fr); } }
+
+    .os-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 16px 18px;
+      text-align: center;
+      box-shadow: 0 2px 12px rgba(14,42,71,0.08);
+    }
+    .os-card-num {
+      font-size: 40px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 10px;
+      transition: color 400ms;
+    }
+    .os-card-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748B;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .c-green { color: var(--green); }
+    .c-amber  { color: var(--amber); }
+    .c-blue   { color: var(--blue); }
+    .c-gold   { color: var(--gold); }
+
+    /* ── FOOTER ── */
+    .os-footer {
+      text-align: center;
+      padding: 24px 20px 48px;
+      border-top: 1px solid var(--border);
+    }
+    .os-footer-refresh { font-size: 12px; color: #94A3B8; margin-bottom: 6px; }
+    .os-footer-brand   { font-size: 13px; color: #64748B; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ─────────────────────────────────────────────────────────────────── -->
+<nav class="os-nav">
+  <a href="/" class="os-nav-back">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back
+  </a>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;margin-left:auto;gap:2px;">
+    <span class="os-nav-brand">DepEd Leyte Division</span>
+    <span class="os-nav-sub">Personnel Unit</span>
+  </div>
+</nav>
+
+<!-- ── HERO ─────────────────────────────────────────────────────────────────── -->
+<section class="os-hero">
+  <div class="os-eyebrow">Live Office Status</div>
+  <div id="os-badge" class="os-badge open">
+    <span class="os-badge-dot"></span>
+    <span id="os-status-text">—</span>
+  </div>
+  <div class="os-subtitle">Personnel Unit · DepEd SDO Leyte Division</div>
+  <div class="os-updated">Last updated: <span id="os-updated">—</span></div>
+</section>
+
+<!-- ── STATS ─────────────────────────────────────────────────────────────────── -->
+<div class="os-stats">
+  <div class="os-card">
+    <div class="os-card-num c-green" id="os-online">—</div>
+    <div class="os-card-lbl">Staff Online</div>
+  </div>
+  <div class="os-card">
+    <div class="os-card-num c-amber" id="os-idle">—</div>
+    <div class="os-card-lbl">Staff Available</div>
+  </div>
+  <div class="os-card">
+    <div class="os-card-num c-blue" id="os-total">—</div>
+    <div class="os-card-lbl">Total Active Staff</div>
+  </div>
+  <div class="os-card">
+    <div class="os-card-num c-gold" id="os-today">—</div>
+    <div class="os-card-lbl">Documents Today</div>
+  </div>
+</div>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────────────────── -->
+<footer class="os-footer">
+  <div class="os-footer-refresh">🔄 Auto-refreshes every 30 seconds</div>
+  <div class="os-footer-brand">DepEd Leyte Division · Personnel Unit</div>
+</footer>
+
+<script>
+function applyData(d) {
+  var badge  = document.getElementById('os-badge');
+  var isOpen = d.office_status === 'OPEN';
+  badge.className = 'os-badge ' + (isOpen ? 'open' : 'closed');
+  document.getElementById('os-status-text').textContent = d.office_status;
+  document.getElementById('os-online').textContent  = d.online_count;
+  document.getElementById('os-idle').textContent    = d.idle_count;
+  document.getElementById('os-total').textContent   = d.total_staff;
+  document.getElementById('os-today').textContent   = d.today_docs;
+  document.getElementById('os-updated').textContent = d.last_updated;
+}
+
+function refresh() {
+  fetch('/api/office-status-data')
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(d) { if (d) applyData(d); })
+    .catch(function() {});
+}
+
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>
