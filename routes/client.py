@@ -696,7 +696,19 @@ def submit():
                 if u.get("role") in ("staff", "admin")
             ]
         if not selected_staff and office_staff_list:
-            selected_staff = office_staff_list[0]["username"]
+            # Find the primary recipient for this office from saved_offices
+            primary_username = ""
+            for off in _get_saved_offices():
+                if off.get("office_slug", "") == office_slug or \
+                   off.get("office_name", "").strip().lower() == office_name.strip().lower():
+                    primary_username = off.get("primary_recipient", "")
+                    break
+            # Use primary if they are in the staff list, else fall back to first
+            staff_usernames = [s["username"] for s in office_staff_list]
+            if primary_username and primary_username in staff_usernames:
+                selected_staff = primary_username
+            else:
+                selected_staff = office_staff_list[0]["username"]
 
     return render_template("client_submit.html",
                            cart=cart, error=error, doc={},
