@@ -540,92 +540,63 @@
 
   {% if doc.travel_log %}
   {% set cycle_num = namespace(value=0) %}
-  {% set in_cycle = namespace(value=false) %}
-  {% set final_action = namespace(value=false) %}
+  <ul class="travel-timeline">
+    {% for entry in doc.travel_log %}
+    {% set entry_action = (entry.action or '')|lower %}
+    {% set is_rerouted = 'rerouted' in entry_action or 're-routed' in entry_action %}
+    {% set is_released = 'released' in entry_action %}
 
-  <table class="log-table">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Office / Unit</th>
-        <th>Action</th>
-        <th>Officer / Staff</th>
-        <th>Date &amp; Time</th>
-        <th>Remarks</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for entry in doc.travel_log %}
-      {% set entry_action = (entry.action or '')|lower %}
+    {# Cycle separator before each reroute entry (after the first) #}
+    {% if is_rerouted and loop.index > 1 %}
+      {% set cycle_num.value = cycle_num.value + 1 %}
+      <li class="travel-tl-cycle">⟳ Routing Cycle {{ cycle_num.value + 1 }}</li>
+    {% endif %}
 
-      {# FIX: detect both 'rerouted' and 're-routed' (hyphenated) throughout #}
-      {% set is_rerouted = 'rerouted' in entry_action or 're-routed' in entry_action %}
-      {% set is_released = 'released' in entry_action %}
-      {% set is_returned = 'returned' in entry_action %}
+    {# Determine dot style and icon #}
+    {% if 'accept' in entry_action or 'receive' in entry_action %}
+      {% set dot_class = 'dot-receive' %}{% set dot_icon = '📥' %}
+    {% elif is_released %}
+      {% set dot_class = 'dot-release' %}{% set dot_icon = '✅' %}
+    {% elif 'transit' in entry_action or 'routed' in entry_action or 'transferred' in entry_action %}
+      {% set dot_class = 'dot-transfer' %}
+      {% set dot_icon = '🔄' if 'transferred' in entry_action else ('🔁' if is_rerouted else '🚚') %}
+    {% elif 'reject' in entry_action %}
+      {% set dot_class = 'dot-reject' %}{% set dot_icon = '❌' %}
+    {% elif 'review' in entry_action %}
+      {% set dot_class = 'dot-review' %}{% set dot_icon = '🔍' %}
+    {% elif 'submit' in entry_action or 'logged' in entry_action or 'creat' in entry_action %}
+      {% set dot_class = 'dot-create' %}{% set dot_icon = '📋' %}
+    {% else %}
+      {% set dot_class = '' %}{% set dot_icon = '📌' %}
+    {% endif %}
 
-      {# Track cycle and final state #}
-      {% if is_rerouted or is_released or is_returned %}
-        {% set in_cycle.value = true %}
-        {% if is_released %}
-          {% set final_action.value = true %}
+    <li class="travel-tl-item">
+      <div class="travel-tl-dot {{ dot_class }}">{{ dot_icon }}</div>
+      <div class="travel-tl-body">
+        <div class="travel-tl-action">{{ entry.action or 'Action' }}</div>
+        <div class="travel-tl-meta">
+          {{ entry.officer or entry.actor or '—' }}{% if entry.office %} · {{ entry.office }}{% endif %}{% if entry.timestamp %} · {{ entry.timestamp[:10] }} {{ entry.timestamp[11:16] }}{% endif %}
+        </div>
+        {% if entry.original_slip_no or entry.new_slip_no %}
+        <div class="travel-tl-meta" style="margin-top:2px;">
+          {% if entry.original_slip_no %}<span style="color:#92400E;">From slip: {{ entry.original_slip_no }}</span>{% endif %}
+          {% if entry.new_slip_no %}<span style="color:#0369A1;{% if entry.original_slip_no %}margin-left:8px;{% endif %}">New slip: {{ entry.new_slip_no }}</span>{% endif %}
+        </div>
         {% endif %}
-      {% endif %}
+        {% if entry.remarks or entry.entry %}
+        <div class="travel-tl-remark">{{ entry.remarks or entry.entry }}</div>
+        {% endif %}
+      </div>
+    </li>
 
-      {# Insert cycle separator row before each reroute entry (after the first) #}
-      {% if is_rerouted and loop.index > 1 %}
-        {% set cycle_num.value = cycle_num.value + 1 %}
-        <tr class="cycle-row"><td colspan="6">⟳ &nbsp; Routing Cycle {{ cycle_num.value + 1 }}</td></tr>
-      {% endif %}
-
-      <tr {% if final_action.value and loop.last %}class="final-row"{% endif %}
-          {% if is_rerouted %}style="background:#FFF3E0;"{% endif %}>
-        <td class="td-num">{{ loop.index }}</td>
-        <td class="td-office">{{ entry.office or '—' }}
-          {% if entry.original_slip_no %}
-          <div style="font-size:10px;color:#92400E;">From: {{ entry.original_slip_no }}</div>
-          {% endif %}
-          {% if entry.new_slip_no %}
-          <div style="font-size:10px;color:#0369A1;">New: {{ entry.new_slip_no }}</div>
-          {% endif %}
-        </td>
-        <td>
-          {% if 'logged' in entry_action %}
-            <span class="action-pill ap-logged">✏️ {{ entry.action or 'Document Logged' }}</span>
-          {% elif 'edited' in entry_action or 'updated' in entry_action %}
-            <span class="action-pill" style="background:#E0F2FE;color:#0369A1;border:1px solid #BAE6FD;">✏️ {{ entry.action or 'Document Edited' }}</span>
-          {% elif 'transit' in entry_action or 'routed' in entry_action or 'transferred' in entry_action %}
-            <span class="action-pill ap-transit">{% if 'transferred' in entry_action %}🔄{% else %}🚚{% endif %} {{ entry.action or 'Routed' }}</span>
-          {% elif 'received' in entry_action %}
-            <span class="action-pill ap-received">📥 {{ entry.action or 'Received' }}</span>
-          {% elif 'review' in entry_action %}
-            <span class="action-pill ap-review">🔍 {{ entry.action or 'In Review' }}</span>
-          {% elif is_rerouted or is_returned %}
-            {# FIX: use is_rerouted variable which already checks both spellings #}
-            <span class="action-pill ap-rerouted">🔁 {{ entry.action or 'Re-routed' }}</span>
-          {% elif is_released %}
-            <span class="action-pill ap-released">✅ {{ entry.action or 'Released' }}</span>
-          {% else %}
-            <span class="action-pill">{{ entry.action or '—' }}</span>
-          {% endif %}
-        </td>
-        <td class="td-staff">{{ entry.officer or entry.actor or '—' }}
-          {% if entry.officer %}
-          <span>{{ entry.office or '' }}</span>
-          {% endif %}
-        </td>
-        <td class="td-datetime">{{ entry.timestamp[:10] if entry.timestamp else '—' }}<strong>{{ entry.timestamp[11:16] if entry.timestamp and entry.timestamp|length > 10 else '' }}</strong></td>
-        <td class="td-remarks">{{ entry.remarks or entry.entry or '—' }}</td>
-      </tr>
-
-      {# Insert final separator after last released entry #}
-      {% if final_action.value and loop.last %}
-      <tr class="cycle-row"><td colspan="6">✅ &nbsp; Final Action — Document Released</td></tr>
-      {% endif %}
-      {% endfor %}
-    </tbody>
-  </table>
+    {# Final released marker after last entry #}
+    {% if is_released and loop.last %}
+    <li class="travel-tl-cycle" style="color:#065F46;border-color:#A7F3D0;background:#D1FAE5;">✅ Final Action — Document Released</li>
+    {% endif %}
+    {% endfor %}
+  </ul>
   {% else %}
-  <p style="color:#7a94ae;font-size:15px;padding:20px;text-align:center;background:#f5f8fb;border-radius:10px;">
+  <p style="color:#5B7FA8;font-size:15px;padding:20px;text-align:center;background:#FAF8F3;border-radius:10px;border:1px solid #D7CDB5;">
     No travel log entries yet. Attach the QR code to the document and scan at each office.
   </p>
   {% endif %}

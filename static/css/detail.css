@@ -1,25 +1,25 @@
 /* ── TOP HEADER ── */
 .doc-hero{border-radius:18px;padding:22px 24px;margin-bottom:20px;
   background:#fff;
-  border:2px solid #BAE6FD;
-  border-left:5px solid #0E7490;
+  border:2px solid #D7CDB5;
+  border-left:5px solid #C9A227;
   display:flex;align-items:flex-start;justify-content:space-between;
   gap:16px;flex-wrap:wrap;
-  box-shadow:0 2px 12px rgba(14,116,144,.08);}
+  box-shadow:0 2px 12px rgba(14,42,71,.08);}
 .doc-hero-left{flex:1;min-width:0;}
 .doc-hero-eyebrow{font-size:12px;font-weight:700;color:var(--muted);
   text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;
   display:flex;align-items:center;gap:8px;}
-.doc-hero-name{font-family:'Outfit',sans-serif;font-size:24px;font-weight:900;
+.doc-hero-name{font-family:'Libre Baskerville',serif;font-size:24px;font-weight:700;
   color:var(--navy);line-height:1.3;margin-bottom:8px;word-break:break-word;}
 .doc-hero-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
 .hero-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;
   border-radius:20px;font-size:13px;font-weight:700;
-  background:#F0F9FF;color:#0E7490;
-  border:1.5px solid #BAE6FD;}
+  background:#FAF8F3;color:#0E2A47;
+  border:1.5px solid #D7CDB5;}
 .hero-ref{font-family:monospace;font-size:15px;font-weight:700;
-  color:#0E7490;background:#F0F9FF;
-  padding:5px 12px;border-radius:8px;border:1.5px solid #BAE6FD;}
+  color:#0E2A47;background:#FAF8F3;
+  padding:5px 12px;border-radius:8px;border:1.5px solid #D7CDB5;}
 .doc-hero-status{flex-shrink:0;}
 .doc-hero-status .badge{font-size:15px;padding:8px 18px;}
 
@@ -31,18 +31,18 @@
 .status-update-card{background:#fff;border:2px solid var(--border);
   border-radius:16px;padding:18px 20px;margin-bottom:20px;
   display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
-.status-update-label{font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;
+.status-update-label{font-family:'Inter',sans-serif;font-size:14px;font-weight:700;
   color:var(--navy);white-space:nowrap;}
 .status-update-card select{flex:1;min-width:160px;padding:10px 12px;
   border:2px solid var(--border);border-radius:10px;font-family:inherit;
   font-size:15px;background:var(--surface);color:var(--text);outline:none;
   min-height:44px;}
-.status-update-card select:focus{border-color:var(--teal);}
+.status-update-card select:focus{border-color:#C9A227;}
 
 /* ── ROUTING CHAIN ── */
 .route-card{background:#fff;border:2px solid var(--border);border-radius:16px;
   padding:18px 20px;margin-bottom:20px;}
-.route-card-title{font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;
+.route-card-title{font-family:'Inter',sans-serif;font-size:13px;font-weight:700;
   text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px;}
 .route-stops{display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
 .stop-done{padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;
@@ -55,7 +55,7 @@
 .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
 .info-card{background:#fff;border:2px solid var(--border);border-radius:16px;padding:20px;}
 .info-card.full{grid-column:1/-1;}
-.info-card-title{font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;
+.info-card-title{font-family:'Inter',sans-serif;font-size:13px;font-weight:700;
   text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
   margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--border);
   display:flex;align-items:center;gap:8px;}
@@ -85,11 +85,11 @@
   justify-content:center;font-size:18px;margin:0 auto 6px;border:3px solid var(--border);
   background:#fff;}
 .tl-step.done .tl-dot{border-color:#059669;background:#D1FAE5;}
-.tl-step.current .tl-dot{border-color:var(--teal);background:#EFF6FF;
-  box-shadow:0 0 0 4px rgba(14,116,144,.15);}
+.tl-step.current .tl-dot{border-color:#0E2A47;background:#EFF6FF;
+  box-shadow:0 0 0 4px rgba(14,42,71,.15);}
 .tl-label{font-size:12px;font-weight:700;color:var(--muted);}
 .tl-step.done .tl-label{color:#065F46;}
-.tl-step.current .tl-label{color:var(--teal);}
+.tl-step.current .tl-label{color:#0E2A47;}
 .tl-date{font-size:11px;color:var(--muted);margin-top:2px;}
 
 /* ── TRAVEL LOG ── */
@@ -104,7 +104,7 @@
 .tlog-table tr:hover td{background:#F9FCFE;}
 .tlog-action-badge{display:inline-flex;align-items:center;padding:3px 10px;
   border-radius:10px;font-size:12px;font-weight:700;
-  background:#EFF6FF;color:var(--teal);}
+  background:#FEF9E7;color:#C9A227;}
 .tlog-action-badge.received{background:#DBEAFE;color:#1D4ED8;}
 .tlog-action-badge.released{background:#D1FAE5;color:#065F46;}
 .tlog-action-badge.submitted{background:#EDE9FE;color:#5B21B6;}
@@ -131,7 +131,7 @@
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #3b7dd8;
+  color: #0E2A47;
   margin-bottom: 4px;
 }
 
@@ -174,7 +174,7 @@
   z-index: 0;
 }
 
-.tl-item.done:not(:last-child)::after  { background: #2ec4a9; }
+.tl-item.done:not(:last-child)::after  { background: #C9A227; }
 .tl-item.active:not(:last-child)::after { background: #dde6ef; }
 
 .tl-icon-wrap {
@@ -191,8 +191,8 @@
   transition: all 0.2s;
 }
 
-.tl-item.done   .tl-icon-wrap { border-color: #2ec4a9; background: #edfaf7; }
-.tl-item.active .tl-icon-wrap { border-color: #3b7dd8; background: #eff5ff; box-shadow: 0 0 0 4px rgba(59,125,216,0.12); }
+.tl-item.done   .tl-icon-wrap { border-color: #C9A227; background: #FEF9E7; }
+.tl-item.active .tl-icon-wrap { border-color: #0E2A47; background: #EFF6FF; box-shadow: 0 0 0 4px rgba(14,42,71,0.12); }
 .tl-item.pending .tl-icon-wrap { border-color: #dde6ef; background: #f5f8fb; }
 
 .tl-label {
@@ -202,8 +202,8 @@
   color: #7a94ae;
   text-align: center;
 }
-.tl-item.done   .tl-label { color: #2ec4a9; }
-.tl-item.active .tl-label { color: #3b7dd8; }
+.tl-item.done   .tl-label { color: #C9A227; }
+.tl-item.active .tl-label { color: #0E2A47; }
 
 .tl-date {
   font-size: 10.5px;
@@ -224,8 +224,8 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  background: rgba(59,125,216,0.1);
-  color: #3b7dd8;
+  background: rgba(201,162,39,0.12);
+  color: #C9A227;
   border-radius: 20px;
   padding: 2px 7px;
 }
@@ -266,18 +266,18 @@
 }
 
 .routing-block.highlight {
-  border-color: #2ec4a9;
-  background: #edfaf7;
+  border-color: #C9A227;
+  background: #FEF9E7;
 }
-.routing-block.highlight .r-label { color: #2ec4a9; }
-.routing-block.highlight .r-value { color: #1a7a65; }
+.routing-block.highlight .r-label { color: #C9A227; }
+.routing-block.highlight .r-value { color: #7A5700; }
 
 .routing-block.active-route {
-  border-color: #3b7dd8;
-  background: #eff5ff;
+  border-color: #0E2A47;
+  background: #EFF6FF;
 }
-.routing-block.active-route .r-label { color: #3b7dd8; }
-.routing-block.active-route .r-value { color: #1a3d80; }
+.routing-block.active-route .r-label { color: #0E2A47; }
+.routing-block.active-route .r-value { color: #0E2A47; }
 
 .routing-status-row {
   display: flex;
@@ -306,12 +306,12 @@
   letter-spacing: 0.05em;
 }
 
-.pill-transit   { background: rgba(59,125,216,0.1);  color: #3b7dd8; }
-.pill-received  { background: rgba(82,183,136,0.12); color: #2a7a5a; }
-.pill-rerouted  { background: rgba(249,168,37,0.12); color: #b07000; }
-.pill-released  { background: rgba(46,196,169,0.12); color: #1a7a65; }
-.pill-review    { background: rgba(167,139,250,0.12);color: #6d36d4; }
-.pill-logged    { background: rgba(249,168,37,0.12); color: #9a6800; }
+.pill-transit   { background: #DBEAFE;                color: #1E40AF; }
+.pill-received  { background: #D1FAE5;                color: #065F46; }
+.pill-rerouted  { background: #FEF3C7;                color: #92400E; }
+.pill-released  { background: #0E2A47;                color: #fff;    }
+.pill-review    { background: #EDE9FE;                color: #6D28D9; }
+.pill-logged    { background: #FEF9E7;                color: #9a6800; }
 
 /* ═══ TRAVEL LOG ═══ */
 .log-header-row {
@@ -378,17 +378,17 @@
 
 .ap-logged    { background: #fff8e6; color: #9a6800; border: 1px solid #ffe0a0; }
 .ap-edited   { background: #E0F2FE; color: #0369A1; border: 1px solid #BAE6FD; }
-.ap-transit   { background: #eff5ff; color: #3b7dd8; border: 1px solid #c5d9f5; }
-.ap-received  { background: #edfaf7; color: #1a7a65; border: 1px solid #a8e8d8; }
-.ap-review    { background: #f3efff; color: #6d36d4; border: 1px solid #ccc0f0; }
-.ap-rerouted  { background: #fff3e0; color: #b07000; border: 1px solid #ffd080; }
-.ap-released  { background: #edfaf7; color: #1a7a65; border: 1px solid #2ec4a9; }
+.ap-transit   { background: #DBEAFE; color: #1E40AF; border: 1px solid #BFDBFE; }
+.ap-received  { background: #D1FAE5; color: #065F46; border: 1px solid #A7F3D0; }
+.ap-review    { background: #EDE9FE; color: #6D28D9; border: 1px solid #DDD6FE; }
+.ap-rerouted  { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+.ap-released  { background: #0E2A47; color: #fff;    border: 1px solid #0E2A47; }
 
 .td-staff { color: #3a5570; font-weight: 500; }
 .td-staff span { display: block; font-size: 11px; color: #9ab0c4; }
 
 .td-datetime { color: #3a5570; font-size: 12px; white-space: nowrap; }
-.td-datetime strong { display: block; font-size: 13px; font-weight: 700; color: #3b7dd8; }
+.td-datetime strong { display: block; font-size: 13px; font-weight: 700; color: #0E2A47; }
 
 .td-remarks { color: #6a88a0; font-size: 12px; line-height: 1.5; max-width: 280px; }
 
@@ -405,8 +405,8 @@
 }
 
 /* final row highlight */
-.final-row td { background: rgba(46,196,169,0.04); }
-.final-row:hover td { background: rgba(46,196,169,0.08)!important; }
+.final-row td { background: rgba(0,127,62,0.04); }
+.final-row:hover td { background: rgba(0,127,62,0.08)!important; }
 
 /* ── QR SECTION ── */
 .qr-section{display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;}
@@ -440,17 +440,17 @@
 }
 @media print{
   .actions-bar,.status-update-card,.page-header{display:none!important;}
-  .doc-hero{background:#fff!important;border-left-color:#0E7490!important;-webkit-print-color-adjust:exact;}
+  .doc-hero{background:#fff!important;border-left-color:#C9A227!important;-webkit-print-color-adjust:exact;}
   .info-grid{grid-template-columns:1fr 1fr;}
 }
 
 /* ── BUTTON VARIANTS ── */
-.btn-purple { background:#7C3AED; color:#fff; }
-.btn-purple:hover { background:#6D28D9; }
-.btn-teal   { background:#0E7490; color:#fff; }
-.btn-teal:hover { background:#0A5F75; }
-.btn-green  { background:#059669; color:#fff; }
-.btn-green:hover { background:#047857; }
+.btn-purple { background:#0E2A47; color:#fff; }
+.btn-purple:hover { background:#1a3d66; }
+.btn-teal   { background:#C9A227; color:#0E2A47; font-weight:700; }
+.btn-teal:hover { background:#A8871E; color:#fff; }
+.btn-green  { background:#007F3E; color:#fff; }
+.btn-green:hover { background:#005f2e; }
 
 /* ── STATUS UPDATE ── */
 .status-update-form { display:flex; gap:10px; flex:1; flex-wrap:wrap; align-items:center; }
@@ -473,3 +473,39 @@
 [data-theme="dark"] .status-update-card { background:#1E2A3A; border-color:#2E3D52; }
 [data-theme="dark"] .field-val { color:#C8D8EA; }
 [data-theme="dark"] .status-update-card select { background:#1E2A3A; color:#E2EAF4; }
+
+/* ═══ TRAVEL TIMELINE (vertical) ═══ */
+.travel-timeline{list-style:none;padding:0;margin:0;}
+.travel-tl-item{display:flex;gap:12px;margin-bottom:16px;position:relative;}
+.travel-tl-item:not(:last-child)::after{
+  content:'';position:absolute;left:17px;top:36px;bottom:-6px;
+  width:2px;background:#D7CDB5;
+}
+.travel-tl-dot{
+  width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;
+  border:2px solid #D7CDB5;background:#FAF8F3;
+}
+.travel-tl-dot.dot-receive  {background:#FAF8F3;border-color:#0E2A47;}
+.travel-tl-dot.dot-release  {background:#D1FAE5;border-color:#007F3E;}
+.travel-tl-dot.dot-create   {background:#FEF3C7;border-color:#D97706;}
+.travel-tl-dot.dot-transfer {background:#DBEAFE;border-color:#0038A8;}
+.travel-tl-dot.dot-reject   {background:#FEE2E2;border-color:#CE1126;}
+.travel-tl-dot.dot-review   {background:#EDE9FE;border-color:#6D28D9;}
+.travel-tl-body{flex:1;min-width:0;}
+.travel-tl-action{font-weight:700;font-size:15px;color:#0E2A47;line-height:1.3;}
+.travel-tl-meta{font-size:13px;color:#5B7FA8;margin-top:3px;}
+.travel-tl-remark{
+  font-size:13px;color:#0E2A47;margin-top:6px;
+  background:#FAF8F3;padding:8px 12px;
+  border-radius:8px;line-height:1.5;
+  border:1px solid #D7CDB5;
+}
+.travel-tl-cycle{
+  display:block;width:100%;
+  font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:#C9A227;background:#FEF9E7;
+  border:1px solid #F0C040;border-radius:6px;
+  padding:5px 12px;margin-bottom:16px;
+}
