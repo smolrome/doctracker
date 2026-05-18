@@ -31,7 +31,7 @@
         <a href="/logout" class="nav-btn-ghost">Sign Out</a>
       {% endif %}
     {% else %}
-      <button class="nav-btn-ghost" onclick="openModal('signin')">Sign In</button>
+      <a href="/client/login" class="nav-btn-ghost">Sign In</a>
       <a class="nav-btn-solid" href="/client/register">✍️ Register Free</a>
     {% endif %}
   </div>
@@ -50,7 +50,7 @@
       <a href="/logout" class="nav-mobile-item">Sign Out</a>
     {% endif %}
   {% else %}
-    <button class="nav-mobile-item" onclick="closeNav();openModal('signin')">Sign In</button>
+    <a href="/client/login" class="nav-mobile-item">Sign In</a>
     <a class="nav-mobile-item nav-mobile-solid" href="/client/register">✍️ Register Free</a>
   {% endif %}
 </div>
@@ -181,15 +181,15 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             Register Free
           </a>
-          <button onclick="openModal('signin')" class="hero-btn hero-btn-outline"
+          <a href="/client/login" class="hero-btn hero-btn-outline"
              style="display:inline-flex;align-items:center;gap:9px;padding:14px 30px;min-height:44px;
                     background:transparent;color:rgba(255,255,255,0.82);font-weight:600;font-size:14px;
-                    border-radius:7px;cursor:pointer;
+                    border-radius:7px;text-decoration:none;
                     border:1px solid rgba(255,255,255,0.20);
                     transition:background 200ms ease,border-color 200ms ease;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
             Sign In
-          </button>
+          </a>
         </div>
       {% endif %}
 
@@ -422,7 +422,7 @@
           {% elif logged_in and current_role in ('admin','staff') %}
             <a href="/office-action/{{ sub_slug }}" class="btn-submit">📋 Open Office Page</a>
           {% else %}
-            <button class="btn-submit" onclick="openModal('signin')">🔑 Sign In to Submit</button>
+            <a href="/client/login" class="btn-submit">🔑 Sign In to Submit</a>
           {% endif %}
           <a href="/office-qr/{{ sub_slug }}.png" download="{{ sub_slug }}.png" class="btn-dl">⬇️ Download QR</a>
         </div>
@@ -532,44 +532,10 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    bindModalForm('signin-form', 'signin-error');
-  });
+});
 })();
 </script>
 
-<!-- Sign In Modal -->
-<div id="modal-signin" class="lp-modal-overlay" onclick="closeModalOnBackdrop(event, 'signin')" aria-modal="true" role="dialog" aria-label="Sign In">
-  <div class="lp-modal-box">
-    <button class="lp-modal-close" onclick="closeModal('signin')" aria-label="Close">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    <div class="lp-modal-header">
-      <img src="/static/logo.png" alt="DepEd seal" class="lp-modal-logo"/>
-      <h2 class="lp-modal-title">Sign In</h2>
-      <p class="lp-modal-sub">Personnel Unit · LAKAD Client Services</p>
-    </div>
-    <form id="signin-form" method="post" action="/client/login" class="lp-modal-form">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-      <input type="hidden" name="next_url" value=""/>
-      <div class="lp-form-group">
-        <label class="lp-label" for="si-username">Username</label>
-        <input class="lp-input" type="text" id="si-username" name="username" placeholder="Enter your username" required autocomplete="username"/>
-      </div>
-      <div class="lp-form-group">
-        <label class="lp-label" for="si-password">Password</label>
-        <div style="position:relative;">
-          <input class="lp-input" type="password" id="si-password" name="password" placeholder="Enter your password" required autocomplete="current-password" style="padding-right:44px;width:100%;box-sizing:border-box;"/>
-          <button type="button" onclick="toggleLpPw('si-password','si-pw-eye')" tabindex="-1" aria-label="Toggle password visibility" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;line-height:1;font-size:17px;color:#94A3B8;">
-            <span id="si-pw-eye">👁</span>
-          </button>
-        </div>
-      </div>
-      <div class="lp-error-box" id="signin-error" style="display:none"></div>
-      <button type="submit" class="lp-submit-btn">Sign In</button>
-    </form>
-    <p class="lp-modal-footer-text">No account? <a class="lp-link-btn" href="/client/register">Register Free</a></p>
-  </div>
-</div>
 
 
 <script>
