@@ -9,21 +9,21 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:      #05090F;
-      --surface: #0A1628;
-      --card:    #0D1F3C;
-      --card-alt:#112244;
-      --border:  rgba(255,255,255,0.08);
-      --text:    #FFFFFF;
-      --muted:   rgba(255,255,255,0.50);
-      --blue:    #0038A8;
-      --blue-l:  #1a52c8;
-      --gold:    #FCD116;
-      --gold-d:  #C9A227;
-      --green:   #007F3E;
-      --green-l: #10B981;
-      --red:     #CE1126;
-      --amber:   #F59E0B;
+      --bg:       #0A1628;
+      --surface:  #0E2A47;
+      --card:     #0E2A47;
+      --card-pend:#1a1a2e;
+      --border:   rgba(255,255,255,0.10);
+      --text:     #FFFFFF;
+      --muted:    rgba(255,255,255,0.55);
+      --gold:     #C9A227;
+      --gold-l:   #F0C040;
+      --blue:     #0038A8;
+      --blue-l:   #4A7FD4;
+      --green:    #007F3E;
+      --green-l:  #10B981;
+      --red:      #CE1126;
+      --amber:    #F59E0B;
     }
 
     html, body {
@@ -34,149 +34,175 @@
       overflow-x: hidden;
     }
 
-    /* ── Header ── */
+    /* ── Header ─────────────────────────────────────────────────────── */
     .hdr {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 28px;
-      background: linear-gradient(90deg, #0038A8 0%, #001F6B 100%);
+      padding: 16px 32px;
+      background: linear-gradient(135deg, #0038A8 0%, #001F6B 100%);
       border-bottom: 3px solid var(--gold);
-      gap: 20px;
+      gap: 24px;
     }
     .hdr-brand { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-    .hdr-logo  { height: 44px; width: 44px; border-radius: 50%; object-fit: cover;
+    .hdr-logo  { height: 48px; width: 48px; border-radius: 50%; object-fit: cover;
                  border: 2px solid rgba(255,255,255,0.25); flex-shrink: 0; }
-    .hdr-title { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800;
-                 color: #fff; line-height: 1.2; }
-    .hdr-title small { display: block; font-family: 'DM Sans', sans-serif; font-size: 11px;
-                       font-weight: 600; color: var(--gold); margin-top: 3px; opacity: 1; }
+    .hdr-title { line-height: 1.2; }
+    .hdr-title strong { display: block; font-family: 'Syne', sans-serif;
+                        font-size: 18px; font-weight: 800; color: #fff; }
+    .hdr-title small  { display: block; font-family: 'DM Sans', sans-serif;
+                        font-size: 13px; font-weight: 600; color: var(--gold); margin-top: 3px; }
     .hdr-center { flex: 1; text-align: center; }
-    .hdr-clock  { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800;
-                  letter-spacing: 2px; color: #fff; }
-    .hdr-date   { font-size: 12px; color: var(--gold); margin-top: 3px; font-weight: 600; }
+    .hdr-clock  { font-family: 'Syne', sans-serif; font-size: 48px; font-weight: 800;
+                  letter-spacing: 3px; color: #fff; line-height: 1; }
+    .hdr-date   { font-size: 16px; font-weight: 600; color: var(--gold); margin-top: 4px; }
     .hdr-meta   { text-align: right; flex-shrink: 0; }
     .hdr-badge  {
       display: inline-flex; align-items: center; gap: 6px;
       background: rgba(255,255,255,0.12); border-radius: 20px;
-      padding: 5px 12px; font-size: 12px; font-weight: 600; color: #fff;
+      padding: 6px 14px; font-size: 13px; font-weight: 700; color: #fff;
     }
     .hdr-badge .dot {
-      width: 8px; height: 8px; border-radius: 50%;
+      width: 9px; height: 9px; border-radius: 50%;
       background: var(--green-l);
       animation: pulse 2s infinite;
     }
-    .hdr-updated { font-size: 11px; color: var(--muted); margin-top: 5px; }
+    .hdr-updated { font-size: 11px; color: var(--muted); margin-top: 6px; }
 
     @keyframes pulse {
       0%,100% { opacity: 1; transform: scale(1); }
       50%      { opacity: 0.5; transform: scale(1.3); }
     }
 
-    /* ── Totals bar ── */
+    /* ── Stats bar ───────────────────────────────────────────────────── */
     .totals-bar {
-      display: grid; grid-template-columns: repeat(4, 1fr);
+      display: grid; grid-template-columns: repeat(4,1fr);
       gap: 1px; background: var(--border);
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
     .total-cell {
-      background: var(--surface); padding: 18px 24px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      background: var(--surface); padding: 20px 28px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
     }
-    .total-num   { font-family: 'Syne', sans-serif; font-size: 36px; font-weight: 800; line-height: 1; }
-    .total-label { font-size: 11px; font-weight: 600; text-transform: uppercase;
-                   letter-spacing: 0.8px; color: var(--muted); margin-top: 4px; }
+    .total-num   { font-family: 'Syne', sans-serif; font-size: 48px; font-weight: 800; line-height: 1; }
+    .total-label { font-size: 11px; font-weight: 700; text-transform: uppercase;
+                   letter-spacing: 1px; color: var(--muted); margin-top: 4px; }
     .total-cell.c-gold  .total-num { color: var(--gold); }
     .total-cell.c-green .total-num { color: var(--green-l); }
-    .total-cell.c-blue  .total-num { color: #60A5FA; }
+    .total-cell.c-blue  .total-num { color: var(--blue-l); }
     .total-cell.c-red   .total-num { color: var(--red); }
 
-    /* ── Staff grid ── */
+    /* ── Grid wrapper ────────────────────────────────────────────────── */
     .grid-wrap  { padding: 20px 24px 24px; }
     .grid-title {
       font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1.2px; color: var(--gold);
+      letter-spacing: 1.4px; color: var(--gold);
       margin-bottom: 16px; display: inline-block;
-      border-bottom: 2px solid var(--gold); padding-bottom: 6px;
+      border-bottom: 2px solid var(--gold); padding-bottom: 5px;
     }
     .staff-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(280px,1fr));
+      gap: 14px;
     }
 
-    /* ── Staff card ── */
+    /* ── Staff card ──────────────────────────────────────────────────── */
     .staff-card {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px 18px 14px;
+      border-radius: 12px;
+      padding: 16px;
       position: relative;
       overflow: hidden;
-      transition: border-color 0.2s;
+      transition: border-color .2s;
     }
-    .staff-card:hover { border-color: rgba(255,255,255,0.20); }
+    .staff-card:hover { border-color: rgba(255,255,255,0.22); }
     .staff-card::before {
       content: '';
       position: absolute; top: 0; left: 0; right: 0; height: 3px;
       background: var(--blue);
     }
-    .staff-card.has-pending {
-      background: var(--card-alt);
-    }
-    .staff-card.has-pending::before {
-      background: var(--red);
-    }
+    .staff-card.has-pending { background: var(--card-pend); }
+    .staff-card.has-pending::before { background: var(--red); }
 
-    .sc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 8px; }
-    .sc-name   { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.3; }
-    .sc-office { font-size: 11px; color: var(--gold); margin-top: 2px; font-weight: 600; }
+    /* Card header row */
+    .sc-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 5px; gap: 8px;
+    }
+    .sc-name-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .sc-name {
+      font-size: 15px; font-weight: 700; color: var(--text);
+      text-transform: uppercase; letter-spacing: 0.04em;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
     .sc-pending-badge {
       flex-shrink: 0;
       background: var(--red); color: #fff;
-      font-size: 11px; font-weight: 700;
-      border-radius: 20px; padding: 3px 9px;
+      font-size: 12px; font-weight: 700;
+      border-radius: 20px; padding: 3px 10px;
       display: flex; align-items: center; gap: 4px;
     }
-    .sc-pending-badge.zero { background: rgba(255,255,255,0.06); color: var(--muted); }
+    .sc-pending-badge.zero { background: rgba(255,255,255,0.07); color: var(--muted); }
 
-    .sc-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 12px; }
-    .sc-stat  { text-align: center; }
-    .sc-stat-num   { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; line-height: 1; }
-    .sc-stat-label { font-size: 9px; font-weight: 600; text-transform: uppercase;
-                     letter-spacing: 0.5px; color: var(--muted); margin-top: 3px; }
-    .sc-stat.c-white   .sc-stat-num { color: var(--text); }
-    .sc-stat.c-green   .sc-stat-num { color: var(--green-l); }
-    .sc-stat.c-gold    .sc-stat-num { color: var(--gold); }
-    .sc-stat.c-amber   .sc-stat-num { color: var(--amber); }
-    .sc-stat.c-emerald .sc-stat-num { color: var(--green-l); }
+    /* Card sub-row */
+    .sc-sub-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px;
+    }
+    .sc-office   { font-size: 12px; font-weight: 600; color: var(--gold); }
+    .sc-presence { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    .sc-presence.online  { color: var(--green-l); }
+    .sc-presence.idle    { color: var(--amber); }
+    .sc-presence.offline { color: var(--muted); }
 
-    .sc-bar-wrap { height: 4px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+    /* Divider */
+    .sc-divider { border: none; border-top: 1px solid var(--border); margin-bottom: 12px; }
+
+    /* Stat grid */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; margin-bottom: 12px; }
+    .stat-col  { display: flex; flex-direction: column; gap: 10px; }
+    .stat-item { display: flex; flex-direction: column; gap: 2px; }
+    .stat-num  { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; line-height: 1; }
+    .stat-lbl  { font-size: 10px; font-weight: 600; text-transform: uppercase;
+                 letter-spacing: 0.06em; color: var(--muted); }
+
+    /* Progress bar */
+    .sc-bar-wrap { height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; margin-top: 12px; }
     .sc-bar      { height: 100%; border-radius: 2px; background: var(--blue);
                    transition: width 0.6s ease; min-width: 4px; }
     .sc-bar.active { background: var(--red); }
 
-    .online-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
-    .online-dot.online  { background: var(--green-l); box-shadow: 0 0 7px var(--green-l); animation: pulse 2s infinite; }
-    .online-dot.idle    { background: var(--amber);   box-shadow: 0 0 7px var(--amber); }
-    .online-dot.offline { background: rgba(255,255,255,0.18); }
+    /* Presence dot */
+    .online-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+    .online-dot.online  { background: var(--green-l); box-shadow: 0 0 6px var(--green-l); animation: pulse 2s infinite; }
+    .online-dot.idle    { background: var(--amber);   box-shadow: 0 0 6px var(--amber); }
+    .online-dot.offline { background: rgba(255,255,255,0.25); }
 
-    /* ── Footer ── */
+    /* ── Footer ──────────────────────────────────────────────────────── */
     .footer {
-      text-align: center; padding: 12px;
-      font-size: 11px; color: var(--muted);
-      border-top: 3px solid var(--gold);
+      text-align: center; padding: 12px 24px;
+      font-size: 12px; color: var(--muted);
+      background: var(--surface);
+      border-top: 1px solid var(--gold);
     }
 
-    /* ── Empty state ── */
+    /* ── Empty state ─────────────────────────────────────────────────── */
     .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 15px; }
 
-    /* ── Refresh flash ── */
+    /* ── Refresh flash ───────────────────────────────────────────────── */
     .refresh-flash { animation: flashin 0.4s ease; }
     @keyframes flashin { from { opacity: 0; } to { opacity: 1; } }
 
-    @media (max-width: 900px) {
-      .hdr-clock { font-size: 20px; }
-      .total-num { font-size: 26px; }
-      .staff-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    @media (max-width: 960px) {
+      .hdr-clock { font-size: 36px; }
+      .hdr-date  { font-size: 13px; }
+      .total-num { font-size: 36px; }
+      .staff-grid { grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 10px; }
+    }
+    @media (max-width: 640px) {
+      .hdr { flex-wrap: wrap; padding: 12px 16px; }
+      .hdr-center { order: 3; width: 100%; }
+      .hdr-clock { font-size: 28px; }
+      .totals-bar { grid-template-columns: repeat(2,1fr); }
     }
   </style>
 </head>
@@ -187,7 +213,7 @@
   <div class="hdr-brand">
     <img src="/static/logo.png" alt="DepEd" class="hdr-logo"/>
     <div class="hdr-title">
-      DepEd Leyte Division Office
+      <strong>DepEd Leyte Division Office</strong>
       <small>Personnel Unit — Live Staff Monitor</small>
     </div>
   </div>
@@ -201,7 +227,7 @@
   </div>
 </header>
 
-<!-- ── System Totals Bar ── -->
+<!-- ── Stats Bar ── -->
 <div class="totals-bar">
   <div class="total-cell c-gold">
     <div class="total-num" id="t-total">{{ totals.total_docs }}</div>
@@ -229,45 +255,57 @@
       {% set max_total = staff_stats[0].total if staff_stats[0].total > 0 else 1 %}
       {% for s in staff_stats %}
       {% set bar_pct = ((s.total / max_total) * 100) | int %}
+      {% set pres = s.presence %}
       <div class="staff-card {% if s.pending > 0 %}has-pending{% endif %}">
+
         <div class="sc-header">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span class="online-dot {% if s.presence == 'online' %}online{% elif s.presence == 'idle' %}idle{% else %}offline{% endif %}"
-                  title="{% if s.presence == 'online' %}Online{% elif s.presence == 'idle' %}Idle (2–5 min){% else %}Offline{% endif %}"></span>
-            <div>
-              <div class="sc-name">{{ s.full_name }}</div>
-              <div class="sc-office">{{ s.office }}</div>
+          <div class="sc-name-row">
+            <span class="online-dot {% if pres == 'online' %}online{% elif pres == 'idle' %}idle{% else %}offline{% endif %}"></span>
+            <span class="sc-name">{{ s.full_name }}</span>
+          </div>
+          <div class="sc-pending-badge {% if s.pending == 0 %}zero{% endif %}">⏳ {{ s.pending }}</div>
+        </div>
+
+        <div class="sc-sub-row">
+          <span class="sc-office">{{ s.office }}</span>
+          <span class="sc-presence {% if pres == 'online' %}online{% elif pres == 'idle' %}idle{% else %}offline{% endif %}">
+            {% if pres == 'online' %}ONLINE{% elif pres == 'idle' %}IDLE{% else %}OFFLINE{% endif %}
+          </span>
+        </div>
+
+        <hr class="sc-divider"/>
+
+        <div class="stat-grid">
+          <div class="stat-col">
+            <div class="stat-item">
+              <span class="stat-num" style="color:#FFFFFF">{{ s.logged }}</span>
+              <span class="stat-lbl">Logged</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-num" style="color:#10B981">{{ s.accepted }}</span>
+              <span class="stat-lbl">Accepted</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-num" style="color:#34D399">{{ s.released }}</span>
+              <span class="stat-lbl">Released</span>
             </div>
           </div>
-          <div class="sc-pending-badge {% if s.pending == 0 %}zero{% endif %}">
-            ⏳ {{ s.pending }}
+          <div class="stat-col">
+            <div class="stat-item">
+              <span class="stat-num" style="color:#C9A227">{{ s.received }}</span>
+              <span class="stat-lbl">Received</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-num" style="color:#F59E0B">{{ s.transferred }}</span>
+              <span class="stat-lbl">Transferred</span>
+            </div>
           </div>
         </div>
-        <div class="sc-stats">
-          <div class="sc-stat c-white">
-            <div class="sc-stat-num">{{ s.logged }}</div>
-            <div class="sc-stat-label">Logged</div>
-          </div>
-          <div class="sc-stat c-green">
-            <div class="sc-stat-num">{{ s.accepted }}</div>
-            <div class="sc-stat-label">Accepted</div>
-          </div>
-          <div class="sc-stat c-gold">
-            <div class="sc-stat-num">{{ s.received }}</div>
-            <div class="sc-stat-label">Received</div>
-          </div>
-          <div class="sc-stat c-amber">
-            <div class="sc-stat-num">{{ s.transferred }}</div>
-            <div class="sc-stat-label">Transferred</div>
-          </div>
-          <div class="sc-stat c-emerald">
-            <div class="sc-stat-num">{{ s.released }}</div>
-            <div class="sc-stat-label">Released</div>
-          </div>
-        </div>
+
         <div class="sc-bar-wrap">
-          <div class="sc-bar {% if s.pending > 0 %}active{% endif %}" style="width: {{ bar_pct }}%"></div>
+          <div class="sc-bar {% if s.pending > 0 %}active{% endif %}" style="width:{{ bar_pct }}%"></div>
         </div>
+
       </div>
       {% endfor %}
     {% else %}
@@ -282,59 +320,76 @@
 </footer>
 
 <script>
-// ── Live clock ────────────────────────────────────────────────────────────────
+// ── Live clock ─────────────────────────────────────────────────────────────
 (function clock() {
   var DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var MONTHS = ['January','February','March','April','May','June','July','August',
+                'September','October','November','December'];
   function tick() {
     var now = new Date();
     var h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
     var ampm = h >= 12 ? 'PM' : 'AM';
     h = h % 12 || 12;
     document.getElementById('js-clock').textContent =
-      String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') + ' ' + ampm;
+      String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' +
+      String(s).padStart(2,'0') + ' ' + ampm;
     document.getElementById('js-date').textContent =
-      DAYS[now.getDay()] + ', ' + MONTHS[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear();
+      DAYS[now.getDay()] + ', ' + MONTHS[now.getMonth()] + ' ' +
+      now.getDate() + ', ' + now.getFullYear();
   }
   tick();
   setInterval(tick, 1000);
 })();
 
-// ── Card builder ──────────────────────────────────────────────────────────────
+// ── Card builder ────────────────────────────────────────────────────────────
 function buildCard(s, maxTotal) {
   var pct        = maxTotal > 0 ? Math.round((s.total / maxTotal) * 100) : 0;
   var hasPending = s.pending > 0;
-  var dotClass   = s.presence === 'online' ? 'online' : s.presence === 'idle' ? 'idle' : 'offline';
-  var dotTitle   = s.presence === 'online' ? 'Online' : s.presence === 'idle' ? 'Idle (2–5 min)' : 'Offline';
+  var pres       = s.presence;
+  var dotCls     = pres === 'online' ? 'online' : pres === 'idle' ? 'idle' : 'offline';
+  var presLbl    = pres === 'online' ? 'ONLINE' : pres === 'idle' ? 'IDLE' : 'OFFLINE';
+
   return (
     '<div class="staff-card ' + (hasPending ? 'has-pending' : '') + '">' +
+
       '<div class="sc-header">' +
-        '<div style="display:flex;align-items:center;gap:8px;">' +
-          '<span class="online-dot ' + dotClass + '" title="' + dotTitle + '"></span>' +
-          '<div>' +
-            '<div class="sc-name">'   + s.full_name + '</div>' +
-            '<div class="sc-office">' + s.office    + '</div>' +
-          '</div>' +
+        '<div class="sc-name-row">' +
+          '<span class="online-dot ' + dotCls + '"></span>' +
+          '<span class="sc-name">' + s.full_name + '</span>' +
         '</div>' +
         '<div class="sc-pending-badge ' + (hasPending ? '' : 'zero') + '">⏳ ' + s.pending + '</div>' +
       '</div>' +
-      '<div class="sc-stats">' +
-        '<div class="sc-stat c-white"  ><div class="sc-stat-num">' + s.logged      + '</div><div class="sc-stat-label">Logged</div></div>' +
-        '<div class="sc-stat c-green"  ><div class="sc-stat-num">' + s.accepted    + '</div><div class="sc-stat-label">Accepted</div></div>' +
-        '<div class="sc-stat c-gold"   ><div class="sc-stat-num">' + s.received    + '</div><div class="sc-stat-label">Received</div></div>' +
-        '<div class="sc-stat c-amber"  ><div class="sc-stat-num">' + s.transferred + '</div><div class="sc-stat-label">Transferred</div></div>' +
-        '<div class="sc-stat c-emerald"><div class="sc-stat-num">' + s.released    + '</div><div class="sc-stat-label">Released</div></div>' +
+
+      '<div class="sc-sub-row">' +
+        '<span class="sc-office">' + s.office + '</span>' +
+        '<span class="sc-presence ' + dotCls + '">' + presLbl + '</span>' +
       '</div>' +
+
+      '<hr class="sc-divider"/>' +
+
+      '<div class="stat-grid">' +
+        '<div class="stat-col">' +
+          '<div class="stat-item"><span class="stat-num" style="color:#FFFFFF">'  + s.logged      + '</span><span class="stat-lbl">Logged</span></div>' +
+          '<div class="stat-item"><span class="stat-num" style="color:#10B981">'  + s.accepted    + '</span><span class="stat-lbl">Accepted</span></div>' +
+          '<div class="stat-item"><span class="stat-num" style="color:#34D399">'  + s.released    + '</span><span class="stat-lbl">Released</span></div>' +
+        '</div>' +
+        '<div class="stat-col">' +
+          '<div class="stat-item"><span class="stat-num" style="color:#C9A227">'  + s.received    + '</span><span class="stat-lbl">Received</span></div>' +
+          '<div class="stat-item"><span class="stat-num" style="color:#F59E0B">'  + s.transferred + '</span><span class="stat-lbl">Transferred</span></div>' +
+        '</div>' +
+      '</div>' +
+
       '<div class="sc-bar-wrap">' +
         '<div class="sc-bar ' + (hasPending ? 'active' : '') + '" style="width:' + pct + '%"></div>' +
       '</div>' +
+
     '</div>'
   );
 }
 
 var LIVE_TOKEN = {{ live_token | tojson }};
 
-// ── Data refresh (every 30 s) ─────────────────────────────────────────────────
+// ── Data refresh (every 30 s) ───────────────────────────────────────────────
 function refreshData() {
   fetch('/api/staff-live-data?token=' + encodeURIComponent(LIVE_TOKEN))
     .then(function(r) { return r.json(); })
