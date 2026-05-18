@@ -590,10 +590,24 @@ def view_doc(doc_id):
                 slip_type = s.get("type")
                 break
 
+    # Resolve transfer usernames to full names for display
+    all_users = get_all_users()
+    user_lookup = {u["username"]: u.get("full_name") or u["username"] for u in all_users}
+
+    transferred_to_name = (
+        doc.get("pending_at_staff_name")
+        or user_lookup.get(doc.get("transferred_to", ""), doc.get("transferred_to") or "")
+    )
+    transferred_by_name = user_lookup.get(
+        doc.get("transferred_by", ""), doc.get("transferred_by") or ""
+    )
+
     return render_template("detail.html", doc=doc,
                            qr_b64=generate_qr_b64(doc, request.host_url),
                            slip_type=slip_type,
-                           status_options=get_dropdown_options("status"))
+                           status_options=get_dropdown_options("status"),
+                           transferred_to_name=transferred_to_name,
+                           transferred_by_name=transferred_by_name)
 
 
 @dashboard_bp.route("/edit/<doc_id>", methods=["GET", "POST"])

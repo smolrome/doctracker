@@ -213,12 +213,14 @@
       <div class="doc-info-value {% if not doc.sender_org %}empty{% endif %}">{{ doc.sender_org or '—' }}</div>
     </div>
 
+    {% if not doc.submitted_by %}
     <div class="doc-info-item">
       <div class="doc-info-label">Sender Name</div>
       <div class="doc-info-value {% if not doc.sender_name %}empty{% endif %}">{{ doc.sender_name or '—' }}</div>
     </div>
+    {% endif %}
 
-    {% if doc.logged_by %}
+    {% if doc.logged_by and not doc.submitted_by %}
     <div class="doc-info-item">
       <div class="doc-info-label">Logged By</div>
       <div class="doc-info-value mono">{{ doc.logged_by }}{% if doc.logged_by_office %} <span style="font-weight:400;color:var(--muted);font-size:13px;">· {{ doc.logged_by_office }}</span>{% endif %}</div>
@@ -269,17 +271,17 @@
   <div style="margin-top:16px;padding-top:16px;border-top:1.5px solid #D7CDB5;">
     <div class="doc-info-label" style="margin-bottom:8px;">🔄 Transfer History</div>
     <div class="doc-info-value mono" style="font-size:14px;">
-      <div>Transferred to: <strong>{{ doc.transferred_to }}</strong></div>
+      <div>Transferred to: <strong>{{ transferred_to_name or doc.transferred_to }}</strong></div>
       {% if doc.pending_at_office %}
       <div style="color:#1D4ED8;">📍 Pending at: <strong>{{ doc.pending_at_office }}</strong></div>
       {% elif doc.transferred_to_office %}
       <div>Office: {{ doc.transferred_to_office }}</div>
       {% endif %}
       {% if doc.transferred_by %}
-      <div>Transferred by: {{ doc.transferred_by }}</div>
+      <div>Transferred by: {{ transferred_by_name or doc.transferred_by }}</div>
       {% endif %}
       {% if doc.transferred_at %}
-      <div>Transfer date: {{ doc.transferred_at }}</div>
+      <div>Transfer date: {{ (doc.transferred_at or '')[:16].replace('T', ' ') }}</div>
       {% endif %}
       {% if doc.transfer_status %}
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid #E2E8F0;">
