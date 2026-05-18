@@ -20,14 +20,12 @@
       <div class="brand-org">DepEd Leyte Division — Personnel Unit</div>
     </div>
     <hr class="brand-rule"/>
-    <p class="brand-tagline">Create your account to start submitting and tracking documents.</p>
+    <p class="brand-tagline">Register to access DepEd Leyte Division Personnel Unit client services.</p>
     <a href="/" class="left-back">← Back to Home</a>
   </div>
 
   <!-- RIGHT PANEL -->
   <div class="login-right">
-    <a href="/login" class="right-top-link">Sign In →</a>
-
     {% if office_name %}
     <div class="office-banner">
       <div class="ob-icon">🏢</div>
@@ -40,22 +38,6 @@
 
     <h1 class="form-heading">Create Account</h1>
     <p class="form-sub">Fill in your details. An admin will approve your account.</p>
-
-    <!-- 3-step progress indicator -->
-    <div class="steps">
-      <div class="step active">
-        <div class="step-num">1</div>
-        <div class="step-label">Register</div>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div class="step-label">{% if office_name %}Submit Docs{% else %}Log In{% endif %}</div>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div class="step-label">Get QR</div>
-      </div>
-    </div>
 
     {% if error %}
     <div class="error-box">{{ error }}</div>
