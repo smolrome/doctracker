@@ -112,10 +112,6 @@
         <label>Date Released</label>
         <input type="date" name="date_released" value="{{ doc.get('date_released','') }}"/>
       </div>
-      <div class="form-group">
-        <label>Due Date</label>
-        <input type="date" name="due_date" value="{{ doc.get('due_date','') }}"/>
-      </div>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -215,12 +211,6 @@
       <div class="form-group">
         <label>Notes</label>
         <textarea name="notes">{{ edit_item.notes or '' }}</textarea>
-      </div>
-
-      <!-- Due Date -->
-      <div class="form-group">
-        <label>Due Date <small style="font-weight:400;color:#6B7280;">(optional)</small></label>
-        <input type="date" name="due_date" value="{{ edit_item.due_date or '' }}"/>
       </div>
 
       <div class="edit-cart-modal-actions">
@@ -480,10 +470,6 @@ document.addEventListener('keydown', function(e) {
         <label>Description / Remarks</label>
         <textarea name="description"
                   placeholder="Additional details, purpose, or instructions..."></textarea>
-      </div>
-      <div class="form-group">
-        <label>Due Date <small style="font-weight:400;color:#6B7280;">(optional)</small></label>
-        <input type="date" name="due_date"/>
       </div>
     </div>
     <button type="submit" class="btn-add">

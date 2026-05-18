@@ -300,14 +300,12 @@ var serverSessionData = {
                 <th scope="col" class="sortable {% if sort_col=='created_at' %}sort-active{% endif %}" onclick="sortBy('created_at')">Date &amp; Time <span class="sort-icon">{% if sort_col=='created_at' %}{{ '↑' if sort_dir=='asc' else '↓' }}{% else %}↕{% endif %}</span></th>
                 <th scope="col">Remarks</th>
                 <th scope="col" class="sortable {% if sort_col=='status' %}sort-active{% endif %}" onclick="sortBy('status')">Status <span class="sort-icon">{% if sort_col=='status' %}{{ '↑' if sort_dir=='asc' else '↓' }}{% else %}↕{% endif %}</span></th>
-                <th scope="col" class="sortable {% if sort_col=='due_date' %}sort-active{% endif %}" onclick="sortBy('due_date')">Due <span class="sort-icon">{% if sort_col=='due_date' %}{{ '↑' if sort_dir=='asc' else '↓' }}{% else %}↕{% endif %}</span></th>
                 <th scope="col" class="actions-col">Actions</th>
               </tr>
             </thead>
             <tbody id="docs-tbody">
               {% for doc in docs %}
-              {% set _is_overdue = doc.due_date and doc.due_date < today and doc.status not in ('Released','Archived','Returned') %}
-              <tr class="doc-row {% if _is_overdue %}row-overdue{% endif %}"
+              <tr class="doc-row"
                   onclick="rowClick(event,'{{ doc.id }}')"
                   onkeydown="if(event.key==='Enter')rowClick(event,'{{ doc.id }}')"
                   data-created-at="{{ doc.created_at or '' }}"
@@ -390,20 +388,6 @@ var serverSessionData = {
                     <option value="{{ opt }}" {% if opt == s %}selected{% endif %}>{{ opt }}</option>
                     {% endif %}{% endfor %}
                   </select>
-                  {% endif %}
-                </td>
-
-                <td class="td-date" data-label="Due" onclick="event.stopPropagation()">
-                  {% if doc.due_date %}
-                    {% if doc.due_date < today and doc.status not in ('Released','Archived','Returned') %}
-                      <span class="due-badge due-overdue">⚠ {{ doc.due_date }}</span>
-                    {% elif doc.due_date <= today_plus3 and doc.status not in ('Released','Archived','Returned') %}
-                      <span class="due-badge due-soon">{{ doc.due_date }}</span>
-                    {% else %}
-                      <span class="due-badge due-ok">{{ doc.due_date }}</span>
-                    {% endif %}
-                  {% else %}
-                    <span class="td-empty">—</span>
                   {% endif %}
                 </td>
 

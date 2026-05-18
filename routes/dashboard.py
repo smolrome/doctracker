@@ -239,7 +239,6 @@ def index():
         "created_at": lambda d: d.get("created_at") or "",
         "status":     lambda d: (d.get("status") or "").lower(),
         "sender":     lambda d: (d.get("sender_name") or d.get("sender_org") or "").lower(),
-        "due_date":   lambda d: d.get("due_date") or "9999-12-31",
     }
     _sort_key = _SORT_KEYS.get(sort_col, _SORT_KEYS["created_at"])
     filtered = sorted(filtered, key=_sort_key, reverse=(sort_dir != "asc"))
@@ -256,8 +255,6 @@ def index():
             if d.get("status") in ("Pending", "Logged", "In Review"):
                 _office_map[_off]["pending"] += 1
             _today = now_str()[:10]
-            if d.get("due_date") and d["due_date"] < _today and d.get("status") not in ("Released", "Archived", "Returned"):
-                _office_map[_off]["overdue"] += 1
         office_stats = sorted(_office_map.values(), key=lambda x: -x["total"])[:10]
 
     try:
@@ -354,7 +351,6 @@ def add():
                     "category":             request.form.get("category", "").strip(),
                     "description":          request.form.get("description", "").strip(),
                     "notes":                request.form.get("notes", "").strip(),
-                    "due_date":             request.form.get("due_date", "").strip(),
                 })
                 session["staff_cart"] = cart
                 session.modified = True
@@ -416,7 +412,6 @@ def add():
                     cart[i]["category"] = request.form.get("category", "").strip()
                     cart[i]["description"] = request.form.get("description", "").strip()
                     cart[i]["notes"] = request.form.get("notes", "") or request.form.get("description", "").strip()
-                    cart[i]["due_date"] = request.form.get("due_date", "").strip()
                     session["staff_cart"] = cart
                     session.modified = True
                     flash(f"✅ Document updated successfully.", "success")
@@ -442,7 +437,6 @@ def add():
                         "sender_org":     item["sender_org"],
                         "sender_contact": "",
                         "referred_to":    item["referred_to"],
-                        "due_date":       item.get("due_date", ""),
                         "forwarded_to":   "",
                         "recipient_name": "", "recipient_org": "", "recipient_contact": "",
                         "received_by":    actor,
@@ -1749,12 +1743,12 @@ def export_csv():
     output = _io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["Ref No.", "Document", "Category", "Sender", "Sender Org",
-                     "Referred To", "Status", "Due Date", "Date Logged", "Remarks"])
+                     "Referred To", "Status", "Date Logged", "Remarks"])
     for d in docs:
         writer.writerow([
             d.get("doc_id",""), d.get("doc_name",""), d.get("category",""),
             d.get("sender_name",""), d.get("sender_org",""), d.get("referred_to",""),
-            d.get("status",""), d.get("due_date",""),
+            d.get("status",""),
             (d.get("created_at") or "")[:10], d.get("notes","") or d.get("description",""),
         ])
     output.seek(0)

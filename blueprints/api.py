@@ -402,7 +402,6 @@ def api_export_csv():
             d.get('sender_org', ''),
             d.get('referred_to', ''),
             d.get('status', ''),
-            d.get('due_date', ''),
             (d.get('created_at') or '')[:10],
             d.get('notes', '') or d.get('description', ''),
         ])
@@ -453,7 +452,6 @@ def api_create_document():
         "remarks": data.get('remarks', ''),
         "notes": data.get('notes', ''),
         "doc_date": data.get('doc_date', now_str()),
-        "due_date": data.get('due_date', ''),
         "status": "Pending",
         "created_at": now_str(),
         "logged_by": user_id,
