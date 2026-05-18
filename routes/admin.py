@@ -478,36 +478,6 @@ def pending_clients_count():
     return jsonify(count=len(get_pending_clients()))
 
 
-@admin_bp.route("/office-status")
-def office_status_page():
-    """Public office status page — no auth or token required."""
-    return render_template("office_status.html")
-
-
-@admin_bp.route("/api/office-status-data")
-def office_status_data():
-    """Public JSON endpoint — no auth required. Polled every 30 s by office_status.html."""
-    from datetime import datetime as _dt
-    stats, totals = _compute_staff_live_stats()
-    online_count = sum(1 for s in stats if s["presence"] == "online")
-    idle_count   = sum(1 for s in stats if s["presence"] == "idle")
-    total_staff  = totals["active_staff"]
-    today_docs   = totals["today_docs"]
-
-    now = _dt.now()
-    in_hours = (now.weekday() < 5) and (7 <= now.hour < 18)   # Mon–Fri 7 am–6 pm
-    office_status = "OPEN" if (in_hours and (online_count + idle_count) > 0) else "CLOSED"
-
-    return jsonify(
-        office_status=office_status,
-        online_count=online_count,
-        idle_count=idle_count,
-        total_staff=total_staff,
-        today_docs=today_docs,
-        last_updated=now.strftime("%b %d, %Y %I:%M %p"),
-    )
-
-
 @admin_bp.route("/office-documents")
 @admin_required
 def office_documents():

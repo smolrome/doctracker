@@ -22,7 +22,6 @@
   </div>
   <div class="nav-actions">
     <a href="/download" class="nav-btn-ghost" style="display:flex;align-items:center;gap:6px;">📱 Get the App</a>
-    <a href="/office-status" class="nav-btn-ghost" style="display:flex;align-items:center;gap:6px;">📊 Office Status</a>
     {% if logged_in %}
       <div class="nav-user-chip"><div class="nav-dot"></div>{{ current_full_name or current_user }}</div>
       {% if current_role in ('admin','staff') %}
@@ -43,7 +42,6 @@
 <!-- Mobile dropdown (mirrors nav-actions for ≤768px) -->
 <div class="nav-mobile-menu" id="navMobileMenu">
   <a href="/download" class="nav-mobile-item">📱 Get the App</a>
-  <a href="/office-status" class="nav-mobile-item">📊 Office Status</a>
   {% if logged_in %}
     {% if current_role in ('admin','staff') %}
       <a href="/dashboard" class="nav-mobile-item">📊 Dashboard</a>
