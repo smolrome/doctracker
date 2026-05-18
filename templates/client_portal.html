@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My Documents — LAKAD</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/client_portal.css') }}"/>
 </head>
 <body>
@@ -13,7 +13,7 @@
   <div class="topbar-brand">
     <img src="/static/logo.png" alt="Logo" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.4);flex-shrink:0;background:#fff;"/>
     <div>
-      <div>Client Portal</div>
+      <div>LAKAD</div>
       <span class="topbar-sub">DepEd Leyte Division</span>
     </div>
   </div>
@@ -86,8 +86,8 @@
   <div class="section-head">
     <div class="section-title">My Documents</div>
     <div style="display:flex;gap:8px;">
-      <a href="/client/trash" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#FEF3C7;color:#92400E;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;border:2px solid #FCD34D;">🗑️ Trash</a>
-      <button type="button" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:linear-gradient(135deg,#0A4D68,#059669);color:#fff;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 4px 14px rgba(10,77,104,.3);border:none;cursor:pointer;" 
+      <a href="/client/trash" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:transparent;color:#0E2A47;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;border:1.5px solid #E8DFC8;">🗑️ Trash</a>
+      <button type="button" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#C9A84C;color:#0E2A47;border-radius:8px;font-weight:700;font-size:15px;border:none;cursor:pointer;"
       onclick="toggleOfficeModal()">＋ Submit New</button>
     </div>
   </div>
@@ -99,20 +99,20 @@
       <input type="text" id="doc-search"
              placeholder="Search by reference number, document name, or status..."
              oninput="applyFilters()"
-             style="width:100%;padding:11px 40px 11px 14px;border-radius:10px;border:1.5px solid #E2E8F0;font-size:14px;font-family:inherit;background:#fff;box-sizing:border-box;color:#1E293B;outline:none;"/>
+             style="width:100%;padding:11px 40px 11px 14px;border-radius:10px;border:1.5px solid #E8DFC8;font-size:14px;font-family:inherit;background:#fff;box-sizing:border-box;color:#0E2A47;outline:none;"/>
       <button type="button" id="search-clear" onclick="clearSearch()"
-              style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:20px;color:#94A3B8;cursor:pointer;line-height:1;display:none;">×</button>
+              style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:20px;color:#5A6E82;cursor:pointer;line-height:1;display:none;">×</button>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <select id="doc-filter-cat" onchange="applyFilters()"
-              style="padding:9px 12px;border-radius:8px;border:1.5px solid #E2E8F0;font-size:13px;font-family:inherit;background:#fff;color:#475569;cursor:pointer;">
+              style="padding:9px 12px;border-radius:8px;border:1.5px solid #E8DFC8;font-size:13px;font-family:inherit;background:#fff;color:#5A6E82;cursor:pointer;">
         <option value="">All Categories</option>
       </select>
       <input type="date" id="doc-filter-date" onchange="applyFilters()"
-             style="padding:9px 12px;border-radius:8px;border:1.5px solid #E2E8F0;font-size:13px;font-family:inherit;background:#fff;color:#475569;cursor:pointer;"/>
+             style="padding:9px 12px;border-radius:8px;border:1.5px solid #E8DFC8;font-size:13px;font-family:inherit;background:#fff;color:#5A6E82;cursor:pointer;"/>
       <button type="button" id="filter-clear" onclick="clearFilters()"
-              style="padding:9px 14px;border-radius:8px;border:1.5px solid #E2E8F0;background:#fff;color:#EF4444;font-size:13px;font-weight:700;cursor:pointer;display:none;">✕ Clear Filters</button>
-      <span id="doc-count" style="font-size:13px;color:#94A3B8;margin-left:auto;"></span>
+              style="padding:9px 14px;border-radius:8px;border:1.5px solid #E8DFC8;background:#fff;color:#C9A84C;font-size:13px;font-weight:700;cursor:pointer;display:none;">✕ Clear Filters</button>
+      <span id="doc-count" style="font-size:13px;color:#5A6E82;margin-left:auto;"></span>
     </div>
   </div>
   {% endif %}
@@ -136,7 +136,7 @@
       <div class="doc-right">
         {% set s = doc.status %}
         <span class="badge {{ 's-'+s if s in ['Pending','Received','Released','Transferred','Routed'] else 's-default' }}">{{ s }}</span>
-        <span style="font-size:13px;color:var(--muted);">View →</span>
+        <span class="doc-view">View →</span>
       </div>
     </a>
     {% endfor %}
