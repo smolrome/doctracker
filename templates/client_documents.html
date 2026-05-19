@@ -6,8 +6,10 @@
   <title>My Documents — LAKAD</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Libre+Baskerville:wght@700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/client_documents.css') }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/client_submit.css') }}"/>
 </head>
 <body>
+{% from 'macros/office_modal.html' import office_submit_modal %}
 
 <nav class="topbar">
   <div class="topbar-brand">
@@ -101,36 +103,16 @@
   </div>
   {% endif %}
 
-  <!-- Office modal for Submit New -->
-  <div class="office-qr-modal" id="office-qr-modal" style="display:none;">
-    <div class="office-qr-overlay" onclick="toggleOfficeQR()"></div>
-    <div class="office-qr-content">
-      <div class="office-qr-header">
-        <h2>Select Office</h2>
-        <button class="office-qr-close" onclick="toggleOfficeQR()">✕</button>
-      </div>
-      <p class="office-qr-desc">Choose which office you want to submit your documents to.</p>
-      <div class="office-qr-search">
-        <input type="text" placeholder="🔍 Search offices..."
-               oninput="filterOffices(this.value)" autocomplete="off"/>
-      </div>
-      <div class="office-qr-grid" id="office-qr-grid">
-        {% for office in saved_offices | sort(attribute='office_name') %}
-        <div class="office-qr-card" data-name="{{ office.office_name | lower }}">
-          <div class="office-qr-name">{{ office.office_name }}</div>
-          <a href="/client/submit?office_slug={{ office.office_slug | urlencode }}&office_name={{ office.office_name | urlencode }}"
-             class="office-qr-select">Select This Office</a>
-        </div>
-        {% endfor %}
-        <div class="office-qr-none" id="office-qr-none" style="display:none;">No offices match.</div>
-      </div>
-    </div>
-  </div>
+  {{ office_submit_modal(saved_offices) }}
 
 </div>
 
-<script src="{{ url_for('static', filename='js/client_portal.js') }}"></script>
 <script>
+var _officeModalMode = 'submit';
+function handleOfficeSelect(el) {
+  var card = el.closest('.office-qr-card');
+  window.location.href = card.getAttribute('data-submit-url');
+}
 function toggleOfficeQR() {
   const modal = document.getElementById('office-qr-modal');
   if (!modal) return;
@@ -149,6 +131,47 @@ function filterOffices(q) {
   });
   if (none) none.style.display = visible === 0 ? 'block' : 'none';
 }
+function applyFilters() {
+  var search = (document.getElementById('doc-search').value || '').toLowerCase();
+  var cat = (document.getElementById('doc-filter-cat').value || '').toLowerCase();
+  var date = document.getElementById('doc-filter-date').value || '';
+  var cards = document.querySelectorAll('#doc-list .doc-card');
+  var visible = 0;
+  cards.forEach(function(c) {
+    var matchSearch = !search || c.dataset.name.includes(search) || c.dataset.ref.includes(search) || c.dataset.status.includes(search);
+    var matchCat = !cat || c.dataset.category === cat;
+    var matchDate = !date || c.dataset.date === date;
+    if (matchSearch && matchCat && matchDate) { c.style.display = ''; visible++; }
+    else { c.style.display = 'none'; }
+  });
+  var empty = document.getElementById('doc-empty-filtered');
+  if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
+  var countEl = document.getElementById('doc-count');
+  if (countEl) countEl.textContent = visible + ' document' + (visible !== 1 ? 's' : '');
+  var clearBtn = document.getElementById('filter-clear');
+  if (clearBtn) clearBtn.style.display = (cat || date) ? 'inline-block' : 'none';
+}
+function clearFilters() {
+  document.getElementById('doc-filter-cat').value = '';
+  document.getElementById('doc-filter-date').value = '';
+  applyFilters();
+}
+function clearSearch() {
+  document.getElementById('doc-search').value = '';
+  applyFilters();
+}
+window.addEventListener('DOMContentLoaded', function() {
+  var cards = document.querySelectorAll('#doc-list .doc-card');
+  var cats = {};
+  cards.forEach(function(c) { if (c.dataset.category) cats[c.dataset.category] = true; });
+  var sel = document.getElementById('doc-filter-cat');
+  Object.keys(cats).sort().forEach(function(cat) {
+    var opt = document.createElement('option');
+    opt.value = cat; opt.textContent = cat;
+    sel.appendChild(opt);
+  });
+  applyFilters();
+});
 </script>
 </body>
 </html>

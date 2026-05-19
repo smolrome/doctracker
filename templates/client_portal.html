@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/client_submit.css') }}"/>
 </head>
 <body>
+{% from 'macros/office_modal.html' import office_submit_modal %}
 
 <div class="topbar">
   <div class="topbar-brand">
@@ -70,34 +71,7 @@
   </div>
 </div>
 
-<div class="office-qr-modal" id="office-qr-modal" style="display:none;">
-  <div class="office-qr-overlay" onclick="toggleOfficeQR()"></div>
-  <div class="office-qr-content">
-    <div class="office-qr-header">
-      <h2>Select Office</h2>
-      <button class="office-qr-close" onclick="toggleOfficeQR()">✕</button>
-    </div>
-    <p class="office-qr-desc" id="office-qr-desc">Choose which office you want to submit your documents to.</p>
-    <div class="office-qr-search">
-      <input type="text" placeholder="🔍 Search offices..."
-             oninput="filterOffices(this.value)"
-             autocomplete="off"/>
-    </div>
-    <div class="office-qr-grid" id="office-qr-grid">
-      {% for office in saved_offices | sort(attribute='office_name') %}
-      <div class="office-qr-card" data-name="{{ office.office_name | lower }}"
-           data-submit-url="/client/submit?office_slug={{ office.office_slug | urlencode }}&office_name={{ office.office_name | urlencode }}"
-           data-book-url="/client/appointments/book?office_name={{ office.office_name | urlencode }}&office_slug={{ office.office_slug | urlencode }}">
-        <div class="office-qr-name">{{ office.office_name }}</div>
-        <a href="#" class="office-qr-select" onclick="handleOfficeSelect(this); return false;">Select This Office</a>
-      </div>
-      {% endfor %}
-      <div class="office-qr-none" id="office-qr-none" style="display:none;">
-        No offices match your search.
-      </div>
-    </div>
-  </div>
-</div>
+{{ office_submit_modal(saved_offices) }}
 
 <script src="{{ url_for('static', filename='js/client_portal.js') }}"></script>
 </body>
