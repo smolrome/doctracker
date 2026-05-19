@@ -99,7 +99,12 @@
   <!-- ACTION BUTTONS -->
   <div class="actions">
     <a href="/client" class="btn-action btn-primary-action">📂 My Documents</a>
+    {% set first_doc = qr_list[0][0] if qr_list else none %}
+    {% if first_doc and first_doc.target_office_slug %}
+    <a href="/client/submit?office_slug={{ first_doc.target_office_slug | urlencode }}&office_name={{ first_doc.target_office_name | urlencode }}" class="btn-action btn-secondary-action">Submit More</a>
+    {% else %}
     <a href="/client/submit?pick_office=1" class="btn-action btn-secondary-action">Submit More</a>
+    {% endif %}
   </div>
 
 </div>
