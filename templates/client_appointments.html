@@ -67,7 +67,8 @@
         <div class="apt-purpose">{{ apt.purpose }}</div>
         {% endif %}
         {% if apt.status in ['pending', 'confirmed'] %}
-        <div class="apt-footer">
+        <div class="apt-footer" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <a href="/client/appointments/{{ apt.id }}/confirmation" class="btn-view-qr">View / Download QR</a>
           <form method="post" action="/client/appointments/{{ apt.id }}/cancel">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
             <button type="submit" class="btn-cancel"

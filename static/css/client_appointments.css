@@ -64,6 +64,8 @@ body { font-family: 'Inter', sans-serif; background: #FAF8F3; color: #3A3A3A; mi
 .apt-footer { margin-top: 12px; padding-top: 12px; border-top: 1px solid #F0EBE0; }
 .btn-cancel { padding: 7px 16px; background: transparent; border: 1.5px solid #DC2626; color: #DC2626; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
 .btn-cancel:hover { background: #FEE2E2; }
+.btn-view-qr { padding: 7px 16px; background: #0E2A47; color: #fff; border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none; transition: background 0.2s; }
+.btn-view-qr:hover { background: #1a3f6b; }
 
 /* Empty state */
 .appt-empty { text-align: center; padding: 60px 24px; background: #fff; border: 1px solid #D7CDB5; border-radius: 12px; }

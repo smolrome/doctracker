@@ -28,9 +28,13 @@
     .btn-secondary:hover { border-color: #0E2A47; }
     .apt-id { font-family: monospace; font-size: 13px; background: #F0EBE0; padding: 4px 10px; border-radius: 4px; color: #0E2A47; }
     @media print {
-      .topbar, .confirm-actions, .appt-hero { display: none; }
-      .confirm-page { margin: 0; }
-      .confirm-card { border: none; box-shadow: none; }
+      .topbar, .confirm-actions { display: none; }
+      .confirm-page { margin: 0; padding: 0; max-width: 100%; }
+      .confirm-card { border: none; box-shadow: none; padding: 16px; }
+      .qr-section { page-break-inside: avoid; }
+      .confirm-details { page-break-inside: avoid; }
+      .qr-img { width: 150px; height: 150px; }
+      body { font-size: 12px; }
     }
     @media (max-width: 600px) {
       .confirm-card { padding: 24px 16px; }
