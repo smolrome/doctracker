@@ -78,7 +78,9 @@
       <div>
         <div class="doc-meta">
           <strong>From:</strong> {{ doc.sender_org or '—' }}<br/>
-          <strong>Referred To:</strong> {{ doc.referred_to or '—' }}<br/>
+          <strong>Submitted To:</strong> {{ doc.referred_to or '—' }}<br/>
+          {% if doc.pending_at_staff_name %}<strong>Will be received by:</strong> {{ doc.pending_at_staff_name }}<br/>{% endif %}
+          {% if doc.intended_for_name %}<strong>Routed to:</strong> {{ doc.intended_for_name }}<br/>{% endif %}
           {% if doc.category %}<strong>Type:</strong> {{ doc.category }}<br/>{% endif %}
           <strong>Date Filed:</strong> {{ doc.doc_date or doc.created_at[:10] }}
         </div>
