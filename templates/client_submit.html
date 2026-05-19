@@ -311,10 +311,10 @@
   <div class="office-qr-overlay" onclick="toggleOfficeQR()"></div>
   <div class="office-qr-content">
     <div class="office-qr-header">
-      <h2>📍 Select an Office</h2>
+      <h2>Select Office</h2>
       <button class="office-qr-close" onclick="toggleOfficeQR()">✕</button>
     </div>
-    <p class="office-qr-desc">Choose the office you want to submit your documents to.</p>
+    <p class="office-qr-desc">Choose which office you want to submit your documents to.</p>
     <div class="office-qr-search">
       <input type="text" placeholder="🔍 Search offices…"
              oninput="filterOffices(this.value)"
@@ -323,20 +323,11 @@
     <div class="office-qr-grid" id="office-qr-grid">
       {% for office in saved_offices %}
       <div class="office-qr-card" data-name="{{ office.office_name | lower }}">
-        {% if office.qr_code %}
-        <img class="office-qr-img"
-             src="/static/qr_codes/{{ office.qr_code }}"
-             alt="QR for {{ office.office_name }}"
-             onerror="this.style.display='none'"/>
-        {% endif %}
+        <div class="office-card-icon">🏢</div>
         <div class="office-qr-name">{{ office.office_name }}</div>
         <a href="/client/submit?office_id={{ office.id }}"
            class="office-qr-select"
-           onclick="showLoading('Loading office...')">Select</a>
-        {% if office.qr_code %}
-        <a href="/static/qr_codes/{{ office.qr_code }}"
-           download class="office-qr-download">⬇ Download QR</a>
-        {% endif %}
+           onclick="showLoading('Loading office...')">Select This Office</a>
       </div>
       {% endfor %}
       <div class="office-qr-none" id="office-qr-none" style="display:none;">

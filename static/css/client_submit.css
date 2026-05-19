@@ -322,8 +322,8 @@ body{font-family:'Inter',sans-serif;background:var(--surface);min-height:100vh;c
   margin-bottom:6px;
 }
 .office-qr-header h2{
-  font-family:'Libre Baskerville',serif;font-size:20px;font-weight:700;
-  color:var(--navy);margin:0;
+  font-family:'Libre Baskerville',serif;font-size:20px;
+  color:#0E2A47;margin:0;
 }
 .office-qr-close{
   background:var(--surface);border:1.5px solid var(--border);border-radius:8px;
@@ -350,35 +350,33 @@ body{font-family:'Inter',sans-serif;background:var(--surface);min-height:100vh;c
   gap:14px;
 }
 .office-qr-card{
-  background:#fff;border:1.5px solid var(--border);border-radius:12px;
-  padding:16px;text-align:center;transition:border-color .15s,box-shadow .15s;
+  background:#fff;
+  border:1px solid #D7CDB5;
+  border-radius:10px;
+  padding:20px 16px;
+  display:flex;flex-direction:column;align-items:center;
+  gap:10px;text-align:center;
+  transition:border-color 0.2s,box-shadow 0.2s;
 }
 .office-qr-card:hover{
-  border-color:var(--gold);
-  box-shadow:0 4px 16px rgba(201,162,39,.15);
+  border-color:#C9A227;
+  box-shadow:0 2px 12px rgba(201,162,39,0.15);
+}
+.office-card-icon{
+  font-size:28px;line-height:1;
 }
 .office-qr-name{
-  font-family:'Libre Baskerville',serif;font-size:13.5px;font-weight:700;
-  color:var(--navy);margin-bottom:12px;line-height:1.35;min-height:38px;
-  display:flex;align-items:center;justify-content:center;
-}
-.office-qr-img{
-  width:110px;height:110px;object-fit:contain;border-radius:8px;
-  border:1.5px solid var(--border);margin-bottom:14px;
-  display:block;margin-left:auto;margin-right:auto;
+  font-family:'Libre Baskerville',serif;font-size:14px;font-weight:700;
+  color:#0E2A47;line-height:1.3;
 }
 .office-qr-select{
-  display:block;background:var(--gold);color:var(--navy);
-  text-decoration:none;padding:9px;border-radius:8px;
-  font-weight:700;font-size:13px;margin-bottom:8px;
-  transition:filter .15s;border:none;cursor:pointer;font-family:inherit;width:100%;
+  display:block;width:100%;padding:8px 12px;
+  background:#C9A227;color:#0E2A47;
+  font-weight:700;font-size:13px;border-radius:6px;
+  text-decoration:none;text-align:center;
+  transition:background 0.2s;
 }
-.office-qr-select:hover{filter:brightness(.93);}
-.office-qr-download{
-  display:block;color:var(--muted);font-size:12px;
-  text-decoration:none;transition:color .15s;
-}
-.office-qr-download:hover{color:var(--gold);}
+.office-qr-select:hover{background:#b8911f;}
 .office-qr-none{
   text-align:center;padding:32px;color:var(--muted);font-size:15px;
   grid-column:1/-1;
