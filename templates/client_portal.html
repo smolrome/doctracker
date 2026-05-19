@@ -55,7 +55,7 @@
     <div class="service-label">Appointments</div>
     <div class="service-desc">Book a visit to the office</div>
     <div class="service-stat">{{ appointments|length }} total</div>
-    <a href="/client/appointments" class="service-btn">Book Appointment</a>
+    <button onclick="openBookingOfficeModal()" class="service-btn">Book Appointment</button>
   </div>
   <div class="service-card service-card-soon">
     <div class="service-icon-wrap service-icon-so">
@@ -244,6 +244,34 @@
       </div>
       {% endfor %}
       <div class="office-qr-none" id="office-qr-none" style="display:none;">
+        No offices match your search.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="office-qr-modal" id="booking-office-modal" style="display:none;">
+  <div class="office-qr-overlay" onclick="toggleBookingOfficeModal()"></div>
+  <div class="office-qr-content">
+    <div class="office-qr-header">
+      <h2>Select Office</h2>
+      <button class="office-qr-close" onclick="toggleBookingOfficeModal()">✕</button>
+    </div>
+    <p class="office-qr-desc">Choose which office you want to book an appointment with.</p>
+    <div class="office-qr-search">
+      <input type="text" placeholder="🔍 Search offices..."
+             oninput="filterBookingOffices(this.value)"
+             autocomplete="off"/>
+    </div>
+    <div class="office-qr-grid" id="booking-office-grid">
+      {% for office in saved_offices | sort(attribute='office_name') %}
+      <div class="booking-office-card" data-name="{{ office.office_name | lower }}">
+        <div class="office-qr-name">{{ office.office_name }}</div>
+        <a href="/client/appointments/book?office_name={{ office.office_name | urlencode }}&office_slug={{ office.office_slug | urlencode }}"
+           class="office-qr-select">Select This Office</a>
+      </div>
+      {% endfor %}
+      <div class="office-qr-none" id="booking-office-none" style="display:none;">
         No offices match your search.
       </div>
     </div>

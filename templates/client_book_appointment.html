@@ -197,11 +197,7 @@ function filterOffices(q) {
   });
   if (none) none.style.display = visible === 0 ? 'block' : 'none';
 }
-window.addEventListener('load', function() {
-  {% if not selected_office %}
-  toggleOfficeQR();
-  {% endif %}
-});
+
 </script>
 </body>
 </html>
