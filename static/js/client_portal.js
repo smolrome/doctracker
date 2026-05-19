@@ -1,9 +1,32 @@
+// Single modal mode — 'submit' or 'book'
+var _officeModalMode = 'submit';
+
 function toggleOfficeQR() {
+  _officeModalMode = 'submit';
+  document.getElementById('office-qr-desc').textContent = 'Choose which office you want to submit your documents to.';
   const modal = document.getElementById('office-qr-modal');
   if (!modal) return;
   const isOpen = modal.style.display !== 'none';
   modal.style.display = isOpen ? 'none' : 'flex';
   document.body.style.overflow = isOpen ? '' : 'hidden';
+}
+
+function openBookingOfficeModal() {
+  _officeModalMode = 'book';
+  document.getElementById('office-qr-desc').textContent = 'Choose which office you want to book an appointment with.';
+  const modal = document.getElementById('office-qr-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function handleOfficeSelect(el) {
+  const card = el.closest('.office-qr-card');
+  if (_officeModalMode === 'book') {
+    window.location.href = card.getAttribute('data-book-url');
+  } else {
+    window.location.href = card.getAttribute('data-submit-url');
+  }
 }
 
 function filterOffices(q) {
@@ -125,30 +148,3 @@ function switchTab(name, btn) {
   btn.classList.add('active');
 }
 
-function openBookingOfficeModal() {
-  const modal = document.getElementById('booking-office-modal');
-  if (!modal) return;
-  modal.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-}
-
-function toggleBookingOfficeModal() {
-  const modal = document.getElementById('booking-office-modal');
-  if (!modal) return;
-  const isOpen = modal.style.display !== 'none';
-  modal.style.display = isOpen ? 'none' : 'flex';
-  document.body.style.overflow = isOpen ? '' : 'hidden';
-}
-
-function filterBookingOffices(q) {
-  const cards = document.querySelectorAll('.booking-office-card');
-  const none = document.getElementById('booking-office-none');
-  let visible = 0;
-  q = q.toLowerCase().trim();
-  cards.forEach(function(c) {
-    const name = c.getAttribute('data-name') || '';
-    if (q === '' || name.includes(q)) { c.style.display = 'flex'; visible++; }
-    else { c.style.display = 'none'; }
-  });
-  if (none) none.style.display = visible === 0 ? 'block' : 'none';
-}
