@@ -812,7 +812,7 @@ def book_appointment():
             return render_template('client_book_appointment.html',
                                    offices=offices, services=services,
                                    csrf_token=_getcsrf_token())
-        create_appointment({
+        apt = create_appointment({
             'client_name':     session.get('full_name') or session.get('username'),
             'client_username': session.get('username'),
             'office':          office,
@@ -823,14 +823,33 @@ def book_appointment():
             'purpose':         purpose,
             'source':          'web',
         })
-        flash("Appointment booked successfully! An admin will confirm your appointment.", "success")
-        return redirect(url_for('client.my_appointments'))
+        return redirect(url_for('client.appointment_confirmation', apt_id=apt['id']))
     selected_office = request.args.get('office_name', '')
     selected_office_slug = request.args.get('office_slug', '')
     return render_template('client_book_appointment.html',
                            offices=offices, services=services,
                            selected_office=selected_office,
                            selected_office_slug=selected_office_slug,
+                           csrf_token=_getcsrf_token())
+
+
+
+@client_bp.route("/appointments/<apt_id>/confirmation")
+@_require_client
+def appointment_confirmation(apt_id):
+    from services.appointments import get_appointment
+    apt = get_appointment(apt_id)
+    if not apt or apt.get('client_username') != session.get('username'):
+        return redirect(url_for('client.my_appointments'))
+    import qrcode, io, base64
+    qr_data = f"APT:{apt['id']}:{apt.get('office','')}:{apt.get('preferred_date','')}:{apt.get('preferred_time','')}"
+    qr = qrcode.make(qr_data)
+    buf = io.BytesIO()
+    qr.save(buf, format='PNG')
+    qr_b64 = base64.b64encode(buf.getvalue()).decode()
+    return render_template('client_appointment_confirmation.html',
+                           apt=apt,
+                           qr_b64=qr_b64,
                            csrf_token=_getcsrf_token())
 
 
