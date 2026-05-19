@@ -10,12 +10,6 @@
 </head>
 <body>
 
-{% set total_submitted = docs|length %}
-{% set total_received = (docs|selectattr('status','equalto','Received')|list|length)
-                      + (docs|selectattr('status','equalto','Transferred')|list|length)
-                      + (docs|selectattr('status','equalto','Released')|list|length) %}
-{% set total_released = docs|selectattr('status','equalto','Released')|list|length %}
-
 <div class="topbar">
   <div class="topbar-brand">
     <img src="/static/logo.png" alt="Logo" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.4);flex-shrink:0;background:#fff;"/>
@@ -60,7 +54,7 @@
     </div>
     <div class="service-label">Appointments</div>
     <div class="service-desc">Book a visit to the office</div>
-    <div class="service-stat">&nbsp;</div>
+    <div class="service-stat">{{ appointments|length }} total</div>
     <a href="/client/appointments" class="service-btn">Book Appointment</a>
   </div>
   <div class="service-card service-card-soon">
@@ -74,91 +68,157 @@
   </div>
 </div>
 
-<div class="stats-row">
-  <div class="stat-box">
-    <div class="stat-num">{{ total_submitted }}</div>
-    <div class="stat-label">Total Submitted</div>
-  </div>
-  <div class="stat-box">
-    <div class="stat-num">{{ total_received }}</div>
-    <div class="stat-label">Received</div>
-  </div>
-  <div class="stat-box">
-    <div class="stat-num">{{ total_released }}</div>
-    <div class="stat-label">Released</div>
-  </div>
+<!-- TABS -->
+<div class="portal-tabs">
+  <button class="tab-btn active" onclick="switchTab('documents', this)">Documents</button>
+  <button class="tab-btn" onclick="switchTab('appointments', this)">Appointments</button>
 </div>
 
-<div class="section-head">
-  <div class="section-title">My Documents</div>
-  <div class="section-actions">
-    <a href="/client/trash" class="btn-ghost-sm">Trash</a>
-    <button onclick="toggleOfficeQR()" class="btn-gold-sm">+ Submit New</button>
-  </div>
-</div>
-
-<div class="doc-list-wrap">
-  {% if docs %}
-  <div style="margin-bottom:12px;">
-    <div style="position:relative;margin-bottom:10px;">
-      <input type="text" id="doc-search"
-             placeholder="Search by reference number, document name, or status..."
-             oninput="applyFilters()"
-             style="width:100%;padding:11px 40px 11px 14px;border-radius:10px;border:1.5px solid #E8DFC8;font-size:14px;font-family:inherit;background:#fff;box-sizing:border-box;color:#0E2A47;outline:none;"/>
-      <button type="button" id="search-clear" onclick="clearSearch()"
-              style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:20px;color:#5A6E82;cursor:pointer;line-height:1;display:none;">×</button>
+<!-- DOCUMENTS TAB -->
+<div class="tab-panel" id="tab-documents">
+  <div class="stats-row">
+    {% set total_submitted = docs|length %}
+    {% set total_received = (docs|selectattr('status','equalto','Received')|list|length)
+                          + (docs|selectattr('status','equalto','Transferred')|list|length)
+                          + (docs|selectattr('status','equalto','Released')|list|length) %}
+    {% set total_released = docs|selectattr('status','equalto','Released')|list|length %}
+    <div class="stat-box">
+      <div class="stat-num">{{ total_submitted }}</div>
+      <div class="stat-label">Total Submitted</div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <select id="doc-filter-cat" onchange="applyFilters()"
-              style="padding:9px 12px;border-radius:8px;border:1.5px solid #E8DFC8;font-size:13px;font-family:inherit;background:#fff;color:#5A6E82;cursor:pointer;">
-        <option value="">All Categories</option>
-      </select>
-      <input type="date" id="doc-filter-date" onchange="applyFilters()"
-             style="padding:9px 12px;border-radius:8px;border:1.5px solid #E8DFC8;font-size:13px;font-family:inherit;background:#fff;color:#5A6E82;cursor:pointer;"/>
-      <button type="button" id="filter-clear" onclick="clearFilters()"
-              style="padding:9px 14px;border-radius:8px;border:1.5px solid #E8DFC8;background:#fff;color:#C9A84C;font-size:13px;font-weight:700;cursor:pointer;display:none;">✕ Clear Filters</button>
-      <span id="doc-count" style="font-size:13px;color:#5A6E82;margin-left:auto;"></span>
+    <div class="stat-box">
+      <div class="stat-num">{{ total_received }}</div>
+      <div class="stat-label">Received</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num">{{ total_released }}</div>
+      <div class="stat-label">Released</div>
     </div>
   </div>
-  {% endif %}
 
-  {% if docs %}
+  <div class="section-head">
+    <div class="section-title">Documents</div>
+    <div class="section-actions">
+      <a href="/client/trash" class="btn-ghost-sm">Trash</a>
+      <button onclick="toggleOfficeQR()" class="btn-gold-sm">+ Submit New</button>
+    </div>
+  </div>
+
+  <div class="doc-list-wrap">
+    {% if docs %}
+    <div style="margin-bottom:12px;">
+      <div style="position:relative;margin-bottom:10px;">
+        <input type="text" id="doc-search"
+               placeholder="Search by reference number, document name, or status..."
+               oninput="applyFilters()"
+               style="width:100%;padding:11px 40px 11px 14px;border-radius:10px;border:1.5px solid #E8DFC8;font-size:14px;font-family:inherit;background:#fff;box-sizing:border-box;color:#0E2A47;outline:none;"/>
+        <button type="button" id="search-clear" onclick="clearSearch()"
+                style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:20px;color:#5A6E82;cursor:pointer;line-height:1;display:none;">×</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select id="doc-filter-cat" onchange="applyFilters()"
+                style="padding:9px 12px;border-radius:8px;border:1.5px solid #E8DFC8;font-size:13px;font-family:inherit;background:#fff;color:#5A6E82;cursor:pointer;">
+          <option value="">All Categories</option>
+        </select>
+        <input type="date" id="doc-filter-date" onchange="applyFilters()"
+               style="padding:9px 12px;border-radius:8px;border:1.5px solid #E8DFC8;font-size:13px;font-family:inherit;background:#fff;color:#5A6E82;cursor:pointer;"/>
+        <button type="button" id="filter-clear" onclick="clearFilters()"
+                style="padding:9px 14px;border-radius:8px;border:1.5px solid #E8DFC8;background:#fff;color:#C9A84C;font-size:13px;font-weight:700;cursor:pointer;display:none;">✕ Clear Filters</button>
+        <span id="doc-count" style="font-size:13px;color:#5A6E82;margin-left:auto;"></span>
+      </div>
+    </div>
     <div id="doc-list">
-    {% for doc in docs %}
-    <a href="/client/track/{{ doc.id }}" class="doc-card"
-       data-name="{{ (doc.doc_name or '') | lower }}"
-       data-ref="{{ (doc.doc_id or '') | lower }}"
-       data-status="{{ (doc.status or '') | lower }}"
-       data-referred="{{ (doc.referred_to or '') | lower }}"
-       data-org="{{ (doc.sender_org or '') | lower }}"
-       data-category="{{ (doc.category or '') | lower }}"
-       data-date="{{ doc.created_at[:10] if doc.created_at else '' }}">
-      <div class="doc-left">
-        <div class="doc-name">{{ doc.doc_name or '(No title)' }}</div>
-        <div class="doc-meta">{{ doc.sender_org or '' }}{% if doc.referred_to %} → {{ doc.referred_to }}{% endif %}</div>
-        <div class="doc-ref">Ref: {{ doc.doc_id }} &nbsp;·&nbsp; {{ doc.created_at[:10] if doc.created_at else '' }}</div>
+      {% for doc in docs %}
+      <a href="/client/track/{{ doc.id }}" class="doc-card"
+         data-name="{{ (doc.doc_name or '') | lower }}"
+         data-ref="{{ (doc.doc_id or '') | lower }}"
+         data-status="{{ (doc.status or '') | lower }}"
+         data-referred="{{ (doc.referred_to or '') | lower }}"
+         data-org="{{ (doc.sender_org or '') | lower }}"
+         data-category="{{ (doc.category or '') | lower }}"
+         data-date="{{ doc.created_at[:10] if doc.created_at else '' }}">
+        <div class="doc-left">
+          <div class="doc-name">{{ doc.doc_name or '(No title)' }}</div>
+          <div class="doc-meta">{{ doc.sender_org or '' }}{% if doc.referred_to %} → {{ doc.referred_to }}{% endif %}</div>
+          <div class="doc-ref">Ref: {{ doc.doc_id }} &nbsp;·&nbsp; {{ doc.created_at[:10] if doc.created_at else '' }}</div>
+        </div>
+        <div class="doc-right">
+          {% set s = doc.status %}
+          <span class="badge {{ 's-'+s if s in ['Pending','Received','Released','Transferred','Routed'] else 's-default' }}">{{ s }}</span>
+          <span class="doc-view">View →</span>
+        </div>
+      </a>
+      {% endfor %}
+      <div id="doc-empty-filtered" style="display:none;text-align:center;padding:48px 24px;color:#64748B;">
+        <div style="font-size:40px;margin-bottom:10px;">🔍</div>
+        <div style="font-weight:700;font-size:16px;color:#1E293B;margin-bottom:6px;">No documents found</div>
+        <div style="font-size:14px;">Try a different search term or clear the filters.</div>
       </div>
-      <div class="doc-right">
-        {% set s = doc.status %}
-        <span class="badge {{ 's-'+s if s in ['Pending','Received','Released','Transferred','Routed'] else 's-default' }}">{{ s }}</span>
-        <span class="doc-view">View →</span>
-      </div>
-    </a>
-    {% endfor %}
-    <div id="doc-empty-filtered" style="display:none;text-align:center;padding:48px 24px;color:#64748B;">
-      <div style="font-size:40px;margin-bottom:10px;">🔍</div>
-      <div style="font-weight:700;font-size:16px;color:#1E293B;margin-bottom:6px;">No documents found</div>
-      <div style="font-size:14px;">Try a different search term or clear the filters.</div>
     </div>
-    </div>
-  {% else %}
+    {% else %}
     <div class="empty">
       <div class="empty-icon">📭</div>
       <div class="empty-title">No documents yet</div>
       <div class="empty-text">Submit your first document to start tracking it here.</div>
       <button type="button" class="btn-submit" onclick="toggleOfficeQR()">＋ Submit a Document</button>
     </div>
-  {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<!-- APPOINTMENTS TAB -->
+<div class="tab-panel" id="tab-appointments" style="display:none;">
+  <div class="section-head">
+    <div class="section-title">Appointments</div>
+    <div class="section-actions">
+      <a href="/client/appointments/book" class="btn-gold-sm">+ Book Appointment</a>
+    </div>
+  </div>
+  <div class="doc-list-wrap">
+    {% if appointments %}
+    <div class="appt-list">
+      {% for apt in appointments %}
+      <div class="apt-card {% if apt.status == 'confirmed' %}apt-confirmed{% elif apt.status == 'cancelled' %}apt-cancelled{% elif apt.status == 'pending' %}apt-pending{% elif apt.status == 'attended' %}apt-attended{% endif %}">
+        <div class="apt-card-top">
+          <div class="apt-left">
+            <div class="apt-service">{{ apt.service_name or apt.service_code or 'Appointment' }}</div>
+            <div class="apt-office">{{ apt.office or '' }}</div>
+          </div>
+          <div class="apt-badge apt-badge-{{ apt.status | lower }}">{{ apt.status | capitalize }}</div>
+        </div>
+        <div class="apt-meta">
+          <span class="apt-meta-item">{{ apt.preferred_date }}</span>
+          <span class="apt-meta-sep">·</span>
+          <span class="apt-meta-item">{{ apt.preferred_time }}</span>
+          {% if apt.queue_ticket %}
+          <span class="apt-meta-sep">·</span>
+          <span class="apt-ticket">Ticket {{ apt.queue_ticket }}</span>
+          {% endif %}
+        </div>
+        {% if apt.purpose %}
+        <div class="apt-purpose">{{ apt.purpose }}</div>
+        {% endif %}
+        {% if apt.status in ['pending', 'confirmed'] %}
+        <div class="apt-footer">
+          <form method="post" action="/client/appointments/{{ apt.id }}/cancel">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+            <button type="submit" class="btn-cancel"
+                    onclick="return confirm('Cancel this appointment?')">Cancel Appointment</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="empty-icon">📅</div>
+      <div class="empty-title">No appointments yet</div>
+      <div class="empty-text">Book an appointment to visit the Personnel Unit.</div>
+      <a href="/client/appointments/book" class="btn-submit">+ Book Appointment</a>
+    </div>
+    {% endif %}
+  </div>
 </div>
 
 <div class="office-qr-modal" id="office-qr-modal" style="display:none;">

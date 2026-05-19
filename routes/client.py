@@ -302,10 +302,13 @@ def register():
 @client_bp.route("")
 @_require_client
 def portal():
-    username = session.get("username")
-    docs     = load_docs()
-    my_docs  = [d for d in docs if d.get("submitted_by") == username]
-    return render_template("client_portal.html", docs=my_docs,
+    username     = session.get("username")
+    docs         = load_docs()
+    my_docs      = [d for d in docs if d.get("submitted_by") == username]
+    appointments = get_appointments_by_client(username)
+    return render_template("client_portal.html",
+                           docs=my_docs,
+                           appointments=appointments,
                            saved_offices=_get_saved_offices(),
                            csrf_token=_getcsrf_token())
 

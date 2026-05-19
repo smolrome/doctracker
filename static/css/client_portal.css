@@ -129,3 +129,35 @@ body{font-family:'Inter',sans-serif;background:var(--surface);min-height:100vh;c
   .badge{font-size:12px;padding:4px 10px;}
   .tb-btn{padding:5px 8px;font-size:11px;}
 }
+
+/* ── Tabs ── */
+.portal-tabs{display:flex;gap:0;padding:24px 40px 0;background:#FAF8F3;border-bottom:2px solid #E8DFC8;}
+.tab-btn{padding:12px 24px;font-size:14px;font-weight:600;font-family:'Inter',sans-serif;border:none;background:transparent;color:#8BA5B5;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.2s;}
+.tab-btn:hover{color:#0E2A47;}
+.tab-btn.active{color:#0E2A47;border-bottom-color:#C9A227;}
+.tab-panel{display:block;}
+
+/* ── Appointment cards (portal) ── */
+.appt-list{display:flex;flex-direction:column;gap:12px;}
+.apt-card{background:#fff;border:1px solid #D7CDB5;border-radius:12px;padding:20px 24px;border-left:4px solid #D7CDB5;transition:box-shadow 0.2s;}
+.apt-card:hover{box-shadow:0 2px 12px rgba(0,0,0,0.06);}
+.apt-confirmed{border-left-color:#059669;}
+.apt-pending{border-left-color:#C9A227;}
+.apt-cancelled{border-left-color:#D1D5DB;opacity:0.7;}
+.apt-attended{border-left-color:#0E2A47;}
+.apt-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
+.apt-service{font-family:'Libre Baskerville',serif;font-size:16px;font-weight:700;color:#0E2A47;margin-bottom:2px;}
+.apt-office{font-size:13px;color:#8BA5B5;}
+.apt-badge{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;}
+.apt-badge-confirmed{background:#D1FAE5;color:#065F46;}
+.apt-badge-pending{background:#FEF3C7;color:#92400E;}
+.apt-badge-cancelled{background:#F3F4F6;color:#6B7280;}
+.apt-badge-attended{background:#DBEAFE;color:#1E40AF;}
+.apt-meta{display:flex;align-items:center;gap:8px;font-size:13px;color:#5A6E82;margin-bottom:8px;flex-wrap:wrap;}
+.apt-meta-sep{color:#D7CDB5;}
+.apt-ticket{background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:4px;font-weight:700;font-size:12px;}
+.apt-purpose{font-size:13px;color:#5A6E82;line-height:1.5;margin-bottom:12px;}
+.apt-footer{margin-top:12px;padding-top:12px;border-top:1px solid #F0EBE0;}
+.btn-cancel{padding:7px 16px;background:transparent;border:1.5px solid #DC2626;color:#DC2626;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-cancel:hover{background:#FEE2E2;}
+@media(max-width:768px){.portal-tabs{padding:16px 16px 0;}}
