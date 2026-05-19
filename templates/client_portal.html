@@ -6,6 +6,7 @@
   <title>My Documents — LAKAD</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/client_portal.css') }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/client_submit.css') }}"/>
 </head>
 <body>
 
@@ -55,7 +56,7 @@
     <div class="section-title">My Documents</div>
     <div style="display:flex;gap:8px;">
       <a href="/client/trash" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:transparent;color:#0E2A47;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;border:1.5px solid #E8DFC8;">🗑️ Trash</a>
-      <a href="/client/submit?pick_office=1" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#C9A84C;color:#0E2A47;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;">+ Submit New</a>
+      <button type="button" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#C9A227;color:#0E2A47;border-radius:8px;font-weight:700;font-size:15px;border:none;cursor:pointer;" onclick="toggleOfficeQR()">+ Submit New</button>
     </div>
   </div>
 
@@ -121,6 +122,35 @@
       <button type="button" class="btn-submit" onclick="toggleOfficeModal()">＋ Submit a Document</button>
     </div>
   {% endif %}
+</div>
+
+<div class="office-qr-modal" id="office-qr-modal" style="display:none;">
+  <div class="office-qr-overlay" onclick="toggleOfficeQR()"></div>
+  <div class="office-qr-content">
+    <div class="office-qr-header">
+      <h2>Select Office</h2>
+      <button class="office-qr-close" onclick="toggleOfficeQR()">✕</button>
+    </div>
+    <p class="office-qr-desc">Choose which office you want to submit your documents to.</p>
+    <div class="office-qr-search">
+      <input type="text" placeholder="🔍 Search offices..."
+             oninput="filterOffices(this.value)"
+             autocomplete="off"/>
+    </div>
+    <div class="office-qr-grid" id="office-qr-grid">
+      {% for office in saved_offices %}
+      <div class="office-qr-card" data-name="{{ office.office_name | lower }}">
+        <div class="office-qr-name">{{ office.office_name }}</div>
+        <a href="/client/submit?office_slug={{ office.office_slug | urlencode }}&office_name={{ office.office_name | urlencode }}"
+           class="office-qr-select"
+           onclick="showLoading('Loading office...')">Select This Office</a>
+      </div>
+      {% endfor %}
+      <div class="office-qr-none" id="office-qr-none" style="display:none;">
+        No offices match your search.
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="{{ url_for('static', filename='js/client_portal.js') }}"></script>

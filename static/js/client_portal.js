@@ -1,3 +1,24 @@
+function toggleOfficeQR() {
+  const modal = document.getElementById('office-qr-modal');
+  if (!modal) return;
+  const isOpen = modal.style.display !== 'none';
+  modal.style.display = isOpen ? 'none' : 'flex';
+  document.body.style.overflow = isOpen ? '' : 'hidden';
+}
+
+function filterOffices(q) {
+  const cards = document.querySelectorAll('.office-qr-card');
+  const none = document.getElementById('office-qr-none');
+  let visible = 0;
+  q = q.toLowerCase().trim();
+  cards.forEach(function(c) {
+    const name = c.getAttribute('data-name') || '';
+    if (q === '' || name.includes(q)) { c.style.display = 'flex'; visible++; }
+    else { c.style.display = 'none'; }
+  });
+  if (none) none.style.display = visible === 0 ? 'block' : 'none';
+}
+
 function filterOfficesC(query) {
   const q = query.toLowerCase().trim();
   const cards = document.querySelectorAll('.oqs-card-c');
