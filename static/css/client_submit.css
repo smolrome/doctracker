@@ -793,3 +793,11 @@ body{font-family:'Inter',sans-serif;background:var(--surface);min-height:100vh;c
   background: #C9A227;
   color: #0E2A47;
 }
+
+/* ── Tom Select overrides ── */
+.ts-wrapper.single .ts-control{border:1px solid #D7CDB5;border-radius:6px;padding:10px 14px;font-size:14px;font-family:'Inter',sans-serif;background:#fff;color:#3A3A3A;box-shadow:none;}
+.ts-wrapper.single.input-active .ts-control,.ts-wrapper.single .ts-control:focus{border-color:#C9A227;outline:none;box-shadow:0 0 0 3px rgba(201,162,39,0.15);}
+.ts-dropdown{border:1px solid #D7CDB5;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-family:'Inter',sans-serif;font-size:14px;}
+.ts-dropdown .option{padding:10px 14px;color:#3A3A3A;}
+.ts-dropdown .option:hover,.ts-dropdown .option.active{background:#FFFDF5;color:#0E2A47;}
+.ts-dropdown .option.selected{background:#C9A227;color:#0E2A47;}

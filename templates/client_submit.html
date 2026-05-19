@@ -6,6 +6,8 @@
   <title>Submit Documents — LAKAD</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/client_submit.css') }}"/>
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 </head>
 <body>
 <div class="topbar">
@@ -109,7 +111,7 @@
       <div class="form-row">
         <div class="form-group">
           <label>Document Type</label>
-          <select name="category">
+          <select name="category" id="category-select">
             <option value="">— Select type —</option>
             {% for cat in category_options %}
             <option value="{{ cat }}">{{ cat }}</option>
@@ -342,5 +344,13 @@
 </script>
 {% endif %}
 
+<script>
+new TomSelect('#category-select', {
+  create: false,
+  sortField: { field: 'text', direction: 'asc' },
+  placeholder: '— Select type —',
+  allowEmptyOption: true,
+});
+</script>
 </body>
 </html>
