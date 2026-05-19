@@ -54,7 +54,6 @@
         <form method="post" style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
           <input type="hidden" name="_action" value="select_staff"/>
-          <label style="font-weight:600;color:rgba(255,255,255,.6);font-size:13px;">Receiving Staff:</label>
           <select name="selected_staff"
                   style="padding:8px 12px;border:1.5px solid rgba(255,255,255,.2);border-radius:8px;font-size:14px;min-width:200px;background:rgba(255,255,255,.1);color:#fff;"
                   class="staff-select-dropdown"
@@ -128,8 +127,9 @@
 
       {% if office_staff_list %}
       <div class="form-group" style="margin-top:0;">
-        <label>Which Staff Is This For? <span style="color:#6B7280;font-weight:400;font-size:12px;">(optional)</span></label>
-        <select name="referred_to_username" onchange="onStaffForChange(this)">
+        <label>Route To Staff <span style="color:#6B7280;font-weight:400;font-size:12px;">(optional)</span></label>
+        <small style="color:#8BA5B5;font-size:12px;display:block;margin-bottom:6px;">If filled, document will be automatically forwarded to this person after receipt.</small>
+        <select name="referred_to_username">
           <option value="">— Any / auto-assign —</option>
           {% for staff in office_staff_list %}
           <option value="{{ staff.username }}">{{ staff.full_name }}</option>
@@ -341,16 +341,6 @@
   if (docNameInput) docNameInput.focus();
 </script>
 {% endif %}
-
-<script>
-function onStaffForChange(sel) {
-  var opt = sel.options[sel.selectedIndex];
-  if (!opt || !opt.value) return;
-  var fullName = opt.text.trim();
-  var rtInput = document.querySelector('input[name="referred_to"]');
-  if (rtInput && fullName) rtInput.value = fullName;
-}
-</script>
 
 </body>
 </html>
