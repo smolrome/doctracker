@@ -48,6 +48,8 @@ def create_appointment(data: dict) -> dict:
         'queue_ticket_id': None,
         'source':          data.get('source', 'web'),
         'notes':           data.get('notes', ''),
+        'assigned_to':      data.get('assigned_to', ''),
+        'assigned_to_name': data.get('assigned_to_name', ''),
         'created_at':      now_str(),
         'updated_at':      now_str(),
     }
@@ -58,14 +60,16 @@ def create_appointment(data: dict) -> dict:
                     INSERT INTO appointments
                     (id, client_name, client_username, office, service_code, service_name,
                      preferred_date, preferred_time, purpose, status, queue_ticket,
-                     queue_ticket_id, source, notes, created_at, updated_at)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                     queue_ticket_id, source, notes, assigned_to, assigned_to_name,
+                     created_at, updated_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 """, (
                     apt['id'], apt['client_name'], apt['client_username'],
                     apt['office'], apt['service_code'], apt['service_name'],
                     apt['preferred_date'], apt['preferred_time'], apt['purpose'],
                     apt['status'], apt['queue_ticket'], apt['queue_ticket_id'],
-                    apt['source'], apt['notes'], apt['created_at'], apt['updated_at'],
+                    apt['source'], apt['notes'], apt['assigned_to'], apt['assigned_to_name'],
+                    apt['created_at'], apt['updated_at'],
                 ))
     else:
         apts = _load_json()

@@ -263,6 +263,8 @@ def _run_migrations(cur):
     migrations.append(
         "ALTER TABLE saved_offices ADD COLUMN IF NOT EXISTS primary_recipient TEXT"
     )
+    migrations.append("ALTER TABLE appointments ADD COLUMN IF NOT EXISTS assigned_to TEXT DEFAULT ''")
+    migrations.append("ALTER TABLE appointments ADD COLUMN IF NOT EXISTS assigned_to_name TEXT DEFAULT ''")
     for sql in migrations:
         try:
             cur.execute("SAVEPOINT mig")
