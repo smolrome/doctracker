@@ -17,6 +17,7 @@ from services.documents import (
     load_docs, now_str, generate_ref, restore_doc, save_doc,
 )
 from services.auth import get_all_users
+from services.appointments import get_all_appointments, get_appointment, update_appointment
 from services.misc import audit_log, load_saved_offices
 from services.cart_store import clear_cart
 from services.qr import generate_qr_b64, make_qr_png
@@ -1885,3 +1886,82 @@ def mark_qr_printed():
             doc['updated_at'] = now_str()
             save_doc(doc)
     return jsonify(ok=True)
+
+
+@dashboard_bp.route("/staff/appointments")
+@login_required
+def staff_appointments():
+    if session.get("role") not in ("staff", "admin"):
+        return redirect(url_for("dashboard.index"))
+    current_username = session.get("username", "")
+    current_office   = session.get("office", "")
+    current_role     = session.get("role", "")
+
+    if current_role == "admin":
+        appointments = get_all_appointments()
+    else:
+        appointments = get_all_appointments(office=current_office)
+
+    all_users = get_all_users()
+    if current_role == "admin":
+        office_staff = sorted([
+            {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
+            for u in all_users
+            if u.get("role") != "client" and u.get("active", True)
+        ], key=lambda x: x["full_name"])
+    else:
+        office_staff = sorted([
+            {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
+            for u in all_users
+            if u.get("office") == current_office
+            and u.get("role") != "client"
+            and u.get("active", True)
+        ], key=lambda x: x["full_name"])
+
+    pending_count = len([a for a in appointments if a.get("status") == "pending"])
+
+    return render_template("staff_appointments.html",
+                           appointments=appointments,
+                           office_staff=office_staff,
+                           pending_count=pending_count,
+                           current_office=current_office,
+                           current_role=current_role)
+
+
+@dashboard_bp.route("/staff/appointments/<apt_id>/confirm", methods=["POST"])
+@login_required
+def staff_confirm_appointment(apt_id):
+    if session.get("role") not in ("staff", "admin"):
+        return redirect(url_for("dashboard.index"))
+    data = request.get_json(force=True, silent=True) or {}
+    assigned_to      = data.get("assigned_to", "")
+    assigned_to_name = data.get("assigned_to_name", "")
+    notes            = data.get("notes", "")
+
+    status = data.get("status", "confirmed")
+    success = update_appointment(apt_id, {
+        "status":           status,
+        "assigned_to":      assigned_to,
+        "assigned_to_name": assigned_to_name,
+        "notes":            notes,
+    })
+    if success:
+        return jsonify(ok=True)
+    return jsonify(ok=False, error="Appointment not found"), 404
+
+
+@dashboard_bp.route("/staff/appointments/<apt_id>/reject", methods=["POST"])
+@login_required
+def staff_reject_appointment(apt_id):
+    if session.get("role") not in ("staff", "admin"):
+        return redirect(url_for("dashboard.index"))
+    data   = request.get_json(force=True, silent=True) or {}
+    reason = data.get("reason", "")
+
+    success = update_appointment(apt_id, {
+        "status": "cancelled",
+        "notes":  reason,
+    })
+    if success:
+        return jsonify(ok=True)
+    return jsonify(ok=False, error="Appointment not found"), 404
