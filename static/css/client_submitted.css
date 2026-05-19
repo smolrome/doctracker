@@ -9,13 +9,18 @@ body{font-family:'Inter',sans-serif;background:var(--surface);min-height:100vh;c
 
 /* TOPBAR */
 .topbar{background:#0E2A47;
-  height:60px;display:flex;align-items:center;padding:0 16px;gap:12px;
+  height:60px;display:flex;align-items:center;padding:0 24px;gap:12px;
+  justify-content:space-between;
   box-shadow:0 2px 12px rgba(14,42,71,.3);position:relative;
   border-bottom:3px solid #C9A227;}
-.topbar-brand{display:flex;align-items:center;gap:10px;}
-.topbar-brand img{width:38px;height:38px;border-radius:50%;object-fit:cover;
-  border:2px solid rgba(255,255,255,.4);background:#fff;}
-.topbar-title{font-family:'Libre Baskerville',serif;font-size:17px;font-weight:700;color:#fff;}
+.topbar-brand{display:flex;align-items:center;gap:12px;}
+.topbar-brand img{width:40px;height:40px;border-radius:50%;object-fit:cover;
+  border:2px solid rgba(255,255,255,.3);background:#fff;}
+.brand-name{font-family:'Libre Baskerville',serif;font-size:18px;font-weight:700;color:#fff;line-height:1.1;}
+.topbar-sub{font-size:10px;font-weight:600;color:#C9A227;letter-spacing:0.08em;text-transform:uppercase;display:block;}
+.topbar-actions{display:flex;align-items:center;gap:8px;}
+.tb-btn{padding:7px 14px;border-radius:6px;font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);border:1.5px solid rgba(255,255,255,0.25);text-decoration:none;transition:all 0.2s;}
+.tb-btn:hover{color:#C9A227;border-color:#C9A227;}
 
 .page{max-width:720px;margin:0 auto;padding:22px 14px 60px;}
 

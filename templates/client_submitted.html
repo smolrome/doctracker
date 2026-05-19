@@ -9,18 +9,23 @@
 </head>
 <body>
 
-<div class="topbar">
+<nav class="topbar">
   <div class="topbar-brand">
-    <img src="/static/logo.png" alt="Logo"/>
-    <span class="topbar-title">Submission Confirmed</span>
+    <img src="/static/logo.png" alt="LAKAD Logo" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.3);background:#fff;"/>
+    <div>
+      <div class="brand-name">LAKAD</div>
+      <span class="topbar-sub">Client Services System</span>
+    </div>
   </div>
-</div>
+  <div class="topbar-actions">
+    <a href="/client" class="tb-btn">← My Documents</a>
+  </div>
+</nav>
 
 <div class="page">
 
   <!-- HERO -->
   <div class="hero">
-    <div class="hero-icon">🎉</div>
     <div class="hero-title">
       {% if qr_list|length == 1 %}
         Document Submitted!
@@ -40,7 +45,7 @@
 
   <!-- INSTRUCTIONS -->
   <div class="instructions">
-    <div class="instructions-title">📌 What Happens Next</div>
+    <div class="instructions-title">What Happens Next</div>
     <ul class="steps-list">
       <li>
         <div class="step-circle">1</div>
@@ -77,7 +82,7 @@
           {% if doc.category %}<strong>Type:</strong> {{ doc.category }}<br/>{% endif %}
           <strong>Date Filed:</strong> {{ doc.doc_date or doc.created_at[:10] }}
         </div>
-        <div class="status-pending">⏳ Pending — awaiting receipt</div>
+        <div class="status-pending">Pending — awaiting receipt</div>
       </div>
       <div class="qr-wrap">
         <img src="data:image/png;base64,{{ qr_b64 }}" class="qr-img" alt="QR Code"/>
