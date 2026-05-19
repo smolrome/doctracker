@@ -137,24 +137,6 @@ body{font-family:'Inter',sans-serif;background:var(--surface);min-height:100vh;c
 @media(max-width:340px){.oqs-grid-c{grid-template-columns:1fr;}}
 
 /* Office modal */
-.office-modal{position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000;display:flex;align-items:center;justify-content:center;}
-.office-modal-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);}
-.office-modal-content{position:relative;background:#fff;border-radius:16px;padding:24px;max-width:90%;max-height:85vh;overflow-y:auto;width:800px;box-shadow:0 20px 60px rgba(0,0,0,0.25);}
-.office-modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
-.office-modal-header h2{font-family:'Libre Baskerville',serif;font-size:20px;font-weight:700;color:var(--navy);margin:0;}
-.office-modal-close{background:var(--surface);border:1.5px solid var(--border);border-radius:8px;width:36px;height:36px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);}
-.office-modal-close:hover{background:var(--gold-light);border-color:var(--gold);color:var(--navy);}
-.office-modal-desc{color:var(--muted);font-size:14px;margin-bottom:16px;}
-.office-modal-search{width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none;margin-bottom:16px;font-family:inherit;color:var(--navy);}
-.office-modal-search:focus{border-color:var(--navy);}
-.office-modal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;}
-.office-modal-card{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px;text-align:center;transition:all 0.2s;}
-.office-modal-card:hover{border-color:var(--gold);box-shadow:0 4px 16px rgba(201,168,76,0.18);}
-.office-modal-name{font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px;}
-.office-modal-img{width:120px;height:120px;object-fit:contain;border-radius:8px;border:1.5px solid var(--border);margin-bottom:12px;}
-.office-modal-select{display:block;background:var(--gold);color:var(--navy);text-decoration:none;padding:10px;border-radius:8px;font-weight:700;font-size:13px;}
-.office-modal-select:hover{background:#b8943e;color:#fff;}
-.office-modal-none{text-align:center;padding:30px;color:var(--muted);}
 
 @media (max-width: 600px) {
   .topbar-sub { display: none; }

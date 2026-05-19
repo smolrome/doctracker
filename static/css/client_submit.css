@@ -362,9 +362,6 @@ body{font-family:'Inter',sans-serif;background:var(--surface);min-height:100vh;c
   border-color:#C9A227;
   box-shadow:0 2px 12px rgba(201,162,39,0.15);
 }
-.office-card-icon{
-  font-size:28px;line-height:1;
-}
 .office-qr-name{
   font-family:'Libre Baskerville',serif;font-size:14px;font-weight:700;
   color:#0E2A47;line-height:1.3;

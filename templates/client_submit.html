@@ -323,7 +323,6 @@
     <div class="office-qr-grid" id="office-qr-grid">
       {% for office in saved_offices %}
       <div class="office-qr-card" data-name="{{ office.office_name | lower }}">
-        <div class="office-card-icon">🏢</div>
         <div class="office-qr-name">{{ office.office_name }}</div>
         <a href="/client/submit?office_id={{ office.id }}"
            class="office-qr-select"
