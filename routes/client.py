@@ -313,6 +313,18 @@ def portal():
                            csrf_token=_getcsrf_token())
 
 
+@client_bp.route("/documents")
+@_require_client
+def my_documents():
+    username = session.get("username")
+    docs     = load_docs()
+    my_docs  = [d for d in docs if d.get("submitted_by") == username]
+    return render_template("client_documents.html",
+                           docs=my_docs,
+                           saved_offices=_get_saved_offices(),
+                           csrf_token=_getcsrf_token())
+
+
 @client_bp.route("/track/<doc_id>")
 @_require_client
 def track(doc_id):
