@@ -1474,3 +1474,81 @@ function inlineStatusChange(selectEl, docId) {
     .catch(function() { showToast('Network error.', 'error'); });
   selectEl.dataset.prev = newStatus;
 }
+/* ── Appointments tab ── */
+var _currentAptId = null;
+
+function switchDashTab(name) {
+  document.getElementById('panel-docs').style.display = name === 'docs' ? '' : 'none';
+  document.getElementById('panel-appts').style.display = name === 'appts' ? '' : 'none';
+  document.getElementById('tab-docs-btn').classList.toggle('active', name === 'docs');
+  document.getElementById('tab-appts-btn').classList.toggle('active', name === 'appts');
+}
+
+function filterApptStatus(status, btn) {
+  document.querySelectorAll('.appt-stab').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  document.querySelectorAll('.appt-card-staff').forEach(function(c) {
+    c.style.display = (status === 'all' || c.dataset.status === status) ? '' : 'none';
+  });
+}
+
+function openConfirmModal(aptId, clientName, service, date, time) {
+  _currentAptId = aptId;
+  document.getElementById('confirm-apt-info').innerHTML =
+    '<strong>' + clientName + '</strong> · ' + service + '<br>' + date + ' at ' + time;
+  document.getElementById('confirm-staff-select').value = '';
+  document.getElementById('confirm-notes').value = '';
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+
+function openRejectModal(aptId) {
+  _currentAptId = aptId;
+  document.getElementById('reject-reason').value = '';
+  document.getElementById('reject-modal').style.display = 'flex';
+}
+
+function closeModals() {
+  document.getElementById('confirm-modal').style.display = 'none';
+  document.getElementById('reject-modal').style.display = 'none';
+}
+
+function submitConfirm() {
+  if (!_currentAptId) return;
+  var sel = document.getElementById('confirm-staff-select');
+  var parts = sel.value ? sel.value.split('|') : ['', ''];
+  var notes = document.getElementById('confirm-notes').value;
+  fetch('/staff/appointments/' + _currentAptId + '/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || '' },
+    body: JSON.stringify({ assigned_to: parts[0], assigned_to_name: parts[1], notes: notes })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) { closeModals(); location.reload(); }
+    else { alert('Error: ' + (d.error || 'Unknown error')); }
+  });
+}
+
+function submitReject() {
+  if (!_currentAptId) return;
+  var reason = document.getElementById('reject-reason').value.trim();
+  if (!reason) { alert('Please enter a reason.'); return; }
+  fetch('/staff/appointments/' + _currentAptId + '/reject', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || '' },
+    body: JSON.stringify({ reason: reason })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) { closeModals(); location.reload(); }
+    else { alert('Error: ' + (d.error || 'Unknown error')); }
+  });
+}
+
+function markAttended(aptId) {
+  if (!confirm('Mark this appointment as attended?')) return;
+  fetch('/staff/appointments/' + aptId + '/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || '' },
+    body: JSON.stringify({ status: 'attended', assigned_to: '', assigned_to_name: '', notes: '' })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) { location.reload(); }
+    else { alert('Error: ' + (d.error || 'Unknown error')); }
+  });
+}

@@ -86,6 +86,20 @@ var serverSessionData = {
   </div>
   {% endif %}
 
+  <div class="dashboard-tabs">
+    <button class="dash-tab active" id="tab-docs-btn" onclick="switchDashTab('docs')">
+      Documents
+    </button>
+    <button class="dash-tab" id="tab-appts-btn" onclick="switchDashTab('appts')">
+      Appointments
+      {% if staff_pending_appointments > 0 %}
+      <span class="dash-tab-badge">{{ staff_pending_appointments }}</span>
+      {% endif %}
+    </button>
+  </div>
+
+  <div id="panel-docs" class="dash-panel">
+
   {# ── FILTER BAR ── #}
   <div class="filter-strip" id="filter-sticky-bar" role="search" aria-label="Filter documents">
   <form method="get" action="/" id="filter-form">
@@ -499,6 +513,107 @@ var serverSessionData = {
         </div>{# /table-wrap #}
       </div>{# /table-outer #}
       </main>
+
+  </div>{# /panel-docs #}
+
+  <div id="panel-appts" class="dash-panel" style="display:none;">
+    <div class="appt-panel-toolbar">
+      <div class="appt-status-tabs">
+        <button class="appt-stab active" onclick="filterApptStatus('all', this)">All</button>
+        <button class="appt-stab" onclick="filterApptStatus('pending', this)">Pending</button>
+        <button class="appt-stab" onclick="filterApptStatus('confirmed', this)">Confirmed</button>
+        <button class="appt-stab" onclick="filterApptStatus('attended', this)">Attended</button>
+        <button class="appt-stab" onclick="filterApptStatus('cancelled', this)">Cancelled</button>
+      </div>
+      <a href="/staff/appointments" class="btn-appt-full">Full View →</a>
+    </div>
+
+    <div id="appt-list-panel">
+      {% if staff_appointments %}
+        {% for apt in staff_appointments %}
+        <div class="appt-card-staff" data-status="{{ apt.status | lower }}">
+          <div class="appt-card-left">
+            <div class="appt-client-name">{{ apt.client_name }}</div>
+            <div class="appt-service">{{ apt.service_name or apt.service_code }}</div>
+            <div class="appt-office-label">{{ apt.office }}</div>
+            <div class="appt-meta-row">
+              <span>{{ apt.preferred_date }}</span>
+              <span>·</span>
+              <span>{{ apt.preferred_time }}</span>
+              {% if apt.queue_ticket %}
+              <span class="appt-ticket-badge">Ticket {{ apt.queue_ticket }}</span>
+              {% endif %}
+            </div>
+            {% if apt.purpose %}
+            <div class="appt-purpose-text">{{ apt.purpose }}</div>
+            {% endif %}
+            {% if apt.assigned_to_name %}
+            <div class="appt-assigned">Assigned to: <strong>{{ apt.assigned_to_name }}</strong></div>
+            {% endif %}
+          </div>
+          <div class="appt-card-right">
+            <span class="appt-status-badge appt-s-{{ apt.status | lower }}">{{ apt.status | capitalize }}</span>
+            {% if apt.status == 'pending' %}
+            <button class="btn-appt-confirm" onclick="openConfirmModal('{{ apt.id }}', '{{ apt.client_name }}', '{{ apt.service_name or apt.service_code }}', '{{ apt.preferred_date }}', '{{ apt.preferred_time }}')">Confirm</button>
+            <button class="btn-appt-reject" onclick="openRejectModal('{{ apt.id }}')">Reject</button>
+            {% elif apt.status == 'confirmed' %}
+            <button class="btn-appt-attend" onclick="markAttended('{{ apt.id }}')">Mark Attended</button>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="appt-empty-panel">
+          <div class="appt-empty-title">No appointments yet</div>
+          <div class="appt-empty-sub">Appointment bookings from clients will appear here.</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>{# /panel-appts #}
+
+  <!-- Confirm Modal -->
+  <div class="appt-modal-overlay" id="confirm-modal" style="display:none;">
+    <div class="appt-modal">
+      <div class="appt-modal-header">
+        <h3>Confirm Appointment</h3>
+        <button onclick="closeModals()" class="appt-modal-close">✕</button>
+      </div>
+      <div class="appt-modal-body">
+        <div id="confirm-apt-info" class="appt-modal-info"></div>
+        <label class="appt-modal-label">ASSIGN TO STAFF</label>
+        <select id="confirm-staff-select" class="appt-modal-select">
+          <option value="">— Unassigned —</option>
+          {% for staff in office_staff_list %}
+          <option value="{{ staff.username }}|{{ staff.full_name }}">{{ staff.full_name }}</option>
+          {% endfor %}
+        </select>
+        <label class="appt-modal-label">NOTES (OPTIONAL)</label>
+        <textarea id="confirm-notes" class="appt-modal-textarea" placeholder="Add a note..."></textarea>
+      </div>
+      <div class="appt-modal-footer">
+        <button onclick="submitConfirm()" class="btn-modal-confirm">Confirm Appointment</button>
+        <button onclick="closeModals()" class="btn-modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Modal -->
+  <div class="appt-modal-overlay" id="reject-modal" style="display:none;">
+    <div class="appt-modal">
+      <div class="appt-modal-header">
+        <h3>Reject Appointment</h3>
+        <button onclick="closeModals()" class="appt-modal-close">✕</button>
+      </div>
+      <div class="appt-modal-body">
+        <label class="appt-modal-label">REASON FOR REJECTION</label>
+        <textarea id="reject-reason" class="appt-modal-textarea" placeholder="Enter reason..." required></textarea>
+      </div>
+      <div class="appt-modal-footer">
+        <button onclick="submitReject()" class="btn-modal-reject">Reject Appointment</button>
+        <button onclick="closeModals()" class="btn-modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
 
 </div>{# /doc-page #}
 

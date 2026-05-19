@@ -299,6 +299,13 @@ def index():
                       and not d.get('deleted')
                       and d.get('status') not in ('Released', 'Archived')][:20]
 
+    current_role_val = session.get("role", "")
+    if current_role_val == "admin":
+        staff_appointments_list = get_all_appointments()
+    else:
+        staff_appointments_list = get_all_appointments(office=current_office)
+    staff_pending_appointments = len([a for a in staff_appointments_list if a.get("status") == "pending"])
+
     return render_template("index.html",
         docs=paginated, stats=get_stats(filtered),
         search=search, filter_status=filter_status,
@@ -312,6 +319,7 @@ def index():
         status_options=["All"] + get_dropdown_options("status"),
         cat_options=get_dropdown_options("category"),
         office_staff_names=office_staff_names,
+        office_staff_list=office_staff_list,
         office_stats=office_stats,
         today=now_str()[:10],
         today_plus3=(_date.today() + _timedelta(days=3)).strftime('%Y-%m-%d'),
@@ -327,7 +335,9 @@ def index():
         is_admin=session.get('role') == 'admin',
         pending_print_ids=pending_print_ids,
         pending_print_count=pending_print_count,
-        unprinted_docs=unprinted_docs)
+        unprinted_docs=unprinted_docs,
+        staff_appointments=staff_appointments_list,
+        staff_pending_appointments=staff_pending_appointments)
 
 
 @dashboard_bp.route("/dashboard")
