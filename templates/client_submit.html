@@ -46,7 +46,6 @@
   <!-- Selected Office Banner -->
   {% if office_name %}
   <div class="selected-office-banner">
-    <div class="soab-icon">🏢</div>
     <div class="soab-content">
       <div class="soab-label">Submitting documents to:</div>
       <div class="soab-office">{{ office_name }}</div>
@@ -55,7 +54,7 @@
         <form method="post" style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
           <input type="hidden" name="_action" value="select_staff"/>
-          <label style="font-weight:600;color:rgba(255,255,255,.6);font-size:13px;">👤 Receiving Staff:</label>
+          <label style="font-weight:600;color:rgba(255,255,255,.6);font-size:13px;">Receiving Staff:</label>
           <select name="selected_staff"
                   style="padding:8px 12px;border:1.5px solid rgba(255,255,255,.2);border-radius:8px;font-size:14px;min-width:200px;background:rgba(255,255,255,.1);color:#fff;"
                   class="staff-select-dropdown"
@@ -70,15 +69,6 @@
           </select>
         </form>
       </div>
-      {% if selected_staff %}
-      <div class="soab-staff" style="color:#6EE7B7;">
-        ✓ Selected: {{ office_staff_list | selectattr('username','equalto',selected_staff) | first | attr('full_name') if office_staff_list | selectattr('username','equalto',selected_staff) | list else 'Unknown' }}
-      </div>
-      {% elif not assigned_staff_name %}
-      <div class="soab-staff">👤 Will be auto-assigned to available staff</div>
-      {% elif assigned_staff_name %}
-      <div class="soab-staff">👤 Receiving Staff: {{ assigned_staff_name }}</div>
-      {% endif %}
       {% endif %}
     </div>
     <button type="button" class="soab-change" onclick="toggleOfficeQR()">Change Office</button>
@@ -321,7 +311,7 @@
              autocomplete="off"/>
     </div>
     <div class="office-qr-grid" id="office-qr-grid">
-      {% for office in saved_offices %}
+      {% for office in saved_offices | sort(attribute='office_name') %}
       <div class="office-qr-card" data-name="{{ office.office_name | lower }}">
         <div class="office-qr-name">{{ office.office_name }}</div>
         <a href="/client/submit?office_id={{ office.id }}"

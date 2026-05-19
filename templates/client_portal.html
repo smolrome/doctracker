@@ -138,7 +138,7 @@
              autocomplete="off"/>
     </div>
     <div class="office-qr-grid" id="office-qr-grid">
-      {% for office in saved_offices %}
+      {% for office in saved_offices | sort(attribute='office_name') %}
       <div class="office-qr-card" data-name="{{ office.office_name | lower }}">
         <div class="office-qr-name">{{ office.office_name }}</div>
         <a href="/client/submit?office_slug={{ office.office_slug | urlencode }}&office_name={{ office.office_name | urlencode }}"

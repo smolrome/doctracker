@@ -252,7 +252,6 @@ body{font-family:'Inter',sans-serif;background:var(--surface);min-height:100vh;c
   height: 3px;
   background: #C9A227;
 }
-.soab-icon { font-size: 28px; flex-shrink: 0; opacity: .9; }
 .soab-content { flex: 1; min-width: 0; }
 .soab-label {
   font-size: 11px; color: rgba(255,255,255,.6);
@@ -314,7 +313,7 @@ body{font-family:'Inter',sans-serif;background:var(--surface);min-height:100vh;c
 }
 .office-qr-content{
   position:relative;background:#fff;border-radius:16px;padding:24px;
-  max-width:92%;max-height:88vh;overflow-y:auto;width:820px;
+  max-width:90%;max-height:88vh;overflow-y:auto;width:560px;
   box-shadow:0 20px 60px rgba(0,0,0,.25);border:1.5px solid var(--border);
 }
 .office-qr-header{
@@ -345,33 +344,28 @@ body{font-family:'Inter',sans-serif;background:var(--surface);min-height:100vh;c
   box-shadow:0 0 0 3px rgba(14,42,71,.1);
 }
 .office-qr-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
-  gap:14px;
+  display:flex;flex-direction:column;gap:6px;
+  max-height:420px;overflow-y:auto;padding-right:4px;
 }
+.office-qr-grid::-webkit-scrollbar{width:4px;}
+.office-qr-grid::-webkit-scrollbar-track{background:#FAF8F3;}
+.office-qr-grid::-webkit-scrollbar-thumb{background:#D7CDB5;border-radius:2px;}
 .office-qr-card{
-  background:#fff;
-  border:1px solid #D7CDB5;
-  border-radius:10px;
-  padding:20px 16px;
-  display:flex;flex-direction:column;align-items:center;
-  gap:10px;text-align:center;
-  transition:border-color 0.2s,box-shadow 0.2s;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;background:#fff;border:1px solid #D7CDB5;
+  border-radius:8px;transition:border-color 0.15s,box-shadow 0.15s;gap:12px;
 }
 .office-qr-card:hover{
-  border-color:#C9A227;
-  box-shadow:0 2px 12px rgba(201,162,39,0.15);
+  border-color:#C9A227;box-shadow:0 2px 8px rgba(201,162,39,0.12);background:#FFFDF5;
 }
 .office-qr-name{
-  font-family:'Libre Baskerville',serif;font-size:14px;font-weight:700;
-  color:#0E2A47;line-height:1.3;
+  font-family:'Inter',sans-serif;font-size:14px;font-weight:600;
+  color:#0E2A47;flex:1;text-align:left;
 }
 .office-qr-select{
-  display:block;width:100%;padding:8px 12px;
-  background:#C9A227;color:#0E2A47;
-  font-weight:700;font-size:13px;border-radius:6px;
-  text-decoration:none;text-align:center;
-  transition:background 0.2s;
+  flex-shrink:0;padding:7px 16px;background:#C9A227;color:#0E2A47;
+  font-weight:700;font-size:13px;border-radius:6px;text-decoration:none;
+  transition:background 0.15s;white-space:nowrap;
 }
 .office-qr-select:hover{background:#b8911f;}
 .office-qr-none{
@@ -386,7 +380,6 @@ body{font-family:'Inter',sans-serif;background:var(--surface);min-height:100vh;c
   .add-form-card{padding:16px;}
   .steps-indicator{display:none;}
   .cart-title{font-size:17px;}
-  .office-qr-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
 }
 @media(max-width:380px){
   .btn-add,.btn-submit-all{font-size:15px;}
