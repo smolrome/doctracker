@@ -6,6 +6,7 @@
   <title>Book an Appointment — LAKAD</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Libre+Baskerville:wght@700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/client_appointments.css') }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/client_submit.css') }}"/>
   <style>
     /* Page & form styles scoped to this page */
     .page { max-width: 680px; margin: 0 auto; padding: 32px 16px 60px; }
@@ -24,6 +25,14 @@
     .btn-submit:hover { background: #B8911E; }
     .btn-submit:active { transform: scale(.99); }
     @media (max-width: 540px) { .card { padding: 24px 18px; } }
+    .selected-office-banner { background: #0E2A47; border-radius: 10px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .soab-label { font-size: 11px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+    .soab-office { font-family: 'Libre Baskerville', serif; font-size: 18px; color: #fff; font-weight: 700; }
+    .soab-change { padding: 7px 14px; background: rgba(255,255,255,0.1); border: 1.5px solid rgba(255,255,255,0.3); border-radius: 6px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .soab-change:hover { background: rgba(255,255,255,0.2); }
+    .office-select-prompt { padding: 11px 14px; border: 1.5px solid #D7CDB5; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #8BA5B5; background: #FDFCFA; transition: border-color 0.2s; }
+    .office-select-prompt:hover { border-color: #C9A227; }
+    .prompt-arrow { font-size: 18px; color: #C9A227; }
   </style>
 </head>
 <body>
@@ -60,13 +69,23 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
 
       <div class="form-group">
-        <label for="office">Office <span class="req">*</span></label>
-        <select name="office" id="office" class="form-control" required>
-          <option value="">— Select an office —</option>
-          {% for o in offices %}
-            <option value="{{ o.office_name }}">{{ o.office_name }}</option>
-          {% endfor %}
-        </select>
+        <label>Office <span class="req">*</span></label>
+        {% if selected_office %}
+        <input type="hidden" name="office" value="{{ selected_office }}"/>
+        <div class="selected-office-banner">
+          <div class="soab-content">
+            <div class="soab-label">Booking appointment at:</div>
+            <div class="soab-office">{{ selected_office }}</div>
+          </div>
+          <button type="button" class="soab-change" onclick="toggleOfficeQR()">Change Office</button>
+        </div>
+        {% else %}
+        <div class="office-select-prompt" onclick="toggleOfficeQR()">
+          <span>— Select an office —</span>
+          <span class="prompt-arrow">›</span>
+        </div>
+        <input type="hidden" name="office" value="" id="office-hidden"/>
+        {% endif %}
       </div>
 
       <div class="form-group">
@@ -128,6 +147,61 @@
 
 <script>
   document.getElementById('preferred_date').min = new Date().toISOString().split('T')[0];
+</script>
+
+<div class="office-qr-modal" id="office-qr-modal" style="display:none;">
+  <div class="office-qr-overlay" onclick="toggleOfficeQR()"></div>
+  <div class="office-qr-content">
+    <div class="office-qr-header">
+      <h2>Select Office</h2>
+      <button class="office-qr-close" onclick="toggleOfficeQR()">✕</button>
+    </div>
+    <p class="office-qr-desc">Choose which office you want to book an appointment with.</p>
+    <div class="office-qr-search">
+      <input type="text" placeholder="🔍 Search offices..."
+             oninput="filterOffices(this.value)"
+             autocomplete="off"/>
+    </div>
+    <div class="office-qr-grid" id="office-qr-grid">
+      {% for office in offices | sort(attribute='office_name') %}
+      <div class="office-qr-card" data-name="{{ office.office_name | lower }}">
+        <div class="office-qr-name">{{ office.office_name }}</div>
+        <a href="/client/appointments/book?office_slug={{ office.office_slug | urlencode }}&office_name={{ office.office_name | urlencode }}"
+           class="office-qr-select">Select This Office</a>
+      </div>
+      {% endfor %}
+      <div class="office-qr-none" id="office-qr-none" style="display:none;">
+        No offices match your search.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleOfficeQR() {
+  const modal = document.getElementById('office-qr-modal');
+  if (!modal) return;
+  const isOpen = modal.style.display !== 'none';
+  modal.style.display = isOpen ? 'none' : 'flex';
+  document.body.style.overflow = isOpen ? '' : 'hidden';
+}
+function filterOffices(q) {
+  const cards = document.querySelectorAll('.office-qr-card');
+  const none = document.getElementById('office-qr-none');
+  let visible = 0;
+  q = q.toLowerCase().trim();
+  cards.forEach(function(c) {
+    const name = c.getAttribute('data-name') || '';
+    if (q === '' || name.includes(q)) { c.style.display = 'flex'; visible++; }
+    else { c.style.display = 'none'; }
+  });
+  if (none) none.style.display = visible === 0 ? 'block' : 'none';
+}
+window.addEventListener('load', function() {
+  {% if not selected_office %}
+  toggleOfficeQR();
+  {% endif %}
+});
 </script>
 </body>
 </html>

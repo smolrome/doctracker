@@ -809,8 +809,12 @@ def book_appointment():
         })
         flash("Appointment booked successfully! An admin will confirm your appointment.", "success")
         return redirect(url_for('client.my_appointments'))
+    selected_office = request.args.get('office_name', '')
+    selected_office_slug = request.args.get('office_slug', '')
     return render_template('client_book_appointment.html',
                            offices=offices, services=services,
+                           selected_office=selected_office,
+                           selected_office_slug=selected_office_slug,
                            csrf_token=_getcsrf_token())
 
 
