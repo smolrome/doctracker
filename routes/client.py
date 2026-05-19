@@ -789,6 +789,7 @@ def my_appointments():
     appointments = get_appointments_by_client(username)
     return render_template('client_appointments.html',
                            appointments=appointments,
+                           saved_offices=_get_saved_offices(),
                            csrf_token=_getcsrf_token())
 
 

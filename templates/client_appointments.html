@@ -6,8 +6,10 @@
   <title>My Appointments — LAKAD</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Libre+Baskerville:wght@700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/client_appointments.css') }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/client_submit.css') }}"/>
 </head>
 <body>
+{% from 'macros/office_modal.html' import office_submit_modal %}
 
 <nav class="topbar">
   <div class="topbar-brand">
@@ -38,7 +40,7 @@
 
   <div class="appt-toolbar">
     <span class="appt-count">{{ appointments|length }} appointment{{ 's' if appointments|length != 1 }}</span>
-    <a href="/client/appointments/book" class="btn-gold">+ Book Appointment</a>
+    <button onclick="openOfficeForBooking()" class="btn-gold">+ Book Appointment</button>
   </div>
 
   {% if appointments %}
@@ -89,10 +91,47 @@
       </div>
       <div class="appt-empty-title">No appointments yet</div>
       <div class="appt-empty-text">Book an appointment to visit the Personnel Unit.</div>
-      <a href="/client/appointments/book" class="btn-gold">+ Book Appointment</a>
+      <button onclick="openOfficeForBooking()" class="btn-gold">+ Book Appointment</button>
     </div>
   {% endif %}
 
 </div>
+
+{{ office_submit_modal(saved_offices) }}
+
+<script>
+var _officeModalMode = 'book';
+function openOfficeForBooking() {
+  _officeModalMode = 'book';
+  var desc = document.getElementById('office-qr-desc');
+  if (desc) desc.textContent = 'Choose which office you want to book an appointment with.';
+  var modal = document.getElementById('office-qr-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function toggleOfficeQR() {
+  var modal = document.getElementById('office-qr-modal');
+  if (!modal) return;
+  var isOpen = modal.style.display !== 'none';
+  modal.style.display = isOpen ? 'none' : 'flex';
+  document.body.style.overflow = isOpen ? '' : 'hidden';
+}
+function filterOffices(q) {
+  var cards = document.querySelectorAll('.office-qr-card');
+  var none = document.getElementById('office-qr-none');
+  var visible = 0; q = q.toLowerCase().trim();
+  cards.forEach(function(c) {
+    var name = c.getAttribute('data-name') || '';
+    if (q === '' || name.includes(q)) { c.style.display = 'flex'; visible++; }
+    else { c.style.display = 'none'; }
+  });
+  if (none) none.style.display = visible === 0 ? 'block' : 'none';
+}
+function handleOfficeSelect(el) {
+  var card = el.closest('.office-qr-card');
+  window.location.href = card.getAttribute('data-book-url');
+}
+</script>
 </body>
 </html>
