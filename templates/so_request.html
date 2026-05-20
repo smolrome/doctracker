@@ -333,7 +333,23 @@ function onTypeChange() {
     return;
   }
 
-  fetch(`/api/so/fields/${soType}`, { credentials: 'same-origin' })
+  const categoryMap = {
+    "Assignment Order":                      "assignment_order",
+    "Designation — New":               "designation_new",
+    "Designation — Renewal":           "designation_renewal",
+    "Detailment":                            "detailment",
+    "Realignment":                           "realignment",
+    "Reassignment":                          "reassignment",
+    "Resignation / Termination":             "resignation",
+    "Revocation of Special Order":           "revocation",
+    "Shared Services":                       "shared_services",
+    "Transfer of Agency":                    "transfer_of_agency",
+    "Transfer of Station":                   "transfer_of_station",
+    "Transfer of Station with Designation":  "transfer_of_station_with_designation",
+  };
+  const internalType = categoryMap[soType] || soType;
+
+  fetch(`/api/so/fields/${internalType}`, { credentials: 'same-origin' })
     .then(r => r.json())
     .then(data => {
       if (data.error) { showError(data.error); return; }
