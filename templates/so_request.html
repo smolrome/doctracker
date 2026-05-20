@@ -374,6 +374,58 @@ function onTypeChange() {
         lbl.htmlFor   = `dyn-${field.key}`;
         lbl.innerHTML = `${field.label} <span class="req">*</span>`;
 
+        if (field.key === 'school_year') {
+          const fromSelect = document.createElement('select');
+          fromSelect.className = 'form-input form-select';
+          fromSelect.style.width = '48%';
+          fromSelect.style.display = 'inline-block';
+
+          const toSelect = document.createElement('select');
+          toSelect.className = 'form-input form-select';
+          toSelect.style.width = '48%';
+          toSelect.style.display = 'inline-block';
+          toSelect.style.marginLeft = '4%';
+
+          const hiddenInput = document.createElement('input');
+          hiddenInput.type = 'hidden';
+          hiddenInput.id = 'dyn-school_year';
+          hiddenInput.name = 'school_year';
+          hiddenInput.required = true;
+
+          const currentYear = new Date().getFullYear();
+          for (let y = currentYear - 2; y <= currentYear + 5; y++) {
+            const opt1 = document.createElement('option');
+            opt1.value = y;
+            opt1.textContent = y;
+            if (y === currentYear) opt1.selected = true;
+            fromSelect.appendChild(opt1);
+
+            const opt2 = document.createElement('option');
+            opt2.value = y + 1;
+            opt2.textContent = y + 1;
+            if (y + 1 === currentYear + 1) opt2.selected = true;
+            toSelect.appendChild(opt2);
+          }
+
+          function updateSchoolYear() {
+            hiddenInput.value = fromSelect.value + '-' + toSelect.value;
+          }
+
+          fromSelect.addEventListener('change', function () {
+            toSelect.value = parseInt(this.value) + 1;
+            updateSchoolYear();
+          });
+          toSelect.addEventListener('change', updateSchoolYear);
+          updateSchoolYear();
+
+          group.appendChild(lbl);
+          group.appendChild(fromSelect);
+          group.appendChild(toSelect);
+          group.appendChild(hiddenInput);
+          wrap.appendChild(group);
+          return;
+        }
+
         if (field.key === 'honorific') {
           const select = document.createElement('select');
           select.id       = `dyn-${field.key}`;

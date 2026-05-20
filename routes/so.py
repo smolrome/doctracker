@@ -63,8 +63,8 @@ SO_TYPES = {
         "label":   "Designation — Renewal",
         "subject": "RENEWAL OF DESIGNATION",
         "fields":  ["honorific", "designation_role", "school_name", "district", "municipality",
-                    "effective_date", "accountability_amount_words",
-                    "accountability_amount_figures", "school_year"],
+                    "effective_date", "accountability_amount_figures",
+                    "accountability_amount_words", "school_year"],
         "body": (
             "With reference to the Approved Plotting for Designation and in the exigency and "
             "best interest of the service, this office renews the designation of "
