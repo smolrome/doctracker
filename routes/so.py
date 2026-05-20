@@ -453,7 +453,7 @@ def _embed_qr_in_docx(file_path, verify_url):
         img_part, rId = doc.part.add_image(buf)
 
         # Size: 1.5cm x 1.5cm in EMUs (1cm = 914400/2.54 EMUs)
-        size_emu = int(914400 * 1.5 / 2.54)
+        size_emu = int(360000 * 1.8)
 
         # Build an anchor drawing that floats at absolute position
         # Position: right side of page, near bottom (copy furnished area)
@@ -470,10 +470,10 @@ def _embed_qr_in_docx(file_path, verify_url):
                  xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">
         <wp:simplePos x="0" y="0"/>
         <wp:positionH relativeFrom="page">
-          <wp:posOffset>12000000</wp:posOffset>
+          <wp:posOffset>5500000</wp:posOffset>
         </wp:positionH>
         <wp:positionV relativeFrom="page">
-          <wp:posOffset>24000000</wp:posOffset>
+          <wp:posOffset>8000000</wp:posOffset>
         </wp:positionV>
         <wp:extent cx="{size_emu}" cy="{size_emu}"/>
         <wp:effectExtent l="0" t="0" r="0" b="0"/>
