@@ -495,8 +495,11 @@ def _require_staff():
     role = session.get("role")
     if role == "admin":
         return None
-    if role == "staff" and session.get("can_generate_so"):
-        return None
+    if role == "staff":
+        from services.auth import get_user_can_generate_so
+        username = session.get("username")
+        if username and get_user_can_generate_so(username):
+            return None
     flash("You don't have permission to access Special Order features.", "error")
     return redirect(url_for("dashboard.index"))
 
