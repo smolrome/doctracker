@@ -324,22 +324,52 @@ def _apply_run_fmt(run, bold=None, font_name=None, font_size_pt=None):
         run.bold = bold
 
 
-def _replace_in_para_list(paragraphs, placeholder, value,
-                           bold=None, font_name=None, font_size_pt=None):
-    """Replace placeholder in a list of paragraphs, handling split runs."""
-    for para in paragraphs:
+def _replace_in_para_list(paras, placeholder, value, bold=None, font_name=None, font_size_pt=None):
+    for para in paras:
         if placeholder not in para.text:
             continue
-        new_text = para.text.replace(placeholder, value)
         runs = para.runs
-        if runs:
-            runs[0].text = new_text
-            for run in runs[1:]:
-                run.text = ""
-            _apply_run_fmt(runs[0], bold=bold, font_name=font_name, font_size_pt=font_size_pt)
-        else:
-            new_run = para.add_run(new_text)
-            _apply_run_fmt(new_run, bold=bold, font_name=font_name, font_size_pt=font_size_pt)
+        if not runs:
+            continue
+        # Find the specific run containing the placeholder
+        for run in runs:
+            if placeholder in run.text:
+                # Replace only in this run — preserves label runs untouched
+                run.text = run.text.replace(placeholder, value)
+                _apply_run_fmt(run, bold=bold, font_name=font_name, font_size_pt=font_size_pt)
+                return
+        # Placeholder is split across runs — find boundary and fix
+        # Put full replaced text in first run, blank the rest
+        # But preserve bold=False on the prefix by splitting into two runs
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn as _qn
+        prefix = para.text.split(placeholder)[0]
+        runs[0].text = prefix
+        runs[0].bold = False
+        for run in runs[1:]:
+            run.text = ""
+        # Add new run for the value with correct formatting
+        new_r = OxmlElement("w:r")
+        new_rPr = OxmlElement("w:rPr")
+        if bold:
+            new_b = OxmlElement("w:b")
+            new_rPr.append(new_b)
+        if font_name:
+            new_rFonts = OxmlElement("w:rFonts")
+            new_rFonts.set(_qn("w:ascii"), font_name)
+            new_rFonts.set(_qn("w:hAnsi"), font_name)
+            new_rPr.append(new_rFonts)
+        if font_size_pt:
+            new_sz = OxmlElement("w:sz")
+            new_sz.set(_qn("w:val"), str(int(font_size_pt * 2)))
+            new_rPr.append(new_sz)
+        new_r.append(new_rPr)
+        new_t = OxmlElement("w:t")
+        new_t.text = value
+        new_t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+        new_r.append(new_t)
+        runs[0]._r.addnext(new_r)
+        return
 
 
 def _replace_simple(doc, placeholder, value,
