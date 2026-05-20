@@ -649,7 +649,7 @@ def _log_so_as_document(so_type, employee_full_name, employee_position,
                             "SELECT primary_recipient FROM saved_offices WHERE office_slug = 'personnel'"
                         )
                         row = cur.fetchone()
-                        primary_recipient = row[0] if row and row[0] else None
+                        primary_recipient = row['primary_recipient'] if row and row.get('primary_recipient') else None
 
                     if primary_recipient:
                         with conn.cursor() as cur:
@@ -659,8 +659,8 @@ def _log_so_as_document(so_type, employee_full_name, employee_position,
                             )
                             user_row = cur.fetchone()
                             if user_row:
-                                recipient_full_name = user_row[0]
-                                recipient_office    = user_row[1]
+                                recipient_full_name = user_row['full_name']
+                                recipient_office    = user_row['office']
 
                 if primary_recipient and user_row:
                     doc.update({
