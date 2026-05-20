@@ -72,7 +72,7 @@ SO_TYPES = {
             "{district}, {municipality}, Leyte effective {effective_date} or upon receipt "
             "thereof.\n\n"
             "The amount accountability entrusted to the SDO amounting to "
-            "{accountability_amount_words} ({accountability_amount_figures}).\n\n"
+            "<<bold>>{accountability_amount_words}<</bold>> (<<bold>>{accountability_amount_figures}<</bold>>).\n\n"
             "This order is valid for School Year {school_year} only, subject to the request "
             "for renewal and subsequent approval of the Superintendent.\n\n"
             "For your information, proper guidance, and strict compliance."
@@ -401,8 +401,8 @@ def _replace_body(doc, placeholder, body_text):
             if is_bold:
                 text = text[2:-2]  # strip the markers
             numbered_text = f"{number}.\t{text}"
-            new_p  = OxmlElement("w:p")
-            # Paragraph properties — tab stop for hanging indent matching original SO format
+
+            new_p = OxmlElement("w:p")
             new_pPr = OxmlElement("w:pPr")
             new_ind = OxmlElement("w:ind")
             new_ind.set(qn("w:left"), "1080")
@@ -412,28 +412,61 @@ def _replace_body(doc, placeholder, body_text):
             new_jc.set(qn("w:val"), "both")
             new_pPr.append(new_jc)
             new_p.append(new_pPr)
-            new_r  = OxmlElement("w:r")
-            # Run properties: Bookman Old Style, 11pt
-            new_rPr = OxmlElement("w:rPr")
-            if is_bold:
-                new_b = OxmlElement("w:b")
-                new_rPr.append(new_b)
-            new_rFonts = OxmlElement("w:rFonts")
-            new_rFonts.set(qn("w:ascii"), "Bookman Old Style")
-            new_rFonts.set(qn("w:hAnsi"), "Bookman Old Style")
-            new_rPr.append(new_rFonts)
-            new_sz = OxmlElement("w:sz")
-            new_sz.set(qn("w:val"), "22")  # 11pt = 22 half-points
-            new_rPr.append(new_sz)
-            new_szCs = OxmlElement("w:szCs")
-            new_szCs.set(qn("w:val"), "22")
-            new_rPr.append(new_szCs)
-            new_r.append(new_rPr)
-            new_t = OxmlElement("w:t")
-            new_t.text = numbered_text
-            new_t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
-            new_r.append(new_t)
-            new_p.append(new_r)
+
+            if "<<bold>>" in text:
+                import re as _re
+                parts = _re.split(r'(<<bold>>.*?<</bold>>)', text)
+                for i, part in enumerate(parts):
+                    is_bold_part = part.startswith("<<bold>>")
+                    part_text = part.replace("<<bold>>", "").replace("<</bold>>", "")
+                    if i == 0:
+                        part_text = f"{number}.\t" + part_text
+                    if not part_text:
+                        continue
+                    new_r = OxmlElement("w:r")
+                    new_rPr = OxmlElement("w:rPr")
+                    if is_bold_part:
+                        new_rPr.append(OxmlElement("w:b"))
+                    new_rFonts = OxmlElement("w:rFonts")
+                    new_rFonts.set(qn("w:ascii"), "Bookman Old Style")
+                    new_rFonts.set(qn("w:hAnsi"), "Bookman Old Style")
+                    new_rPr.append(new_rFonts)
+                    new_sz = OxmlElement("w:sz")
+                    new_sz.set(qn("w:val"), "22")
+                    new_rPr.append(new_sz)
+                    new_szCs = OxmlElement("w:szCs")
+                    new_szCs.set(qn("w:val"), "22")
+                    new_rPr.append(new_szCs)
+                    new_r.append(new_rPr)
+                    new_t = OxmlElement("w:t")
+                    new_t.text = part_text
+                    new_t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+                    new_r.append(new_t)
+                    new_p.append(new_r)
+            else:
+                new_r = OxmlElement("w:r")
+                # Run properties: Bookman Old Style, 11pt
+                new_rPr = OxmlElement("w:rPr")
+                if is_bold:
+                    new_b = OxmlElement("w:b")
+                    new_rPr.append(new_b)
+                new_rFonts = OxmlElement("w:rFonts")
+                new_rFonts.set(qn("w:ascii"), "Bookman Old Style")
+                new_rFonts.set(qn("w:hAnsi"), "Bookman Old Style")
+                new_rPr.append(new_rFonts)
+                new_sz = OxmlElement("w:sz")
+                new_sz.set(qn("w:val"), "22")  # 11pt = 22 half-points
+                new_rPr.append(new_sz)
+                new_szCs = OxmlElement("w:szCs")
+                new_szCs.set(qn("w:val"), "22")
+                new_rPr.append(new_szCs)
+                new_r.append(new_rPr)
+                new_t = OxmlElement("w:t")
+                new_t.text = numbered_text
+                new_t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+                new_r.append(new_t)
+                new_p.append(new_r)
+
             parent.insert(idx + offset, new_p)
         parent.remove(para._p)
         break
@@ -766,7 +799,17 @@ def so_generate():
     if "accountability_amount_figures" in fields:
         v = fields["accountability_amount_figures"]
         if v and not v.startswith("Php"):
-            fields["accountability_amount_figures"] = "Php" + v
+            try:
+                num = float(v.replace(",", ""))
+                fields["accountability_amount_figures"] = f"Php{num:,.2f}"
+            except Exception:
+                fields["accountability_amount_figures"] = "Php" + v
+        elif v.startswith("Php"):
+            try:
+                num = float(v.replace("Php", "").replace(",", ""))
+                fields["accountability_amount_figures"] = f"Php{num:,.2f}"
+            except Exception:
+                pass
 
     # ── Build body ──────────────────────────────────────────────────────────────
     body_vars = {
