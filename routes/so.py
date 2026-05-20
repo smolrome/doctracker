@@ -62,11 +62,11 @@ SO_TYPES = {
     "designation_renewal": {
         "label":   "Designation — Renewal",
         "subject": "RENEWAL OF DESIGNATION",
-        "fields":  ["honorific", "designation_role", "school_name", "district", "municipality",
+        "fields":  ["approval_basis", "honorific", "designation_role", "school_name", "district", "municipality",
                     "effective_date", "accountability_amount_figures",
                     "accountability_amount_words", "school_year"],
         "body": (
-            "With reference to the Approved Plotting for Designation and in the exigency and "
+            "With reference to the {approval_basis} and in the exigency and "
             "best interest of the service, this office renews the designation of "
             "{honorific} {employee_full_name} as {designation_role} of {school_name}, "
             "{district}, {municipality}, Leyte effective {effective_date} or upon receipt "
@@ -258,6 +258,7 @@ FIELD_LABELS = {
     "to_agency_name":                "Destination Agency Name",
     "to_agency_location":            "Agency Location",
     "agreement_basis":               "Agreement Basis (e.g. Approved Swapping Agreement)",
+    "approval_basis":                "Basis of Approval",
 }
 
 # Maps category dropdown values (lowercased) to SO_TYPES keys
@@ -737,14 +738,20 @@ def so_fields(so_type):
     config = SO_TYPES.get(so_type)
     if not config:
         return jsonify({"error": "Unknown SO type"}), 404
-    fields = [
-        {
+    fields = []
+    for f in config["fields"]:
+        field_meta = {
             "key":   f,
             "label": FIELD_LABELS.get(f, f.replace("_", " ").title()),
             "type":  "date" if f in _DATE_FIELDS else "text",
         }
-        for f in config["fields"]
-    ]
+        if f == "approval_basis":
+            field_meta["type"] = "select"
+            field_meta["options"] = [
+                "Approved Plotting for Designation",
+                "Approved Letter Request for Designation",
+            ]
+        fields.append(field_meta)
     return jsonify({"fields": fields, "subject": config["subject"]})
 
 
@@ -812,8 +819,24 @@ def so_generate():
                 pass
 
     # ── Build body ──────────────────────────────────────────────────────────────
+    def _title_case_name(name):
+        if not name:
+            return name
+        parts = name.split()
+        result = []
+        for part in parts:
+            if len(part) <= 2 and part.endswith('.'):
+                result.append(part.upper())       # keep initials like V. uppercase
+            elif part.upper() == part and len(part) > 2:
+                result.append(part.capitalize())  # MARIA -> Maria
+            else:
+                result.append(part)
+        return ' '.join(result)
+
+    employee_full_name_body = _title_case_name(employee_full_name)
+
     body_vars = {
-        "employee_full_name": employee_full_name,
+        "employee_full_name": employee_full_name_body,
         "employee_position":  employee_position,
         **fields,
     }

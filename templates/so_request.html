@@ -444,6 +444,28 @@ function onTypeChange() {
           return;
         }
 
+        if (field.type === 'select' && field.options) {
+          const select = document.createElement('select');
+          select.id       = `dyn-${field.key}`;
+          select.name     = field.key;
+          select.required = true;
+          select.className = 'form-input form-select';
+          const defaultOpt = document.createElement('option');
+          defaultOpt.value = '';
+          defaultOpt.textContent = '— Select —';
+          select.appendChild(defaultOpt);
+          field.options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            option.textContent = opt;
+            select.appendChild(option);
+          });
+          group.appendChild(lbl);
+          group.appendChild(select);
+          wrap.appendChild(group);
+          return;
+        }
+
         let input;
         if (field.type === 'date') {
           input = document.createElement('input');
