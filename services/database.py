@@ -279,6 +279,7 @@ def _run_migrations(cur):
     )
     migrations.append("ALTER TABLE appointments ADD COLUMN IF NOT EXISTS assigned_to TEXT DEFAULT ''")
     migrations.append("ALTER TABLE appointments ADD COLUMN IF NOT EXISTS assigned_to_name TEXT DEFAULT ''")
+    migrations.append("ALTER TABLE users ADD COLUMN IF NOT EXISTS can_generate_so BOOLEAN DEFAULT FALSE")
     for sql in migrations:
         try:
             cur.execute("SAVEPOINT mig")

@@ -309,7 +309,8 @@ def get_all_users() -> list[dict]:
                                   COALESCE(office, '') AS office,
                                   COALESCE(approved, TRUE) AS approved,
                                   COALESCE(email, '') AS email,
-                                  COALESCE(documents_handled, '[]'::jsonb) AS documents_handled
+                                  COALESCE(documents_handled, '[]'::jsonb) AS documents_handled,
+                                  COALESCE(can_generate_so, FALSE) AS can_generate_so
                            FROM users ORDER BY created_at DESC"""
                     )
                     rows = []
@@ -568,6 +569,52 @@ def update_user_documents_handled(username: str, documents_handled: list) -> tup
         for u in users:
             if u["username"] == uname:
                 u["documents_handled"] = documents_handled or []
+                _save_users_json(users)
+                return True, None
+        return False, "User not found."
+
+
+def get_user_can_generate_so(username: str) -> bool:
+    """Return the can_generate_so flag for a user. Defaults to False if not set."""
+    uname = username.lower().strip()
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT can_generate_so FROM users WHERE username = %s", (uname,)
+                    )
+                    row = cur.fetchone()
+            return bool(row["can_generate_so"]) if row else False
+        except Exception:
+            return False
+    else:
+        users = _load_users_json()
+        for u in users:
+            if u["username"] == uname:
+                return bool(u.get("can_generate_so", False))
+        return False
+
+
+def set_user_can_generate_so(username: str, value: bool) -> tuple[bool, str | None]:
+    """Set the can_generate_so flag for a user."""
+    uname = username.lower().strip()
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE users SET can_generate_so = %s WHERE username = %s",
+                        (value, uname),
+                    )
+            return True, None
+        except Exception as e:
+            return False, f"Database error: {e}"
+    else:
+        users = _load_users_json()
+        for u in users:
+            if u["username"] == uname:
+                u["can_generate_so"] = value
                 _save_users_json(users)
                 return True, None
         return False, "User not found."

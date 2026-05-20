@@ -7,7 +7,7 @@ import time
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from services.auth import (
-    check_rate_limit, create_user, get_user, reset_rate_limit,
+    check_rate_limit, create_user, get_user, get_user_can_generate_so, reset_rate_limit,
     update_last_login, update_user, update_user_password, verify_password, verify_user,
 )
 from services.email import validate_invite_token, consume_invite_token
@@ -42,13 +42,15 @@ def login():
                 clean_username = username.lower().strip()
                 saved_cart = load_cart(clean_username)
                 session.clear()
+                can_so = role == "admin" or get_user_can_generate_so(clean_username)
                 session.update({
-                    "logged_in":   True,
-                    "username":    clean_username,
-                    "full_name":   full_name,
-                    "role":        role,
-                    "office":      office,
-                    "last_active": time.time(),
+                    "logged_in":        True,
+                    "username":         clean_username,
+                    "full_name":        full_name,
+                    "role":             role,
+                    "office":           office,
+                    "last_active":      time.time(),
+                    "can_generate_so":  can_so,
                 })
                 if saved_cart:
                     session["staff_cart"] = saved_cart

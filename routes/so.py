@@ -489,13 +489,16 @@ def _log_so_as_document(so_type, employee_full_name, employee_position,
 # ── Auth helper ─────────────────────────────────────────────────────────────────
 
 def _require_staff():
-    """Redirect non-staff. Returns a response object or None."""
+    """Redirect users without SO access. Admin always passes; staff need can_generate_so=True."""
     if not session.get("logged_in"):
         return redirect(url_for("auth.login"))
-    if session.get("role") not in ("staff", "admin"):
-        flash("Staff access required.", "error")
-        return redirect(url_for("dashboard.index"))
-    return None
+    role = session.get("role")
+    if role == "admin":
+        return None
+    if role == "staff" and session.get("can_generate_so"):
+        return None
+    flash("You don't have permission to access Special Order features.", "error")
+    return redirect(url_for("dashboard.index"))
 
 
 # ── Routes ──────────────────────────────────────────────────────────────────────

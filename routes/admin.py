@@ -8,7 +8,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from services.auth import (
     create_user, delete_user, get_all_users, set_user_active,
     update_user_password, update_user, approve_user, get_pending_clients,
-    update_user_documents_handled,
+    update_user_documents_handled, set_user_can_generate_so,
 )
 from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
@@ -867,6 +867,32 @@ def edit_user_route(username):
     else:
         flash(f"Failed to update user: {err}", "error")
 
+    return redirect(url_for("admin.manage_users"))
+
+
+@admin_bp.route("/toggle-so-access/<username>", methods=["POST"])
+@admin_required
+def toggle_so_access(username):
+    """Grant or revoke can_generate_so for a staff user."""
+    if username == ADMIN_USERNAME:
+        flash("Admin always has SO access.", "error")
+        return redirect(url_for("admin.manage_users"))
+    all_users = get_all_users()
+    user = next((u for u in all_users if u.get("username") == username), None)
+    if not user:
+        flash(f"User '{username}' not found.", "error")
+        return redirect(url_for("admin.manage_users"))
+    new_value = not bool(user.get("can_generate_so", False))
+    ok, err = set_user_can_generate_so(username, new_value)
+    if ok:
+        action = "granted" if new_value else "revoked"
+        audit_log("so_access_toggled",
+                  f"user={username} can_generate_so={new_value}",
+                  username=session.get("username", "admin"),
+                  ip=get_client_ip())
+        flash(f"✅ SO access {action} for '{username}'.", "success")
+    else:
+        flash(f"Failed to update SO access: {err}", "error")
     return redirect(url_for("admin.manage_users"))
 
 

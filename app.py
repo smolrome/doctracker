@@ -213,15 +213,17 @@ def create_app() -> Flask:
     def inject_auth():
         from datetime import datetime
         from services.dropdown_options import get_dropdown_options
+        role = session.get("role", "guest")
         return dict(
             logged_in         = is_logged_in(),
             current_user      = session.get("username", ""),
-            current_role      = session.get("role", "guest"),
+            current_role      = role,
             current_full_name = session.get("full_name", ""),
             current_office    = session.get("office", ""),
             now               = datetime.now,
             session           = session,
             category_options  = get_dropdown_options("category") if is_logged_in() else [],
+            can_generate_so   = role == "admin" or bool(session.get("can_generate_so", False)),
         )
 
     # FIX 1: CSRF token injected globally using the unified key name
