@@ -51,12 +51,18 @@
     <div class="dd-tags">
       {% if field_name == 'category' %}
         {% set so_types_list = [
-          "Special Order", "Assignment Order", "Designation", "Renewal of Designation",
-          "Detail Order", "Detailment", "Recall of Detailment", "Request for Detailment",
-          "Realignment", "Reassignment", "Shared Services of Administrative Officer (AO II)",
-          "Transfer of Station", "Transfer of Station with Designation", "Transfer of Agency",
-          "Invocation of Special Order", "Revocation of Special Order",
-          "Termination of Services and Acceptance of Resignation", "Resignation"
+          "Assignment Order",
+          "Designation — New",
+          "Designation — Renewal",
+          "Detailment",
+          "Realignment",
+          "Reassignment",
+          "Resignation / Termination",
+          "Revocation of Special Order",
+          "Shared Services",
+          "Transfer of Agency",
+          "Transfer of Station",
+          "Transfer of Station with Designation"
         ] %}
         <div class="dd-so-group-label">📄 Special Order Types</div>
         {% for opt in config.options if opt in so_types_list %}
