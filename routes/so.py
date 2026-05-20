@@ -858,7 +858,7 @@ def so_generate():
         _replace_body(doc, "{{body}}", body)
 
         # Replace the four single-value placeholders with explicit formatting
-        _replace_simple(doc, "{{employee_full_name}}", employee_full_name,
+        _replace_simple(doc, "{{employee_full_name}}", employee_full_name.upper(),
                         bold=True,  font_name="Bookman Old Style", font_size_pt=11)
         _replace_simple(doc, "{{employee_position}}",  employee_position,
                         bold=False, font_name="Bookman Old Style", font_size_pt=11)
