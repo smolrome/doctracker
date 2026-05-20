@@ -120,92 +120,92 @@
             {% for doc in user.documents_handled %}<span class="doc-type-tag">{{ doc }}</span>{% endfor %}
           </div>
           {% endif %}
+          <div class="badges-row">
+            {% if user.role == 'client' %}
+            <span class="role-badge role-client">👤 Client</span>
+            {% elif user.role == 'admin' %}
+            <span class="role-badge role-admin">🔐 Admin</span>
+            {% else %}
+            <span class="role-badge role-staff">🏢 Staff</span>
+            {% endif %}
+            {% if user.role in ('staff', 'admin') %}
+              {% if user.role == 'admin' or user.can_generate_so %}
+              <span class="role-badge" style="background:#ECFDF5;color:#065F46;border:1px solid #6EE7B7;">📄 SO Access</span>
+              {% else %}
+              <span class="role-badge" style="background:#F1F5F9;color:#94A3B8;border:1px solid #E2E8F0;">📄 No SO</span>
+              {% endif %}
+              {% if user.role == 'admin' or user.can_route_documents %}
+              <span class="role-badge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">📤 Route Access</span>
+              {% else %}
+              <span class="role-badge" style="background:#F1F5F9;color:#94A3B8;border:1px solid #E2E8F0;">📤 No Route</span>
+              {% endif %}
+            {% endif %}
+            {% if is_disabled %}
+            <span class="role-badge badge-disabled">⛔ Disabled</span>
+            {% else %}
+            <span class="role-badge badge-active">● Active</span>
+            {% endif %}
+          </div>
         </div>
       </div>
       <div class="user-actions">
-        {% if user.role == 'client' %}
-        <span class="role-badge role-client">👤 Client</span>
-        {% elif user.role == 'admin' %}
-        <span class="role-badge role-admin">🔐 Admin</span>
-        {% else %}
-        <span class="role-badge role-staff">🏢 Staff</span>
-        {% endif %}
-
-        {% if user.role in ('staff', 'admin') %}
-          {% if user.role == 'admin' or user.can_generate_so %}
-          <span class="role-badge" style="background:#ECFDF5;color:#065F46;border:1px solid #6EE7B7;">📄 SO Access</span>
+        <div class="btn-row">
+          {% if is_disabled %}
+          <form method="post" action="/enable-user/{{ user.username }}" style="margin:0;">
+            <button type="submit" class="btn-ena">✅ Enable</button>
+          </form>
           {% else %}
-          <span class="role-badge" style="background:#F1F5F9;color:#94A3B8;border:1px solid #E2E8F0;">📄 No SO</span>
+            {% if user.username != admin_username %}
+            <form method="post" action="/disable-user/{{ user.username }}" style="margin:0;"
+                  onsubmit="return confirm('Disable {{ user.username }}? They will be locked out immediately.')">
+              <button type="submit" class="btn-dis">🚫 Disable</button>
+            </form>
+            {% endif %}
           {% endif %}
-          {% if user.role == 'admin' or user.can_route_documents %}
-          <span class="role-badge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">📤 Route Access</span>
-          {% else %}
-          <span class="role-badge" style="background:#F1F5F9;color:#94A3B8;border:1px solid #E2E8F0;">📤 No Route</span>
+          {% if user.username != admin_username and user.role in ('staff',) %}
+          <form method="post" action="/toggle-so-access/{{ user.username }}" style="margin:0;"
+                onsubmit="return confirm('{{ 'Revoke' if user.can_generate_so else 'Grant' }} SO access for {{ user.username }}?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn-edit"
+                    style="{{ 'background:#FEF3C7;border-color:#F59E0B;color:#92400E;' if user.can_generate_so else 'background:#ECFDF5;border-color:#6EE7B7;color:#065F46;' }}">
+              {{ '🚫 Revoke SO' if user.can_generate_so else '✅ Grant SO' }}
+            </button>
+          </form>
+          <form method="post" action="/toggle-route-access/{{ user.username }}" style="margin:0;"
+                onsubmit="return confirm('{{ 'Revoke' if user.can_route_documents else 'Grant' }} Route access for {{ user.username }}?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn-edit"
+                    style="{{ 'background:#FEF3C7;border-color:#F59E0B;color:#92400E;' if user.can_route_documents else 'background:#EFF6FF;border-color:#BFDBFE;color:#1D4ED8;' }}">
+              {{ '🚫 Revoke Route' if user.can_route_documents else '✅ Grant Route' }}
+            </button>
+          </form>
           {% endif %}
-        {% endif %}
-
-        {% if is_disabled %}
-        <span class="role-badge badge-disabled">⛔ Disabled</span>
-        <form method="post" action="/enable-user/{{ user.username }}" style="margin:0;">
-          <button type="submit" class="btn-ena">✅ Enable</button>
-        </form>
-        {% else %}
-        <span class="role-badge badge-active">● Active</span>
-        {% if user.username != admin_username %}
-        <form method="post" action="/disable-user/{{ user.username }}" style="margin:0;"
-              onsubmit="return confirm('Disable {{ user.username }}? They will be locked out immediately.')">
-          <button type="submit" class="btn-dis">🚫 Disable</button>
-        </form>
-        {% endif %}
-        {% endif %}
-
-        {% if user.username != admin_username and user.role in ('staff',) %}
-        <form method="post" action="/toggle-so-access/{{ user.username }}" style="margin:0;"
-              onsubmit="return confirm('{{ 'Revoke' if user.can_generate_so else 'Grant' }} SO access for {{ user.username }}?')">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <button type="submit" class="btn-edit"
-                  style="{{ 'background:#FEF3C7;border-color:#F59E0B;color:#92400E;' if user.can_generate_so else 'background:#ECFDF5;border-color:#6EE7B7;color:#065F46;' }}">
-            {{ '🚫 Revoke SO' if user.can_generate_so else '✅ Grant SO' }}
-          </button>
-        </form>
-        <form method="post" action="/toggle-route-access/{{ user.username }}" style="margin:0;"
-              onsubmit="return confirm('{{ 'Revoke' if user.can_route_documents else 'Grant' }} Route access for {{ user.username }}?')">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <button type="submit" class="btn-edit"
-                  style="{{ 'background:#FEF3C7;border-color:#F59E0B;color:#92400E;' if user.can_route_documents else 'background:#EFF6FF;border-color:#BFDBFE;color:#1D4ED8;' }}">
-            {{ '🚫 Revoke Route' if user.can_route_documents else '✅ Grant Route' }}
-          </button>
-        </form>
-        {% endif %}
-
-        {% if user.username != admin_username %}
-        <button type="button" class="btn-edit"
-                data-username="{{ user.username|e }}"
-                data-fullname="{{ (user.full_name or '')|e }}"
-                data-email="{{ (user.email or '')|e }}"
-                data-role="{{ user.role|e }}"
-                data-office="{{ (user.office or '')|e }}"
-                data-documents="{{ (user.documents_handled or [])|join(', ')|e }}"
-                onclick="openEditModal(this)">✏️ Edit</button>
-        {% endif %}
-
-        {% if user.username != admin_username %}
-        <button type="button" class="btn-pwd" onclick="openPwdModal('{{ user.username }}')">🔑 Password</button>
-        {% endif %}
-
-        {% if user.username != admin_username and user.email %}
-        <form method="post" action="/resend-credentials/{{ user.username }}" style="margin:0;"
-              onsubmit="return confirm('Reset password and resend login credentials to {{ user.email }}?')">
-          <button type="submit" class="btn-resend">📧 Resend Credentials</button>
-        </form>
-        {% endif %}
-
-        {% if user.username != admin_username %}
-        <form method="post" action="/delete-user/{{ user.username }}" style="margin:0;"
-              onsubmit="return confirm('Permanently delete {{ user.username }}? This cannot be undone.')">
-          <button type="submit" class="btn-del-sm">🗑 Delete</button>
-        </form>
-        {% endif %}
+        </div>
+        <div class="btn-row">
+          {% if user.username != admin_username %}
+          <button type="button" class="btn-edit"
+                  data-username="{{ user.username|e }}"
+                  data-fullname="{{ (user.full_name or '')|e }}"
+                  data-email="{{ (user.email or '')|e }}"
+                  data-role="{{ user.role|e }}"
+                  data-office="{{ (user.office or '')|e }}"
+                  data-documents="{{ (user.documents_handled or [])|join(', ')|e }}"
+                  onclick="openEditModal(this)">✏️ Edit</button>
+          <button type="button" class="btn-pwd" onclick="openPwdModal('{{ user.username }}')">🔑 Password</button>
+          {% endif %}
+          {% if user.username != admin_username and user.email %}
+          <form method="post" action="/resend-credentials/{{ user.username }}" style="margin:0;"
+                onsubmit="return confirm('Reset password and resend login credentials to {{ user.email }}?')">
+            <button type="submit" class="btn-resend">📧 Resend Credentials</button>
+          </form>
+          {% endif %}
+          {% if user.username != admin_username %}
+          <form method="post" action="/delete-user/{{ user.username }}" style="margin:0;"
+                onsubmit="return confirm('Permanently delete {{ user.username }}? This cannot be undone.')">
+            <button type="submit" class="btn-del-sm">🗑 Delete</button>
+          </form>
+          {% endif %}
+        </div>
       </div>
     </div>
     {% endfor %}

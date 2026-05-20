@@ -63,14 +63,16 @@
   .user-username{font-size:13px;color:var(--muted);font-family:monospace;}
   .user-meta{font-size:13px;color:var(--muted);margin-top:2px;}
 
-  .role-badge{padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap;}
+  .role-badge{padding:2px 8px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;}
   .role-admin{background:#FEF3C7;color:#92400E;}
   .role-staff{background:#DBEAFE;color:#1D4ED8;}
   .role-client{background:#D1FAE5;color:#065F46;}
   .badge-disabled{background:#FEE2E2;color:#7F1D1D;}
   .badge-active{background:#D1FAE5;color:#065F46;}
 
-  .user-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;}
+  .user-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-items:flex-end;}
+  .badges-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;}
+  .btn-row{display:flex;gap:6px;flex-wrap:nowrap;}
   .btn-dis{padding:8px 14px;border-radius:8px;font-size:14px;font-weight:700;
     background:#FEF3C7;color:#92400E;border:2px solid #D97706;cursor:pointer;
     font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;}
@@ -116,7 +118,8 @@
 
   @media(max-width:600px){
     .user-row{flex-direction:column;align-items:flex-start;}
-    .user-actions{width:100%;}
+    .user-actions{width:100%;align-items:flex-start;}
+    .btn-row{flex-wrap:wrap;}
     .btn-dis,.btn-ena,.btn-del-sm,.btn-pwd{flex:1;justify-content:center;}
   }
   @media(max-width:480px){
