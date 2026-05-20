@@ -404,6 +404,9 @@ def _replace_body(doc, placeholder, body_text):
             new_ind.set(qn("w:left"), "1080")
             new_ind.set(qn("w:hanging"), "1080")
             new_pPr.append(new_ind)
+            new_jc = OxmlElement("w:jc")
+            new_jc.set(qn("w:val"), "both")
+            new_pPr.append(new_jc)
             new_p.append(new_pPr)
             new_r  = OxmlElement("w:r")
             # Run properties: Bookman Old Style, 11pt
