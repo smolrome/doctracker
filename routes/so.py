@@ -403,23 +403,103 @@ def _replace_body(doc, placeholder, body_text):
 
 def _save_so_record(filename, so_type, employee_full_name, employee_position,
                     date_issued, generated_by, file_path):
-    """Insert a record into so_records. Silently no-ops in JSON fallback mode."""
+    """Insert a record into so_records. Returns the new record id, or None."""
     try:
         from services.database import USE_DB, get_conn
         if not USE_DB:
-            return
+            return None
         with get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """INSERT INTO so_records
                        (filename, so_type, employee_full_name, employee_position,
                         date_issued, generated_by, file_path)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                       VALUES (%s, %s, %s, %s, %s, %s, %s)
+                       RETURNING id""",
                     (filename, so_type, employee_full_name, employee_position,
                      date_issued, generated_by, file_path),
                 )
+                row = cur.fetchone()
+                return row["id"] if row else None
     except Exception:
-        pass
+        return None
+
+
+_VERIFY_BASE = "https://doctracker.depedleytepersonnelunit.com"
+
+
+def _embed_qr_in_docx(file_path, verify_url):
+    """Open the already-saved docx, embed a QR code beside the Copy Furnished block, re-save."""
+    try:
+        import io
+        import qrcode
+        from docx import Document
+        from docx.shared import Cm, Pt
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+        doc = Document(file_path)
+
+        # Generate QR in memory — version=2, box_size=3, border=2 as specified
+        qr = qrcode.QRCode(version=2, box_size=3, border=2)
+        qr.add_data(verify_url)
+        qr.make(fit=True)
+        qr_img = qr.make_image(fill_color="black", back_color="white")
+        buf = io.BytesIO()
+        qr_img.save(buf, format="PNG")
+        buf.seek(0)
+
+        # Snapshot paragraphs BEFORE mutating the document
+        paras = list(doc.paragraphs)
+
+        # Find the "Copy furnished:" paragraph
+        cf_idx = next((i for i, p in enumerate(paras) if "Copy furnished" in p.text), None)
+        if cf_idx is None:
+            return  # template structure changed — skip silently
+
+        cf_paras = paras[cf_idx:]
+        cf_texts  = [p.text for p in cf_paras]
+
+        # Record the insertion position in the body XML
+        body         = doc.element.body
+        first_cf_p   = cf_paras[0]._p
+        cf_body_idx  = list(body).index(first_cf_p)
+
+        # Build 2-column table via python-docx API (appends to end of doc temporarily)
+        table = doc.add_table(rows=1, cols=2)
+
+        # Left cell — copy furnished text
+        left = table.cell(0, 0)
+        left.paragraphs[0].text = cf_texts[0] if cf_texts else ""
+        for txt in cf_texts[1:]:
+            left.add_paragraph(txt)
+
+        # Right cell — QR image + label
+        right    = table.cell(0, 1)
+        img_para = right.paragraphs[0]
+        img_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        img_run  = img_para.add_run()
+        img_run.add_picture(buf, width=Cm(2.5), height=Cm(2.5))
+
+        lbl_para = right.add_paragraph()
+        lbl_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        lbl_run  = lbl_para.add_run("Scan to verify")
+        lbl_run.font.size = Pt(7)
+        lbl_run.font.name = "Bookman Old Style"
+
+        # Move table from end of body to the CF block position
+        body.remove(table._tbl)
+        body.insert(cf_body_idx, table._tbl)
+
+        # Remove the original CF paragraphs (now replaced by the table's left cell)
+        for p in cf_paras:
+            try:
+                body.remove(p._p)
+            except ValueError:
+                pass  # already removed or not a direct body child
+
+        doc.save(file_path)
+    except Exception as e:
+        print(f"Warning: QR embedding failed: {e}")
 
 
 # ── Auto-log SO as document ────────────────────────────────────────────────────
@@ -621,10 +701,15 @@ def so_generate():
         file_path = os.path.join(out_dir, filename)
         doc.save(file_path)
 
-        _save_so_record(
+        record_id = _save_so_record(
             filename, so_type, employee_full_name, employee_position,
             date_issued, session.get("username", "?"), file_path,
         )
+
+        # Build verification URL and embed QR into the saved docx
+        verify_identifier = str(record_id) if record_id else filename
+        verify_url = f"{_VERIFY_BASE}/so/verify/{verify_identifier}"
+        _embed_qr_in_docx(file_path, verify_url)
 
         _log_so_as_document(
             so_type=original_so_type,
@@ -755,3 +840,32 @@ def so_history_page():
         pass
 
     return render_template("so_history.html", records=records)
+
+
+@so_bp.route("/so/verify/<identifier>")
+def so_verify(identifier):
+    """Public verification page — no login required."""
+    record = None
+    try:
+        from services.database import USE_DB, get_conn
+        if USE_DB:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    if identifier.isdigit():
+                        cur.execute("SELECT * FROM so_records WHERE id = %s", (int(identifier),))
+                    else:
+                        cur.execute("SELECT * FROM so_records WHERE filename = %s", (identifier,))
+                    row = cur.fetchone()
+            if row:
+                record = dict(row)
+                record["so_label"] = SO_TYPES.get(record.get("so_type", ""), {}).get(
+                    "label", (record.get("so_type") or "").replace("_", " ").title()
+                )
+                ga = record.get("generated_at")
+                record["generated_at_str"] = (
+                    ga.strftime("%B %d, %Y %I:%M %p")
+                    if hasattr(ga, "strftime") else str(ga or "—")
+                )
+    except Exception:
+        pass
+    return render_template("so_verify.html", record=record, identifier=identifier)
