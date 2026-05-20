@@ -214,6 +214,7 @@ def create_app() -> Flask:
         from datetime import datetime
         from services.dropdown_options import get_dropdown_options
         from services.auth import get_user_can_generate_so
+        from services.database import get_user_can_route_documents
         role     = session.get("role", "guest")
         username = session.get("username", "")
         if role == "admin":
@@ -222,16 +223,23 @@ def create_app() -> Flask:
             can_generate_so = get_user_can_generate_so(username)
         else:
             can_generate_so = False
+        if role == "admin":
+            can_route_documents = True
+        elif username:
+            can_route_documents = get_user_can_route_documents(username)
+        else:
+            can_route_documents = False
         return dict(
-            logged_in         = is_logged_in(),
-            current_user      = username,
-            current_role      = role,
-            current_full_name = session.get("full_name", ""),
-            current_office    = session.get("office", ""),
-            now               = datetime.now,
-            session           = session,
-            category_options  = get_dropdown_options("category") if is_logged_in() else [],
-            can_generate_so   = can_generate_so,
+            logged_in           = is_logged_in(),
+            current_user        = username,
+            current_role        = role,
+            current_full_name   = session.get("full_name", ""),
+            current_office      = session.get("office", ""),
+            now                 = datetime.now,
+            session             = session,
+            category_options    = get_dropdown_options("category") if is_logged_in() else [],
+            can_generate_so     = can_generate_so,
+            can_route_documents = can_route_documents,
         )
 
     # FIX 1: CSRF token injected globally using the unified key name

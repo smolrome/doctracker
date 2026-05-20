@@ -310,7 +310,8 @@ def get_all_users() -> list[dict]:
                                   COALESCE(approved, TRUE) AS approved,
                                   COALESCE(email, '') AS email,
                                   COALESCE(documents_handled, '[]'::jsonb) AS documents_handled,
-                                  COALESCE(can_generate_so, FALSE) AS can_generate_so
+                                  COALESCE(can_generate_so, FALSE) AS can_generate_so,
+                                  COALESCE(can_route_documents, FALSE) AS can_route_documents
                            FROM users ORDER BY created_at DESC"""
                     )
                     rows = []

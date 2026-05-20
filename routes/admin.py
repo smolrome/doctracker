@@ -10,6 +10,7 @@ from services.auth import (
     update_user_password, update_user, approve_user, get_pending_clients,
     update_user_documents_handled, set_user_can_generate_so,
 )
+from services.database import set_user_can_route_documents
 from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
     send_credentials_email,
@@ -893,6 +894,32 @@ def toggle_so_access(username):
         flash(f"✅ SO access {action} for '{username}'.", "success")
     else:
         flash(f"Failed to update SO access: {err}", "error")
+    return redirect(url_for("admin.manage_users"))
+
+
+@admin_bp.route("/toggle-route-access/<username>", methods=["POST"])
+@admin_required
+def toggle_route_access(username):
+    """Grant or revoke can_route_documents for a staff user."""
+    if username == ADMIN_USERNAME:
+        flash("Admin always has Route access.", "error")
+        return redirect(url_for("admin.manage_users"))
+    all_users = get_all_users()
+    user = next((u for u in all_users if u.get("username") == username), None)
+    if not user:
+        flash(f"User '{username}' not found.", "error")
+        return redirect(url_for("admin.manage_users"))
+    new_value = not bool(user.get("can_route_documents", False))
+    ok, err = set_user_can_route_documents(username, new_value)
+    if ok:
+        action = "granted" if new_value else "revoked"
+        audit_log("route_access_toggled",
+                  f"user={username} can_route_documents={new_value}",
+                  username=session.get("username", "admin"),
+                  ip=get_client_ip())
+        flash(f"✅ Route access {action} for '{username}'.", "success")
+    else:
+        flash(f"Failed to update Route access: {err}", "error")
     return redirect(url_for("admin.manage_users"))
 
 

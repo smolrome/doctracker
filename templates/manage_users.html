@@ -137,6 +137,11 @@
           {% else %}
           <span class="role-badge" style="background:#F1F5F9;color:#94A3B8;border:1px solid #E2E8F0;">📄 No SO</span>
           {% endif %}
+          {% if user.role == 'admin' or user.can_route_documents %}
+          <span class="role-badge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">📤 Route Access</span>
+          {% else %}
+          <span class="role-badge" style="background:#F1F5F9;color:#94A3B8;border:1px solid #E2E8F0;">📤 No Route</span>
+          {% endif %}
         {% endif %}
 
         {% if is_disabled %}
@@ -161,6 +166,14 @@
           <button type="submit" class="btn-edit"
                   style="{{ 'background:#FEF3C7;border-color:#F59E0B;color:#92400E;' if user.can_generate_so else 'background:#ECFDF5;border-color:#6EE7B7;color:#065F46;' }}">
             {{ '🚫 Revoke SO' if user.can_generate_so else '✅ Grant SO' }}
+          </button>
+        </form>
+        <form method="post" action="/toggle-route-access/{{ user.username }}" style="margin:0;"
+              onsubmit="return confirm('{{ 'Revoke' if user.can_route_documents else 'Grant' }} Route access for {{ user.username }}?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn-edit"
+                  style="{{ 'background:#FEF3C7;border-color:#F59E0B;color:#92400E;' if user.can_route_documents else 'background:#EFF6FF;border-color:#BFDBFE;color:#1D4ED8;' }}">
+            {{ '🚫 Revoke Route' if user.can_route_documents else '✅ Grant Route' }}
           </button>
         </form>
         {% endif %}

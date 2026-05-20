@@ -308,6 +308,7 @@ def _run_migrations(cur):
     migrations.append("ALTER TABLE appointments ADD COLUMN IF NOT EXISTS assigned_to TEXT DEFAULT ''")
     migrations.append("ALTER TABLE appointments ADD COLUMN IF NOT EXISTS assigned_to_name TEXT DEFAULT ''")
     migrations.append("ALTER TABLE users ADD COLUMN IF NOT EXISTS can_generate_so BOOLEAN DEFAULT FALSE")
+    migrations.append("ALTER TABLE users ADD COLUMN IF NOT EXISTS can_route_documents BOOLEAN DEFAULT FALSE")
     migrations.append("CREATE INDEX IF NOT EXISTS idx_staff_pairings_a ON staff_pairings(user_a)")
     migrations.append("CREATE INDEX IF NOT EXISTS idx_staff_pairings_b ON staff_pairings(user_b)")
     migrations.append("CREATE INDEX IF NOT EXISTS idx_sgm_group ON staff_group_members(group_id)")
@@ -337,6 +338,42 @@ def get_paired_usernames(username: str) -> list:
                 return [r['partner'] for r in rows]
     except Exception:
         return []
+
+
+def get_user_can_route_documents(username: str) -> bool:
+    """Return the can_route_documents flag for a user. Defaults to False if not set."""
+    uname = username.lower().strip()
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT can_route_documents FROM users WHERE username = %s", (uname,)
+                    )
+                    row = cur.fetchone()
+            return bool(row["can_route_documents"]) if row else False
+        except Exception:
+            return False
+    else:
+        return False
+
+
+def set_user_can_route_documents(username: str, value: bool) -> tuple:
+    """Set the can_route_documents flag for a user."""
+    uname = username.lower().strip()
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE users SET can_route_documents = %s WHERE username = %s",
+                        (value, uname),
+                    )
+            return True, None
+        except Exception as e:
+            return False, f"Database error: {e}"
+    else:
+        return False, "Database not available."
 
 
 def get_group_usernames(username: str) -> list:
