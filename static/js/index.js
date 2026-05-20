@@ -1541,6 +1541,31 @@ function submitReject() {
   });
 }
 
+// ─────────────────────────────────────────────────────────────
+//  BULK DELETE (admin only)
+// ─────────────────────────────────────────────────────────────
+function confirmBulkDelete() {
+  var ids = getCartDocIds();
+  if (!ids || ids.length === 0) {
+    showToast('No documents selected.', 'warning');
+    return;
+  }
+  if (!confirm('Are you sure you want to delete ' + ids.length + ' document(s)? They will be moved to trash.')) {
+    return;
+  }
+  var csrfToken = (document.getElementById('csrf-token-value') || {}).value || '';
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/bulk-delete';
+  [['doc_ids', ids.join(',')], ['csrf_token', csrfToken]].forEach(function(pair) {
+    var inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = pair[0]; inp.value = pair[1];
+    form.appendChild(inp);
+  });
+  document.body.appendChild(form);
+  form.submit();
+}
+
 function markAttended(aptId) {
   if (!confirm('Mark this appointment as attended?')) return;
   fetch('/staff/appointments/' + aptId + '/confirm', {

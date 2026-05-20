@@ -716,6 +716,28 @@ def delete(doc_id):
     return redirect(url_for("dashboard.index"))
 
 
+@dashboard_bp.route("/bulk-delete", methods=["POST"])
+@admin_required
+def bulk_delete():
+    doc_ids = request.form.get("doc_ids", "")
+    ids = [d.strip() for d in doc_ids.split(",") if d.strip()]
+    if not ids:
+        flash("No documents selected.", "warning")
+        return redirect(url_for("dashboard.index"))
+
+    deleted = 0
+    for doc_id in ids:
+        doc = get_doc(doc_id)
+        if doc:
+            delete_doc(doc_id, deleted_by=session.get("username", ""))
+            deleted += 1
+
+    audit_log("bulk_delete", f"Admin bulk deleted {deleted} documents: {', '.join(ids)}",
+              session.get("username"))
+    flash(f"{deleted} document(s) moved to trash.", "success")
+    return redirect(url_for("dashboard.index"))
+
+
 @dashboard_bp.route("/restore/<doc_id>", methods=["POST"])
 @admin_required
 def restore(doc_id):
