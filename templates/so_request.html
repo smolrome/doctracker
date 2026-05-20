@@ -416,6 +416,15 @@ function onTypeChange() {
         group.appendChild(lbl);
         group.appendChild(input);
         wrap.appendChild(group);
+
+        if (field.key === 'accountability_amount_figures') {
+          input.addEventListener('input', function () {
+            const wordsField = document.getElementById('dyn-accountability_amount_words');
+            if (wordsField) {
+              wordsField.value = numberToWords(this.value);
+            }
+          });
+        }
       });
 
       inner.appendChild(wrap);
@@ -423,6 +432,47 @@ function onTypeChange() {
       submitBtn.disabled = false;
     })
     .catch(() => showError('Could not load fields. Check your connection.'));
+}
+
+/* ── Number-to-words converter (for accountability amount) ── */
+function numberToWords(numStr) {
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven',
+                 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen',
+                 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty',
+                 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  function below1000(n) {
+    if (n === 0) return '';
+    if (n < 20)  return ones[n] + ' ';
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? '-' + ones[n % 10] : '') + ' ';
+    return ones[Math.floor(n / 100)] + ' Hundred ' + below1000(n % 100);
+  }
+
+  const cleaned = numStr.replace(/,/g, '').trim();
+  const parts   = cleaned.split('.');
+  const intPart = parseInt(parts[0], 10);
+  const decPart = parts[1] ? parseInt(parts[1].padEnd(2, '0').slice(0, 2), 10) : 0;
+
+  if (isNaN(intPart)) return '';
+
+  let result = '';
+  if (intPart === 0) {
+    result = 'Zero';
+  } else {
+    const billions  = Math.floor(intPart / 1_000_000_000);
+    const millions  = Math.floor((intPart % 1_000_000_000) / 1_000_000);
+    const thousands = Math.floor((intPart % 1_000_000) / 1_000);
+    const remainder = intPart % 1_000;
+    if (billions)  result += below1000(billions)  + 'Billion ';
+    if (millions)  result += below1000(millions)  + 'Million ';
+    if (thousands) result += below1000(thousands) + 'Thousand ';
+    if (remainder) result += below1000(remainder);
+  }
+
+  result = result.trim() + ' Pesos';
+  if (decPart > 0) result += ' and ' + below1000(decPart).trim() + ' Centavos';
+  return result.trim();
 }
 
 /* ── Form submit: POST to /api/so/generate ── */
