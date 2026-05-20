@@ -88,21 +88,19 @@ def index():
     user_role = session.get("role", "")
 
     docs = load_docs()
-    
+
     if user_role != "admin":
+        from services.database import get_paired_usernames
+        paired = get_paired_usernames(current_username)
+        all_usernames = set([current_username] + paired)
         docs = [
             d for d in docs
             if (
-                # Staff can see documents they originally logged (for transferred docs)
-                d.get("original_logged_by") == current_username
-                # OR documents they logged but were never transferred (no original_logged_by)
-                or d.get("logged_by") == current_username
-                # OR documents they received
-                or d.get("received_by") == current_username
-                # OR documents they have accepted
-                or d.get("accepted_by") == current_username
-                # OR documents they have transferred (to see the status)
-                or d.get("transferred_by") == current_username
+                d.get("original_logged_by") in all_usernames
+                or d.get("logged_by") in all_usernames
+                or d.get("received_by") in all_usernames
+                or d.get("accepted_by") in all_usernames
+                or d.get("transferred_by") in all_usernames
             )
         ]
 

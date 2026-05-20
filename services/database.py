@@ -218,6 +218,16 @@ def _create_tables(cur):
             file_path          VARCHAR(500) NOT NULL
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS staff_pairings (
+            id         SERIAL PRIMARY KEY,
+            user_a     TEXT NOT NULL,
+            user_b     TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(user_a, user_b)
+        )
+    """)
     # Performance + audit query indexes
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(username)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(ts DESC)""")
@@ -280,6 +290,8 @@ def _run_migrations(cur):
     migrations.append("ALTER TABLE appointments ADD COLUMN IF NOT EXISTS assigned_to TEXT DEFAULT ''")
     migrations.append("ALTER TABLE appointments ADD COLUMN IF NOT EXISTS assigned_to_name TEXT DEFAULT ''")
     migrations.append("ALTER TABLE users ADD COLUMN IF NOT EXISTS can_generate_so BOOLEAN DEFAULT FALSE")
+    migrations.append("CREATE INDEX IF NOT EXISTS idx_staff_pairings_a ON staff_pairings(user_a)")
+    migrations.append("CREATE INDEX IF NOT EXISTS idx_staff_pairings_b ON staff_pairings(user_b)")
     for sql in migrations:
         try:
             cur.execute("SAVEPOINT mig")
@@ -287,3 +299,21 @@ def _run_migrations(cur):
             cur.execute("RELEASE SAVEPOINT mig")
         except Exception as e:
             cur.execute("ROLLBACK TO SAVEPOINT mig")  # keep transaction alive
+
+
+def get_paired_usernames(username: str) -> list:
+    """Return all usernames paired with the given username (bidirectional)."""
+    if not USE_DB or not username:
+        return []
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT user_b AS partner FROM staff_pairings WHERE user_a = %s
+                    UNION
+                    SELECT user_a AS partner FROM staff_pairings WHERE user_b = %s
+                """, (username, username))
+                rows = cur.fetchall()
+                return [r['partner'] for r in rows]
+    except Exception:
+        return []

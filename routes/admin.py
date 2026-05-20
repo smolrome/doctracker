@@ -896,6 +896,88 @@ def toggle_so_access(username):
     return redirect(url_for("admin.manage_users"))
 
 
+@admin_bp.route("/manage-pairings")
+@admin_required
+def manage_pairings():
+    from services.database import USE_DB, get_conn
+    from services.auth import get_all_users
+    pairings = []
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id, user_a, user_b, created_by,
+                               to_char(created_at, 'Mon DD, YYYY') AS created_date
+                        FROM staff_pairings
+                        ORDER BY created_at DESC
+                    """)
+                    pairings = cur.fetchall() or []
+        except Exception:
+            pass
+    all_users = get_all_users()
+    staff_users = [u for u in all_users if u.get("role") in ("staff", "admin")]
+    return render_template("manage_pairings.html", pairings=pairings, staff_users=staff_users)
+
+
+@admin_bp.route("/manage-pairings/add", methods=["POST"])
+@admin_required
+def add_pairing():
+    from services.database import USE_DB, get_conn
+    user_a = request.form.get("user_a", "").strip()
+    user_b = request.form.get("user_b", "").strip()
+    if not user_a or not user_b:
+        flash("Both staff members are required.", "error")
+        return redirect(url_for("admin.manage_pairings"))
+    if user_a == user_b:
+        flash("Cannot pair a staff member with themselves.", "error")
+        return redirect(url_for("admin.manage_pairings"))
+    # Store canonical order (alphabetical) to satisfy UNIQUE constraint
+    a, b = (user_a, user_b) if user_a < user_b else (user_b, user_a)
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO staff_pairings (user_a, user_b, created_by)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (user_a, user_b) DO NOTHING
+                    """, (a, b, session.get("username", "admin")))
+            audit_log("pairing_added", f"paired {a} <-> {b}",
+                      username=session.get("username", "admin"), ip=get_client_ip())
+            flash(f"Pairing added: {a} ↔ {b}.", "success")
+        except Exception as e:
+            flash(f"Failed to add pairing: {e}", "error")
+    else:
+        flash("Database not available.", "error")
+    return redirect(url_for("admin.manage_pairings"))
+
+
+@admin_bp.route("/manage-pairings/remove/<int:pairing_id>", methods=["POST"])
+@admin_required
+def remove_pairing(pairing_id):
+    from services.database import USE_DB, get_conn
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT user_a, user_b FROM staff_pairings WHERE id = %s", (pairing_id,))
+                    row = cur.fetchone()
+                    if row:
+                        cur.execute("DELETE FROM staff_pairings WHERE id = %s", (pairing_id,))
+                        audit_log("pairing_removed",
+                                  f"removed pairing id={pairing_id} ({row['user_a']} <-> {row['user_b']})",
+                                  username=session.get("username", "admin"), ip=get_client_ip())
+                        flash("Pairing removed.", "success")
+                    else:
+                        flash("Pairing not found.", "error")
+        except Exception as e:
+            flash(f"Failed to remove pairing: {e}", "error")
+    else:
+        flash("Database not available.", "error")
+    return redirect(url_for("admin.manage_pairings"))
+
+
 @admin_bp.route("/clear-database", methods=["POST"])
 @admin_required
 def clear_database():
