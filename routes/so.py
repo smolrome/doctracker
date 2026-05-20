@@ -270,7 +270,19 @@ def _fmt_date(s: str) -> str:
 
 # ── python-docx placeholder helpers ────────────────────────────────────────────
 
-def _replace_in_para_list(paragraphs, placeholder, value):
+def _apply_run_fmt(run, bold=None, font_name=None, font_size_pt=None):
+    """Apply font formatting to a single run without touching anything else."""
+    from docx.shared import Pt
+    if font_name is not None:
+        run.font.name = font_name
+    if font_size_pt is not None:
+        run.font.size = Pt(font_size_pt)
+    if bold is not None:
+        run.bold = bold
+
+
+def _replace_in_para_list(paragraphs, placeholder, value,
+                           bold=None, font_name=None, font_size_pt=None):
     """Replace placeholder in a list of paragraphs, handling split runs."""
     for para in paragraphs:
         if placeholder not in para.text:
@@ -281,22 +293,28 @@ def _replace_in_para_list(paragraphs, placeholder, value):
             runs[0].text = new_text
             for run in runs[1:]:
                 run.text = ""
+            _apply_run_fmt(runs[0], bold=bold, font_name=font_name, font_size_pt=font_size_pt)
         else:
-            para.add_run(new_text)
+            new_run = para.add_run(new_text)
+            _apply_run_fmt(new_run, bold=bold, font_name=font_name, font_size_pt=font_size_pt)
 
 
-def _replace_simple(doc, placeholder, value):
+def _replace_simple(doc, placeholder, value,
+                    bold=None, font_name=None, font_size_pt=None):
     """Replace a single-value placeholder everywhere in the document."""
-    _replace_in_para_list(doc.paragraphs, placeholder, value)
+    _replace_in_para_list(doc.paragraphs, placeholder, value,
+                          bold=bold, font_name=font_name, font_size_pt=font_size_pt)
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
-                _replace_in_para_list(cell.paragraphs, placeholder, value)
+                _replace_in_para_list(cell.paragraphs, placeholder, value,
+                                      bold=bold, font_name=font_name, font_size_pt=font_size_pt)
 
 
 def _replace_body(doc, placeholder, body_text):
     """Replace a body placeholder, expanding double-newline blocks into paragraphs."""
     from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
     blocks = [b.strip() for b in body_text.split("\n\n") if b.strip()]
     for para in doc.paragraphs:
         if placeholder not in para.text:
@@ -304,8 +322,21 @@ def _replace_body(doc, placeholder, body_text):
         parent = para._p.getparent()
         idx    = list(parent).index(para._p)
         for offset, text in enumerate(blocks):
-            new_p = OxmlElement("w:p")
-            new_r = OxmlElement("w:r")
+            new_p  = OxmlElement("w:p")
+            new_r  = OxmlElement("w:r")
+            # Run properties: Bookman Old Style, 11pt
+            new_rPr = OxmlElement("w:rPr")
+            new_rFonts = OxmlElement("w:rFonts")
+            new_rFonts.set(qn("w:ascii"), "Bookman Old Style")
+            new_rFonts.set(qn("w:hAnsi"), "Bookman Old Style")
+            new_rPr.append(new_rFonts)
+            new_sz = OxmlElement("w:sz")
+            new_sz.set(qn("w:val"), "22")  # 11pt = 22 half-points
+            new_rPr.append(new_sz)
+            new_szCs = OxmlElement("w:szCs")
+            new_szCs.set(qn("w:val"), "22")
+            new_rPr.append(new_szCs)
+            new_r.append(new_rPr)
             new_t = OxmlElement("w:t")
             new_t.text = text
             new_t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
@@ -413,11 +444,15 @@ def so_generate():
         # Replace body FIRST (it expands into multiple paragraphs)
         _replace_body(doc, "{{body}}", body)
 
-        # Replace the four single-value placeholders
-        _replace_simple(doc, "{{employee_full_name}}", employee_full_name)
-        _replace_simple(doc, "{{employee_position}}",  employee_position)
-        _replace_simple(doc, "{{subject}}",            config["subject"])
-        _replace_simple(doc, "{{date_issued}}",        date_issued)
+        # Replace the four single-value placeholders with explicit formatting
+        _replace_simple(doc, "{{employee_full_name}}", employee_full_name,
+                        bold=True,  font_name="Bookman Old Style", font_size_pt=11)
+        _replace_simple(doc, "{{employee_position}}",  employee_position,
+                        bold=False, font_name="Bookman Old Style", font_size_pt=11)
+        _replace_simple(doc, "{{subject}}",            config["subject"],
+                        bold=True,  font_name="Bookman Old Style", font_size_pt=11)
+        _replace_simple(doc, "{{date_issued}}",        date_issued,
+                        bold=False, font_name="Bookman Old Style", font_size_pt=11)
 
         # ── Save ─────────────────────────────────────────────────────────────────
         os.makedirs(OUTPUT_DIR, exist_ok=True)
