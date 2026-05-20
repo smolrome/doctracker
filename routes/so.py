@@ -260,6 +260,48 @@ FIELD_LABELS = {
     "agreement_basis":               "Agreement Basis (e.g. Approved Swapping Agreement)",
 }
 
+# Maps category dropdown values (lowercased) to SO_TYPES keys
+CATEGORY_TO_SO_TYPE = {
+    "assign order":                                          "assignment_order",
+    "assignment order":                                      "assignment_order",
+    "designation":                                           "designation_new",
+    "renewal of designation":                                "designation_renewal",
+    "detail order":                                          "detailment",
+    "detailment":                                            "detailment",
+    "realignment":                                           "realignment",
+    "reassignment":                                          "reassignment",
+    "shared services of administrative officer (ao ii)":     "shared_services",
+    "transfer of station":                                   "transfer_of_station",
+    "transfer of station with designation":                  "transfer_of_station_with_designation",
+    "transfer of agency":                                    "transfer_of_agency",
+    "revocation of special order":                           "revocation",
+    "invocation of special order":                           "revocation",
+    "termination of services and acceptance of resignation":  "resignation",
+    "resignation":                                           "resignation",
+}
+
+# Official SO category names shown in the document type dropdown
+SO_CATEGORIES = [
+    "Special Order",
+    "Assignment Order",
+    "Designation",
+    "Renewal of Designation",
+    "Detail Order",
+    "Detailment",
+    "Recall of Detailment",
+    "Realignment",
+    "Reassignment",
+    "Shared Services of Administrative Officer (AO II)",
+    "Transfer of Station",
+    "Transfer of Station with Designation",
+    "Transfer of Agency",
+    "Invocation of Special Order",
+    "Revocation of Special Order",
+    "Termination of Services and Acceptance of Resignation",
+    "Resignation",
+    "Request for Detailment",
+]
+
 # Fields that render as date pickers
 _DATE_FIELDS = {"effective_date", "termination_effective_date", "period_from", "period_to"}
 
@@ -410,7 +452,16 @@ def so_request_page():
     guard = _require_staff()
     if guard:
         return guard
-    return render_template("so_request.html", so_types=SO_TYPES)
+    return render_template("so_request.html", so_categories=SO_CATEGORIES)
+
+
+@so_bp.route("/api/so/types")
+@login_required
+def so_types_list():
+    """Return the list of official SO category names."""
+    if session.get("role") not in ("staff", "admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+    return jsonify({"success": True, "types": [{"value": c, "label": c} for c in SO_CATEGORIES]})
 
 
 @so_bp.route("/api/so/fields/<so_type>")
@@ -446,6 +497,11 @@ def so_generate():
     employee_position  = data.get("employee_position", "").strip()
     date_issued        = _fmt_date(data.get("date_issued", "").strip())
     fields             = {k: v.strip() for k, v in data.get("fields", {}).items()}
+
+    # Map category name to internal SO type
+    mapped = CATEGORY_TO_SO_TYPE.get(so_type.lower())
+    if mapped:
+        so_type = mapped
 
     # ── Validate ────────────────────────────────────────────────────────────────
     if not so_type or so_type not in SO_TYPES:

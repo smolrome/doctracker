@@ -243,8 +243,8 @@
         <label class="form-label" for="so-type">SO Type <span class="req">*</span></label>
         <select id="so-type" class="form-input form-select" onchange="onTypeChange()" required>
           <option value="">— Select SO Type —</option>
-          {% for key, cfg in so_types.items() %}
-          <option value="{{ key }}">{{ cfg.label }}</option>
+          {% for category in so_categories %}
+          <option value="{{ category }}">{{ category }}</option>
           {% endfor %}
         </select>
       </div>
