@@ -1563,6 +1563,11 @@ function confirmBulkDelete() {
     form.appendChild(inp);
   });
   document.body.appendChild(form);
+  // Clear all selection storage before navigating away so the cart
+  // doesn't re-populate with IDs that no longer exist after deletion.
+  localStorage.removeItem(SELECTION_STORAGE_KEY);
+  localStorage.removeItem(CART_STORAGE_KEY);
+  localStorage.removeItem(CART_DETAILS_KEY);
   form.submit();
 }
 
