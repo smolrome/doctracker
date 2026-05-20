@@ -901,78 +901,147 @@ def toggle_so_access(username):
 def manage_pairings():
     from services.database import USE_DB, get_conn
     from services.auth import get_all_users
-    pairings = []
+    groups = []
     if USE_DB:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
-                        SELECT id, user_a, user_b, created_by,
+                        SELECT id, group_name, created_by,
                                to_char(created_at, 'Mon DD, YYYY') AS created_date
-                        FROM staff_pairings
+                        FROM staff_groups
                         ORDER BY created_at DESC
                     """)
-                    pairings = cur.fetchall() or []
+                    raw_groups = cur.fetchall() or []
+                    # Fetch members for each group
+                    for g in raw_groups:
+                        cur.execute("""
+                            SELECT id, username, added_by,
+                                   to_char(added_at, 'Mon DD, YYYY') AS added_date
+                            FROM staff_group_members
+                            WHERE group_id = %s
+                            ORDER BY added_at ASC
+                        """, (g['id'],))
+                        members = cur.fetchall() or []
+                        groups.append({
+                            'id':           g['id'],
+                            'group_name':   g['group_name'],
+                            'created_by':   g['created_by'],
+                            'created_date': g['created_date'],
+                            'members':      list(members),
+                        })
         except Exception:
             pass
     all_users = get_all_users()
     staff_users = [u for u in all_users if u.get("role") in ("staff", "admin")]
-    return render_template("manage_pairings.html", pairings=pairings, staff_users=staff_users)
+    # Build username → full_name map for display
+    name_map = {u['username']: (u.get('full_name') or u['username']) for u in all_users}
+    return render_template("manage_pairings.html",
+                           groups=groups,
+                           staff_users=staff_users,
+                           name_map=name_map)
 
 
-@admin_bp.route("/manage-pairings/add", methods=["POST"])
+@admin_bp.route("/manage-pairings/create-group", methods=["POST"])
 @admin_required
-def add_pairing():
+def create_group():
     from services.database import USE_DB, get_conn
-    user_a = request.form.get("user_a", "").strip()
-    user_b = request.form.get("user_b", "").strip()
-    if not user_a or not user_b:
-        flash("Both staff members are required.", "error")
+    group_name = request.form.get("group_name", "").strip()
+    if not group_name:
+        flash("Group name is required.", "error")
         return redirect(url_for("admin.manage_pairings"))
-    if user_a == user_b:
-        flash("Cannot pair a staff member with themselves.", "error")
-        return redirect(url_for("admin.manage_pairings"))
-    # Store canonical order (alphabetical) to satisfy UNIQUE constraint
-    a, b = (user_a, user_b) if user_a < user_b else (user_b, user_a)
     if USE_DB:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
-                        INSERT INTO staff_pairings (user_a, user_b, created_by)
-                        VALUES (%s, %s, %s)
-                        ON CONFLICT (user_a, user_b) DO NOTHING
-                    """, (a, b, session.get("username", "admin")))
-            audit_log("pairing_added", f"paired {a} <-> {b}",
+                        INSERT INTO staff_groups (group_name, created_by)
+                        VALUES (%s, %s)
+                        ON CONFLICT (group_name) DO NOTHING
+                    """, (group_name, session.get("username", "admin")))
+            audit_log("group_created", f"group_name={group_name}",
                       username=session.get("username", "admin"), ip=get_client_ip())
-            flash(f"Pairing added: {a} ↔ {b}.", "success")
+            flash(f"Group '{group_name}' created.", "success")
         except Exception as e:
-            flash(f"Failed to add pairing: {e}", "error")
+            flash(f"Failed to create group: {e}", "error")
     else:
         flash("Database not available.", "error")
     return redirect(url_for("admin.manage_pairings"))
 
 
-@admin_bp.route("/manage-pairings/remove/<int:pairing_id>", methods=["POST"])
+@admin_bp.route("/manage-pairings/add-member", methods=["POST"])
 @admin_required
-def remove_pairing(pairing_id):
+def add_group_member():
+    from services.database import USE_DB, get_conn
+    group_id = request.form.get("group_id", "").strip()
+    username = request.form.get("username", "").strip()
+    if not group_id or not username:
+        flash("Group and staff member are required.", "error")
+        return redirect(url_for("admin.manage_pairings"))
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO staff_group_members (group_id, username, added_by)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (group_id, username) DO NOTHING
+                    """, (int(group_id), username, session.get("username", "admin")))
+            audit_log("group_member_added", f"group_id={group_id} username={username}",
+                      username=session.get("username", "admin"), ip=get_client_ip())
+            flash(f"Added {username} to group.", "success")
+        except Exception as e:
+            flash(f"Failed to add member: {e}", "error")
+    else:
+        flash("Database not available.", "error")
+    return redirect(url_for("admin.manage_pairings"))
+
+
+@admin_bp.route("/manage-pairings/remove-member/<int:member_id>", methods=["POST"])
+@admin_required
+def remove_group_member(member_id):
     from services.database import USE_DB, get_conn
     if USE_DB:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT user_a, user_b FROM staff_pairings WHERE id = %s", (pairing_id,))
+                    cur.execute("SELECT username, group_id FROM staff_group_members WHERE id = %s", (member_id,))
                     row = cur.fetchone()
                     if row:
-                        cur.execute("DELETE FROM staff_pairings WHERE id = %s", (pairing_id,))
-                        audit_log("pairing_removed",
-                                  f"removed pairing id={pairing_id} ({row['user_a']} <-> {row['user_b']})",
+                        cur.execute("DELETE FROM staff_group_members WHERE id = %s", (member_id,))
+                        audit_log("group_member_removed",
+                                  f"member_id={member_id} username={row['username']} group_id={row['group_id']}",
                                   username=session.get("username", "admin"), ip=get_client_ip())
-                        flash("Pairing removed.", "success")
+                        flash(f"Removed {row['username']} from group.", "success")
                     else:
-                        flash("Pairing not found.", "error")
+                        flash("Member not found.", "error")
         except Exception as e:
-            flash(f"Failed to remove pairing: {e}", "error")
+            flash(f"Failed to remove member: {e}", "error")
+    else:
+        flash("Database not available.", "error")
+    return redirect(url_for("admin.manage_pairings"))
+
+
+@admin_bp.route("/manage-pairings/delete-group/<int:group_id>", methods=["POST"])
+@admin_required
+def delete_group(group_id):
+    from services.database import USE_DB, get_conn
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT group_name FROM staff_groups WHERE id = %s", (group_id,))
+                    row = cur.fetchone()
+                    if row:
+                        cur.execute("DELETE FROM staff_groups WHERE id = %s", (group_id,))
+                        audit_log("group_deleted",
+                                  f"group_id={group_id} group_name={row['group_name']}",
+                                  username=session.get("username", "admin"), ip=get_client_ip())
+                        flash(f"Group '{row['group_name']}' deleted.", "success")
+                    else:
+                        flash("Group not found.", "error")
+        except Exception as e:
+            flash(f"Failed to delete group: {e}", "error")
     else:
         flash("Database not available.", "error")
     return redirect(url_for("admin.manage_pairings"))

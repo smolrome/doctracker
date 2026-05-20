@@ -228,6 +228,24 @@ def _create_tables(cur):
             UNIQUE(user_a, user_b)
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS staff_groups (
+            id         SERIAL PRIMARY KEY,
+            group_name TEXT NOT NULL UNIQUE,
+            created_by TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS staff_group_members (
+            id       SERIAL PRIMARY KEY,
+            group_id INTEGER REFERENCES staff_groups(id) ON DELETE CASCADE,
+            username TEXT NOT NULL,
+            added_by TEXT NOT NULL,
+            added_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(group_id, username)
+        )
+    """)
     # Performance + audit query indexes
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(username)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(ts DESC)""")
@@ -292,6 +310,8 @@ def _run_migrations(cur):
     migrations.append("ALTER TABLE users ADD COLUMN IF NOT EXISTS can_generate_so BOOLEAN DEFAULT FALSE")
     migrations.append("CREATE INDEX IF NOT EXISTS idx_staff_pairings_a ON staff_pairings(user_a)")
     migrations.append("CREATE INDEX IF NOT EXISTS idx_staff_pairings_b ON staff_pairings(user_b)")
+    migrations.append("CREATE INDEX IF NOT EXISTS idx_sgm_group ON staff_group_members(group_id)")
+    migrations.append("CREATE INDEX IF NOT EXISTS idx_sgm_username ON staff_group_members(username)")
     for sql in migrations:
         try:
             cur.execute("SAVEPOINT mig")
@@ -302,7 +322,7 @@ def _run_migrations(cur):
 
 
 def get_paired_usernames(username: str) -> list:
-    """Return all usernames paired with the given username (bidirectional)."""
+    """Legacy pair-based lookup — kept for backwards compatibility."""
     if not USE_DB or not username:
         return []
     try:
@@ -316,4 +336,24 @@ def get_paired_usernames(username: str) -> list:
                 rows = cur.fetchall()
                 return [r['partner'] for r in rows]
     except Exception:
+        return []
+
+
+def get_group_usernames(username: str) -> list:
+    """Return all usernames that share a staff group with this user (excluding self)."""
+    if not USE_DB or not username:
+        return []
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT DISTINCT sgm2.username
+                    FROM staff_group_members sgm1
+                    JOIN staff_group_members sgm2 ON sgm1.group_id = sgm2.group_id
+                    WHERE sgm1.username = %s AND sgm2.username != %s
+                """, (username, username))
+                rows = cur.fetchall()
+                return [list(row.values())[0] for row in rows]
+    except Exception as e:
+        print(f"Error getting group usernames: {e}")
         return []

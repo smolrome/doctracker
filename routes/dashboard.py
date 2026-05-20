@@ -90,8 +90,8 @@ def index():
     docs = load_docs()
 
     if user_role != "admin":
-        from services.database import get_paired_usernames
-        paired = get_paired_usernames(current_username)
+        from services.database import get_group_usernames
+        paired = get_group_usernames(current_username)
         all_usernames = set([current_username] + paired)
         docs = [
             d for d in docs
