@@ -371,8 +371,6 @@
         </div>
 
         <!-- Add member -->
-        {% set available = staff_users | selectattr('username', 'not in', member_usernames) | list %}
-        {% if available %}
         <div class="mp-add-member">
           <form method="POST" action="/manage-pairings/add-member"
                 style="display:flex;gap:8px;align-items:center;flex:1;margin:0;">
@@ -380,8 +378,10 @@
             <input type="hidden" name="group_id" value="{{ g.id }}">
             <select name="username" class="mp-select-member" required>
               <option value="">— Add member —</option>
-              {% for u in available %}
+              {% for u in staff_users %}
+              {% if u.username not in member_usernames %}
               <option value="{{ u.username }}">{{ u.full_name or u.username }}</option>
+              {% endif %}
               {% endfor %}
             </select>
             <button type="submit" class="mp-btn-add-member">Add</button>
