@@ -71,8 +71,8 @@ SO_TYPES = {
             "{honorific} {employee_full_name} as {designation_role} of {school_name}, "
             "{district}, {municipality}, Leyte effective {effective_date} or upon receipt "
             "thereof.\n\n"
-            "The amount accountability entrusted to the SDO amounting to "
-            "{accountability_amount_words} ({accountability_amount_figures}).\n\n"
+            "**The amount accountability entrusted to the SDO amounting to "
+            "{accountability_amount_words} ({accountability_amount_figures}).**\n\n"
             "This order is valid for School Year {school_year} only, subject to the request "
             "for renewal and subsequent approval of the Superintendent.\n\n"
             "For your information, proper guidance, and strict compliance."
@@ -396,6 +396,10 @@ def _replace_body(doc, placeholder, body_text):
         idx    = list(parent).index(para._p)
         for offset, text in enumerate(blocks):
             number = offset + 1
+            # Check if paragraph should be bold (wrapped in **)
+            is_bold = text.startswith("**") and text.endswith("**")
+            if is_bold:
+                text = text[2:-2]  # strip the markers
             numbered_text = f"{number}.\t{text}"
             new_p  = OxmlElement("w:p")
             # Paragraph properties — tab stop for hanging indent matching original SO format
@@ -411,6 +415,9 @@ def _replace_body(doc, placeholder, body_text):
             new_r  = OxmlElement("w:r")
             # Run properties: Bookman Old Style, 11pt
             new_rPr = OxmlElement("w:rPr")
+            if is_bold:
+                new_b = OxmlElement("w:b")
+                new_rPr.append(new_b)
             new_rFonts = OxmlElement("w:rFonts")
             new_rFonts.set(qn("w:ascii"), "Bookman Old Style")
             new_rFonts.set(qn("w:hAnsi"), "Bookman Old Style")
@@ -708,6 +715,13 @@ def so_fields(so_type):
     return jsonify({"fields": fields, "subject": config["subject"]})
 
 
+def _get_initials(full_name):
+    if not full_name:
+        return ""
+    parts = full_name.strip().split()
+    return "".join(p[0].upper() for p in parts if p)
+
+
 @so_bp.route("/api/so/generate", methods=["POST"])
 def so_generate():
     """Generate the SO .docx and return a download URL."""
@@ -722,6 +736,9 @@ def so_generate():
     employee_position  = data.get("employee_position", "").strip()
     date_issued        = _fmt_date(data.get("date_issued", "").strip())
     fields             = {k: v.strip() for k, v in data.get("fields", {}).items()}
+
+    initials       = _get_initials(session.get("full_name", ""))
+    reference_code = f"OSDS-PU-{initials}" if initials else "OSDS-PU-RVV"
 
     # Map category name to internal SO type
     mapped = CATEGORY_TO_SO_TYPE.get(so_type.lower())
@@ -777,6 +794,7 @@ def so_generate():
                         bold=True,  font_name="Bookman Old Style", font_size_pt=11)
         _replace_simple(doc, "{{date_issued}}",        date_issued,
                         bold=False, font_name="Bookman Old Style", font_size_pt=11)
+        _replace_simple(doc, "{{reference_code}}",    reference_code)
 
         # ── Save ─────────────────────────────────────────────────────────────────
         out_dir   = _get_output_dir(so_type)

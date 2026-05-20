@@ -374,6 +374,24 @@ function onTypeChange() {
         lbl.htmlFor   = `dyn-${field.key}`;
         lbl.innerHTML = `${field.label} <span class="req">*</span>`;
 
+        if (field.key === 'honorific') {
+          const select = document.createElement('select');
+          select.id       = `dyn-${field.key}`;
+          select.name     = field.key;
+          select.required = true;
+          select.className = 'form-input form-select';
+          ['Ms.', 'Mr.', 'Dr.'].forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            option.textContent = opt;
+            select.appendChild(option);
+          });
+          group.appendChild(lbl);
+          group.appendChild(select);
+          wrap.appendChild(group);
+          return;
+        }
+
         let input;
         if (field.type === 'date') {
           input = document.createElement('input');
