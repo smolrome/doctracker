@@ -30,8 +30,23 @@
     {% endfor %}
   </select>
 
+  {% if current_role == 'admin' %}
+  <label class="sh-select-all-wrap">
+    <input type="checkbox" id="sh-select-all" onchange="toggleSelectAll(this)"> Select All
+  </label>
+  {% endif %}
+
   <span id="sh-visible-count" class="sh-visible-count"></span>
 </div>
+
+{% if current_role == 'admin' %}
+<!-- Bulk delete bar (shown when cards are selected) -->
+<div class="sh-bulk-bar" id="sh-bulk-bar" style="display:none;">
+  <span id="sh-bulk-count" class="sh-bulk-count">0 selected</span>
+  <button class="sh-btn-bulk-delete" onclick="bulkDeleteSelected()">🗑 Delete Selected</button>
+  <button class="sh-btn-bulk-cancel" onclick="clearSelection()">✕ Cancel</button>
+</div>
+{% endif %}
 
 <!-- Card grid -->
 <div class="sh-grid" id="sh-grid">
@@ -42,6 +57,10 @@
          data-search="{{ ((r.so_label or '') ~ ' ' ~ (r.employee_full_name or '') ~ ' ' ~ (r.employee_position or '') ~ ' ' ~ (r.generated_by or '')) | lower }}"
          data-type="{{ (r.so_label or '') | lower }}"
          data-record-id="{{ r.id or '' }}">
+
+      {% if current_role == 'admin' and r.id %}
+      <input type="checkbox" class="sh-card-checkbox" data-id="{{ r.id }}" onchange="updateBulkBar()">
+      {% endif %}
 
       <div class="sh-card-top">
         <div class="sh-file-icon">📄</div>

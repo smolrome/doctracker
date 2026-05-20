@@ -275,6 +275,70 @@
 .sh-empty-title { font-size: 16px; font-weight: 700; color: #6b7280; margin-bottom: 6px; }
 .sh-empty-sub   { font-size: 13px; }
 
+/* ── Bulk delete bar ── */
+.sh-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+}
+.sh-bulk-count { font-weight: 600; color: #dc2626; flex: 1; }
+.sh-btn-bulk-delete {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s;
+}
+.sh-btn-bulk-delete:hover { background: #b91c1c; }
+.sh-btn-bulk-cancel {
+  background: transparent;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s;
+}
+.sh-btn-bulk-cancel:hover { background: #f3f4f6; }
+
+/* ── Per-card checkbox ── */
+.sh-card { position: relative; }
+.sh-card-checkbox {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  z-index: 10;
+  accent-color: #dc2626;
+}
+
+/* ── Select-all label ── */
+.sh-select-all-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sh-select-all-wrap input { cursor: pointer; accent-color: #dc2626; }
+
 /* ── Hidden card (filtered out) ── */
 .sh-card[hidden] { display: none; }
 
