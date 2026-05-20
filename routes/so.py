@@ -439,7 +439,7 @@ def _embed_qr_in_docx(file_path, verify_url):
 
         doc = Document(file_path)
 
-        # Generate QR in memory — version=2, box_size=3, border=2 as specified
+        # Generate QR in memory
         qr = qrcode.QRCode(version=2, box_size=3, border=2)
         qr.add_data(verify_url)
         qr.make(fit=True)
@@ -448,54 +448,70 @@ def _embed_qr_in_docx(file_path, verify_url):
         qr_img.save(buf, format="PNG")
         buf.seek(0)
 
-        # Snapshot paragraphs BEFORE mutating the document
         paras = list(doc.paragraphs)
+        body  = doc.element.body
 
-        # Find the "Copy furnished:" paragraph
+        # Find "Copy furnished:" paragraph index
         cf_idx = next((i for i, p in enumerate(paras) if "Copy furnished" in p.text), None)
         if cf_idx is None:
-            return  # template structure changed — skip silently
+            return
 
-        cf_paras = paras[cf_idx:]
-        cf_texts  = [p.text for p in cf_paras]
+        # Collect ONLY the copy furnished block:
+        # "Copy furnished:", RECORDS, PERSONNEL RECORDS, PERSONNEL UNIT, CONCERNED, OSDS-PU-xxx
+        # Stop at first empty paragraph or paragraph not related to copy furnished
+        cf_paras = []
+        for p in paras[cf_idx:]:
+            text = p.text.strip()
+            # Stop if we hit a paragraph that looks like footer content (has "Address:" or "Page")
+            if any(kw in text for kw in ["Address:", "Page ", "Telephone", "Email", "Website"]):
+                break
+            cf_paras.append(p)
 
-        # Record the insertion position in the body XML
-        body         = doc.element.body
-        first_cf_p   = cf_paras[0]._p
-        cf_body_idx  = list(body).index(first_cf_p)
+        if not cf_paras:
+            return
 
-        # Build 2-column table via python-docx API (appends to end of doc temporarily)
+        cf_texts = [p.text for p in cf_paras]
+        first_cf_p = cf_paras[0]._p
+        cf_body_idx = list(body).index(first_cf_p)
+
+        # Build 2-column table
         table = doc.add_table(rows=1, cols=2)
+        table.style = None
 
         # Left cell — copy furnished text
         left = table.cell(0, 0)
+        left.width = Cm(10)
         left.paragraphs[0].text = cf_texts[0] if cf_texts else ""
         for txt in cf_texts[1:]:
-            left.add_paragraph(txt)
+            p = left.add_paragraph(txt)
+            for run in p.runs:
+                run.font.name = "Bookman Old Style"
+                run.font.size = Pt(8)
 
         # Right cell — QR image + label
-        right    = table.cell(0, 1)
+        right = table.cell(0, 1)
+        right.width = Cm(3)
         img_para = right.paragraphs[0]
         img_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        img_run  = img_para.add_run()
+        img_run = img_para.add_run()
         img_run.add_picture(buf, width=Cm(2.5), height=Cm(2.5))
 
         lbl_para = right.add_paragraph()
         lbl_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        lbl_run  = lbl_para.add_run("Scan to verify")
+        lbl_run = lbl_para.add_run("Scan to verify")
         lbl_run.font.size = Pt(7)
         lbl_run.font.name = "Bookman Old Style"
 
-        # Move table from end of body to the CF block position
+        # Move table to CF position
         body.remove(table._tbl)
         body.insert(cf_body_idx, table._tbl)
 
-        # Remove the original CF paragraphs (now replaced by the table's left cell)
+        # Remove original CF paragraphs
         for p in cf_paras:
             try:
                 body.remove(p._p)
             except ValueError:
-                pass  # already removed or not a direct body child
+                pass
 
         doc.save(file_path)
     except Exception as e:
