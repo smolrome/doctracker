@@ -448,23 +448,53 @@ def _embed_qr_in_docx(file_path, verify_url):
         qr_img.save(buf, format="PNG")
         buf.seek(0)
 
-        # Find the {{qr_code}} placeholder paragraph and replace with QR image
+        from docx.oxml.ns import qn as _qn
+        from lxml import etree
+
+        replaced = False
+
+        # Search body paragraphs first
         for para in doc.paragraphs:
             if "{{qr_code}}" in para.text:
-                # Clear the paragraph
                 for run in para.runs:
                     run.text = ""
-                # Clear all runs from XML
                 for r in para._p.findall(qn("w:r")):
                     para._p.remove(r)
-                # Add image run
                 run = para.add_run()
                 run.add_picture(buf, width=Cm(2.0), height=Cm(2.0))
-                # Add scan label
-                label_run = para.add_run("  Scan to verify authenticity")
-                label_run.font.size = Pt(6)
-                label_run.font.name = "Bookman Old Style"
+                replaced = True
                 break
+
+        # If not found in body, search text boxes (txbx elements in drawing shapes)
+        if not replaced:
+            # Find all text box paragraphs in the document XML
+            body = doc.element.body
+            # Text boxes are inside w:drawing > wp:inline/anchor > a:graphic > ... > wps:txbx > w:txbxContent > w:p
+            ns = {
+                'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+                'wps': 'http://schemas.microsoft.com/office/word/2010/wordprocessingShape',
+            }
+            for txbx in body.iter('{http://schemas.microsoft.com/office/word/2010/wordprocessingShape}txbx'):
+                for p_elem in txbx.iter('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p'):
+                    # Get text content
+                    text = ''.join(
+                        t.text or ''
+                        for t in p_elem.iter('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t')
+                    )
+                    if '{{qr_code}}' in text:
+                        # Clear all runs
+                        for r in p_elem.findall('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}r'):
+                            p_elem.remove(r)
+                        # Create a temporary paragraph to add picture
+                        from docx.text.paragraph import Paragraph
+                        temp_para = Paragraph(p_elem, doc)
+                        run = temp_para.add_run()
+                        buf.seek(0)
+                        run.add_picture(buf, width=Cm(2.0), height=Cm(2.0))
+                        replaced = True
+                        break
+                if replaced:
+                    break
 
         doc.save(file_path)
     except Exception as e:
