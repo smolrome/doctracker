@@ -79,6 +79,12 @@
               <span class="dd-text">Special Order<span class="dd-desc">Generate SO documents</span></span>
             </a>
             {% endif %}
+            {% if current_role in ('admin','staff') %}
+            <a href="/so-history" class="dd-item">
+              <span class="dd-icon">🗂️</span>
+              <span class="dd-text">SO History<span class="dd-desc">View generated SO documents</span></span>
+            </a>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -249,6 +255,9 @@
     {% endif %}
     {% if current_role in ('admin','staff') %}
       <a href="/so-request" class="nav-btn" onclick="closeMenu()">📄 Special Order</a>
+    {% endif %}
+    {% if current_role in ('admin','staff') %}
+      <a href="/so-history" class="nav-btn" onclick="closeMenu()">🗂️ SO History</a>
     {% endif %}
     {% if current_role == 'admin' %}
       <div class="nav-divider"></div>

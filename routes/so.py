@@ -15,7 +15,18 @@ from utils import get_client_ip, login_required
 so_bp = Blueprint("so", __name__)
 
 TEMPLATE_PATH = os.path.join("so_templates", "S_O_TEMP.docx")
-OUTPUT_DIR    = "so_output"
+
+import socket as _socket
+_IS_SERVER = os.path.exists('/home/itpersonnelunit/so_documents')
+
+def _get_output_dir(so_type: str) -> str:
+    if _IS_SERVER:
+        year = datetime.now().strftime('%Y')
+        path = f"/home/itpersonnelunit/so_documents/{year}/{so_type}"
+    else:
+        path = os.path.join("so_output", so_type)
+    os.makedirs(path, exist_ok=True)
+    return path
 
 # ── SO type registry ────────────────────────────────────────────────────────────
 # Each entry: label, subject line, list of dynamic field keys, body template.
@@ -347,6 +358,29 @@ def _replace_body(doc, placeholder, body_text):
         break
 
 
+# ── SO record persistence ───────────────────────────────────────────────────────
+
+def _save_so_record(filename, so_type, employee_full_name, employee_position,
+                    date_issued, generated_by, file_path):
+    """Insert a record into so_records. Silently no-ops in JSON fallback mode."""
+    try:
+        from services.database import USE_DB, get_conn
+        if not USE_DB:
+            return
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO so_records
+                       (filename, so_type, employee_full_name, employee_position,
+                        date_issued, generated_by, file_path)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                    (filename, so_type, employee_full_name, employee_position,
+                     date_issued, generated_by, file_path),
+                )
+    except Exception:
+        pass
+
+
 # ── Auth helper ─────────────────────────────────────────────────────────────────
 
 def _require_staff():
@@ -455,10 +489,16 @@ def so_generate():
                         bold=False, font_name="Bookman Old Style", font_size_pt=11)
 
         # ── Save ─────────────────────────────────────────────────────────────────
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
-        ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"SO_{so_type.upper()}_{ts}.docx"
-        doc.save(os.path.join(OUTPUT_DIR, filename))
+        out_dir   = _get_output_dir(so_type)
+        ts        = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename  = f"SO_{so_type.upper()}_{ts}.docx"
+        file_path = os.path.join(out_dir, filename)
+        doc.save(file_path)
+
+        _save_so_record(
+            filename, so_type, employee_full_name, employee_position,
+            date_issued, session.get("username", "?"), file_path,
+        )
 
         try:
             from services.misc import audit_log
@@ -492,12 +532,19 @@ def so_download(filename):
     if not re.match(r"^SO_[A-Z0-9_]+\.docx$", filename):
         return jsonify({"error": "Invalid filename"}), 400
 
-    filepath = os.path.join(OUTPUT_DIR, filename)
-    if not os.path.exists(filepath):
+    import glob as _glob
+    search_paths = []
+    if _IS_SERVER:
+        search_paths += _glob.glob(f"/home/itpersonnelunit/so_documents/**/{filename}", recursive=True)
+    search_paths += _glob.glob(os.path.join("so_output", "**", filename), recursive=True)
+    search_paths.append(os.path.join("so_output", filename))
+
+    filepath = next((p for p in search_paths if os.path.exists(p)), None)
+    if not filepath:
         return jsonify({"error": "File not found"}), 404
 
     return send_file(
-        filepath,
+        os.path.abspath(filepath),
         as_attachment=True,
         download_name=filename,
         mimetype=(
@@ -505,3 +552,69 @@ def so_download(filename):
             ".wordprocessingml.document"
         ),
     )
+
+
+@so_bp.route("/so-history")
+@login_required
+def so_history_page():
+    guard = _require_staff()
+    if guard:
+        return guard
+
+    records = []
+    try:
+        from services.database import USE_DB, get_conn
+        if USE_DB:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM so_records ORDER BY generated_at DESC")
+                    rows = cur.fetchall()
+            for row in rows:
+                d = dict(row)
+                d["so_label"] = SO_TYPES.get(d.get("so_type", ""), {}).get(
+                    "label", (d.get("so_type") or "").replace("_", " ").title()
+                )
+                ga = d.get("generated_at")
+                d["generated_at_str"] = (
+                    ga.strftime("%Y-%m-%d %H:%M") if hasattr(ga, "strftime") else str(ga or "—")
+                )
+                records.append(d)
+        else:
+            # JSON fallback: derive metadata from filename only
+            import glob as _glob
+            _local_root = "/home/itpersonnelunit/so_documents" if _IS_SERVER else "so_output"
+            all_files = _glob.glob(os.path.join(_local_root, "**", "SO_*.docx"), recursive=True)
+            all_files += _glob.glob(os.path.join("so_output", "SO_*.docx"))
+            if all_files:
+                fnames = sorted(
+                    [os.path.basename(f) for f in all_files
+                     if re.match(r"^SO_[A-Z0-9_]+\.docx$", os.path.basename(f))],
+                    reverse=True,
+                )
+                for fname in fnames:
+                    m = re.match(r"^SO_(.+)_(\d{8})_(\d{6})\.docx$", fname)
+                    so_type_key = m.group(1).lower() if m else ""
+                    ts_str = "—"
+                    if m:
+                        try:
+                            ts_str = datetime.strptime(
+                                m.group(2) + m.group(3), "%Y%m%d%H%M%S"
+                            ).strftime("%Y-%m-%d %H:%M")
+                        except ValueError:
+                            pass
+                    records.append({
+                        "filename":           fname,
+                        "so_type":            so_type_key,
+                        "so_label":           SO_TYPES.get(so_type_key, {}).get(
+                            "label", so_type_key.replace("_", " ").title()
+                        ),
+                        "employee_full_name": "—",
+                        "employee_position":  "—",
+                        "date_issued":        "—",
+                        "generated_by":       "—",
+                        "generated_at_str":   ts_str,
+                    })
+    except Exception:
+        pass
+
+    return render_template("so_history.html", records=records)

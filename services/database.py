@@ -205,10 +205,24 @@ def _create_tables(cur):
             updated_at      TEXT DEFAULT ''
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS so_records (
+            id                 SERIAL PRIMARY KEY,
+            filename           VARCHAR(255) NOT NULL,
+            so_type            VARCHAR(100) NOT NULL,
+            employee_full_name VARCHAR(255) NOT NULL,
+            employee_position  VARCHAR(255),
+            date_issued        VARCHAR(50),
+            generated_by       VARCHAR(100) NOT NULL,
+            generated_at       TIMESTAMP DEFAULT NOW(),
+            file_path          VARCHAR(500) NOT NULL
+        )
+    """)
     # Performance + audit query indexes
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(username)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(ts DESC)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_documents_created ON documents(created_at DESC)""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_so_records_generated ON so_records(generated_at DESC)""")
 
 
 def _run_migrations(cur):
