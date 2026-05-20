@@ -323,7 +323,7 @@ def _replace_simple(doc, placeholder, value,
 
 
 def _replace_body(doc, placeholder, body_text):
-    """Replace a body placeholder, expanding double-newline blocks into paragraphs."""
+    """Replace a body placeholder, expanding double-newline blocks into numbered paragraphs."""
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
     blocks = [b.strip() for b in body_text.split("\n\n") if b.strip()]
@@ -333,7 +333,16 @@ def _replace_body(doc, placeholder, body_text):
         parent = para._p.getparent()
         idx    = list(parent).index(para._p)
         for offset, text in enumerate(blocks):
+            number = offset + 1
+            numbered_text = f"{number}.\t{text}"
             new_p  = OxmlElement("w:p")
+            # Paragraph properties — tab stop for hanging indent matching original SO format
+            new_pPr = OxmlElement("w:pPr")
+            new_ind = OxmlElement("w:ind")
+            new_ind.set(qn("w:left"), "720")
+            new_ind.set(qn("w:hanging"), "360")
+            new_pPr.append(new_ind)
+            new_p.append(new_pPr)
             new_r  = OxmlElement("w:r")
             # Run properties: Bookman Old Style, 11pt
             new_rPr = OxmlElement("w:rPr")
@@ -349,7 +358,7 @@ def _replace_body(doc, placeholder, body_text):
             new_rPr.append(new_szCs)
             new_r.append(new_rPr)
             new_t = OxmlElement("w:t")
-            new_t.text = text
+            new_t.text = numbered_text
             new_t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
             new_r.append(new_t)
             new_p.append(new_r)
