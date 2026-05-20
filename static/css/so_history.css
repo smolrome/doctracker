@@ -216,28 +216,50 @@
   border-top: 1px solid #f0f0f0;
   background: #FAFCFF;
 }
-.sh-dl-btn {
+.sh-card-actions {
   display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.sh-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 9px 0;
+  gap: 4px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background .15s, transform .12s;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.sh-btn-view {
+  flex: 1;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+.sh-btn-view:hover { background: #dbeafe; }
+.sh-btn-download {
+  flex: 2;
   background: linear-gradient(135deg, #C9A227, #b08a1e);
   color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  text-decoration: none;
-  cursor: pointer;
-  transition: filter .15s, transform .12s;
-  font-family: inherit;
+  border-color: transparent;
 }
-.sh-dl-btn:hover {
+.sh-btn-download:hover {
   filter: brightness(1.08);
   transform: translateY(-1px);
 }
+.sh-btn-delete {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+.sh-btn-delete:hover { background: #fee2e2; }
 
 /* ── Empty state ── */
 .sh-empty {

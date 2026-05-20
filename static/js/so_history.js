@@ -1,5 +1,28 @@
 // so_history.js — Filter logic for SO History file browser
 
+function confirmDelete(recordId, employeeName) {
+  if (!confirm('Delete SO record for ' + employeeName + '? This will permanently remove the file and database record.')) {
+    return;
+  }
+  var csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+  fetch('/api/so/delete/' + recordId, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    credentials: 'same-origin',
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.success) {
+        var card = document.querySelector('[data-record-id="' + recordId + '"]');
+        if (card) card.remove();
+        alert('SO record deleted successfully.');
+      } else {
+        alert('Error: ' + data.message);
+      }
+    })
+    .catch(function (e) { alert('Error: ' + e); });
+}
+
 (function () {
   const searchInput  = document.getElementById('sh-search');
   const typeFilter   = document.getElementById('sh-type-filter');

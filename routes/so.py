@@ -993,6 +993,72 @@ def so_history_page():
     return render_template("so_history.html", records=records)
 
 
+@so_bp.route("/so/view/<int:record_id>")
+@login_required
+def so_view(record_id):
+    """Detail view for a single SO record."""
+    guard = _require_staff()
+    if guard:
+        return guard
+
+    try:
+        from services.database import USE_DB, get_conn
+        if USE_DB:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM so_records WHERE id = %s", (record_id,))
+                    row = cur.fetchone()
+            if not row:
+                flash("SO record not found.", "error")
+                return redirect(url_for("so.so_history_page"))
+            record = dict(row)
+            record["so_label"] = SO_TYPES.get(record.get("so_type", ""), {}).get(
+                "label", (record.get("so_type") or "").replace("_", " ").title()
+            )
+            ga = record.get("generated_at")
+            record["generated_at_str"] = (
+                ga.strftime("%Y-%m-%d %H:%M") if hasattr(ga, "strftime") else str(ga or "—")
+            )
+            return render_template("so_view.html", record=record)
+    except Exception as e:
+        flash(f"Error loading record: {e}", "error")
+        return redirect(url_for("so.so_history_page"))
+    flash("Database not available.", "error")
+    return redirect(url_for("so.so_history_page"))
+
+
+@so_bp.route("/api/so/delete/<int:record_id>", methods=["POST"])
+def so_delete(record_id):
+    """Permanently delete an SO record and its file. Admin only."""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+    if session.get("role") != "admin":
+        return jsonify({"success": False, "message": "Admin only"}), 403
+
+    try:
+        from services.database import USE_DB, get_conn
+        if USE_DB:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT file_path, filename FROM so_records WHERE id = %s",
+                        (record_id,),
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        return jsonify({"success": False, "message": "Record not found"}), 404
+                    file_path = row["file_path"]
+                    filename  = row["filename"]
+                    cur.execute("DELETE FROM so_records WHERE id = %s", (record_id,))
+                conn.commit()
+            if file_path and os.path.exists(file_path):
+                os.remove(file_path)
+            return jsonify({"success": True, "message": f"SO record {filename} deleted."})
+        return jsonify({"success": False, "message": "Database not available"}), 500
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
 @so_bp.route("/so/verify/<identifier>")
 def so_verify(identifier):
     """Public verification page — no login required."""

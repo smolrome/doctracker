@@ -40,7 +40,8 @@
     {% for r in records %}
     <div class="sh-card"
          data-search="{{ ((r.so_label or '') ~ ' ' ~ (r.employee_full_name or '') ~ ' ' ~ (r.employee_position or '') ~ ' ' ~ (r.generated_by or '')) | lower }}"
-         data-type="{{ (r.so_label or '') | lower }}">
+         data-type="{{ (r.so_label or '') | lower }}"
+         data-record-id="{{ r.id or '' }}">
 
       <div class="sh-card-top">
         <div class="sh-file-icon">📄</div>
@@ -72,9 +73,15 @@
       </div>
 
       <div class="sh-card-footer">
-        <a href="/api/so/download/{{ r.filename }}" class="sh-dl-btn">
-          ⬇ Download
-        </a>
+        <div class="sh-card-actions">
+          {% if r.id %}
+          <a href="/so/view/{{ r.id }}" class="sh-btn sh-btn-view">👁 View</a>
+          {% endif %}
+          <a href="/api/so/download/{{ r.filename }}" class="sh-btn sh-btn-download">⬇ Download</a>
+          {% if current_role == 'admin' and r.id %}
+          <button class="sh-btn sh-btn-delete" onclick="confirmDelete({{ r.id }}, '{{ r.employee_full_name | replace("'", "\\'") }}')">🗑 Delete</button>
+          {% endif %}
+        </div>
       </div>
 
     </div>
