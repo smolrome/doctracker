@@ -49,14 +49,38 @@
     </div>
 
     <div class="dd-tags">
-      {% for opt in config.options[:10] %}
-        <span class="dd-tag">{{ opt }}</span>
-      {% endfor %}
-      {% if config.options|length > 10 %}
-        <span class="dd-more">+{{ config.options|length - 10 }} more</span>
-      {% endif %}
-      {% if config.options|length == 0 %}
-        <span class="dd-empty">No options defined</span>
+      {% if field_name == 'category' %}
+        {% set so_types_list = [
+          "Special Order", "Assignment Order", "Designation", "Renewal of Designation",
+          "Detail Order", "Detailment", "Recall of Detailment", "Request for Detailment",
+          "Realignment", "Reassignment", "Shared Services of Administrative Officer (AO II)",
+          "Transfer of Station", "Transfer of Station with Designation", "Transfer of Agency",
+          "Invocation of Special Order", "Revocation of Special Order",
+          "Termination of Services and Acceptance of Resignation", "Resignation"
+        ] %}
+        <div class="dd-so-group-label">📄 Special Order Types</div>
+        {% for opt in config.options if opt in so_types_list %}
+          <span class="dd-tag dd-tag-so">{{ opt }}</span>
+        {% else %}
+          <span class="dd-empty-so">No SO types added yet</span>
+        {% endfor %}
+        <div class="dd-group-divider"></div>
+        {% for opt in config.options if opt not in so_types_list %}
+          <span class="dd-tag">{{ opt }}</span>
+        {% endfor %}
+        {% if config.options|length == 0 %}
+          <span class="dd-empty">No options defined</span>
+        {% endif %}
+      {% else %}
+        {% for opt in config.options[:10] %}
+          <span class="dd-tag">{{ opt }}</span>
+        {% endfor %}
+        {% if config.options|length > 10 %}
+          <span class="dd-more">+{{ config.options|length - 10 }} more</span>
+        {% endif %}
+        {% if config.options|length == 0 %}
+          <span class="dd-empty">No options defined</span>
+        {% endif %}
       {% endif %}
     </div>
 
@@ -122,6 +146,43 @@
 <div id="ajaxFlash"></div>
 
 <style>
+/* SO group label */
+.dd-so-group-label {
+  width: 100%;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #92610a;
+  background: #fef9ec;
+  border: 1px solid #C9A227;
+  border-radius: 5px;
+  padding: 3px 8px;
+  margin-bottom: 4px;
+  display: inline-block;
+}
+
+/* SO-type option tag */
+.dd-tag-so {
+  border-color: #C9A227 !important;
+  color: #7a5400;
+  background: #fffbeb;
+}
+
+/* Divider between SO and non-SO groups */
+.dd-group-divider {
+  width: 100%;
+  border-top: 1px dashed #d1d5db;
+  margin: 6px 0;
+}
+
+/* Empty SO section message */
+.dd-empty-so {
+  font-size: 11px;
+  color: #C9A227;
+  font-style: italic;
+}
+
 /* Modal Styles - using dd- prefix to avoid conflicts */
 .dd-modal-overlay {
   position: fixed;
