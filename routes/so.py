@@ -71,8 +71,8 @@ SO_TYPES = {
             "{honorific} {employee_full_name} as {designation_role} of {school_name}, "
             "{district}, {municipality}, Leyte effective {effective_date} or upon receipt "
             "thereof.\n\n"
-            "**The amount accountability entrusted to the SDO amounting to "
-            "{accountability_amount_words} ({accountability_amount_figures}).**\n\n"
+            "The amount accountability entrusted to the SDO amounting to "
+            "{accountability_amount_words} ({accountability_amount_figures}).\n\n"
             "This order is valid for School Year {school_year} only, subject to the request "
             "for renewal and subsequent approval of the Superintendent.\n\n"
             "For your information, proper guidance, and strict compliance."
@@ -337,39 +337,39 @@ def _replace_in_para_list(paras, placeholder, value, bold=None, font_name=None, 
                 # Replace only in this run — preserves label runs untouched
                 run.text = run.text.replace(placeholder, value)
                 _apply_run_fmt(run, bold=bold, font_name=font_name, font_size_pt=font_size_pt)
-                return
-        # Placeholder is split across runs — find boundary and fix
-        # Put full replaced text in first run, blank the rest
-        # But preserve bold=False on the prefix by splitting into two runs
-        from docx.oxml import OxmlElement
-        from docx.oxml.ns import qn as _qn
-        prefix = para.text.split(placeholder)[0]
-        runs[0].text = prefix
-        runs[0].bold = False
-        for run in runs[1:]:
-            run.text = ""
-        # Add new run for the value with correct formatting
-        new_r = OxmlElement("w:r")
-        new_rPr = OxmlElement("w:rPr")
-        if bold:
-            new_b = OxmlElement("w:b")
-            new_rPr.append(new_b)
-        if font_name:
-            new_rFonts = OxmlElement("w:rFonts")
-            new_rFonts.set(_qn("w:ascii"), font_name)
-            new_rFonts.set(_qn("w:hAnsi"), font_name)
-            new_rPr.append(new_rFonts)
-        if font_size_pt:
-            new_sz = OxmlElement("w:sz")
-            new_sz.set(_qn("w:val"), str(int(font_size_pt * 2)))
-            new_rPr.append(new_sz)
-        new_r.append(new_rPr)
-        new_t = OxmlElement("w:t")
-        new_t.text = value
-        new_t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
-        new_r.append(new_t)
-        runs[0]._r.addnext(new_r)
-        return
+                break
+        else:
+            # Placeholder is split across runs — find boundary and fix
+            # Put full replaced text in first run, blank the rest
+            # But preserve bold=False on the prefix by splitting into two runs
+            from docx.oxml import OxmlElement
+            from docx.oxml.ns import qn as _qn
+            prefix = para.text.split(placeholder)[0]
+            runs[0].text = prefix
+            runs[0].bold = False
+            for run in runs[1:]:
+                run.text = ""
+            # Add new run for the value with correct formatting
+            new_r = OxmlElement("w:r")
+            new_rPr = OxmlElement("w:rPr")
+            if bold:
+                new_b = OxmlElement("w:b")
+                new_rPr.append(new_b)
+            if font_name:
+                new_rFonts = OxmlElement("w:rFonts")
+                new_rFonts.set(_qn("w:ascii"), font_name)
+                new_rFonts.set(_qn("w:hAnsi"), font_name)
+                new_rPr.append(new_rFonts)
+            if font_size_pt:
+                new_sz = OxmlElement("w:sz")
+                new_sz.set(_qn("w:val"), str(int(font_size_pt * 2)))
+                new_rPr.append(new_sz)
+            new_r.append(new_rPr)
+            new_t = OxmlElement("w:t")
+            new_t.text = value
+            new_t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+            new_r.append(new_t)
+            runs[0]._r.addnext(new_r)
 
 
 def _replace_simple(doc, placeholder, value,
@@ -761,6 +761,12 @@ def so_generate():
     for key in _DATE_FIELDS:
         if key in fields:
             fields[key] = _fmt_date(fields[key])
+
+    # Normalize accountability figures: prepend "Php" if missing
+    if "accountability_amount_figures" in fields:
+        v = fields["accountability_amount_figures"]
+        if v and not v.startswith("Php"):
+            fields["accountability_amount_figures"] = "Php" + v
 
     # ── Build body ──────────────────────────────────────────────────────────────
     body_vars = {
