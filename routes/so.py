@@ -848,7 +848,14 @@ def so_generate():
         # ── Save ─────────────────────────────────────────────────────────────────
         out_dir   = _get_output_dir(so_type)
         ts        = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename  = f"SO_{so_type.upper()}_{ts}.docx"
+
+        # Build clean filename: SO_TYPE_EMPLOYEENAME_DATE.docx
+        clean_name = re.sub(r'[^\w\s]', '', employee_full_name).strip()
+        clean_name = re.sub(r'\s+', '_', clean_name).upper()
+        clean_date = datetime.now().strftime("%Y%m%d")
+        clean_type = re.sub(r'[^\w\s]', '', original_so_type).strip()
+        clean_type = re.sub(r'\s+', '_', clean_type).upper()
+        filename   = f"SO_{clean_type}_{clean_name}_{clean_date}.docx"
         file_path = os.path.join(out_dir, filename)
         doc.save(file_path)
 
