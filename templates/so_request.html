@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+/* ── Hero ── */
+.so-hero {
+  background: #0E2A47;
+  padding: 28px 32px 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.so-hero-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+.so-hero h1 {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 24px;
+  color: #fff;
+  margin: 0 0 4px;
+}
+.so-hero p {
+  font-size: 14px;
+  color: rgba(255,255,255,.65);
+  margin: 0;
+}
+
+/* ── Page wrapper ── */
+.so-page {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 28px 24px 80px;
+}
+
+/* ── Card ── */
+.so-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  box-shadow: 0 1px 6px rgba(14,42,71,.06);
+  margin-bottom: 24px;
+}
+.so-card-title {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 17px;
+  color: var(--navy);
+  font-weight: 700;
+  margin: 0 0 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Form helpers ── */
+.so-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 580px) { .so-grid-2 { grid-template-columns: 1fr; } }
+
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-md);
+  margin-bottom: 5px;
+}
+.req { color: var(--danger); margin-left: 2px; }
+
+.form-input, .form-textarea, .form-select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  color: var(--text);
+  background: #fff;
+  transition: border-color .15s, box-shadow .15s;
+  box-sizing: border-box;
+}
+.form-input:focus, .form-textarea:focus, .form-select:focus {
+  outline: none;
+  border-color: #1B3A6B;
+  box-shadow: 0 0 0 3px rgba(27,58,107,.1);
+}
+.form-textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+
+/* ── Divider ── */
+.so-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 20px 0 18px;
+}
+.so-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+
+/* ── Subject preview ── */
+.so-subject-preview {
+  background: #F0F4F8;
+  border: 1px solid #CBD5E1;
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.so-subject-preview .subject-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+  border-right: 1px solid #CBD5E1;
+  padding-right: 8px;
+  margin-right: 2px;
+}
+
+/* ── Actions ── */
+.so-actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Source Sans 3', sans-serif;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition: background .15s, opacity .15s;
+}
+.btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.so-generate-btn {
+  background: #0E2A47;
+  color: #fff;
+  min-width: 200px;
+  justify-content: center;
+}
+.so-generate-btn:hover:not(:disabled) { background: #1B3A6B; }
+.so-generate-btn.loading { opacity: .7; pointer-events: none; }
+
+.btn-secondary {
+  background: #F1F5F9;
+  color: var(--text-md);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: #E2E8F0; }
+
+/* ── Error box ── */
+.so-error-box {
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #B91C1C;
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+/* ── Result card ── */
+.so-result-card {
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  border-radius: var(--radius);
+  padding: 32px;
+  text-align: center;
+  box-shadow: 0 1px 6px rgba(14,42,71,.06);
+}
+.so-result-icon { font-size: 36px; margin-bottom: 10px; }
+.so-result-title {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 20px;
+  color: #166534;
+  margin: 0 0 6px;
+}
+.so-result-file {
+  font-size: 13px;
+  color: #4B5563;
+  font-family: 'JetBrains Mono', monospace;
+  margin: 0 0 20px;
+  word-break: break-all;
+}
+.so-download-btn {
+  background: #16A34A;
+  color: #fff;
+  font-size: 15px;
+  padding: 12px 28px;
+  margin-right: 10px;
+}
+.so-download-btn:hover { background: #15803D; }
+.so-again-btn { font-size: 14px; }
+</style>
+
+<!-- ═══ Hero ═══ -->
+<div class="so-hero">
+  <div class="so-hero-icon">📄</div>
+  <div>
+    <h1>Special Order Generator</h1>
+    <p>Generate official SO documents from the DepEd Leyte template</p>
+  </div>
+</div>
+
+<div class="so-page">
+  <a href="/" class="btn-back-dashboard">← Back to Dashboard</a>
+
+  <!-- ─── Form Card ─── -->
+  <div class="so-card" id="so-form-card">
+    <p class="so-card-title">New Special Order</p>
+
+    <form id="so-form" onsubmit="handleGenerate(event)" novalidate>
+
+      <!-- SO Type -->
+      <div class="form-group">
+        <label class="form-label" for="so-type">SO Type <span class="req">*</span></label>
+        <select id="so-type" class="form-input form-select" onchange="onTypeChange()" required>
+          <option value="">— Select SO Type —</option>
+          {% for key, cfg in so_types.items() %}
+          <option value="{{ key }}">{{ cfg.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Employee info row -->
+      <div class="so-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="emp-name">Employee Full Name <span class="req">*</span></label>
+          <input id="emp-name" type="text" class="form-input"
+                 placeholder="e.g. ANALYN G. GELSANO" required autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="emp-position">Position / Title <span class="req">*</span></label>
+          <input id="emp-position" type="text" class="form-input"
+                 placeholder="e.g. Teacher III" required autocomplete="off">
+        </div>
+      </div>
+
+      <!-- Date issued -->
+      <div class="form-group" style="max-width:260px">
+        <label class="form-label" for="date-issued">Date Issued <span class="req">*</span></label>
+        <input id="date-issued" type="date" class="form-input" required>
+      </div>
+
+      <!-- ── Dynamic fields (populated by JS on SO type change) ── -->
+      <div id="dynamic-section" style="display:none">
+        <hr class="so-divider">
+        <div id="so-subject-preview" class="so-subject-preview" style="display:none">
+          <span class="subject-tag">Subject</span>
+          <span id="so-subject-text"></span>
+        </div>
+        <p class="so-section-label" id="dynamic-section-label"></p>
+        <div id="dynamic-fields-inner"></div>
+      </div>
+
+      <!-- Error -->
+      <div id="so-error" class="so-error-box" style="display:none">
+        <span>⚠</span>
+        <span id="so-error-text"></span>
+      </div>
+
+      <!-- Submit -->
+      <div class="so-actions">
+        <button type="submit" id="so-submit-btn" class="btn so-generate-btn" disabled>
+          Generate SO Document
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- ─── Result Card (shown after generation) ─── -->
+  <div class="so-result-card" id="so-result-card" style="display:none">
+    <div class="so-result-icon">✅</div>
+    <h2 class="so-result-title">Document Generated</h2>
+    <p class="so-result-file" id="so-result-filename"></p>
+    <a id="so-download-link" class="btn so-download-btn" href="#">⬇ Download .docx</a>
+    <button class="btn btn-secondary so-again-btn" onclick="resetForm()">Generate Another</button>
+  </div>
+
+</div><!-- /so-page -->
+
+<script>
+/* ── Long-text fields that render as textareas ── */
+const TEXTAREA_FIELDS = new Set([
+  'validity_condition', 'purpose_description', 'agreement_basis',
+  'accountability_amount_words', 'termination_reason', 'effective_condition',
+]);
+
+/* ── On SO type change: fetch fields and render them ── */
+function onTypeChange() {
+  const soType = document.getElementById('so-type').value;
+  const section  = document.getElementById('dynamic-section');
+  const inner    = document.getElementById('dynamic-fields-inner');
+  const label    = document.getElementById('dynamic-section-label');
+  const subjectEl = document.getElementById('so-subject-preview');
+  const subjectTxt = document.getElementById('so-subject-text');
+  const submitBtn = document.getElementById('so-submit-btn');
+
+  hideError();
+
+  if (!soType) {
+    section.style.display = 'none';
+    inner.innerHTML = '';
+    submitBtn.disabled = true;
+    return;
+  }
+
+  fetch(`/api/so/fields/${soType}`, { credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { showError(data.error); return; }
+
+      /* Subject line preview */
+      subjectTxt.textContent = data.subject;
+      subjectEl.style.display = 'flex';
+
+      /* Section label */
+      label.textContent = 'Additional Fields for this SO Type';
+
+      /* Render fields */
+      inner.innerHTML = '';
+      const wrap = document.createElement('div');
+
+      data.fields.forEach(field => {
+        const group = document.createElement('div');
+        group.className = 'form-group';
+
+        const lbl = document.createElement('label');
+        lbl.className = 'form-label';
+        lbl.htmlFor   = `dyn-${field.key}`;
+        lbl.innerHTML = `${field.label} <span class="req">*</span>`;
+
+        let input;
+        if (field.type === 'date') {
+          input = document.createElement('input');
+          input.type = 'date';
+          input.className = 'form-input';
+        } else if (TEXTAREA_FIELDS.has(field.key)) {
+          input = document.createElement('textarea');
+          input.className = 'form-textarea';
+          input.rows = 3;
+          input.placeholder = `Enter ${field.label.toLowerCase()}…`;
+        } else {
+          input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'form-input';
+          input.placeholder = `Enter ${field.label.toLowerCase()}…`;
+          input.autocomplete = 'off';
+        }
+        input.id       = `dyn-${field.key}`;
+        input.name     = field.key;
+        input.required = true;
+
+        group.appendChild(lbl);
+        group.appendChild(input);
+        wrap.appendChild(group);
+      });
+
+      inner.appendChild(wrap);
+      section.style.display = 'block';
+      submitBtn.disabled = false;
+    })
+    .catch(() => showError('Could not load fields. Check your connection.'));
+}
+
+/* ── Form submit: POST to /api/so/generate ── */
+function handleGenerate(e) {
+  e.preventDefault();
+  hideError();
+
+  const soType   = document.getElementById('so-type').value;
+  const empName  = document.getElementById('emp-name').value.trim();
+  const empPos   = document.getElementById('emp-position').value.trim();
+  const dateIss  = document.getElementById('date-issued').value.trim();
+
+  if (!soType)    { showError('Please select an SO type.'); return; }
+  if (!empName)   { showError('Employee name is required.'); return; }
+  if (!empPos)    { showError('Employee position is required.'); return; }
+  if (!dateIss)   { showError('Date issued is required.'); return; }
+
+  /* Collect dynamic fields */
+  const fields = {};
+  let missingField = null;
+  document.querySelectorAll('#dynamic-fields-inner [name]').forEach(el => {
+    const val = el.value.trim();
+    if (!val) missingField = el.previousElementSibling
+                              ? el.previousElementSibling.textContent.replace(' *', '').trim()
+                              : el.name;
+    fields[el.name] = val;
+  });
+
+  if (missingField) {
+    showError(`"${missingField}" is required.`);
+    return;
+  }
+
+  const btn = document.getElementById('so-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  btn.classList.add('loading');
+
+  fetch('/api/so/generate', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({
+      so_type:            soType,
+      employee_full_name: empName,
+      employee_position:  empPos,
+      date_issued:        dateIss,
+      fields:             fields,
+    }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.textContent = 'Generate SO Document';
+      btn.classList.remove('loading');
+
+      if (!data.success) {
+        showError(data.message || 'Generation failed.');
+        return;
+      }
+      showResult(data.filename, data.download_url);
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.textContent = 'Generate SO Document';
+      btn.classList.remove('loading');
+      showError('Network error. Please try again.');
+    });
+}
+
+/* ── Show result card ── */
+function showResult(filename, downloadUrl) {
+  document.getElementById('so-form-card').style.display = 'none';
+  document.getElementById('so-result-filename').textContent = filename;
+  document.getElementById('so-download-link').href = downloadUrl;
+  document.getElementById('so-result-card').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ── Reset form for another generation ── */
+function resetForm() {
+  document.getElementById('so-form').reset();
+  document.getElementById('dynamic-section').style.display = 'none';
+  document.getElementById('dynamic-fields-inner').innerHTML = '';
+  document.getElementById('so-subject-preview').style.display = 'none';
+  document.getElementById('so-submit-btn').disabled = true;
+  document.getElementById('so-result-card').style.display = 'none';
+  document.getElementById('so-form-card').style.display = 'block';
+  hideError();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ── Error helpers ── */
+function showError(msg) {
+  const box = document.getElementById('so-error');
+  document.getElementById('so-error-text').textContent = msg;
+  box.style.display = 'flex';
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function hideError() {
+  document.getElementById('so-error').style.display = 'none';
+}
+
+/* ── Default date to today ── */
+(function () {
+  const d = new Date();
+  const iso = d.toISOString().split('T')[0];
+  document.getElementById('date-issued').value = iso;
+})();
+</script>
+
+{% endblock %}

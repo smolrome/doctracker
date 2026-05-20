@@ -169,6 +169,7 @@ def create_app() -> Flask:
     from routes.import_excel import import_bp
     from routes.progress     import progress_bp
     from routes.download     import download_bp
+    from routes.so           import so_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
@@ -181,6 +182,7 @@ def create_app() -> Flask:
     app.register_blueprint(import_bp)
     app.register_blueprint(progress_bp)
     app.register_blueprint(download_bp)
+    app.register_blueprint(so_bp)
 
     # ── Template filter ────────────────────────────────────────────────────────
 
