@@ -73,6 +73,12 @@
               <span class="dd-text">Office QR Codes<span class="dd-desc">Print QR for offices</span></span>
             </a>
             {% endif %}
+            {% if current_role in ('admin','staff') %}
+            <a href="/so-request" class="dd-item">
+              <span class="dd-icon">📄</span>
+              <span class="dd-text">Special Order<span class="dd-desc">Generate SO documents</span></span>
+            </a>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -240,6 +246,9 @@
     <a href="/upload-qr" class="nav-btn" onclick="closeMenu()">📤 Upload QR Image</a>
     {% if current_role in ('admin','staff') %}
       <a href="/office-qr-page" class="nav-btn" onclick="closeMenu()">🖨️ Office QR Codes</a>
+    {% endif %}
+    {% if current_role in ('admin','staff') %}
+      <a href="/so-request" class="nav-btn" onclick="closeMenu()">📄 Special Order</a>
     {% endif %}
     {% if current_role == 'admin' %}
       <div class="nav-divider"></div>
