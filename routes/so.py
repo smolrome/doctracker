@@ -505,7 +505,7 @@ def _embed_qr_in_docx(file_path, verify_url):
 
 def _log_so_as_document(so_type, employee_full_name, employee_position,
                         date_issued, filename, generated_by, full_name, office):
-    """Auto-log the generated SO as a document record in the main dashboard."""
+    """Auto-log the generated SO as a document record and auto-transfer to Personnel recipient."""
     try:
         from uuid import uuid4
         from services.documents import insert_doc, generate_ref, now_str
@@ -560,6 +560,58 @@ def _log_so_as_document(so_type, employee_full_name, employee_position,
             "routing_cycle":      0,
             "so_filename":        filename,
         }
+
+        # Auto-transfer to Personnel Unit primary recipient if configured
+        try:
+            from services.database import USE_DB, get_conn
+            if USE_DB:
+                primary_recipient  = None
+                recipient_full_name = None
+                recipient_office   = None
+                user_row           = None
+
+                with get_conn() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT primary_recipient FROM saved_offices WHERE office_slug = 'personnel'"
+                        )
+                        row = cur.fetchone()
+                        primary_recipient = row[0] if row and row[0] else None
+
+                    if primary_recipient:
+                        with conn.cursor() as cur:
+                            cur.execute(
+                                "SELECT full_name, office FROM users WHERE username = %s",
+                                (primary_recipient,),
+                            )
+                            user_row = cur.fetchone()
+                            if user_row:
+                                recipient_full_name = user_row[0]
+                                recipient_office    = user_row[1]
+
+                if primary_recipient and user_row:
+                    doc.update({
+                        "status":                "Transferred",
+                        "transferred_to":        primary_recipient,
+                        "transferred_to_office": recipient_office,
+                        "transferred_by":        generated_by,
+                        "transferred_at":        now,
+                        "transfer_type":         "inside_office",
+                        "pending_at_staff":      primary_recipient,
+                        "pending_at_office":     recipient_office,
+                        "pending_at_staff_name": recipient_full_name,
+                        "transfer_status":       "pending",
+                    })
+                    doc["travel_log"].append({
+                        "office":    office or "Personnel Unit",
+                        "action":    "Document Transferred",
+                        "officer":   generated_by,
+                        "timestamp": now,
+                        "remarks":   f"Auto-transferred to {recipient_full_name} upon SO generation.",
+                    })
+        except Exception as transfer_err:
+            print(f"Warning: SO auto-transfer skipped: {transfer_err}")
+
         insert_doc(doc)
     except Exception as e:
         print(f"Warning: could not auto-log SO as document: {e}")
