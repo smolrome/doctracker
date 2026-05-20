@@ -339,8 +339,8 @@ def _replace_body(doc, placeholder, body_text):
             # Paragraph properties — tab stop for hanging indent matching original SO format
             new_pPr = OxmlElement("w:pPr")
             new_ind = OxmlElement("w:ind")
-            new_ind.set(qn("w:left"), "720")
-            new_ind.set(qn("w:hanging"), "360")
+            new_ind.set(qn("w:left"), "1080")
+            new_ind.set(qn("w:hanging"), "1080")
             new_pPr.append(new_ind)
             new_p.append(new_pPr)
             new_r  = OxmlElement("w:r")
