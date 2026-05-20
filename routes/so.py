@@ -429,18 +429,18 @@ _VERIFY_BASE = "https://doctracker.depedleytepersonnelunit.com"
 
 
 def _embed_qr_in_docx(file_path, verify_url):
-    """Open the already-saved docx, embed a QR code beside the Copy Furnished block, re-save."""
     try:
         import io
         import qrcode
         from docx import Document
-        from docx.shared import Cm, Pt
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.shared import Cm, Pt, Emu
+        from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
 
         doc = Document(file_path)
 
-        # Generate QR in memory
-        qr = qrcode.QRCode(version=2, box_size=3, border=2)
+        # Generate tiny QR
+        qr = qrcode.QRCode(version=1, box_size=2, border=1)
         qr.add_data(verify_url)
         qr.make(fit=True)
         qr_img = qr.make_image(fill_color="black", back_color="white")
@@ -448,70 +448,30 @@ def _embed_qr_in_docx(file_path, verify_url):
         qr_img.save(buf, format="PNG")
         buf.seek(0)
 
-        paras = list(doc.paragraphs)
-        body  = doc.element.body
+        # Add QR to the existing footer
+        # Get or create footer
+        section = doc.sections[0]
+        footer = section.footer
 
-        # Find "Copy furnished:" paragraph index
-        cf_idx = next((i for i, p in enumerate(paras) if "Copy furnished" in p.text), None)
-        if cf_idx is None:
-            return
+        # Add a right-aligned paragraph in the footer with the QR image
+        # Find existing footer paragraphs
+        footer_paras = footer.paragraphs
 
-        # Collect ONLY the copy furnished block:
-        # "Copy furnished:", RECORDS, PERSONNEL RECORDS, PERSONNEL UNIT, CONCERNED, OSDS-PU-xxx
-        # Stop at first empty paragraph or paragraph not related to copy furnished
-        cf_paras = []
-        for p in paras[cf_idx:]:
-            text = p.text.strip()
-            # Stop if we hit a paragraph that looks like footer content (has "Address:" or "Page")
-            if any(kw in text for kw in ["Address:", "Page ", "Telephone", "Email", "Website"]):
-                break
-            cf_paras.append(p)
+        if footer_paras:
+            # Use the last paragraph in footer
+            qr_para = footer_paras[-1]
+        else:
+            qr_para = footer.add_paragraph()
 
-        if not cf_paras:
-            return
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        qr_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
-        cf_texts = [p.text for p in cf_paras]
-        first_cf_p = cf_paras[0]._p
-        cf_body_idx = list(body).index(first_cf_p)
+        run = qr_para.add_run()
+        run.add_picture(buf, width=Cm(1.5), height=Cm(1.5))
 
-        # Build 2-column table
-        table = doc.add_table(rows=1, cols=2)
-        table.style = None
-
-        # Left cell — copy furnished text
-        left = table.cell(0, 0)
-        left.width = Cm(10)
-        left.paragraphs[0].text = cf_texts[0] if cf_texts else ""
-        for txt in cf_texts[1:]:
-            p = left.add_paragraph(txt)
-            for run in p.runs:
-                run.font.name = "Bookman Old Style"
-                run.font.size = Pt(8)
-
-        # Right cell — QR image + label
-        right = table.cell(0, 1)
-        right.width = Cm(3)
-        img_para = right.paragraphs[0]
-        img_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        img_run = img_para.add_run()
-        img_run.add_picture(buf, width=Cm(2.5), height=Cm(2.5))
-
-        lbl_para = right.add_paragraph()
-        lbl_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        lbl_run = lbl_para.add_run("Scan to verify")
-        lbl_run.font.size = Pt(7)
-        lbl_run.font.name = "Bookman Old Style"
-
-        # Move table to CF position
-        body.remove(table._tbl)
-        body.insert(cf_body_idx, table._tbl)
-
-        # Remove original CF paragraphs
-        for p in cf_paras:
-            try:
-                body.remove(p._p)
-            except ValueError:
-                pass
+        label_run = qr_para.add_run("\nScan to verify")
+        label_run.font.size = Pt(5)
+        label_run.font.name = "Bookman Old Style"
 
         doc.save(file_path)
     except Exception as e:
