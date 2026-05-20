@@ -430,17 +430,17 @@ _VERIFY_BASE = "https://doctracker.depedleytepersonnelunit.com"
 
 def _embed_qr_in_docx(file_path, verify_url):
     try:
-        import io, qrcode
+        import io
+        import qrcode
         from docx import Document
         from docx.shared import Cm, Pt
         from docx.oxml.ns import qn
         from docx.oxml import OxmlElement
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
 
         doc = Document(file_path)
 
-        # Generate tiny QR
-        qr = qrcode.QRCode(version=1, box_size=2, border=1)
+        # Generate QR in memory — small but scannable
+        qr = qrcode.QRCode(version=2, box_size=3, border=2)
         qr.add_data(verify_url)
         qr.make(fit=True)
         qr_img = qr.make_image(fill_color="black", back_color="white")
@@ -448,73 +448,23 @@ def _embed_qr_in_docx(file_path, verify_url):
         qr_img.save(buf, format="PNG")
         buf.seek(0)
 
-        # Add image part to the document
-        from docx.opc.constants import RELATIONSHIP_TYPE as RT
-        img_part, rId = doc.part.add_image(buf)
-
-        # Size: 1.5cm x 1.5cm in EMUs (1cm = 914400/2.54 EMUs)
-        size_emu = int(360000 * 1.8)
-
-        # Build an anchor drawing that floats at absolute position
-        # Position: right side of page, near bottom (copy furnished area)
-        # posOffset from top: ~24cm (approximate position of copy furnished)
-        # posOffset from left: ~14cm (right side)
-
-        drawing_xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:r>
-    <w:rPr/>
-    <w:drawing>
-      <wp:anchor distT="0" distB="0" distL="0" distR="0"
-                 simplePos="0" relativeHeight="251658240" behindDoc="1"
-                 locked="0" layoutInCell="1" allowOverlap="1"
-                 xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">
-        <wp:simplePos x="0" y="0"/>
-        <wp:positionH relativeFrom="page">
-          <wp:posOffset>5500000</wp:posOffset>
-        </wp:positionH>
-        <wp:positionV relativeFrom="page">
-          <wp:posOffset>8000000</wp:posOffset>
-        </wp:positionV>
-        <wp:extent cx="{size_emu}" cy="{size_emu}"/>
-        <wp:effectExtent l="0" t="0" r="0" b="0"/>
-        <wp:wrapNone/>
-        <wp:docPr id="2" name="QRCode"/>
-        <wp:cNvGraphicFramePr/>
-        <a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-          <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
-            <pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
-              <pic:nvPicPr>
-                <pic:cNvPr id="2" name="QRCode"/>
-                <pic:cNvPicPr/>
-              </pic:nvPicPr>
-              <pic:blipFill>
-                <a:blip r:embed="{rId}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/>
-                <a:stretch><a:fillRect/></a:stretch>
-              </pic:blipFill>
-              <pic:spPr>
-                <a:xfrm><a:off x="0" y="0"/><a:ext cx="{size_emu}" cy="{size_emu}"/></a:xfrm>
-                <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
-              </pic:spPr>
-            </pic:pic>
-          </a:graphicData>
-        </a:graphic>
-      </wp:anchor>
-    </w:drawing>
-  </w:r>
-</w:p>'''
-
-        from lxml import etree
-        drawing_p = etree.fromstring(drawing_xml)
-
-        # Find copy furnished paragraph and insert drawing before it
-        paras = list(doc.paragraphs)
-        cf_idx = next((i for i, p in enumerate(paras) if "Copy furnished" in p.text), None)
-
-        if cf_idx is not None:
-            body = doc.element.body
-            cf_p = paras[cf_idx]._p
-            cf_body_idx = list(body).index(cf_p)
-            body.insert(cf_body_idx, drawing_p)
+        # Find the {{qr_code}} placeholder paragraph and replace with QR image
+        for para in doc.paragraphs:
+            if "{{qr_code}}" in para.text:
+                # Clear the paragraph
+                for run in para.runs:
+                    run.text = ""
+                # Clear all runs from XML
+                for r in para._p.findall(qn("w:r")):
+                    para._p.remove(r)
+                # Add image run
+                run = para.add_run()
+                run.add_picture(buf, width=Cm(2.0), height=Cm(2.0))
+                # Add scan label
+                label_run = para.add_run("  Scan to verify authenticity")
+                label_run.font.size = Pt(6)
+                label_run.font.name = "Bookman Old Style"
+                break
 
         doc.save(file_path)
     except Exception as e:
