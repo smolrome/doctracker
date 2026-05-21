@@ -5,43 +5,43 @@
 <style>
 .qr-hero-wrap {
   position: relative;
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 6px;
+  display: inline-block;
   margin-top: 14px;
 }
 .qr-hero-img {
-  width: 160px;
-  height: 160px;
+  width: 100px;
+  height: 100px;
   border-radius: 8px;
   border: 3px solid rgba(255,255,255,.25);
   background: #fff;
   display: block;
 }
 .qr-info-btn {
-  background: rgba(255,255,255,.15);
-  border: 1.5px solid rgba(255,255,255,.25);
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0,0,0,.45);
+  border: none;
   border-radius: 50%;
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 11px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  flex-shrink: 0;
   padding: 0;
   line-height: 1;
   transition: background .15s;
 }
-.qr-info-btn:hover { background: rgba(255,255,255,.28); }
+.qr-info-btn:hover { background: rgba(0,0,0,.65); }
 .qr-info-popover {
   display: none;
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  width: 280px;
+  width: 260px;
   background: #fff;
   border: 1.5px solid #e2e8f0;
   border-radius: 10px;
@@ -56,9 +56,13 @@
 .qr-hero-btns {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 10px;
+  gap: 5px;
+  margin-top: 8px;
   align-items: flex-start;
+}
+.qr-hero-btns .btn {
+  font-size: 12px;
+  padding: 4px 10px;
 }
 </style>
 
