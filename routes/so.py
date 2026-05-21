@@ -1115,41 +1115,6 @@ def so_delete(record_id):
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-@so_bp.route("/so/verify/<identifier>/slip")
-def so_verify_slip(identifier):
-    """Public printable tracking slip — no login required."""
-    record = None
-    try:
-        from services.database import USE_DB, get_conn
-        if USE_DB:
-            with get_conn() as conn:
-                with conn.cursor() as cur:
-                    if identifier.isdigit():
-                        cur.execute("SELECT * FROM so_records WHERE id = %s", (int(identifier),))
-                    else:
-                        cur.execute("SELECT * FROM so_records WHERE filename = %s", (identifier,))
-                    row = cur.fetchone()
-            if row:
-                record = dict(row)
-                record["so_label"] = SO_TYPES.get(record.get("so_type", ""), {}).get(
-                    "label", (record.get("so_type") or "").replace("_", " ").title()
-                )
-                ga = record.get("generated_at")
-                record["generated_at_str"] = (
-                    ga.strftime("%B %d, %Y %I:%M %p")
-                    if hasattr(ga, "strftime") else str(ga or "—")
-                )
-    except Exception:
-        pass
-    timeline = []
-    if record and record.get("doc_id"):
-        from services.database import get_doc_by_id
-        linked_doc = get_doc_by_id(record["doc_id"])
-        if linked_doc:
-            timeline = linked_doc.get("travel_log") or []
-    return render_template("so_verify_slip.html", record=record, identifier=identifier, timeline=timeline)
-
-
 @so_bp.route("/so/verify/<identifier>")
 def so_verify(identifier):
     """Public verification page — no login required."""

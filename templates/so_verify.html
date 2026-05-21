@@ -196,23 +196,6 @@
       color: #64748B;
       margin-bottom: 14px;
     }
-    .print-slip-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: #0E2A47;
-      color: #fff;
-      border: none;
-      border-radius: 20px;
-      padding: 7px 18px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      margin-bottom: 20px;
-      transition: background .15s;
-    }
-    .print-slip-btn:hover { background: #1a3f66; }
     .travel-timeline { list-style: none; padding: 0; margin: 0; }
     .travel-tl-item  { display: flex; gap: 12px; margin-bottom: 16px; position: relative; }
     .travel-tl-item:not(:last-child)::after {
@@ -348,7 +331,6 @@
 
     {% if timeline %}
     <div class="timeline-section">
-      <a href="/so/verify/{{ identifier }}/slip" target="_blank" class="print-slip-btn">🖨️ Print Tracking Slip</a>
       <h3>Document Timeline</h3>
       <ul class="travel-timeline">
         {% for entry in timeline %}
