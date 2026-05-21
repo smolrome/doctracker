@@ -85,6 +85,12 @@
               <span class="dd-text">SO History<span class="dd-desc">View generated SO documents</span></span>
             </a>
             {% endif %}
+            {% if current_role in ('admin','staff') %}
+            <a href="/transfer/history" class="dd-item">
+              <span class="dd-icon">📋</span>
+              <span class="dd-text">Transfer History<span class="dd-desc">View document transfer slips</span></span>
+            </a>
+            {% endif %}
           </div>
         </div>
       </div>

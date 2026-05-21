@@ -1,181 +1,208 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Transfer Slip</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/transfer_slip.css') }}">
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/routing_slip.css') }}"/>
 </head>
 <body>
 
-<!-- Topbar (screen only) -->
-<div class="topbar screen-only">
-  <div class="topbar-left">
-    <span class="topbar-logo">📋 LAKAD DocTracker</span>
-    <span class="topbar-label">Transfer Slip</span>
-  </div>
-  <div class="topbar-right">
-    <a href="/" class="topbar-btn">← Dashboard</a>
-    <a href="/transfer/history" class="topbar-btn">📋 History</a>
-    <button onclick="window.print()" class="topbar-btn topbar-btn-primary">🖨 Print</button>
-  </div>
+<!-- Topbar -->
+<div class="topbar">
+  <img src="{{ url_for('static', filename='logo.png') }}" alt="LAKAD Logo" class="tb-logo"/>
+  <div class="tb-brand">LAKAD</div>
+  <div class="tb-sep"></div>
+  <div class="tb-label">Transfer Slip</div>
+  <div style="flex:1"></div>
+  <a href="/" class="tb-back">← Dashboard</a>
+  <a href="/transfer/history" class="tb-back" style="margin-left:6px;">📋 History</a>
+  <button class="btn-print" onclick="window.print()">🖨️ Print Slip</button>
 </div>
 
-<!-- Slip card -->
-<div class="slip-card">
+<div class="page-wrap">
 
-  <!-- Letterhead -->
-  <div class="letterhead">
-    <img src="{{ url_for('static', filename='img/kagawaran.png') }}" class="lh-logo lh-logo-left" alt="DepEd Logo">
-    <div class="lh-center">
-      <div class="lh-republic">Republic of the Philippines</div>
-      <div class="lh-dept">Department of Education</div>
-      <div class="lh-region">Region VIII — Eastern Visayas</div>
-      <div class="lh-division">Schools Division of Leyte</div>
-    </div>
-    <img src="{{ url_for('static', filename='img/kagawaran.png') }}" class="lh-logo lh-logo-right" alt="DepEd Logo">
+  <!-- Status banner (screen only) -->
+  <div class="status-banner screen-only">
+    <div class="status-dot"></div>
+    🔄 {{ docs|length }} document{{ 's' if docs|length != 1 else '' }} transferred from
+    <strong style="margin-left:4px">{{ batch.transferred_by }}</strong>
+    &nbsp;→&nbsp;
+    <strong>{{ batch.transferred_to_name or batch.transferred_to }}</strong>
+    {% if batch.transferred_to_office %}&nbsp;({{ batch.transferred_to_office }}){% endif %}
   </div>
 
-  <div class="slip-title-bar">
-    <span class="slip-title-text">TRANSFER SLIP</span>
-  </div>
+  <!-- ═══════════ PRINTABLE SLIP CARD ═══════════ -->
+  <div class="slip-card">
 
-  <!-- Meta strip -->
-  <div class="meta-strip">
-    <div class="meta-item">
-      <span class="meta-label">Batch ID</span>
-      <span class="meta-value mono">{{ batch.id[:12] }}…</span>
+    <!-- ══ OFFICIAL LETTERHEAD ══ -->
+    <div class="letterhead">
+      <div class="lh-top">
+        <div class="lh-text">
+          <div class="lh-center-logo">
+            <img src="{{ url_for('static', filename='img/kagawaran.png') }}" alt="DepEd Logo" class="lh-logo-img"/>
+          </div>
+          <div class="lh-republic">Republic of the Philippines</div>
+          <div class="lh-dept">Department of Education</div>
+          <div class="lh-region">REGION VIII</div>
+          <div class="lh-division">SCHOOLS DIVISION OF LEYTE</div>
+        </div>
+      </div>
+      <div class="lh-divider"></div>
     </div>
-    <div class="meta-item">
-      <span class="meta-label">Date Transferred</span>
-      <span class="meta-value">
-        {% if batch.created_at is not string %}
-          {{ batch.created_at.strftime('%B %d, %Y') }}
-        {% else %}
-          {{ batch.created_at[:10] }}
-        {% endif %}
-      </span>
-    </div>
-    <div class="meta-item">
-      <span class="meta-label">Time</span>
-      <span class="meta-value">
-        {% if batch.created_at is not string %}
-          {{ batch.created_at.strftime('%I:%M %p') }}
-        {% else %}
-          {{ batch.created_at[11:16] if batch.created_at|length > 10 else '—' }}
-        {% endif %}
-      </span>
-    </div>
-    <div class="meta-item">
-      <span class="meta-label">No. of Documents</span>
-      <span class="meta-value">{{ docs|length }}</span>
-    </div>
-    <div class="meta-item">
-      <span class="meta-label">Transfer Type</span>
-      <span class="meta-value">
-        {% if batch.transfer_type == 'inside_office' %}Inside Office{% else %}Outside Office{% endif %}
-      </span>
-    </div>
-  </div>
+    <!-- /letterhead -->
 
-  <!-- From → To -->
-  <div class="route-block">
-    <div class="route-party">
-      <div class="route-role">Transferred By</div>
-      <div class="route-name">{{ batch.transferred_by }}</div>
-    </div>
-    <div class="route-arrow">→</div>
-    <div class="route-party">
-      <div class="route-role">Transferred To</div>
-      <div class="route-name">{{ batch.transferred_to_name or batch.transferred_to }}</div>
-      {% if batch.transferred_to_office %}
-      <div class="route-office">{{ batch.transferred_to_office }}</div>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Slip QR -->
-  {% if slip_qr_b64 %}
-  <div class="slip-qr-block">
-    <img src="data:image/png;base64,{{ slip_qr_b64 }}" class="slip-qr-img" alt="Slip QR">
-    <div class="slip-qr-label">Scan to view this slip</div>
-  </div>
-  {% endif %}
-
-  <!-- Documents table -->
-  <table class="docs-table">
-    <thead>
-      <tr>
-        <th class="col-no">#</th>
-        <th class="col-doc">Document / Content</th>
-        <th class="col-office">Unit / Office</th>
-        <th class="col-sender">Sender</th>
-        <th class="col-qr">QR</th>
-        <th class="col-recv">Date Received<br><span style="font-weight:400;font-style:italic;">(Signature)</span></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for doc in docs %}
-      {% set doc_id = doc.get('id') or doc.get('doc_id', '') %}
-      <tr>
-        <td class="col-no">{{ loop.index }}</td>
-        <td class="col-doc">
-          <div class="doc-name">{{ doc.get('doc_name') or doc.get('title', '—') }}</div>
-          {% if doc.get('doc_type') %}
-          <div class="doc-type-tag">{{ doc.doc_type }}</div>
+    <!-- Meta strip -->
+    <div class="meta-strip">
+      <div class="meta-cell highlight">
+        <div class="meta-label">Transfer Ref.</div>
+        <div class="meta-val">{{ batch.id[:8].upper() }}</div>
+      </div>
+      <div class="meta-cell">
+        <div class="meta-label">Date</div>
+        <div class="meta-val">
+          {% if batch.created_at is not string %}
+            {{ batch.created_at.strftime('%b %d, %Y') }}
+          {% else %}
+            {{ batch.created_at[:10] }}
           {% endif %}
-          {% if doc.get('ref_no') %}
-          <div class="doc-ref">Ref: {{ doc.ref_no }}</div>
+        </div>
+      </div>
+      <div class="meta-cell">
+        <div class="meta-label">Time Transferred</div>
+        <div class="meta-val">
+          {% if batch.created_at is not string %}
+            {{ batch.created_at.strftime('%I:%M %p') }}
+          {% else %}
+            {{ batch.created_at[11:19] if batch.created_at|length > 10 else '—' }}
           {% endif %}
-        </td>
-        <td class="col-office">{{ doc.get('office') or doc.get('originating_office', '—') }}</td>
-        <td class="col-sender">{{ doc.get('logged_by') or doc.get('sender', '—') }}</td>
-        <td class="col-qr">
-          {% if doc_qrs.get(doc_id) %}
-          <img src="data:image/png;base64,{{ doc_qrs[doc_id] }}" class="doc-qr" alt="Doc QR">
-          {% endif %}
-        </td>
-        <td class="col-recv">
-          <div class="sig-line"></div>
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="6" style="text-align:center;color:#9ca3af;padding:20px;">No documents found for this batch.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+        </div>
+      </div>
+      <div class="meta-cell">
+        <div class="meta-label">No. of Documents</div>
+        <div class="meta-val">{{ docs|length }}</div>
+      </div>
+      <div class="meta-cell">
+        <div class="meta-label">Transfer Type</div>
+        <div class="meta-val">
+          {% if batch.transfer_type == 'inside_office' %}Inside Office{% else %}Outside Office{% endif %}
+        </div>
+      </div>
+    </div>
 
-  <!-- Signature footer -->
-  <div class="sig-footer">
-    <div class="sig-block">
-      <div class="sig-label">Prepared &amp; Released By</div>
-      <div class="sig-name">{{ batch.transferred_by }}</div>
-      <div class="sig-line-long"></div>
-      <div class="sig-sub">Signature over Printed Name / Date</div>
-    </div>
-    <div class="sig-block">
-      <div class="sig-label">Received By</div>
-      <div class="sig-name">{{ batch.transferred_to_name or batch.transferred_to }}</div>
-      <div class="sig-line-long"></div>
-      <div class="sig-sub">Signature over Printed Name / Date</div>
-    </div>
-  </div>
+    <!-- Body -->
+    <div class="slip-body">
 
-  <!-- Official footer -->
-  <div class="official-footer">
-    <div class="of-logos">
-      <img src="{{ url_for('static', filename='img/matatag_logos.png') }}" class="of-logo" alt="Matatag">
-      <img src="{{ url_for('static', filename='img/sdo_logo.jpg') }}" class="of-logo" alt="SDO Leyte">
-    </div>
-    <div class="of-address">
-      Brgy. Kanhuraw Hill, Tacloban City, Leyte 6500 | Tel: (053) 832-1093 | www.depedleyte.net
-    </div>
-    <div class="of-page">Page 1 of 1</div>
-  </div>
+      <!-- From → To route indicator -->
+      <div class="route-indicator">
+        <div class="route-from">
+          <div class="route-label">From Office</div>
+          <div class="route-val-from">{{ batch.transferred_by }}</div>
+        </div>
+        <div class="route-arrow">→</div>
+        <div class="route-to">
+          <div class="route-label">To Office</div>
+          <div class="route-val-to">
+            {{ batch.transferred_to_name or batch.transferred_to }}
+            {% if batch.transferred_to_office %}<br><span style="font-size:12px;font-weight:600;">{{ batch.transferred_to_office }}</span>{% endif %}
+          </div>
+        </div>
+      </div>
 
-</div><!-- /slip-card -->
+      <!-- Documents table -->
+      <div class="docs-header">
+        <div class="docs-header-title">Documents Included</div>
+        <div class="docs-count-pill">{{ docs|length }}</div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table class="slip-table">
+          <thead>
+            <tr>
+              <th style="width:38px;text-align:center">#</th>
+              <th>Document / Content</th>
+              <th>Unit / Office / School</th>
+              <th>Sender</th>
+              <th>Referred To</th>
+              <th class="sig-cell" style="width:120px">Date Received</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for doc in docs %}
+            <tr>
+              <td class="num-cell">{{ loop.index }}</td>
+              <td>
+                <div class="doc-name">{{ doc.doc_name }}</div>
+                {% if doc.doc_id %}<div class="doc-ref">{{ doc.doc_id }}</div>{% endif %}
+                {% if doc.category %}<div class="doc-cat">{{ doc.category }}</div>{% endif %}
+              </td>
+              <td class="td-sm">{{ doc.sender_org or '—' }}</td>
+              <td class="td-sm">{{ doc.sender_name or '—' }}</td>
+              <td class="td-sm">{{ doc.referred_to or '—' }}</td>
+              <td class="sig-cell">
+                <div class="sig-line"></div>
+                <div class="sig-sub">Date</div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" style="text-align:center;color:#9ca3af;padding:20px;">No documents found for this batch.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Footer signatures -->
+      <div class="sig-footer">
+        <div class="sig-block">
+          <div class="sig-block-lbl">Prepared &amp; Released By</div>
+          <div class="sig-block-spacer"></div>
+          <div class="sig-block-name">{{ batch.transferred_by }}</div>
+          <div class="sig-block-line"></div>
+          <div class="sig-block-sub">Signature over Printed Name / Designation</div>
+          <div class="sig-block-date">
+            <span>Date:</span>
+            <div class="sig-block-date-line"></div>
+          </div>
+        </div>
+        <div class="sig-block">
+          <div class="sig-block-lbl">Received By</div>
+          <div class="sig-block-office">{{ batch.transferred_to_name or batch.transferred_to }}</div>
+          <div class="sig-block-spacer"></div>
+          <div class="sig-block-line"></div>
+          <div class="sig-block-sub">Signature over Printed Name / Designation</div>
+          <div class="sig-block-date">
+            <span>Date:</span>
+            <div class="sig-block-date-line"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /slip-body -->
+
+    <!-- ══ OFFICIAL FOOTER ══ -->
+    <div class="slip-official-footer">
+      <div class="sof-inner">
+        <div class="sof-logos">
+          <img src="{{ url_for('static', filename='img/matatag_logos.png') }}" alt="DepEd Matatag Logos" class="sof-logos-img"/>
+          <img src="{{ url_for('static', filename='img/sdo_logo.jpg') }}" alt="SDO Leyte Logo" class="sof-logos-img"/>
+        </div>
+        <div class="sof-contact">
+          <div class="sof-row"><b>Address:</b> Government Center, Candahug, Palo, Leyte</div>
+          <div class="sof-row"><b>Telephone No.:</b> (053) 888-3527</div>
+          <div class="sof-row"><b>Email Address:</b> leyte.ro8@deped.gov.ph</div>
+          <div class="sof-row"><b>Website:</b> https://depedleytedivision.com</div>
+        </div>
+        <div class="sof-pagebox">
+          Page <b>&nbsp;1&nbsp;</b> of <b>&nbsp;1</b>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /slip-card -->
+
+</div><!-- /page-wrap -->
 
 </body>
 </html>
