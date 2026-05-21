@@ -264,13 +264,38 @@
 }
 .mp-btn-add-member:hover { background: #0a5f74; }
 
-/* ── Delete group footer ── */
+/* ── Group type badges ── */
+.mp-type-badge-so {
+  background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;
+  border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.mp-type-badge-shared {
+  background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE;
+  border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+
+/* ── Delete / toggle group footer ── */
 .mp-group-footer {
   padding: 10px 16px;
   background: #fff;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
+.mp-btn-toggle-type {
+  padding: 6px 14px;
+  background: #FFF8E7;
+  color: #92400E;
+  border: 1px solid #FCD34D;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s;
+}
+.mp-btn-toggle-type:hover { background: #FEF3C7; }
 .mp-btn-delete-group {
   padding: 6px 14px;
   background: #fef2f2;
@@ -343,6 +368,11 @@
         <!-- Group header -->
         <div class="mp-group-head">
           <span class="mp-group-name">{{ g.group_name }}</span>
+          {% if g.group_type == 'so_access' %}
+          <span class="mp-type-badge-so">⚡ SO Access</span>
+          {% else %}
+          <span class="mp-type-badge-shared">👥 Shared Dashboard</span>
+          {% endif %}
           <span class="mp-member-count">{{ g.members|length }} member{{ 's' if g.members|length != 1 else '' }}</span>
           <span class="mp-group-meta">{{ g.created_date or '' }}</span>
         </div>
@@ -388,8 +418,14 @@
           </form>
         </div>
 
-        <!-- Delete group -->
+        <!-- Footer: toggle type + delete -->
         <div class="mp-group-footer">
+          <form method="POST" action="/manage-pairings/toggle-group-type/{{ g.id }}" style="margin:0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="mp-btn-toggle-type">
+              {{ '👥 Switch to Shared Dashboard' if g.group_type == 'so_access' else '⚡ Switch to SO Access' }}
+            </button>
+          </form>
           <form method="POST" action="/manage-pairings/delete-group/{{ g.id }}" style="margin:0;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="mp-btn-delete-group"

@@ -313,6 +313,7 @@ def _run_migrations(cur):
     migrations.append("CREATE INDEX IF NOT EXISTS idx_staff_pairings_b ON staff_pairings(user_b)")
     migrations.append("CREATE INDEX IF NOT EXISTS idx_sgm_group ON staff_group_members(group_id)")
     migrations.append("CREATE INDEX IF NOT EXISTS idx_sgm_username ON staff_group_members(username)")
+    migrations.append("ALTER TABLE staff_groups ADD COLUMN IF NOT EXISTS group_type TEXT DEFAULT 'shared_dashboard'")
     for sql in migrations:
         try:
             cur.execute("SAVEPOINT mig")
@@ -394,3 +395,22 @@ def get_group_usernames(username: str) -> list:
     except Exception as e:
         print(f"Error getting group usernames: {e}")
         return []
+
+
+def user_has_so_access(username: str) -> bool:
+    """Return True if user is member of any group with group_type = 'so_access'."""
+    if not USE_DB or not username:
+        return False
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT 1 FROM staff_group_members sgm
+                    JOIN staff_groups sg ON sgm.group_id = sg.id
+                    WHERE sgm.username = %s AND sg.group_type = 'so_access'
+                    LIMIT 1
+                """, (username,))
+                return cur.fetchone() is not None
+    except Exception as e:
+        print(f"Error checking SO access: {e}")
+        return False

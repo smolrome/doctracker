@@ -123,7 +123,7 @@
             <span class="role-badge role-staff">🏢 Staff</span>
             {% endif %}
             {% if user.role in ('staff', 'admin') %}
-              {% if user.role == 'admin' or user.can_generate_so %}
+              {% if user.role == 'admin' or user.has_so_access %}
               <span class="role-badge" style="background:#ECFDF5;color:#065F46;border:1px solid #6EE7B7;">📄 SO Access</span>
               {% else %}
               <span class="role-badge" style="background:#F1F5F9;color:#94A3B8;border:1px solid #E2E8F0;">📄 No SO</span>
@@ -158,11 +158,6 @@
             {% endif %}
           {% endif %}
           {% if user.username != admin_username and user.role in ('staff',) %}
-          <form method="post" action="/toggle-so-access/{{ user.username }}" style="margin:0;"
-                onsubmit="return confirm('{{ 'Revoke' if user.can_generate_so else 'Grant' }} SO access for {{ user.username }}?')">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="gear-item">{{ '🚫 Revoke SO Access' if user.can_generate_so else '✅ Grant SO Access' }}</button>
-          </form>
           <form method="post" action="/toggle-route-access/{{ user.username }}" style="margin:0;"
                 onsubmit="return confirm('{{ 'Revoke' if user.can_route_documents else 'Grant' }} Route access for {{ user.username }}?')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

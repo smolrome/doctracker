@@ -10,7 +10,7 @@ from services.auth import (
     update_user_password, update_user, approve_user, get_pending_clients,
     update_user_documents_handled, set_user_can_generate_so,
 )
-from services.database import set_user_can_route_documents
+from services.database import set_user_can_route_documents, user_has_so_access
 from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
     send_credentials_email,
@@ -40,6 +40,8 @@ def manage_users():
     except Exception:
         pass
     users = get_all_users()
+    for u in users:
+        u["has_so_access"] = user_has_so_access(u["username"])
     from services.misc import load_saved_offices
     offices = load_saved_offices()
     return render_template("manage_users.html", users=users,
@@ -934,7 +936,7 @@ def manage_pairings():
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
-                        SELECT id, group_name, created_by,
+                        SELECT id, group_name, created_by, group_type,
                                to_char(created_at, 'Mon DD, YYYY') AS created_date
                         FROM staff_groups
                         ORDER BY created_at DESC
@@ -955,6 +957,7 @@ def manage_pairings():
                             'group_name':   g['group_name'],
                             'created_by':   g['created_by'],
                             'created_date': g['created_date'],
+                            'group_type':   g['group_type'] or 'shared_dashboard',
                             'members':      list(members),
                         })
         except Exception:
@@ -1071,6 +1074,32 @@ def delete_group(group_id):
             flash(f"Failed to delete group: {e}", "error")
     else:
         flash("Database not available.", "error")
+    return redirect(url_for("admin.manage_pairings"))
+
+
+@admin_bp.route("/manage-pairings/toggle-group-type/<int:group_id>", methods=["POST"])
+@admin_required
+def toggle_group_type(group_id):
+    from services.database import USE_DB, get_conn
+    if not USE_DB:
+        flash("Database not available.", "error")
+        return redirect(url_for("admin.manage_pairings"))
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT group_name, group_type FROM staff_groups WHERE id = %s", (group_id,))
+                row = cur.fetchone()
+                if not row:
+                    flash("Group not found.", "error")
+                    return redirect(url_for("admin.manage_pairings"))
+                new_type = 'so_access' if (row['group_type'] or 'shared_dashboard') == 'shared_dashboard' else 'shared_dashboard'
+                cur.execute("UPDATE staff_groups SET group_type = %s WHERE id = %s", (new_type, group_id))
+        audit_log("group_type_toggled",
+                  f"group_id={group_id} group_name={row['group_name']} group_type={new_type}",
+                  username=session.get("username", "admin"), ip=get_client_ip())
+        flash(f"Group '{row['group_name']}' type set to '{new_type}'.", "success")
+    except Exception as e:
+        flash(f"Failed to update group type: {e}", "error")
     return redirect(url_for("admin.manage_pairings"))
 
 
