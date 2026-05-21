@@ -3,10 +3,17 @@
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/detail.css') }}"/>
 <style>
+.doc-hero-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
 .qr-hero-wrap {
   position: relative;
-  display: inline-block;
-  margin-top: 14px;
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
 }
 .qr-hero-img {
   width: 100px;
@@ -16,15 +23,13 @@
   background: #fff;
   display: block;
 }
-.qr-info-btn {
+.qr-overlay-btn {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  background: rgba(0,0,0,.45);
-  border: none;
-  border-radius: 50%;
   width: 20px;
   height: 20px;
+  background: rgba(0,0,0,.50);
+  border: none;
+  border-radius: 50%;
   cursor: pointer;
   font-size: 11px;
   display: flex;
@@ -33,14 +38,19 @@
   color: #fff;
   padding: 0;
   line-height: 1;
+  text-decoration: none;
   transition: background .15s;
 }
-.qr-info-btn:hover { background: rgba(0,0,0,.65); }
+.qr-overlay-btn:hover { background: rgba(0,0,0,.72); }
+.qr-btn-info   { top: 4px;    right: 4px;  }
+.qr-btn-dl     { bottom: 4px; left: 4px;   }
+.qr-btn-scan   { bottom: 4px; right: 4px;  }
 .qr-info-popover {
   display: none;
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   width: 260px;
   background: #fff;
   border: 1.5px solid #e2e8f0;
@@ -53,17 +63,6 @@
   z-index: 200;
 }
 .qr-info-popover.open { display: block; }
-.qr-hero-btns {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin-top: 8px;
-  align-items: flex-start;
-}
-.qr-hero-btns .btn {
-  font-size: 12px;
-  padding: 4px 10px;
-}
 </style>
 
 <!-- ── DOCUMENT HERO ── -->
@@ -131,16 +130,14 @@
     {% else %}<span class="badge badge-archived">📦 {{ s }}</span>{% endif %}
     <div class="qr-hero-wrap">
       <img src="data:image/png;base64,{{ qr_b64 }}" alt="Document QR Code" class="qr-hero-img"/>
-      <button class="qr-info-btn" onclick="toggleQrPopover(event)" aria-label="QR code info">ℹ️</button>
+      <button class="qr-overlay-btn qr-btn-info" onclick="toggleQrPopover(event)" aria-label="QR code info">ℹ️</button>
+      <a href="/qr/{{ doc.id }}.png" class="qr-overlay-btn qr-btn-dl" aria-label="Download QR PNG">⬇️</a>
+      <a href="/receive/{{ doc.id }}" class="qr-overlay-btn qr-btn-scan" target="_blank" aria-label="Open Scan Page">🔗</a>
       <div class="qr-info-popover" id="qr-info-popover">
         Print and attach this QR code to the physical document. Each office that handles it
         scans this code — instantly adding an entry to the travel log with the officer's name
         and timestamp.
       </div>
-    </div>
-    <div class="qr-hero-btns">
-      <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ Download QR PNG</a>
-      <a href="/receive/{{ doc.id }}" class="btn btn-primary" target="_blank">🔗 Open Scan Page</a>
     </div>
   </div>
 </div>
