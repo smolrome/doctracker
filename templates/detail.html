@@ -95,8 +95,6 @@
     <div class="doc-hero-meta">
       {% if doc.submitted_by %}
         <div class="hero-tag">📱 Client Submission</div>
-      {% elif doc.logged_by %}
-        <div class="hero-tag">🖊️ Staff Logged</div>
       {% endif %}
       {% if doc.target_office_name %}
         <div class="hero-tag">🏢 {{ doc.target_office_name }}</div>
@@ -119,6 +117,12 @@
         <span class="hero-info-label">From</span>
         <span class="hero-info-value">{{ doc.sender_name or doc.sender_org or '—' }}</span>
       </div>
+      {% if doc.logged_by %}
+      <div class="hero-info-item">
+        <span class="hero-info-label">Logged By</span>
+        <span class="hero-info-value">{{ doc.logged_by_full_name or doc.logged_by or 'N/A' }}</span>
+      </div>
+      {% endif %}
       {% if doc.intended_for_name %}
       <div class="hero-info-item">
         <span class="hero-info-label">Intended For</span>
