@@ -339,16 +339,23 @@ def _run_migrations(cur):
 
 
 def get_doc_by_id(doc_id: str):
-    """Fetch a document by its internal id. Returns a dict or None."""
+    """Fetch a document by its internal id. Returns the data dict or None."""
     if not USE_DB or not doc_id:
         return None
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
+                cur.execute("SELECT data FROM documents WHERE id = %s", (doc_id,))
                 row = cur.fetchone()
-                return dict(row) if row else None
-    except Exception:
+                if not row:
+                    return None
+                data = row['data']
+                if isinstance(data, str):
+                    import json
+                    data = json.loads(data)
+                return data
+    except Exception as e:
+        print(f"Error in get_doc_by_id: {e}")
         return None
 
 
