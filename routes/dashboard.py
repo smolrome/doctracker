@@ -505,7 +505,7 @@ def add():
                                 "action":    "Transferred",
                                 "officer":   actor,
                                 "timestamp": now_t,
-                                "remarks":   "Auto-transferred to referred staff",
+                                "remarks":   f"Auto-transferred to {ref_full_name} ({ref_office or 'N/A'}).",
                             })
                             doc["status"]                = "Transferred"
                             doc["transferred_to"]        = ref_username
@@ -1033,12 +1033,10 @@ def transfer_doc(doc_id):
             "officer":   current_full_name,
             "timestamp": now_str(),
             "remarks":   (
-                f"Re-routed from {new_staff_office or 'receiving office'} back to "
-                f"originating staff. Cycle {doc['routing_cycle']} completed. "
-                f"Transferred by {current_full_name}."
+                f"Re-routed to {new_staff_full_name} ({new_staff_office or 'N/A'}). "
+                f"Cycle {doc['routing_cycle']} completed."
                 if routing_back_to_origin else
-                f"Transferred to {new_staff_full_name} ({new_staff_office or 'N/A'}) from {current_office}. "
-                f"Previous status: {old_status}. Transferred by {current_full_name}."
+                f"Transferred to {new_staff_full_name} ({new_staff_office or 'N/A'})."
             ),
         })
 
@@ -1247,9 +1245,10 @@ def transfer_batch():
             "officer":   session.get("full_name") or session.get("username"),
             "timestamp": now_str(),
             "remarks":   (
-                f"Batch re-routed back to originating staff. Cycle {doc['routing_cycle']} completed."
+                f"Batch re-routed to {new_staff_full_name} ({new_staff_office or 'N/A'}). "
+                f"Cycle {doc['routing_cycle']} completed."
                 if routing_back else
-                f"Batch routed from {current_user} → {new_staff} at {new_staff_office or 'N/A'} {status_note}."
+                f"Batch transferred to {new_staff_full_name} ({new_staff_office or 'N/A'})."
             ),
         })
         save_doc(doc)
