@@ -791,7 +791,7 @@ def so_generate():
     data               = request.get_json(force=True, silent=True) or {}
     so_type            = data.get("so_type", "").strip()
     original_so_type   = so_type  # preserve display name before mapping
-    employee_full_name = data.get("employee_full_name", "").strip()
+    employee_full_name = data.get("employee_full_name", "").strip().title()
     employee_position  = data.get("employee_position", "").strip()
     date_issued        = _fmt_date(data.get("date_issued", "").strip())
     fields             = {k: v.strip() for k, v in data.get("fields", {}).items()}
