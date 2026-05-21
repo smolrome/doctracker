@@ -187,50 +187,63 @@
     .notice-text strong { font-weight: 700; }
 
     /* ── Timeline ── */
-    .timeline-section {
-      margin-top: 28px;
-    }
+    .timeline-section { margin-top: 28px; }
     .timeline-section h3 {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: .07em;
+      letter-spacing: .09em;
       color: #64748B;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
-    .timeline-entry {
-      position: relative;
-      padding: 12px 16px 12px 36px;
-      border-left: 2px solid #E2E8F0;
-      margin-left: 8px;
-    }
-    .timeline-entry::before {
-      content: '';
-      position: absolute;
-      left: -5px;
-      top: 16px;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #94A3B8;
-      border: 2px solid #fff;
-      box-shadow: 0 0 0 1px #CBD5E1;
-    }
-    .tl-action {
+    .print-slip-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #0E2A47;
+      color: #fff;
+      border: none;
+      border-radius: 20px;
+      padding: 7px 18px;
       font-size: 13px;
-      font-weight: 700;
-      color: #0F172A;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      margin-bottom: 20px;
+      transition: background .15s;
     }
-    .tl-meta {
-      font-size: 12px;
-      color: #64748B;
-      margin-top: 2px;
+    .print-slip-btn:hover { background: #1a3f66; }
+    .travel-timeline { list-style: none; padding: 0; margin: 0; }
+    .travel-tl-item  { display: flex; gap: 12px; margin-bottom: 16px; position: relative; }
+    .travel-tl-item:not(:last-child)::after {
+      content: ''; position: absolute; left: 17px; top: 36px; bottom: -6px;
+      width: 2px; background: #D7CDB5;
     }
-    .tl-remarks {
-      font-size: 12px;
-      color: #475569;
-      margin-top: 4px;
-      font-style: italic;
+    .travel-tl-dot {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; flex-shrink: 0;
+      border: 2px solid #D7CDB5; background: #FAF8F3;
+    }
+    .travel-tl-dot.dot-receive  { background: #FAF8F3; border-color: #0E2A47; }
+    .travel-tl-dot.dot-release  { background: #D1FAE5; border-color: #007F3E; }
+    .travel-tl-dot.dot-create   { background: #FEF3C7; border-color: #D97706; }
+    .travel-tl-dot.dot-transfer { background: #DBEAFE; border-color: #0038A8; }
+    .travel-tl-dot.dot-reject   { background: #FEE2E2; border-color: #CE1126; }
+    .travel-tl-dot.dot-review   { background: #EDE9FE; border-color: #6D28D9; }
+    .travel-tl-body  { flex: 1; min-width: 0; }
+    .travel-tl-action { font-weight: 700; font-size: 14px; color: #0E2A47; line-height: 1.3; }
+    .travel-tl-meta   { font-size: 12px; color: #5B7FA8; margin-top: 3px; }
+    .travel-tl-remark {
+      font-size: 12px; color: #0E2A47; margin-top: 6px;
+      background: #FAF8F3; padding: 8px 12px;
+      border-radius: 6px; border: 1px solid #D7CDB5;
+    }
+    .travel-tl-cycle {
+      display: block; width: 100%;
+      font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      color: #5B7FA8; border: 1px solid #D7CDB5; background: #FAF8F3;
+      border-radius: 6px; padding: 4px 10px; margin-bottom: 12px;
     }
 
     /* ── Not found state ── */
@@ -335,16 +348,38 @@
 
     {% if timeline %}
     <div class="timeline-section">
+      <a href="/so/verify/{{ identifier }}/slip" target="_blank" class="print-slip-btn">🖨️ Print Tracking Slip</a>
       <h3>Document Timeline</h3>
-      {% for entry in timeline %}
-      <div class="timeline-entry">
-        <div class="tl-action">{{ entry.action }}</div>
-        <div class="tl-meta">{{ entry.officer or '—' }}{% if entry.office %} · {{ entry.office }}{% endif %}{% if entry.timestamp %} · {{ entry.timestamp[:10] }} {{ entry.timestamp[11:16] }}{% endif %}</div>
-        {% if entry.remarks %}
-        <div class="tl-remarks">{{ entry.remarks }}</div>
+      <ul class="travel-timeline">
+        {% for entry in timeline %}
+        {% set ea = (entry.action or '')|lower %}
+        {% if 'accept' in ea or 'receive' in ea %}
+          {% set dot_class = 'dot-receive' %}{% set dot_icon = '📥' %}
+        {% elif 'released' in ea %}
+          {% set dot_class = 'dot-release' %}{% set dot_icon = '✅' %}
+        {% elif 'transit' in ea or 'routed' in ea or 'transferred' in ea %}
+          {% set dot_class = 'dot-transfer' %}{% set dot_icon = '🔄' if 'transferred' in ea else '🚚' %}
+        {% elif 'reject' in ea %}
+          {% set dot_class = 'dot-reject' %}{% set dot_icon = '❌' %}
+        {% elif 'review' in ea %}
+          {% set dot_class = 'dot-review' %}{% set dot_icon = '🔍' %}
+        {% elif 'submit' in ea or 'logged' in ea or 'creat' in ea or 'generated' in ea %}
+          {% set dot_class = 'dot-create' %}{% set dot_icon = '📋' %}
+        {% else %}
+          {% set dot_class = '' %}{% set dot_icon = '📌' %}
         {% endif %}
-      </div>
-      {% endfor %}
+        <li class="travel-tl-item">
+          <div class="travel-tl-dot {{ dot_class }}">{{ dot_icon }}</div>
+          <div class="travel-tl-body">
+            <div class="travel-tl-action">{{ entry.action or 'Action' }}</div>
+            <div class="travel-tl-meta">{{ entry.officer or '—' }}{% if entry.office %} · {{ entry.office }}{% endif %}{% if entry.timestamp %} · {{ entry.timestamp[:10] }} {{ entry.timestamp[11:16] }}{% endif %}</div>
+            {% if entry.remarks %}
+            <div class="travel-tl-remark">{{ entry.remarks }}</div>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
     </div>
     {% endif %}
   </div>
