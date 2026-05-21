@@ -1,6 +1,6 @@
 """
 services/database.py — Database connection, initialization, and migrations.
-Supports PostgreSQL (Railway) with automatic JSON file fallback for local dev.
+Supports PostgreSQL with automatic JSON file fallback for local dev.
 """
 import os
 import json
@@ -246,6 +246,18 @@ def _create_tables(cur):
             UNIQUE(group_id, username)
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS transfer_batches (
+            id                    TEXT PRIMARY KEY,
+            transferred_by        TEXT NOT NULL,
+            transferred_to        TEXT NOT NULL,
+            transferred_to_office TEXT,
+            transferred_to_name   TEXT,
+            transfer_type         TEXT,
+            doc_ids               JSONB NOT NULL,
+            created_at            TIMESTAMP DEFAULT NOW()
+        )
+    """)
     # Performance + audit query indexes
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(username)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(ts DESC)""")
@@ -315,6 +327,7 @@ def _run_migrations(cur):
     migrations.append("CREATE INDEX IF NOT EXISTS idx_sgm_username ON staff_group_members(username)")
     migrations.append("ALTER TABLE staff_groups ADD COLUMN IF NOT EXISTS has_so_access BOOLEAN DEFAULT FALSE")
     migrations.append("ALTER TABLE staff_groups ADD COLUMN IF NOT EXISTS has_shared_dashboard BOOLEAN DEFAULT TRUE")
+    migrations.append("CREATE TABLE IF NOT EXISTS transfer_batches (id TEXT PRIMARY KEY, transferred_by TEXT NOT NULL, transferred_to TEXT NOT NULL, transferred_to_office TEXT, transferred_to_name TEXT, transfer_type TEXT, doc_ids JSONB NOT NULL, created_at TIMESTAMP DEFAULT NOW())")
     for sql in migrations:
         try:
             cur.execute("SAVEPOINT mig")
@@ -417,3 +430,44 @@ def user_has_so_access(username: str) -> bool:
     except Exception as e:
         print(f"Error checking SO access: {e}")
         return False
+
+
+def create_transfer_batch(batch_id, transferred_by, transferred_to,
+                          transferred_to_office, transferred_to_name,
+                          transfer_type, doc_ids):
+    if not USE_DB:
+        return
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO transfer_batches
+                    (id, transferred_by, transferred_to, transferred_to_office,
+                     transferred_to_name, transfer_type, doc_ids, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, NOW())
+                ON CONFLICT (id) DO NOTHING
+            """, (batch_id, transferred_by, transferred_to, transferred_to_office,
+                  transferred_to_name, transfer_type, json.dumps(doc_ids)))
+
+
+def get_transfer_batch(batch_id):
+    if not USE_DB:
+        return None
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM transfer_batches WHERE id = %s", (batch_id,))
+            return cur.fetchone()
+
+
+def get_transfer_history(username, role):
+    if not USE_DB:
+        return []
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            if role == 'admin':
+                cur.execute("SELECT * FROM transfer_batches ORDER BY created_at DESC")
+            else:
+                cur.execute(
+                    "SELECT * FROM transfer_batches WHERE transferred_by = %s ORDER BY created_at DESC",
+                    (username,)
+                )
+            return cur.fetchall()

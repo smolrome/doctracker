@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+.th-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.th-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--navy, #0E2A47);
+  flex: 1;
+}
+.th-desc {
+  color: #64748b;
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+.th-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.th-card {
+  background: #fff;
+  border: 1.5px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: box-shadow .18s;
+}
+.th-card:hover {
+  box-shadow: 0 4px 18px rgba(14,42,71,.1);
+}
+.th-card-head {
+  background: linear-gradient(135deg, #0E2A47, #163B60);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.th-batch-id {
+  font-family: monospace;
+  font-size: 12px;
+  color: rgba(255,255,255,.65);
+  flex: 1;
+}
+.th-date {
+  font-size: 12px;
+  color: rgba(255,255,255,.75);
+  white-space: nowrap;
+}
+.th-doc-count {
+  background: #C9A227;
+  color: #fff;
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.th-card-body {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.th-route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.th-party {
+  min-width: 0;
+}
+.th-party-role {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #9ca3af;
+}
+.th-party-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.th-party-office {
+  font-size: 12px;
+  color: #0E7490;
+  font-weight: 600;
+}
+.th-arrow {
+  font-size: 18px;
+  color: #C9A227;
+  flex-shrink: 0;
+}
+.th-type-badge {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.th-type-inside {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
+}
+.th-type-outside {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FCD34D;
+}
+.th-view-btn {
+  padding: 7px 14px;
+  background: #0E7490;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background .15s;
+}
+.th-view-btn:hover {
+  background: #0a5f74;
+}
+.th-empty {
+  background: #fff;
+  border: 1.5px dashed #e2e8f0;
+  border-radius: 14px;
+  padding: 48px 24px;
+  text-align: center;
+  color: #9ca3af;
+}
+.th-empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+.th-empty-title { font-size: 15px; font-weight: 700; color: #6b7280; margin-bottom: 4px; }
+.th-empty-sub { font-size: 13px; }
+</style>
+
+<div class="th-header">
+  <a href="/" class="sh-back">← Dashboard</a>
+  <div class="th-title">📋 Transfer History</div>
+</div>
+<p class="th-desc">
+  All document transfer batches{% if current_role != 'admin' %} you have initiated{% endif %}.
+  Click <strong>View Slip</strong> to open the printable transfer slip.
+</p>
+
+{% if batches %}
+<div class="th-grid">
+  {% for b in batches %}
+  <div class="th-card">
+    <div class="th-card-head">
+      <span class="th-batch-id">{{ b.id[:16] }}…</span>
+      <span class="th-date">
+        {% if b.created_at is not string %}
+          {{ b.created_at.strftime('%b %d, %Y %I:%M %p') }}
+        {% else %}
+          {{ b.created_at[:16] }}
+        {% endif %}
+      </span>
+      <span class="th-doc-count">{{ b.doc_count }} doc{{ 's' if b.doc_count != 1 else '' }}</span>
+    </div>
+    <div class="th-card-body">
+      <div class="th-route">
+        <div class="th-party">
+          <div class="th-party-role">From</div>
+          <div class="th-party-name">{{ b.transferred_by }}</div>
+        </div>
+        <div class="th-arrow">→</div>
+        <div class="th-party">
+          <div class="th-party-role">To</div>
+          <div class="th-party-name">{{ b.transferred_to_name or b.transferred_to }}</div>
+          {% if b.transferred_to_office %}
+          <div class="th-party-office">{{ b.transferred_to_office }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% if b.transfer_type == 'inside_office' %}
+      <span class="th-type-badge th-type-inside">Inside Office</span>
+      {% else %}
+      <span class="th-type-badge th-type-outside">Outside Office</span>
+      {% endif %}
+      <a href="/transfer/slip/{{ b.id }}" class="th-view-btn">📄 View Slip</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="th-empty">
+  <div class="th-empty-icon">📋</div>
+  <div class="th-empty-title">No transfer history yet</div>
+  <div class="th-empty-sub">Transfer slips will appear here after documents are transferred.</div>
+</div>
+{% endif %}
+
+{% endblock %}

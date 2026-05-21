@@ -5,6 +5,7 @@ import uuid
 import csv
 import io as _io
 import difflib
+import json
 from datetime import date as _date, timedelta as _timedelta
 
 from flask import (Blueprint, flash, jsonify, redirect,
@@ -23,12 +24,28 @@ from services.cart_store import clear_cart
 from services.qr import generate_qr_b64, make_qr_png
 from services.dropdown_options import get_dropdown_options
 from utils import admin_required, get_client_ip, is_logged_in, login_required
-from config import STATUS_OPTIONS
+from config import STATUS_OPTIONS, ADMIN_USERNAME
+from services.database import (
+    create_transfer_batch, get_transfer_batch, get_transfer_history,
+)
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
 # Maximum documents allowed in a single bulk/batch operation.
 _MAX_BATCH = 50
+
+
+def _url_qr_b64(url: str) -> str:
+    """Generate a base64-encoded PNG QR code for any URL string."""
+    import qrcode
+    qr = qrcode.QRCode(box_size=6, border=2)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    import base64
+    return base64.b64encode(buf.getvalue()).decode()
 
 
 def _get_staff_by_office(current_username: str = ""):
@@ -1016,6 +1033,17 @@ def transfer_doc(doc_id):
             username=current_user, ip=get_client_ip()
         )
 
+        batch_id = str(uuid.uuid4())
+        create_transfer_batch(
+            batch_id=batch_id,
+            transferred_by=current_user,
+            transferred_to=new_staff,
+            transferred_to_office=new_staff_office,
+            transferred_to_name=new_staff_full_name,
+            transfer_type=transfer_type,
+            doc_ids=[doc_id],
+        )
+
         if routing_back_to_origin:
             flash(
                 f"Document re-routed back to {new_staff_full_name}. "
@@ -1028,7 +1056,7 @@ def transfer_doc(doc_id):
             )
 
         if is_ajax: return jsonify({"ok": True})
-        return redirect(url_for("dashboard.view_doc", doc_id=doc_id) + "?cart_cleared=1")
+        return redirect(url_for("dashboard.transfer_slip", batch_id=batch_id) + "?cart_cleared=1")
 
     # ── GET ──
     all_users      = get_all_users()
@@ -1224,8 +1252,79 @@ def transfer_batch():
     audit_log("doc_batch_transferred",
               f"count={transferred_count} to={new_staff} type={transfer_type}",
               username=session.get("username","?"), ip=get_client_ip())
+
+    transferred_doc_ids = [d for d in id_list if get_doc(d)]
+    batch_id = str(uuid.uuid4())
+    create_transfer_batch(
+        batch_id=batch_id,
+        transferred_by=current_user,
+        transferred_to=new_staff,
+        transferred_to_office=new_staff_office,
+        transferred_to_name=new_staff_full_name,
+        transfer_type=transfer_type,
+        doc_ids=id_list,
+    )
     flash(f"{transferred_count} document(s) transferred to {new_staff_full_name} at {new_staff_office or 'N/A'}. Status changed to Routed", "success")
-    return redirect(url_for("dashboard.index") + "?cart_cleared=1")
+    return redirect(url_for("dashboard.transfer_slip", batch_id=batch_id) + "?cart_cleared=1")
+
+
+# ── Transfer Slip ─────────────────────────────────────────────────────────────
+
+@dashboard_bp.route("/transfer/slip/<batch_id>")
+@login_required
+def transfer_slip(batch_id):
+    batch = get_transfer_batch(batch_id)
+    if not batch:
+        flash("Transfer slip not found.", "error")
+        return redirect(url_for("dashboard.index"))
+
+    doc_ids = batch["doc_ids"]
+    if isinstance(doc_ids, str):
+        doc_ids = json.loads(doc_ids)
+
+    docs = [get_doc(d) for d in doc_ids]
+    docs = [d for d in docs if d]
+
+    slip_qr_url = request.host_url.rstrip("/") + url_for("dashboard.transfer_slip", batch_id=batch_id)
+    slip_qr_b64 = _url_qr_b64(slip_qr_url)
+
+    doc_qrs = {}
+    for doc in docs:
+        doc_id = doc.get("id") or doc.get("doc_id", "")
+        doc_qrs[doc_id] = generate_qr_b64(doc, request.host_url)
+
+    return render_template(
+        "transfer_slip.html",
+        batch=batch,
+        docs=docs,
+        slip_qr_b64=slip_qr_b64,
+        doc_qrs=doc_qrs,
+        cart_cleared=request.args.get("cart_cleared") == "1",
+        admin_username=ADMIN_USERNAME,
+        current_user=session.get("username", ""),
+        current_role=session.get("role", ""),
+    )
+
+
+@dashboard_bp.route("/transfer/history")
+@login_required
+def transfer_history():
+    username = session.get("username", "")
+    role     = session.get("role", "")
+    batches  = get_transfer_history(username, role)
+
+    for b in batches:
+        doc_ids = b.get("doc_ids", [])
+        if isinstance(doc_ids, str):
+            b["doc_ids"] = json.loads(doc_ids)
+        b["doc_count"] = len(b["doc_ids"])
+
+    return render_template(
+        "transfer_history.html",
+        batches=batches,
+        current_user=username,
+        current_role=role,
+    )
 
 
 # ── QR download ───────────────────────────────────────────────────────────────
