@@ -611,6 +611,39 @@ def view_logging_slip(slip_id):
     return render_template("logging_slip.html", slip=slip, docs=docs)
 
 
+# ── Print Logging Slip ────────────────────────────────────────────────────────
+
+@dashboard_bp.route("/logging-slip/print", methods=["POST"])
+@login_required
+def print_logging_slip():
+    from services.misc import save_routing_slip
+    from services.documents import get_docs_by_ids
+
+    raw = request.form.get("doc_ids", "").strip()
+    id_list = [d.strip() for d in raw.split(",") if d.strip()][:_MAX_BATCH]
+    if not id_list:
+        flash("No documents selected.", "error")
+        return redirect(url_for("dashboard.index"))
+
+    docs_map = get_docs_by_ids(id_list)
+    docs = [docs_map[did] for did in id_list if did in docs_map]
+
+    slip_id = "LOG-" + str(uuid.uuid4())[:8].upper()
+    slip = {
+        "id":          slip_id,
+        "slip_no":     slip_id,
+        "type":        "logging",
+        "destination": "",
+        "slip_date":   _date.today().isoformat(),
+        "logged_at":   now_str(),
+        "prepared_by": session.get("full_name") or session.get("username"),
+        "from_office": session.get("office") or "DepEd Leyte Division",
+        "doc_ids":     id_list,
+    }
+    save_routing_slip(slip)
+    return render_template("logging_slip.html", slip=slip, docs=docs)
+
+
 # ── View / Edit / Delete ──────────────────────────────────────────────────────
 
 @dashboard_bp.route("/view/<doc_id>")

@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Logging Slip {{ slip.slip_no }} — LAKAD</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/logging_slip.css') }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/routing_slip.css') }}"/>
 </head>
 <body>
 
 <!-- Topbar -->
 <div class="topbar">
-  <div class="tb-brand">Doc<span>Tracker</span></div>
+  <img src="{{ url_for('static', filename='logo.png') }}" alt="LAKAD Logo" class="tb-logo"/>
+  <div class="tb-brand">LAKAD</div>
   <div class="tb-sep"></div>
   <div class="tb-label">Logging Slip</div>
   <div style="flex:1"></div>
@@ -24,25 +25,28 @@
   <!-- Status banner (screen only) -->
   <div class="status-banner screen-only">
     <div class="status-dot"></div>
-    ✅ {{ docs|length }} document{{ 's' if docs|length != 1 else '' }} logged — status is <strong style="margin-left:4px">Received</strong>
+    ✅ {{ docs|length }} document{{ 's' if docs|length != 1 else '' }} logged by <strong style="margin-left:4px">{{ slip.prepared_by }}</strong>
   </div>
 
   <!-- ═══════════ PRINTABLE SLIP CARD ═══════════ -->
   <div class="slip-card">
 
-    <!-- Letterhead -->
+    <!-- ══ OFFICIAL LETTERHEAD ══ -->
     <div class="letterhead">
-      <img class="lh-seal" src="/static/logo.png" alt="DepEd Leyte"/>
-      <div class="lh-text">
-        <div class="lh-gov">Republic of the Philippines</div>
-        <div class="lh-dept">Department of Education</div>
-        <div class="lh-div">Schools Division of Leyte — Division Office</div>
+      <div class="lh-top">
+        <div class="lh-text">
+          <div class="lh-center-logo">
+            <img src="{{ url_for('static', filename='img/kagawaran.png') }}" alt="DepEd Logo" class="lh-logo-img"/>
+          </div>
+          <div class="lh-republic">Republic of the Philippines</div>
+          <div class="lh-dept">Department of Education</div>
+          <div class="lh-region">REGION VIII</div>
+          <div class="lh-division">SCHOOLS DIVISION OF LEYTE</div>
+        </div>
       </div>
-      <div class="lh-badge">
-        <span class="lh-badge-text">Official</span>
-        <div class="lh-badge-title">LOGGING<br/>SLIP</div>
-      </div>
+      <div class="lh-divider"></div>
     </div>
+    <!-- /letterhead -->
 
     <!-- Meta strip -->
     <div class="meta-strip">
@@ -51,71 +55,31 @@
         <div class="meta-val">{{ slip.slip_no }}</div>
       </div>
       <div class="meta-cell">
-        <div class="meta-label">Date Logged</div>
+        <div class="meta-label">Date</div>
         <div class="meta-val">{{ slip.slip_date or slip.logged_at[:10] }}</div>
       </div>
       <div class="meta-cell">
         <div class="meta-label">Time Logged</div>
-        <div class="meta-val">{{ slip.logged_at[11:16] if slip.logged_at else '—' }}</div>
+        <div class="meta-val">{{ slip.logged_at[11:19] if slip.logged_at else '—' }}</div>
       </div>
       <div class="meta-cell">
         <div class="meta-label">No. of Documents</div>
         <div class="meta-val">{{ docs|length }}</div>
-      </div>
-      <div class="meta-cell">
-        <div class="meta-label">Logged By</div>
-        <div class="meta-val">{{ slip.prepared_by }}</div>
       </div>
     </div>
 
     <!-- Body -->
     <div class="slip-body">
 
-      <!-- From → To route indicator -->
-      <div style="display:flex;align-items:center;gap:0;margin-bottom:16px;
-                  border:1.5px solid var(--border);border-radius:12px;overflow:hidden;">
-        <div style="flex:1;padding:12px 18px;background:#F8FAFC;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;
-                      letter-spacing:.1em;color:var(--muted);margin-bottom:2px;">From (Source)</div>
-          <div style="font-weight:800;color:var(--navy);font-size:.95rem;">
-            {{ docs[0].sender_org if docs and docs[0].sender_org else 'Division Office' }}
-          </div>
-        </div>
-        <div style="padding:0 14px;font-size:1.4rem;color:var(--teal);font-weight:900;">→</div>
-        <div style="flex:1;padding:12px 18px;background:#EFF6FF;border-left:1.5px solid var(--border);">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;
-                      letter-spacing:.1em;color:var(--muted);margin-bottom:2px;">To (Destination)</div>
-          <div style="font-weight:800;color:#1D4ED8;font-size:.95rem;">{{ slip.destination if slip.destination else '—' }}</div>
+      <!-- Logged By block -->
+      <div class="route-indicator">
+        <div class="route-from">
+          <div class="route-label">LOGGED BY</div>
+          <div class="route-val-from">{{ slip.prepared_by }}</div>
+          <div class="route-label" style="margin-top:4px;">OFFICE</div>
+          <div class="route-val-from">{{ slip.from_office }}</div>
         </div>
       </div>
-
-      <!-- Destination -->
-      {% if slip.destination %}
-      <div class="dest-strip">
-        <div class="dest-ico">🏢</div>
-        <div>
-          <div class="dest-lbl">Destination / To be Transferred To</div>
-          <div class="dest-name">{{ slip.destination }}</div>
-        </div>
-      </div>
-      {% else %}
-      <div class="dest-strip" style="background:linear-gradient(135deg,#F8FAFC,#F1F5F9);border-color:#CBD5E1;">
-        <div class="dest-ico" style="background:#E2E8F0;">📋</div>
-        <div>
-          <div class="dest-lbl" style="color:var(--muted);">Destination / To be Transferred To</div>
-          <div class="dest-name" style="color:var(--muted);font-size:18px;">Not Specified — For Office Use</div>
-        </div>
-      </div>
-      {% endif %}
-
-      <!-- Notes (if any from document) -->
-      {% set notes_list = docs|map(attribute='notes')|select|list %}
-      {% if notes_list %}
-      <div class="notes-strip">
-        <div class="notes-lbl">📝 Notes</div>
-        <div class="notes-text">{{ notes_list[0] }}</div>
-      </div>
-      {% endif %}
 
       <!-- Documents table -->
       <div class="docs-header">
@@ -132,7 +96,7 @@
               <th>Unit / Office / School</th>
               <th>Sender</th>
               <th>Referred To</th>
-              <th class="sig-cell" style="width:120px">Date Received</th>
+              <th class="sig-cell" style="width:120px">Date Logged</th>
             </tr>
           </thead>
           <tbody>
@@ -144,13 +108,17 @@
                 {% if doc.doc_id %}<div class="doc-ref">{{ doc.doc_id }}</div>{% endif %}
                 {% if doc.category %}<div class="doc-cat">{{ doc.category }}</div>{% endif %}
               </td>
-              <td style="font-size:13px">{{ doc.sender_org or '—' }}</td>
-              <td style="font-size:13px">{{ doc.sender_name or '—' }}</td>
-              <td style="font-size:13px">{{ doc.referred_to or '—' }}</td>
+              <td class="td-sm">{{ doc.sender_org or '—' }}</td>
+              <td class="td-sm">{{ doc.sender_name or '—' }}</td>
+              <td class="td-sm">{{ doc.referred_to or '—' }}</td>
               <td class="sig-cell">
                 <div class="sig-line"></div>
-                <div class="sig-sub">{{ doc.date_received or '—' }}</div>
+                <div class="sig-sub">{{ doc.created_at[:10] if doc.created_at else '—' }}</div>
               </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" style="text-align:center;color:#9ca3af;padding:20px;">No documents found.</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -160,33 +128,54 @@
       <!-- Footer signatures -->
       <div class="sig-footer">
         <div class="sig-block">
-          <div class="sig-block-lbl">Logged By</div>
+          <div class="sig-block-lbl">Prepared By</div>
+          <div class="sig-block-spacer"></div>
           <div class="sig-block-name">{{ slip.prepared_by }}</div>
           <div class="sig-block-line"></div>
           <div class="sig-block-sub">Signature over Printed Name / Designation</div>
           <div class="sig-block-date">
             <span>Date:</span>
-            <div class="sig-block-date_line"></div>
+            <div class="sig-block-date-line"></div>
           </div>
         </div>
         <div class="sig-block">
-          <div class="sig-block-lbl">Received By (Office)</div>
-          <div class="sig-block-office">{{ slip.from_office }}</div>
+          <div class="sig-block-lbl">Received By</div>
+          <div class="sig-block-spacer"></div>
           <div class="sig-block-line"></div>
           <div class="sig-block-sub">Signature over Printed Name / Designation</div>
           <div class="sig-block-date">
             <span>Date:</span>
-            <div class="sig-block-date_line"></div>
+            <div class="sig-block-date-line"></div>
           </div>
         </div>
       </div>
 
     </div><!-- /slip-body -->
 
-    <!-- Bottom bar -->
-    <div class="slip-footer-bar">
-      <span>LAKAD — DepEd Leyte Division Office</span>
-      <span>Slip No.: <strong>{{ slip.slip_no }}</strong> &nbsp;·&nbsp; Generated: {{ slip.logged_at[:10] }}</span>
+    <!-- ══ OFFICIAL FOOTER (mirrors DepEd Leyte docx footer) ══ -->
+    <div class="slip-official-footer">
+      <div class="sof-inner">
+
+        <!-- Left: Matatag logos cluster + SDO logo -->
+        <div class="sof-logos">
+          <img src="{{ url_for('static', filename='img/matatag_logos.png') }}" alt="DepEd Matatag Logos" class="sof-logos-img"/>
+          <img src="{{ url_for('static', filename='img/sdo_logo.jpg') }}" alt="SDO Leyte Logo" class="sof-logos-img"/>
+        </div>
+
+        <!-- Center: contact info -->
+        <div class="sof-contact">
+          <div class="sof-row"><b>Address:</b> Government Center, Candahug, Palo, Leyte</div>
+          <div class="sof-row"><b>Telephone No.:</b> (053) 888-3527</div>
+          <div class="sof-row"><b>Email Address:</b> leyte.ro8@deped.gov.ph</div>
+          <div class="sof-row"><b>Website:</b> https://depedleytedivision.com</div>
+        </div>
+
+        <!-- Right: page number box -->
+        <div class="sof-pagebox">
+          Page <b>&nbsp;1&nbsp;</b> of <b>&nbsp;1</b>
+        </div>
+
+      </div>
     </div>
 
   </div><!-- /slip-card -->

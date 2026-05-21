@@ -722,6 +722,22 @@ function openTransferModalFromCart() {
   openTransferModal();
 }
 
+function printLoggingSlipFromCart() {
+  var ids = getCartDocIds();
+  if (!ids || ids.length === 0) { showToast('No documents in cart', 'warning'); return; }
+  var csrfToken = (document.getElementById('csrf-token-value') || {}).value || '';
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/logging-slip/print';
+  [['doc_ids', ids.join(',')], ['csrf_token', csrfToken]].forEach(function(pair) {
+    var inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = pair[0]; inp.value = pair[1];
+    form.appendChild(inp);
+  });
+  document.body.appendChild(form);
+  form.submit();
+}
+
 function toggleCartItem(docId, checked) {
   if (checked) {
     addToCart(docId);
