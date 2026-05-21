@@ -18,6 +18,20 @@
   window.CURRENT_USERNAME = "{{ session.get('username', '') }}";
   window.CURRENT_OFFICE   = "{{ session.get('office',   '') }}";
 </script>
+<script>
+  /* Clear cart on any page that receives ?cart_cleared=1 */
+  (function () {
+    if (new URLSearchParams(location.search).get('cart_cleared') === '1') {
+      localStorage.removeItem('doctracker_selected_docs');
+      localStorage.removeItem('doctracker_cart_docs');
+      localStorage.removeItem('doctracker_cart_details');
+      /* Strip param from address bar without reload */
+      var u = new URL(location.href);
+      u.searchParams.delete('cart_cleared');
+      history.replaceState(null, '', u.toString());
+    }
+  })();
+</script>
 {% endif %}
 
 <!-- ═══ NAV ═══ -->
