@@ -62,7 +62,8 @@ var serverSessionData = {
   </div>
 
 
-  {# ── POST-LOG PRINT MODAL ── #}
+  {# ── POST-LOG PRINT MODAL (disabled) ── #}
+  {#
   {% if pending_print_ids %}
   <div id="print-modal" class="modal-overlay open">
     <div class="modal-sheet modal-sheet-sm">
@@ -85,6 +86,7 @@ var serverSessionData = {
     </div>
   </div>
   {% endif %}
+  #}
 
   <div class="dashboard-tabs">
     <button class="dash-tab active" id="tab-docs-btn" onclick="switchDashTab('docs')">
@@ -193,7 +195,8 @@ var serverSessionData = {
   </div>
 
 
-  {# ── QR PRINT QUEUE ── #}
+  {# ── QR PRINT QUEUE (disabled) ── #}
+  {#
   {% if unprinted_docs %}
   <div class="print-queue-card">
     <div class="pq-header">
@@ -215,6 +218,7 @@ var serverSessionData = {
     </div>
   </div>
   {% endif %}
+  #}
 
   {# ── STATS ROW ── #}
   <div class="dash-stats-row" role="navigation" aria-label="Filter by status">
@@ -935,6 +939,8 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 </script>
 
+{# ── QR PRINT QUEUE JS + CSS (disabled) ── #}
+{#
 <script>
 // ── Print modal ──
 function dismissPrintModal() {
@@ -1027,5 +1033,6 @@ function markAllPrinted() {
   justify-content: flex-end;
 }
 </style>
+#}
 
 {% endblock %}

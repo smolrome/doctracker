@@ -289,14 +289,15 @@ def index():
 
     staff_in_office = offices_dict.get(current_office, [])
 
-    pending_print_ids   = session.pop('pending_print_ids', [])
-    pending_print_count = session.pop('pending_print_count', 0)
-    all_docs_list = load_docs()
-    unprinted_docs = [d for d in all_docs_list
-                      if d.get('logged_by') == session.get('username')
-                      and not d.get('qr_printed')
-                      and not d.get('deleted')
-                      and d.get('status') not in ('Released', 'Archived')][:20]
+    # QR Print Queue disabled
+    # pending_print_ids   = session.pop('pending_print_ids', [])
+    # pending_print_count = session.pop('pending_print_count', 0)
+    # all_docs_list = load_docs()
+    # unprinted_docs = [d for d in all_docs_list
+    #                   if d.get('logged_by') == session.get('username')
+    #                   and not d.get('qr_printed')
+    #                   and not d.get('deleted')
+    #                   and d.get('status') not in ('Released', 'Archived')][:20]
 
     current_role_val = session.get("role", "")
     if current_role_val == "admin":
@@ -332,9 +333,9 @@ def index():
         current_user_name=session.get('full_name', ''),
         current_user_role=session.get('role', ''),
         is_admin=session.get('role') == 'admin',
-        pending_print_ids=pending_print_ids,
-        pending_print_count=pending_print_count,
-        unprinted_docs=unprinted_docs,
+        # pending_print_ids=pending_print_ids,    # QR Print Queue disabled
+        # pending_print_count=pending_print_count, # QR Print Queue disabled
+        # unprinted_docs=unprinted_docs,           # QR Print Queue disabled
         staff_appointments=staff_appointments_list,
         staff_pending_appointments=staff_pending_appointments)
 
@@ -529,8 +530,8 @@ def add():
                 # Routing slips are only created when the user explicitly routes/transfers
                 # documents via the routing action in routes/offices.py.
 
-                session['pending_print_ids'] = logged_doc_ids
-                session['pending_print_count'] = len(cart)
+                # session['pending_print_ids'] = logged_doc_ids    # QR Print Queue disabled
+                # session['pending_print_count'] = len(cart)       # QR Print Queue disabled
                 session.pop("staff_cart", None)
                 session.modified = True
                 clear_cart(session.get("username", ""))
@@ -1917,39 +1918,40 @@ def check_duplicate():
     return jsonify({"duplicates": matches})
 
 
-@dashboard_bp.route("/staff/print-qr-sheet")
-@login_required
-def print_qr_sheet():
-    ids = request.args.get('ids', '')
-    doc_ids = [i.strip() for i in ids.split(',') if i.strip()]
-    docs = []
-    for doc_id in doc_ids:
-        doc = get_doc(doc_id)
-        if doc and not doc.get('deleted'):
-            qr_b64 = generate_qr_b64(doc, request.host_url)
-            docs.append({
-                'id':         doc.get('id'),
-                'doc_name':   doc.get('doc_name', 'Unnamed'),
-                'doc_id':     doc.get('doc_id', ''),
-                'created_at': (doc.get('created_at') or '')[:10],
-                'office':     doc.get('logged_by_office', ''),
-                'qr_b64':     qr_b64,
-            })
-    return render_template('print_qr_sheet.html', docs=docs)
-
-
-@dashboard_bp.route("/staff/mark-qr-printed", methods=["POST"])
-@login_required
-def mark_qr_printed():
-    data = request.get_json(force=True, silent=True) or {}
-    ids = data.get('ids', [])
-    for doc_id in ids:
-        doc = get_doc(doc_id)
-        if doc:
-            doc['qr_printed'] = True
-            doc['updated_at'] = now_str()
-            save_doc(doc)
-    return jsonify(ok=True)
+# ── QR Print Queue routes disabled ──────────────────────────────────────────
+# @dashboard_bp.route("/staff/print-qr-sheet")
+# @login_required
+# def print_qr_sheet():
+#     ids = request.args.get('ids', '')
+#     doc_ids = [i.strip() for i in ids.split(',') if i.strip()]
+#     docs = []
+#     for doc_id in doc_ids:
+#         doc = get_doc(doc_id)
+#         if doc and not doc.get('deleted'):
+#             qr_b64 = generate_qr_b64(doc, request.host_url)
+#             docs.append({
+#                 'id':         doc.get('id'),
+#                 'doc_name':   doc.get('doc_name', 'Unnamed'),
+#                 'doc_id':     doc.get('doc_id', ''),
+#                 'created_at': (doc.get('created_at') or '')[:10],
+#                 'office':     doc.get('logged_by_office', ''),
+#                 'qr_b64':     qr_b64,
+#             })
+#     return render_template('print_qr_sheet.html', docs=docs)
+#
+#
+# @dashboard_bp.route("/staff/mark-qr-printed", methods=["POST"])
+# @login_required
+# def mark_qr_printed():
+#     data = request.get_json(force=True, silent=True) or {}
+#     ids = data.get('ids', [])
+#     for doc_id in ids:
+#         doc = get_doc(doc_id)
+#         if doc:
+#             doc['qr_printed'] = True
+#             doc['updated_at'] = now_str()
+#             save_doc(doc)
+#     return jsonify(ok=True)
 
 
 @dashboard_bp.route("/staff/appointments")
