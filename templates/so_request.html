@@ -407,8 +407,45 @@ function onTypeChange() {
             toSelect.appendChild(opt2);
           }
 
+          const effLbl = document.createElement('div');
+          effLbl.className = 'form-label';
+          effLbl.style.marginTop = '10px';
+          effLbl.style.fontSize = '13px';
+          effLbl.textContent = 'Effective Date (optional)';
+
+          const monthSelect = document.createElement('select');
+          monthSelect.className = 'form-input form-select';
+          monthSelect.style.width = '48%';
+          monthSelect.style.display = 'inline-block';
+          ['', 'January', 'February', 'March', 'April', 'May', 'June',
+           'July', 'August', 'September', 'October', 'November', 'December'].forEach(function(m) {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m || '— Month —';
+            monthSelect.appendChild(opt);
+          });
+
+          const dayInput = document.createElement('input');
+          dayInput.type = 'number';
+          dayInput.className = 'form-input';
+          dayInput.placeholder = 'Day';
+          dayInput.min = 1;
+          dayInput.max = 31;
+          dayInput.style.width = '48%';
+          dayInput.style.display = 'inline-block';
+          dayInput.style.marginLeft = '4%';
+
           function updateSchoolYear() {
-            hiddenInput.value = fromSelect.value + '-' + toSelect.value;
+            const years = fromSelect.value + '-' + toSelect.value;
+            const month = monthSelect.value;
+            const day = dayInput.value.trim();
+            if (month && day) {
+              hiddenInput.value = years + ', effective ' + month + ' ' + day;
+            } else if (month) {
+              hiddenInput.value = years + ', effective ' + month;
+            } else {
+              hiddenInput.value = years;
+            }
           }
 
           fromSelect.addEventListener('change', function () {
@@ -416,11 +453,16 @@ function onTypeChange() {
             updateSchoolYear();
           });
           toSelect.addEventListener('change', updateSchoolYear);
+          monthSelect.addEventListener('change', updateSchoolYear);
+          dayInput.addEventListener('input', updateSchoolYear);
           updateSchoolYear();
 
           group.appendChild(lbl);
           group.appendChild(fromSelect);
           group.appendChild(toSelect);
+          group.appendChild(effLbl);
+          group.appendChild(monthSelect);
+          group.appendChild(dayInput);
           group.appendChild(hiddenInput);
           wrap.appendChild(group);
           return;

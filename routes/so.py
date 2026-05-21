@@ -312,6 +312,23 @@ def _fmt_date(s: str) -> str:
         return s
 
 
+MONTH_NAMES = {
+    '1': 'January', '2': 'February', '3': 'March', '4': 'April',
+    '5': 'May', '6': 'June', '7': 'July', '8': 'August',
+    '9': 'September', '10': 'October', '11': 'November', '12': 'December',
+    '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+    '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+    '09': 'September', '10': 'October', '11': 'November', '12': 'December',
+}
+
+
+def format_month_words(value: str) -> str:
+    """Replace any numeric month references in a string with full month names."""
+    def replace_month(m):
+        return MONTH_NAMES.get(m.group(1), m.group(0))
+    return re.sub(r'\b(0?[1-9]|1[0-2])\b(?=\s+\d{4}|\s+day)', replace_month, value)
+
+
 # ── python-docx placeholder helpers ────────────────────────────────────────────
 
 def _apply_run_fmt(run, bold=None, font_name=None, font_size_pt=None):
@@ -801,6 +818,10 @@ def so_generate():
     for key in _DATE_FIELDS:
         if key in fields:
             fields[key] = _fmt_date(fields[key])
+
+    # Normalize month names in school_year if present
+    if 'school_year' in fields:
+        fields['school_year'] = format_month_words(fields['school_year'])
 
     # Normalize accountability figures: prepend "Php" if missing
     if "accountability_amount_figures" in fields:
