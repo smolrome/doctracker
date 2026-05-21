@@ -2,6 +2,65 @@
 {% block content %}
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/detail.css') }}"/>
+<style>
+.qr-hero-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 14px;
+}
+.qr-hero-img {
+  width: 160px;
+  height: 160px;
+  border-radius: 8px;
+  border: 3px solid rgba(255,255,255,.25);
+  background: #fff;
+  display: block;
+}
+.qr-info-btn {
+  background: rgba(255,255,255,.15);
+  border: 1.5px solid rgba(255,255,255,.25);
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+  transition: background .15s;
+}
+.qr-info-btn:hover { background: rgba(255,255,255,.28); }
+.qr-info-popover {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 280px;
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.18);
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.6;
+  z-index: 200;
+}
+.qr-info-popover.open { display: block; }
+.qr-hero-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  align-items: flex-start;
+}
+</style>
 
 <!-- ── DOCUMENT HERO ── -->
 <div class="page-header">
@@ -66,6 +125,19 @@
     {% elif s=='Released' %}<span class="badge badge-released">✅ {{ s }}</span>
     {% elif s=='On Hold'  %}<span class="badge badge-hold">⏸️ {{ s }}</span>
     {% else %}<span class="badge badge-archived">📦 {{ s }}</span>{% endif %}
+    <div class="qr-hero-wrap">
+      <img src="data:image/png;base64,{{ qr_b64 }}" alt="Document QR Code" class="qr-hero-img"/>
+      <button class="qr-info-btn" onclick="toggleQrPopover(event)" aria-label="QR code info">ℹ️</button>
+      <div class="qr-info-popover" id="qr-info-popover">
+        Print and attach this QR code to the physical document. Each office that handles it
+        scans this code — instantly adding an entry to the travel log with the officer's name
+        and timestamp.
+      </div>
+    </div>
+    <div class="qr-hero-btns">
+      <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ Download QR PNG</a>
+      <a href="/receive/{{ doc.id }}" class="btn btn-primary" target="_blank">🔗 Open Scan Page</a>
+    </div>
   </div>
 </div>
 
@@ -133,6 +205,16 @@
 
 
 <script>
+  function toggleQrPopover(e) {
+    e.stopPropagation();
+    var p = document.getElementById('qr-info-popover');
+    if (p) p.classList.toggle('open');
+  }
+  document.addEventListener('click', function() {
+    var p = document.getElementById('qr-info-popover');
+    if (p) p.classList.remove('open');
+  });
+
   (function setupCopyButtons() {
     document.addEventListener('click', function (e) {
       var btn = e.target.closest('.copy-btn');
@@ -259,24 +341,5 @@
   {% endif %}
 </div>
 
-<!-- ── QR Code — full width ── -->
-<div class="info-card full">
-  <div class="info-card-title">📱 QR Code</div>
-  <div class="qr-section">
-    <img src="data:image/png;base64,{{ qr_b64 }}"
-         alt="Document QR Code" class="qr-img"/>
-    <div class="qr-info">
-      <p>
-        Print and attach this QR code to the physical document.
-        Each office that handles it scans this code — instantly adding an entry
-        to the travel log above with the officer's name and timestamp.
-      </p>
-      <div class="qr-btns">
-        <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ Download QR PNG</a>
-        <a href="/receive/{{ doc.id }}" class="btn btn-primary" target="_blank">🔗 Open Scan Page</a>
-      </div>
-    </div>
-  </div>
-</div>
 
 {% endblock %}
