@@ -328,6 +328,7 @@ def _run_migrations(cur):
     migrations.append("ALTER TABLE staff_groups ADD COLUMN IF NOT EXISTS has_so_access BOOLEAN DEFAULT FALSE")
     migrations.append("ALTER TABLE staff_groups ADD COLUMN IF NOT EXISTS has_shared_dashboard BOOLEAN DEFAULT TRUE")
     migrations.append("CREATE TABLE IF NOT EXISTS transfer_batches (id TEXT PRIMARY KEY, transferred_by TEXT NOT NULL, transferred_to TEXT NOT NULL, transferred_to_office TEXT, transferred_to_name TEXT, transfer_type TEXT, doc_ids JSONB NOT NULL, created_at TIMESTAMP DEFAULT NOW())")
+    migrations.append("ALTER TABLE so_records ADD COLUMN IF NOT EXISTS doc_id TEXT REFERENCES documents(id) ON DELETE SET NULL")
     for sql in migrations:
         try:
             cur.execute("SAVEPOINT mig")
@@ -335,6 +336,20 @@ def _run_migrations(cur):
             cur.execute("RELEASE SAVEPOINT mig")
         except Exception as e:
             cur.execute("ROLLBACK TO SAVEPOINT mig")  # keep transaction alive
+
+
+def get_doc_by_id(doc_id: str):
+    """Fetch a document by its internal id. Returns a dict or None."""
+    if not USE_DB or not doc_id:
+        return None
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM documents WHERE id = %s", (doc_id,))
+                row = cur.fetchone()
+                return dict(row) if row else None
+    except Exception:
+        return None
 
 
 def get_paired_usernames(username: str) -> list:

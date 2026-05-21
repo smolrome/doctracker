@@ -493,7 +493,7 @@ def _replace_body(doc, placeholder, body_text):
 # ── SO record persistence ───────────────────────────────────────────────────────
 
 def _save_so_record(filename, so_type, employee_full_name, employee_position,
-                    date_issued, generated_by, file_path):
+                    date_issued, generated_by, file_path, doc_id=None):
     """Insert a record into so_records. Returns the new record id, or None."""
     try:
         from services.database import USE_DB, get_conn
@@ -504,11 +504,11 @@ def _save_so_record(filename, so_type, employee_full_name, employee_position,
                 cur.execute(
                     """INSERT INTO so_records
                        (filename, so_type, employee_full_name, employee_position,
-                        date_issued, generated_by, file_path)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        date_issued, generated_by, file_path, doc_id)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                        RETURNING id""",
                     (filename, so_type, employee_full_name, employee_position,
-                     date_issued, generated_by, file_path),
+                     date_issued, generated_by, file_path, doc_id or None),
                 )
                 row = cur.fetchone()
                 return row["id"] if row else None
@@ -704,8 +704,10 @@ def _log_so_as_document(so_type, employee_full_name, employee_position,
             print(f"Warning: SO auto-transfer skipped: {transfer_err}")
 
         insert_doc(doc)
+        return doc["id"]
     except Exception as e:
         print(f"Warning: could not auto-log SO as document: {e}")
+    return None
 
 
 # ── Auth helper ─────────────────────────────────────────────────────────────────
@@ -903,17 +905,8 @@ def so_generate():
         file_path = os.path.join(out_dir, filename)
         doc.save(file_path)
 
-        record_id = _save_so_record(
-            filename, so_type, employee_full_name, employee_position,
-            date_issued, session.get("username", "?"), file_path,
-        )
-
-        # Build verification URL and embed QR into the saved docx
-        verify_identifier = str(record_id) if record_id else filename
-        verify_url = f"{_VERIFY_BASE}/so/verify/{verify_identifier}"
-        _embed_qr_in_docx(file_path, verify_url)
-
-        _log_so_as_document(
+        # Log SO as document first to capture its id for linking
+        auto_doc_id = _log_so_as_document(
             so_type=original_so_type,
             employee_full_name=employee_full_name,
             employee_position=employee_position,
@@ -923,6 +916,18 @@ def so_generate():
             full_name=session.get("full_name", ""),
             office=session.get("office", "Personnel Unit"),
         )
+        linked_doc_id = request.form.get("doc_id") or auto_doc_id
+
+        record_id = _save_so_record(
+            filename, so_type, employee_full_name, employee_position,
+            date_issued, session.get("username", "?"), file_path,
+            doc_id=linked_doc_id,
+        )
+
+        # Build verification URL and embed QR into the saved docx
+        verify_identifier = str(record_id) if record_id else filename
+        verify_url = f"{_VERIFY_BASE}/so/verify/{verify_identifier}"
+        _embed_qr_in_docx(file_path, verify_url)
 
         try:
             from services.misc import audit_log
@@ -1136,4 +1141,10 @@ def so_verify(identifier):
                 )
     except Exception:
         pass
-    return render_template("so_verify.html", record=record, identifier=identifier)
+    timeline = []
+    if record and record.get("doc_id"):
+        from services.database import get_doc_by_id
+        linked_doc = get_doc_by_id(record["doc_id"])
+        if linked_doc:
+            timeline = linked_doc.get("travel_log") or []
+    return render_template("so_verify.html", record=record, identifier=identifier, timeline=timeline)
