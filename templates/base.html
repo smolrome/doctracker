@@ -367,7 +367,11 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/base.js') }}"></script>
-<script>lucide.createIcons();</script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    lucide.createIcons();
+  });
+</script>
 
 {% if logged_in and current_role == 'admin' %}
 <script>
