@@ -1278,6 +1278,11 @@ th.cb-cell { background: #F1F7FB; }
   color: #0E2A47;
 }
 
+.cart-print-btn {
+  background: var(--teal, #0D9488);
+  color: #fff;
+}
+
 .cart-clear-btn {
   background: var(--surface2);
   color: var(--muted);
