@@ -1142,6 +1142,8 @@ def so_verify(identifier):
     except Exception:
         pass
     timeline = []
+    if record:
+        print(f"[so_verify] record keys: { {k: v for k, v in record.items() if k in ('id','so_type','doc_id','filename')} }")
     if record and record.get("doc_id"):
         from services.database import get_doc_by_id
         linked_doc = get_doc_by_id(record["doc_id"])
