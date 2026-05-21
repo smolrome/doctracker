@@ -264,49 +264,48 @@
 }
 .mp-btn-add-member:hover { background: #0a5f74; }
 
-/* ── Group type badges ── */
-.mp-type-badge-so {
-  background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;
-  border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 700; white-space: nowrap;
-}
-.mp-type-badge-shared {
+/* ── Group feature badges ── */
+.mp-badge-on-shared {
   background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE;
   border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 700; white-space: nowrap;
 }
+.mp-badge-on-so {
+  background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;
+  border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.mp-badge-off {
+  background: #F1F5F9; color: #94A3B8; border: 1px solid #E2E8F0;
+  border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 700; white-space: nowrap;
+}
 
-/* ── Delete / toggle group footer ── */
+/* ── Group footer: toggle buttons + delete ── */
 .mp-group-footer {
   padding: 10px 16px;
   background: #fff;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
-.mp-btn-toggle-type {
-  padding: 6px 14px;
-  background: #FFF8E7;
-  color: #92400E;
-  border: 1px solid #FCD34D;
-  border-radius: 7px;
-  font-size: 12px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background .15s;
+.mp-footer-toggles { display: flex; gap: 6px; flex: 1; }
+.mp-btn-toggle-shared {
+  padding: 6px 12px;
+  background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE;
+  border-radius: 7px; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer; white-space: nowrap; transition: background .15s;
 }
-.mp-btn-toggle-type:hover { background: #FEF3C7; }
+.mp-btn-toggle-shared:hover { background: #DBEAFE; }
+.mp-btn-toggle-so {
+  padding: 6px 12px;
+  background: #FFF8E7; color: #92400E; border: 1px solid #FCD34D;
+  border-radius: 7px; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer; white-space: nowrap; transition: background .15s;
+}
+.mp-btn-toggle-so:hover { background: #FEF3C7; }
 .mp-btn-delete-group {
   padding: 6px 14px;
-  background: #fef2f2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
-  border-radius: 7px;
-  font-size: 12px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background .15s;
+  background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;
+  border-radius: 7px; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer; transition: background .15s;
 }
 .mp-btn-delete-group:hover { background: #fee2e2; }
 
@@ -368,10 +367,15 @@
         <!-- Group header -->
         <div class="mp-group-head">
           <span class="mp-group-name">{{ g.group_name }}</span>
-          {% if g.group_type == 'so_access' %}
-          <span class="mp-type-badge-so">⚡ SO Access</span>
+          {% if g.has_shared_dashboard %}
+          <span class="mp-badge-on-shared">👥 Shared Dashboard</span>
           {% else %}
-          <span class="mp-type-badge-shared">👥 Shared Dashboard</span>
+          <span class="mp-badge-off">👥 No Shared Dashboard</span>
+          {% endif %}
+          {% if g.has_so_access %}
+          <span class="mp-badge-on-so">⚡ SO Access</span>
+          {% else %}
+          <span class="mp-badge-off">⚡ No SO Access</span>
           {% endif %}
           <span class="mp-member-count">{{ g.members|length }} member{{ 's' if g.members|length != 1 else '' }}</span>
           <span class="mp-group-meta">{{ g.created_date or '' }}</span>
@@ -418,14 +422,22 @@
           </form>
         </div>
 
-        <!-- Footer: toggle type + delete -->
+        <!-- Footer: toggle shared dashboard + toggle SO access + delete -->
         <div class="mp-group-footer">
-          <form method="POST" action="/manage-pairings/toggle-group-type/{{ g.id }}" style="margin:0;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="mp-btn-toggle-type">
-              {{ '👥 Switch to Shared Dashboard' if g.group_type == 'so_access' else '⚡ Switch to SO Access' }}
-            </button>
-          </form>
+          <div class="mp-footer-toggles">
+            <form method="POST" action="/manage-pairings/toggle-shared-dashboard/{{ g.id }}" style="margin:0;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="mp-btn-toggle-shared">
+                {{ '👥 Disable Shared Dashboard' if g.has_shared_dashboard else '👥 Enable Shared Dashboard' }}
+              </button>
+            </form>
+            <form method="POST" action="/manage-pairings/toggle-so-access/{{ g.id }}" style="margin:0;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="mp-btn-toggle-so">
+                {{ '⚡ Disable SO Access' if g.has_so_access else '⚡ Enable SO Access' }}
+              </button>
+            </form>
+          </div>
           <form method="POST" action="/manage-pairings/delete-group/{{ g.id }}" style="margin:0;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="mp-btn-delete-group"

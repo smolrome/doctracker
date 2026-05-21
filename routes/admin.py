@@ -936,7 +936,7 @@ def manage_pairings():
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
-                        SELECT id, group_name, created_by, group_type,
+                        SELECT id, group_name, created_by, has_so_access, has_shared_dashboard,
                                to_char(created_at, 'Mon DD, YYYY') AS created_date
                         FROM staff_groups
                         ORDER BY created_at DESC
@@ -953,12 +953,13 @@ def manage_pairings():
                         """, (g['id'],))
                         members = cur.fetchall() or []
                         groups.append({
-                            'id':           g['id'],
-                            'group_name':   g['group_name'],
-                            'created_by':   g['created_by'],
-                            'created_date': g['created_date'],
-                            'group_type':   g['group_type'] or 'shared_dashboard',
-                            'members':      list(members),
+                            'id':                 g['id'],
+                            'group_name':         g['group_name'],
+                            'created_by':         g['created_by'],
+                            'created_date':       g['created_date'],
+                            'has_so_access':      bool(g['has_so_access']),
+                            'has_shared_dashboard': bool(g['has_shared_dashboard']),
+                            'members':            list(members),
                         })
         except Exception:
             pass
@@ -1077,9 +1078,9 @@ def delete_group(group_id):
     return redirect(url_for("admin.manage_pairings"))
 
 
-@admin_bp.route("/manage-pairings/toggle-group-type/<int:group_id>", methods=["POST"])
+@admin_bp.route("/manage-pairings/toggle-so-access/<int:group_id>", methods=["POST"])
 @admin_required
-def toggle_group_type(group_id):
+def toggle_group_so_access(group_id):
     from services.database import USE_DB, get_conn
     if not USE_DB:
         flash("Database not available.", "error")
@@ -1087,19 +1088,47 @@ def toggle_group_type(group_id):
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT group_name, group_type FROM staff_groups WHERE id = %s", (group_id,))
+                cur.execute("SELECT group_name, has_so_access FROM staff_groups WHERE id = %s", (group_id,))
                 row = cur.fetchone()
                 if not row:
                     flash("Group not found.", "error")
                     return redirect(url_for("admin.manage_pairings"))
-                new_type = 'so_access' if (row['group_type'] or 'shared_dashboard') == 'shared_dashboard' else 'shared_dashboard'
-                cur.execute("UPDATE staff_groups SET group_type = %s WHERE id = %s", (new_type, group_id))
-        audit_log("group_type_toggled",
-                  f"group_id={group_id} group_name={row['group_name']} group_type={new_type}",
+                new_val = not bool(row['has_so_access'])
+                cur.execute("UPDATE staff_groups SET has_so_access = %s WHERE id = %s", (new_val, group_id))
+        audit_log("group_so_access_toggled",
+                  f"group_id={group_id} group_name={row['group_name']} has_so_access={new_val}",
                   username=session.get("username", "admin"), ip=get_client_ip())
-        flash(f"Group '{row['group_name']}' type set to '{new_type}'.", "success")
+        state = "enabled" if new_val else "disabled"
+        flash(f"SO Access {state} for group '{row['group_name']}'.", "success")
     except Exception as e:
-        flash(f"Failed to update group type: {e}", "error")
+        flash(f"Failed to update SO access: {e}", "error")
+    return redirect(url_for("admin.manage_pairings"))
+
+
+@admin_bp.route("/manage-pairings/toggle-shared-dashboard/<int:group_id>", methods=["POST"])
+@admin_required
+def toggle_group_shared_dashboard(group_id):
+    from services.database import USE_DB, get_conn
+    if not USE_DB:
+        flash("Database not available.", "error")
+        return redirect(url_for("admin.manage_pairings"))
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT group_name, has_shared_dashboard FROM staff_groups WHERE id = %s", (group_id,))
+                row = cur.fetchone()
+                if not row:
+                    flash("Group not found.", "error")
+                    return redirect(url_for("admin.manage_pairings"))
+                new_val = not bool(row['has_shared_dashboard'])
+                cur.execute("UPDATE staff_groups SET has_shared_dashboard = %s WHERE id = %s", (new_val, group_id))
+        audit_log("group_shared_dashboard_toggled",
+                  f"group_id={group_id} group_name={row['group_name']} has_shared_dashboard={new_val}",
+                  username=session.get("username", "admin"), ip=get_client_ip())
+        state = "enabled" if new_val else "disabled"
+        flash(f"Shared Dashboard {state} for group '{row['group_name']}'.", "success")
+    except Exception as e:
+        flash(f"Failed to update Shared Dashboard: {e}", "error")
     return redirect(url_for("admin.manage_pairings"))
 
 

@@ -313,7 +313,8 @@ def _run_migrations(cur):
     migrations.append("CREATE INDEX IF NOT EXISTS idx_staff_pairings_b ON staff_pairings(user_b)")
     migrations.append("CREATE INDEX IF NOT EXISTS idx_sgm_group ON staff_group_members(group_id)")
     migrations.append("CREATE INDEX IF NOT EXISTS idx_sgm_username ON staff_group_members(username)")
-    migrations.append("ALTER TABLE staff_groups ADD COLUMN IF NOT EXISTS group_type TEXT DEFAULT 'shared_dashboard'")
+    migrations.append("ALTER TABLE staff_groups ADD COLUMN IF NOT EXISTS has_so_access BOOLEAN DEFAULT FALSE")
+    migrations.append("ALTER TABLE staff_groups ADD COLUMN IF NOT EXISTS has_shared_dashboard BOOLEAN DEFAULT TRUE")
     for sql in migrations:
         try:
             cur.execute("SAVEPOINT mig")
@@ -378,7 +379,7 @@ def set_user_can_route_documents(username: str, value: bool) -> tuple:
 
 
 def get_group_usernames(username: str) -> list:
-    """Return all usernames that share a staff group with this user (excluding self)."""
+    """Return all usernames that share a shared_dashboard group with this user (excluding self)."""
     if not USE_DB or not username:
         return []
     try:
@@ -388,7 +389,9 @@ def get_group_usernames(username: str) -> list:
                     SELECT DISTINCT sgm2.username
                     FROM staff_group_members sgm1
                     JOIN staff_group_members sgm2 ON sgm1.group_id = sgm2.group_id
+                    JOIN staff_groups sg ON sgm1.group_id = sg.id
                     WHERE sgm1.username = %s AND sgm2.username != %s
+                      AND sg.has_shared_dashboard = TRUE
                 """, (username, username))
                 rows = cur.fetchall()
                 return [list(row.values())[0] for row in rows]
@@ -398,7 +401,7 @@ def get_group_usernames(username: str) -> list:
 
 
 def user_has_so_access(username: str) -> bool:
-    """Return True if user is member of any group with group_type = 'so_access'."""
+    """Return True if user is member of any group with has_so_access = TRUE."""
     if not USE_DB or not username:
         return False
     try:
@@ -407,7 +410,7 @@ def user_has_so_access(username: str) -> bool:
                 cur.execute("""
                     SELECT 1 FROM staff_group_members sgm
                     JOIN staff_groups sg ON sgm.group_id = sg.id
-                    WHERE sgm.username = %s AND sg.group_type = 'so_access'
+                    WHERE sgm.username = %s AND sg.has_so_access = TRUE
                     LIMIT 1
                 """, (username,))
                 return cur.fetchone() is not None
