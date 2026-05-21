@@ -167,8 +167,6 @@
   <button class="btn btn-success" onclick="openAcceptModal('{{ doc.id }}')">✅ Accept</button>
   <button class="btn btn-danger" onclick="showRejectionModal('{{ doc.id }}')">❌ Reject</button>
   {% endif %}
-  <a href="/qr/{{ doc.id }}.png" class="btn btn-secondary">⬇️ QR Code</a>
-  <a href="/receive/{{ doc.id }}" target="_blank" class="btn btn-secondary">📱 Scan Page</a>
   {% if doc.routing_slip_id and slip_type == 'routing' and (session.get('role') in ['admin', 'staff']) %}
   <a href="/routing-slip/{{ doc.routing_slip_id }}" target="_blank" class="btn btn-teal">🖨️ Routing Slip</a>
   {% endif %}
