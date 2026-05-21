@@ -363,6 +363,12 @@ var serverSessionData = {
                   data-created-at="{{ doc.created_at or '' }}"
                   data-doc-id="{{ doc.id }}"
                   data-referred-to="{{ doc.referred_to or '' }}"
+                  data-ref="{{ doc.doc_id or '' }}"
+                  data-sender="{{ doc.sender_name or '' }}"
+                  data-category="{{ doc.category or '' }}"
+                  data-logged-by="{{ doc.logged_by or '' }}"
+                  data-office="{{ doc.office or doc.sender_org or '' }}"
+                  data-date="{{ (doc.created_at or '')[:10] }}"
                   tabindex="0"
                   aria-label="Document: {{ doc.doc_name }}">
 

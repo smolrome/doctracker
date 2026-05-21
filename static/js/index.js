@@ -614,31 +614,47 @@ function renderCartModal() {
   var updatedDetails = {};
 
   ids.forEach(function(id) {
-    // Start with stored title — works on any page
-    var title = (storedDetails[id] && storedDetails[id].title) ? storedDetails[id].title : id;
+    var d     = storedDetails[id] || {};
+    var title = d.title || id;
 
-    // Upgrade with live DOM name if doc is on current page
+    // Upgrade with live DOM data if doc row is on current page
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
     if (cb) {
       var row    = cb.closest('tr');
       var nameEl = row ? row.querySelector('.doc-name') : null;
       if (nameEl && nameEl.textContent.trim()) title = nameEl.textContent.trim();
+      if (row) {
+        d.ref      = row.dataset.ref      || d.ref      || '';
+        d.sender   = row.dataset.sender   || d.sender   || '';
+        d.category = row.dataset.category || d.category || '';
+        d.loggedBy = row.dataset.loggedBy || d.loggedBy || '';
+        d.office   = row.dataset.office   || d.office   || '';
+        d.date     = row.dataset.date     || d.date     || '';
+      }
     }
+    d.title = title;
+    updatedDetails[id] = d;
 
-    updatedDetails[id] = { title: title };
-
-    html += '<div class="cart-modal-item" data-doc-id="' + id + '">';
-    html +=   '<div class="cart-modal-item-info">';
-    html +=     '<div class="cart-modal-item-header">';
-    html +=       '<span class="cart-modal-doc-num" style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">' + id + '</span>';
+    html += '<div class="pending-doc-card" data-doc-id="' + id + '">';
+    html +=   '<div class="pending-doc-top">';
+    html +=     '<div style="min-width:0;flex:1;">';
+    html +=       '<h4 class="pending-doc-name">' + escHtml(title) + '</h4>';
+    html +=       '<p class="pending-doc-id">' + escHtml(id) + '</p>';
     html +=     '</div>';
-    html +=     '<div class="cart-modal-item-title" title="' + title.replace(/"/g, '&quot;') + '">' + title + '</div>';
+    html +=     '<button class="cart-modal-remove" onclick="removeFromCart(\'' + id + '\')" title="Remove">&#x2715;</button>';
     html +=   '</div>';
-    html +=   '<button class="cart-modal-remove" onclick="removeFromCart(\'' + id + '\')" title="Remove">&#x2715;</button>';
+    html +=   '<div class="pending-doc-meta">';
+    if (d.ref)      html += '<strong>Ref:</strong> '      + escHtml(d.ref)      + '<br>';
+    if (d.sender)   html += '<strong>Sender:</strong> '   + escHtml(d.sender)   + '<br>';
+    if (d.category) html += '<strong>Category:</strong> ' + escHtml(d.category) + '<br>';
+    if (d.loggedBy) html += '<strong>From:</strong> '     + escHtml(d.loggedBy) + '<br>';
+    if (d.office)   html += '<strong>Office:</strong> '   + escHtml(d.office)   + '<br>';
+    if (d.date)     html += '<strong>Date:</strong> '     + escHtml(d.date);
+    html +=   '</div>';
     html += '</div>';
   });
 
-  // Persist updated titles for next page navigation
+  // Persist enriched details for next page navigation
   saveCartDocDetails(updatedDetails);
   body.innerHTML = html;
 }
@@ -650,10 +666,18 @@ function addToCart(docId) {
     localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(ids));
     var cb = document.querySelector('.doc-checkbox[value="' + docId + '"]');
     if (cb) {
-      var row    = cb.closest('tr');
-      var nameEl = row ? row.querySelector('.doc-name') : null;
+      var row     = cb.closest('tr');
+      var nameEl  = row ? row.querySelector('.doc-name') : null;
       var details = getCartDocDetails();
-      details[docId] = { title: nameEl ? nameEl.textContent.trim() : docId };
+      details[docId] = {
+        title:    nameEl ? nameEl.textContent.trim() : docId,
+        ref:      row ? (row.dataset.ref      || '') : '',
+        sender:   row ? (row.dataset.sender   || '') : '',
+        category: row ? (row.dataset.category || '') : '',
+        loggedBy: row ? (row.dataset.loggedBy || '') : '',
+        office:   row ? (row.dataset.office   || '') : '',
+        date:     row ? (row.dataset.date     || '') : '',
+      };
       saveCartDocDetails(details);
     }
     updateCartBadge();
