@@ -589,7 +589,6 @@ function openCartModal() {
   if (modal) {
     modal.classList.add('open');
     renderCartModal();
-    if (typeof lucide !== 'undefined') lucide.createIcons();
     document.body.style.overflow = 'hidden';
   }
 }

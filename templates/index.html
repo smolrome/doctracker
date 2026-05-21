@@ -54,7 +54,7 @@ var serverSessionData = {
         📥 Receive <span class="cart-badge" id="pending-badge-header">0</span>
       </button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openCartModal()" aria-label="Open document cart">
-        🛒 Cart <span class="cart-badge" id="cart-badge-header">0</span>
+        <img src="{{ url_for('static', filename='icons/shopping-cart.svg') }}" class="icon" alt=""> Cart <span class="cart-badge" id="cart-badge-header">0</span>
       </button>
       <a href="/add"              class="hdr-btn hdr-btn-primary">+ Add Document</a>
     </div>
@@ -277,7 +277,7 @@ var serverSessionData = {
         <div class="cart-modal-overlay" onclick="closeCartModal()"></div>
         <div class="cart-modal-content">
           <div class="cart-modal-header">
-            <h2 id="cart-modal-title">📋 Document Cart</h2>
+            <h2 id="cart-modal-title"><img src="{{ url_for('static', filename='icons/shopping-cart.svg') }}" class="icon" alt=""> Document Cart</h2>
             <button class="cart-modal-close" onclick="closeCartModal()" aria-label="Close cart">✕</button>
           </div>
           <div class="cart-modal-body" id="cart-modal-body">
@@ -286,16 +286,16 @@ var serverSessionData = {
           <div class="cart-modal-footer">
             <div class="cart-footer-row cart-footer-row-primary">
               {% if can_route_documents %}
-              <button class="cart-modal-btn cart-route-btn" onclick="openRoutingModalFromCart()"><i data-lucide="navigation"></i> Route</button>
+              <button class="cart-modal-btn cart-route-btn" onclick="openRoutingModalFromCart()"><img src="{{ url_for('static', filename='icons/navigation.svg') }}" class="icon" alt=""> Route</button>
               {% endif %}
-              <button class="cart-modal-btn cart-transfer-btn" onclick="openTransferModalFromCart()"><i data-lucide="arrow-right-left"></i> Transfer</button>
-              <button class="cart-modal-btn cart-print-btn" onclick="printLoggingSlipFromCart()"><i data-lucide="printer"></i> Print Slip</button>
+              <button class="cart-modal-btn cart-transfer-btn" onclick="openTransferModalFromCart()"><img src="{{ url_for('static', filename='icons/arrow-right-left.svg') }}" class="icon" alt=""> Transfer</button>
+              <button class="cart-modal-btn cart-print-btn" onclick="printLoggingSlipFromCart()"><img src="{{ url_for('static', filename='icons/printer.svg') }}" class="icon" alt=""> Print Slip</button>
             </div>
             <div class="cart-footer-row cart-footer-row-secondary">
               {% if current_role == 'admin' %}
-              <button type="button" class="cart-modal-btn cart-delete-btn" onclick="confirmBulkDelete()"><i data-lucide="trash-2"></i> Delete</button>
+              <button type="button" class="cart-modal-btn cart-delete-btn" onclick="confirmBulkDelete()"><img src="{{ url_for('static', filename='icons/trash-2.svg') }}" class="icon" alt=""> Delete</button>
               {% endif %}
-              <button class="cart-modal-btn cart-clear-btn" onclick="clearCart()"><i data-lucide="x-circle"></i> Clear</button>
+              <button class="cart-modal-btn cart-clear-btn" onclick="clearCart()"><img src="{{ url_for('static', filename='icons/x-circle.svg') }}" class="icon" alt=""> Clear</button>
             </div>
           </div>
         </div>
