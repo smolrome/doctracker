@@ -12,6 +12,8 @@ var currentUserRole     = null;
 var officesData         = {};
 var sortedOffices       = [];
 var transferSingleDocId = null;
+var currentTransferIds  = null;
+var currentRoutingIds   = null;
 
 var SELECTION_STORAGE_KEY = 'doctracker_selected_docs';
 var CART_STORAGE_KEY      = 'doctracker_cart_docs';
@@ -732,7 +734,7 @@ function openRoutingModalFromCart() {
     if (cb) { cb.checked = true; cb.closest('tr').classList.add('row-selected'); }
   });
   closeCartModal();
-  openRoutingModal(ids.length);
+  openRoutingModal(ids);
 }
 
 function openTransferModalFromCart() {
@@ -807,12 +809,13 @@ document.addEventListener('keydown', function(e) {
 // ─────────────────────────────────────────────────────────────
 //  ROUTING MODAL
 // ─────────────────────────────────────────────────────────────
-function openRoutingModal(totalCount) {
+function openRoutingModal(ids) {
+  currentRoutingIds = Array.isArray(ids) ? ids : null;
   openModal('routing-modal');
   initSlipDate();
 
   var groupingInfo = analyzeReferredToGrouping();
-  if (totalCount !== undefined) groupingInfo.totalDocs = totalCount;
+  if (currentRoutingIds) groupingInfo.totalDocs = currentRoutingIds.length;
   updateSelectedPreview();
 
   var hintEl = document.getElementById('routing-hint');
@@ -965,8 +968,7 @@ function submitRouting() {
       setTimeout(function() { el.style.borderColor = ''; el.style.background = ''; }, 2500);
       showToast('Please enter a destination office.', 'warning'); return;
     }
-    // Use ALL stored IDs (cross-page)
-    var ids = restoreSelectionsFromLocalStorage();
+    var ids = currentRoutingIds || restoreSelectionsFromLocalStorage();
     if (!ids.length) { showToast('No documents selected.', 'warning'); return; }
     var btn = document.querySelector('#routing-modal .btn-route');
     if (btn) { if (btn.disabled) return; btn.disabled = true; btn.textContent = 'Creating slip...'; }
@@ -1009,6 +1011,7 @@ function submitRouting() {
 function openTransferModal(ids) {
   ids = ids || getSelectedIds();
   if (!ids.length) { showToast('Please select at least one document to transfer.', 'warning'); return; }
+  currentTransferIds = ids;
   var countEl = document.getElementById('transfer-sel-count');
   if (countEl) countEl.textContent = ids.length + ' selected';
   resetTransferModal();
@@ -1093,7 +1096,7 @@ function submitTransfer() {
   var transferType = document.getElementById('transfer-type').value;
   var office       = document.getElementById('transfer-office').value || modalCurrentOffice;
   var staff        = document.getElementById('transfer-staff').value;
-  var selectedIds  = transferSingleDocId ? [transferSingleDocId] : getSelectedIds();
+  var selectedIds  = transferSingleDocId ? [transferSingleDocId] : (currentTransferIds || getSelectedIds());
 
   if (!transferType || !staff) { showToast('Please complete all steps.', 'warning'); return; }
   if (!selectedIds.length)     { showToast('Please select at least one document.', 'warning'); return; }
