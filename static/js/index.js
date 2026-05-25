@@ -732,7 +732,7 @@ function openRoutingModalFromCart() {
     if (cb) { cb.checked = true; cb.closest('tr').classList.add('row-selected'); }
   });
   closeCartModal();
-  openRoutingModal();
+  openRoutingModal(ids.length);
 }
 
 function openTransferModalFromCart() {
@@ -743,7 +743,7 @@ function openTransferModalFromCart() {
     if (cb) { cb.checked = true; cb.closest('tr').classList.add('row-selected'); }
   });
   closeCartModal();
-  openTransferModal();
+  openTransferModal(ids);
 }
 
 function printLoggingSlipFromCart() {
@@ -807,11 +807,12 @@ document.addEventListener('keydown', function(e) {
 // ─────────────────────────────────────────────────────────────
 //  ROUTING MODAL
 // ─────────────────────────────────────────────────────────────
-function openRoutingModal() {
+function openRoutingModal(totalCount) {
   openModal('routing-modal');
   initSlipDate();
 
   var groupingInfo = analyzeReferredToGrouping();
+  if (totalCount !== undefined) groupingInfo.totalDocs = totalCount;
   updateSelectedPreview();
 
   var hintEl = document.getElementById('routing-hint');
@@ -1005,8 +1006,8 @@ function submitRouting() {
 // ─────────────────────────────────────────────────────────────
 //  TRANSFER MODAL
 // ─────────────────────────────────────────────────────────────
-function openTransferModal() {
-  var ids = getSelectedIds();
+function openTransferModal(ids) {
+  ids = ids || getSelectedIds();
   if (!ids.length) { showToast('Please select at least one document to transfer.', 'warning'); return; }
   var countEl = document.getElementById('transfer-sel-count');
   if (countEl) countEl.textContent = ids.length + ' selected';
