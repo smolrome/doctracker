@@ -23,7 +23,7 @@ from services.misc import (
 from services.qr import (
     QR_READ_OK, create_doc_token, decode_qr_image, extract_doc_id_from_qr,
     generate_qr_b64, make_doc_status_qr_png, make_office_qr_png, use_doc_token,
-    get_token_doc,
+    get_token_doc, verify_office_action,
 )
 from utils import get_client_ip, is_logged_in, login_required
 
@@ -35,6 +35,12 @@ scanning_bp = Blueprint("scanning", __name__)
 @scanning_bp.route("/office-action/<path:action>", methods=["GET", "POST"])
 def office_action(action):
     """Landing page for all office QR types: -rec, -rel, -reg, -sub."""
+    exp         = request.args.get('exp', '')
+    sig         = request.args.get('sig', '')
+    base_action = action.split('?')[0]
+    if not verify_office_action(base_action, exp, sig):
+        from flask import abort
+        abort(403)
     if action.endswith("-rec"):
         return _handle_receive_release(action[:-4].replace("-", " ").title(),
                                        action[:-4].lower(), "receive")
