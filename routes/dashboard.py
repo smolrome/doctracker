@@ -676,7 +676,29 @@ def edit(doc_id):
         flash("Document not found.", "error")
         return redirect(url_for("dashboard.index"))
 
-    actor = session.get("username", "Unknown")
+    actor           = session.get("username", "Unknown")
+    current_office  = session.get("office", "")
+    current_role    = session.get("role", "")
+    _all_users      = get_all_users()
+    if current_role == "admin":
+        office_staff = sorted([
+            {"username": u["username"], "full_name": u.get("full_name") or u["username"],
+             "documents_handled": u.get("documents_handled") or []}
+            for u in _all_users
+            if u.get("username") != actor
+            and u.get("role") != "client"
+            and u.get("active", True)
+        ], key=lambda x: x["full_name"])
+    else:
+        office_staff = sorted([
+            {"username": u["username"], "full_name": u.get("full_name") or u["username"],
+             "documents_handled": u.get("documents_handled") or []}
+            for u in _all_users
+            if u.get("office") == current_office
+            and u.get("username") != actor
+            and u.get("role") != "client"
+            and u.get("active", True)
+        ], key=lambda x: x["full_name"])
     
     if request.method == "POST":
         routing = [r.strip() for r in request.form.get("routing_offices", "").split(",") if r.strip()]
@@ -706,9 +728,10 @@ def edit(doc_id):
         })
         if not doc["doc_name"]:
             flash("Document name is required.", "error")
-            return render_template("form.html", doc=doc, action="edit", 
+            return render_template("form.html", doc=doc, action="edit",
                                    status_options=get_dropdown_options("status"),
-                                   category_options=get_dropdown_options("category"))
+                                   category_options=get_dropdown_options("category"),
+                                   office_staff=office_staff)
         
         # Add edit to travel_log
         new_status = doc.get("status", "")
@@ -732,9 +755,10 @@ def edit(doc_id):
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
 
     doc["routing_str"] = ", ".join(doc.get("routing", []))
-    return render_template("form.html", doc=doc, action="edit", 
+    return render_template("form.html", doc=doc, action="edit",
                            status_options=get_dropdown_options("status"),
-                           category_options=get_dropdown_options("category"))
+                           category_options=get_dropdown_options("category"),
+                           office_staff=office_staff)
 
 
 @dashboard_bp.route("/delete/<doc_id>", methods=["POST"])

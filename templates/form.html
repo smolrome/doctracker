@@ -18,8 +18,9 @@
     <div class="form-row">
       <div class="form-group">
         <label>Reference No.</label>
-        <input type="text" name="doc_id" id="doc-ref-input"
-          value="{{ doc.get('doc_id','') }}" readonly
+        <input type="hidden" name="doc_id" value="{{ doc.get('doc_id','') }}"/>
+        <input type="text" id="doc-ref-input"
+          value="{{ doc.get('doc_id','') }}" readonly disabled
           style="background:#f8fafc;color:#64748b;cursor:default;"/>
       </div>
       <div class="form-group">
@@ -76,11 +77,6 @@
         <input type="text" name="sender_name" value="{{ doc.get('sender_name','') }}"
           placeholder="e.g. Juan dela Cruz, Principal II"/>
       </div>
-    </div>
-    <div class="form-group">
-      <label>Contact / Address</label>
-      <input type="text" name="sender_contact" value="{{ doc.get('sender_contact','') }}"
-        placeholder="Email, phone, or office address"/>
     </div>
   </div>
 
