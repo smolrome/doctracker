@@ -256,6 +256,26 @@
   })();
 </script>
 
+<!-- ── DESCRIPTION / NOTES ── -->
+{% if doc.description or doc.notes %}
+<div class="card">
+  <div class="card-title"><span class="icon">📝</span> Notes &amp; Remarks</div>
+  <hr class="card-divider">
+  {% if doc.description %}
+  <div {% if doc.notes %}style="margin-bottom:18px;"{% endif %}>
+    <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7a94ae;margin-bottom:6px;">Description / Remarks</div>
+    <div style="font-size:15px;color:#1e293b;line-height:1.65;white-space:pre-line;">{{ doc.description }}</div>
+  </div>
+  {% endif %}
+  {% if doc.notes %}
+  <div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7a94ae;margin-bottom:6px;">Notes</div>
+    <div style="font-size:15px;color:#1e293b;line-height:1.65;white-space:pre-line;">{{ doc.notes }}</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 <!-- ── ROUTING CHAIN ── -->
 {% if doc.routing %}
 <div class="route-card">

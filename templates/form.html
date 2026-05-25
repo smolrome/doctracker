@@ -8,44 +8,63 @@
 </div>
 
 <form method="post" autocomplete="off">
+
   <div class="form-card">
-    <h3>📄 Document Identification</h3>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Content / Particulars <span class="req">*</span></label>
-        <input type="text" name="doc_name" value="{{ doc.get('doc_name','') }}" required/>
-      </div>
-      <div class="form-group">
-        <label>Reference No.</label>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input type="text" name="doc_id" id="doc-ref-input"
-            value="{{ doc.get('doc_id','') }}" style="flex:1;"/>
-        </div>
-      </div>
+    <h3>📄 Document</h3>
+    <div class="form-group">
+      <label>Content / Particulars <span class="req">*</span></label>
+      <input type="text" name="doc_name" value="{{ doc.get('doc_name','') }}" required/>
     </div>
     <div class="form-row">
       <div class="form-group">
+        <label>Reference No.</label>
+        <input type="text" name="doc_id" id="doc-ref-input"
+          value="{{ doc.get('doc_id','') }}" readonly
+          style="background:#f8fafc;color:#64748b;cursor:default;"/>
+      </div>
+      <div class="form-group">
         <label>Document Type</label>
-        <input type="text" name="category" list="categoryOptions" value="{{ doc.get('category','') }}" placeholder="Select or type document type"/>
+        <input type="text" name="category" list="categoryOptions"
+          value="{{ doc.get('category','') }}" placeholder="Select or type document type"/>
         <datalist id="categoryOptions">
           {% for c in category_options %}
             <option value="{{ c }}">
           {% endfor %}
         </datalist>
       </div>
+    </div>
+    <div class="form-row">
       <div class="form-group">
         <label>Document Date</label>
         <input type="date" name="doc_date" value="{{ doc.get('doc_date','') }}"/>
       </div>
+      <div class="form-group">
+        <label>Referred To</label>
+        <div class="staff-combobox" id="referred-to-combo-edit">
+          <input type="text" name="referred_to" autocomplete="off"
+                 value="{{ doc.get('referred_to','') }}"
+                 placeholder="Search staff name..."
+                 class="staff-combo-input"/>
+          <input type="hidden" name="referred_to_username"
+                 value="{{ doc.get('referred_to_username','') }}"/>
+          <div class="staff-combo-dropdown"></div>
+        </div>
+      </div>
     </div>
-    <div class="form-group">
-      <label>Description / Remarks</label>
-      <textarea name="description">{{ doc.get('description','') }}</textarea>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Current Status</label>
+        <select name="status">
+          {% for s in status_options %}
+            <option value="{{ s }}" {% if doc.get('status')==s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
     </div>
   </div>
 
   <div class="form-card">
-    <h3>📤 Source / Sender</h3>
+    <h3>📤 Sender Details</h3>
     <div class="form-row">
       <div class="form-group">
         <label>Unit / Office / School / District</label>
@@ -66,7 +85,7 @@
   </div>
 
   <div class="form-card">
-    <h3>📥 Receiving Information</h3>
+    <h3>📥 Receiving Info</h3>
     <div class="form-row">
       <div class="form-group">
         <label>Received By</label>
@@ -81,24 +100,16 @@
   </div>
 
   <div class="form-card">
-    <h3>📍 Routing Information</h3>
+    <h3>📍 Routing Info</h3>
     <div class="form-row">
-      <div class="form-group">
-        <label>Referred To</label>
-        <div class="staff-combobox" id="referred-to-combo-edit">
-          <input type="text" name="referred_to" autocomplete="off"
-                 value="{{ doc.get('referred_to','') }}"
-                 placeholder="Search staff name..."
-                 class="staff-combo-input"/>
-          <input type="hidden" name="referred_to_username"
-                 value="{{ doc.get('referred_to_username','') }}"/>
-          <div class="staff-combo-dropdown"></div>
-        </div>
-      </div>
       <div class="form-group">
         <label>Forwarded To</label>
         <input type="text" name="forwarded_to" value="{{ doc.get('forwarded_to','') }}"
           placeholder="e.g. Budget Section, HR Unit"/>
+      </div>
+      <div class="form-group">
+        <label>Date Released</label>
+        <input type="date" name="date_released" value="{{ doc.get('date_released','') }}"/>
       </div>
     </div>
     <div class="form-group">
@@ -107,27 +118,16 @@
         value="{{ doc.get('routing_str', ', '.join(doc.get('routing',[]))) }}"
         placeholder="e.g. Records Section, Budget Unit, SDS Office, Release"/>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Date Released</label>
-        <input type="date" name="date_released" value="{{ doc.get('date_released','') }}"/>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Current Status</label>
-        <select name="status">
-          {% for s in status_options %}
-            <option value="{{ s }}" {% if doc.get('status')==s %}selected{% endif %}>{{ s }}</option>
-          {% endfor %}
-        </select>
-      </div>
-    </div>
   </div>
 
   <div class="form-card">
     <h3>📝 Notes</h3>
     <div class="form-group">
+      <label>Description / Remarks</label>
+      <textarea name="description">{{ doc.get('description','') }}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
       <textarea name="notes" rows="3"
         placeholder="Additional instructions, action required...">{{ doc.get('notes','') }}</textarea>
     </div>
