@@ -665,7 +665,10 @@ def view_doc(doc_id):
                            slip_type=slip_type,
                            status_options=get_dropdown_options("status"),
                            transferred_to_name=transferred_to_name,
-                           transferred_by_name=transferred_by_name)
+                           transferred_by_name=transferred_by_name,
+                           rt_changed=request.args.get("rt_changed", ""),
+                           rt_name=request.args.get("rt_name", ""),
+                           rt_user=request.args.get("rt_user", ""))
 
 
 @dashboard_bp.route("/edit/<doc_id>", methods=["GET", "POST"])
@@ -702,9 +705,10 @@ def edit(doc_id):
     
     if request.method == "POST":
         routing = [r.strip() for r in request.form.get("routing_offices", "").split(",") if r.strip()]
-        old_status = doc.get("status", "")
-        old_doc_name = doc.get("doc_name", "")
-        
+        old_status      = doc.get("status", "")
+        old_doc_name    = doc.get("doc_name", "")
+        old_referred_to = doc.get("referred_to", "")
+
         doc.update({
             "doc_id":            request.form.get("doc_id", "").strip(),
             "doc_name":          request.form.get("doc_name", "").strip(),
@@ -752,6 +756,13 @@ def edit(doc_id):
                   f"doc_id={doc_id} doc_name={doc.get('doc_name','')[:80]} status={doc.get('status','')}",
                   username=session.get("username","?"), ip=get_client_ip())
         flash("Document updated.", "success")
+        new_referred_to          = doc.get("referred_to", "")
+        new_referred_to_username = request.form.get("referred_to_username", "").strip()
+        if new_referred_to and new_referred_to != old_referred_to:
+            return redirect(url_for("dashboard.view_doc", doc_id=doc_id,
+                                    rt_changed="1",
+                                    rt_name=new_referred_to,
+                                    rt_user=new_referred_to_username))
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
 
     doc["routing_str"] = ", ".join(doc.get("routing", []))

@@ -377,4 +377,39 @@
 </div>
 
 
+{% if rt_changed %}
+<!-- ── REFERRED-TO CHANGED PROMPT ── -->
+<div class="modal-overlay open" id="rt-changed-modal" onclick="if(event.target===this)closeRtModal()">
+  <div class="modal-sheet modal-sheet-sm">
+    <div class="modal-header modal-header-teal">
+      <div class="modal-header-content">
+        <span class="modal-header-icon">🔄</span>
+        <span class="modal-title">Referred To Changed</span>
+      </div>
+      <button class="modal-close-btn" onclick="closeRtModal()" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-body-text">
+        <strong>Referred To</strong> was changed to <strong>{{ rt_name }}</strong>.<br>
+        Do you want to transfer this document now?
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeRtModal()">Skip</button>
+      <a href="/transfer/{{ doc.id }}{% if rt_user %}?preset={{ rt_user }}{% endif %}"
+         class="btn btn-primary">Transfer Now</a>
+    </div>
+  </div>
+</div>
+<script>
+  function closeRtModal() {
+    var m = document.getElementById('rt-changed-modal');
+    if (m) m.classList.remove('open');
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeRtModal();
+  });
+</script>
+{% endif %}
+
 {% endblock %}

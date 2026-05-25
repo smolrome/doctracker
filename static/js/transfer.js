@@ -100,3 +100,38 @@ function onStaffChange() {
   if (val) show('step-submit-block');
   else hide('step-submit-block');
 }
+
+// ── Pre-fill from ?preset=<username> ─────────────────────────────────────────
+(function presetFromUrl() {
+  var preset = new URLSearchParams(window.location.search).get('preset');
+  if (!preset) return;
+
+  // Locate which office the preset staff member belongs to
+  var presetOffice = null;
+  for (var office in officesData) {
+    for (var i = 0; i < officesData[office].length; i++) {
+      if (officesData[office][i].username === preset) {
+        presetOffice = office;
+        break;
+      }
+    }
+    if (presetOffice) break;
+  }
+  if (!presetOffice) return;
+
+  var isInternal   = (presetOffice === currentOffice);
+  var typeSelect   = document.getElementById('transfer_type');
+  var officeSelect = document.getElementById('new_office');
+  var staffSelect  = document.getElementById('new_staff');
+
+  typeSelect.value = isInternal ? 'inside_office' : 'outside_office';
+  onTransferTypeChange();   // populates office block and (for internal) staff block
+
+  if (!isInternal) {
+    officeSelect.value = presetOffice;
+    updateStaff();          // populates staff block for the chosen external office
+  }
+
+  staffSelect.value = preset;
+  onStaffChange();          // shows the submit button
+})();
