@@ -185,3 +185,8 @@ if not STAFF_LIVE_TOKEN:
         "Set STAFF_LIVE_TOKEN in your environment.",
         stacklevel=2,
     )
+
+# ── Queuing System integration ─────────────────────────────────────────────────
+
+QUEUE_API_URL = os.environ.get('QUEUE_API_URL', 'http://localhost:7003')
+QUEUE_EXTERNAL_API_KEY = os.environ.get('QUEUE_EXTERNAL_API_KEY', '')

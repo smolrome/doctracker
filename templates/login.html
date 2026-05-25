@@ -4,25 +4,34 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Staff Login — DepEd Leyte LAKAD</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
 </head>
 <body>
-<div class="wrap">
-  <div class="header">
-    <img src="/static/logo.png" alt="DepEd Leyte Logo" class="header-logo-img"/>
-    <div class="header-title">LAKAD</div>
-    <div class="header-sub">DepEd Leyte Division<br/>Client Services System</div>
+<div class="login-shell">
+
+  <!-- LEFT PANEL -->
+  <div class="login-left">
+    <img src="/static/logo.png" alt="DepEd Leyte Logo" class="left-logo"/>
+    <div class="brand-text">
+      <div class="brand-title">LAKAD</div>
+      <div class="brand-subtitle">Client Services System</div>
+      <div class="brand-org">DepEd Leyte Division — Personnel Unit</div>
+    </div>
+    <hr class="brand-rule"/>
+    <p class="brand-tagline">Your gateway to DepEd Leyte Division Personnel Unit client services.</p>
+    <a href="/" class="left-back">← Back to Home</a>
   </div>
 
-  <div class="card">
-    <div class="card-title">Staff Sign In</div>
-    <div class="card-sub">Enter your credentials to access the system.</div>
+  <!-- RIGHT PANEL -->
+  <div class="login-right">
+    <h1 class="form-heading">Sign In</h1>
+    <p class="form-sub">Welcome back. Sign in to your account.</p>
 
     {# FIX 1 — XSS: error is server-generated but Jinja auto-escaping is the
        last line of defence; role="alert" announces it to screen readers. #}
     {% if error %}
-    <div class="error-box" role="alert">❌ {{ error }}</div>
+    <div class="error-box" role="alert">{{ error }}</div>
     {% endif %}
 
     {# FIX 2 — Lockout UI: disable the form and show a live countdown when the
@@ -69,17 +78,18 @@
         </div>
       </div>
 
-      <button type="submit" class="btn" id="login-submit"
+      <button type="submit" class="btn-login" id="login-submit"
               {% if lockout_remaining and lockout_remaining > 0 %}disabled{% endif %}>
-        🔐 Sign In
+        Sign In
       </button>
     </form>
+
+    <div class="form-divider"><hr/></div>
+    <p class="register-link">Don't have an account?
+      <a href="/client/register">Register</a>
+    </p>
   </div>
 
-  <div class="footer-links">
-    <a href="/client/login">📱 Client Portal</a>
-    <a href="/">👁 View Dashboard</a>
-  </div>
 </div>
 
 <div id="loading-overlay" aria-hidden="true">

@@ -169,6 +169,7 @@ def create_app() -> Flask:
     from routes.import_excel import import_bp
     from routes.progress     import progress_bp
     from routes.download     import download_bp
+    from routes.so           import so_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
@@ -181,6 +182,7 @@ def create_app() -> Flask:
     app.register_blueprint(import_bp)
     app.register_blueprint(progress_bp)
     app.register_blueprint(download_bp)
+    app.register_blueprint(so_bp)
 
     # ── Template filter ────────────────────────────────────────────────────────
 
@@ -211,15 +213,33 @@ def create_app() -> Flask:
     def inject_auth():
         from datetime import datetime
         from services.dropdown_options import get_dropdown_options
+        from services.auth import get_user_can_generate_so
+        from services.database import get_user_can_route_documents
+        role     = session.get("role", "guest")
+        username = session.get("username", "")
+        if role == "admin":
+            can_generate_so = True
+        elif username:
+            can_generate_so = get_user_can_generate_so(username)
+        else:
+            can_generate_so = False
+        if role == "admin":
+            can_route_documents = True
+        elif username:
+            can_route_documents = get_user_can_route_documents(username)
+        else:
+            can_route_documents = False
         return dict(
-            logged_in         = is_logged_in(),
-            current_user      = session.get("username", ""),
-            current_role      = session.get("role", "guest"),
-            current_full_name = session.get("full_name", ""),
-            current_office    = session.get("office", ""),
-            now               = datetime.now,
-            session           = session,
-            category_options  = get_dropdown_options("category") if is_logged_in() else [],
+            logged_in           = is_logged_in(),
+            current_user        = username,
+            current_role        = role,
+            current_full_name   = session.get("full_name", ""),
+            current_office      = session.get("office", ""),
+            now                 = datetime.now,
+            session             = session,
+            category_options    = get_dropdown_options("category") if is_logged_in() else [],
+            can_generate_so     = can_generate_so,
+            can_route_documents = can_route_documents,
         )
 
     # FIX 1: CSRF token injected globally using the unified key name
@@ -320,28 +340,40 @@ def create_app() -> Flask:
 
     @app.before_request
     def check_session_active():
-        """Block disabled accounts mid-session before any handler runs."""
-        # Exempt unauthenticated requests and static files
+        """Block disabled accounts mid-session. Re-checks DB at most once per 60 seconds."""
         if not is_logged_in() or request.path.startswith("/static"):
             return
         username = session.get("username", "")
-        if username and USE_DB:
-            try:
-                from services.database import get_conn
-                with get_conn() as conn:
-                    with conn.cursor() as cur:
-                        cur.execute(
-                            "SELECT active FROM users WHERE username=%s",
-                            (username,),
-                        )
-                        row = cur.fetchone()
-                if row and not row["active"]:
-                    session.clear()
-                    flash("Your account has been disabled. Contact the administrator.", "error")
-                    return redirect(url_for("auth.login"))
-            except Exception:
-                import traceback
-                traceback.print_exc()
+        if not username or not USE_DB:
+            return
+
+        import time
+        now = time.time()
+        last_check = session.get("_active_checked_at", 0)
+
+        # Only hit the DB if 60 seconds have passed since last check
+        if now - last_check < 60:
+            return
+
+        try:
+            from services.database import get_conn
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT active FROM users WHERE username=%s",
+                        (username,),
+                    )
+                    row = cur.fetchone()
+            if row and not row["active"]:
+                session.clear()
+                flash("Your account has been disabled. Contact the administrator.", "error")
+                return redirect(url_for("auth.login"))
+            # Update the timestamp only on successful check
+            session["_active_checked_at"] = now
+            session.modified = True
+        except Exception:
+            import traceback
+            traceback.print_exc()
 
     # ── Error handler ──────────────────────────────────────────────────────────
     @app.errorhandler(Exception)

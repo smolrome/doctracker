@@ -4,45 +4,54 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sign In — DepEd Leyte LAKAD</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/client_login.css') }}"/>
 </head>
 <body>
-<div class="wrap">
+<div class="login-shell">
 
-  <div class="header">
-    <img src="/static/logo.png" alt="DepEd Leyte" class="logo"/>
-    <div class="header-title">Client Portal</div>
-    <div class="header-sub">DepEd Leyte Division — Submit &amp; Track Documents</div>
-  </div>
-
-  <!-- Show office context when coming from a QR scan -->
-  {% if office_name %}
-  <div class="office-banner">
-    <div class="ob-icon">🏢</div>
-    <div>
-      <div class="ob-label">After login you'll submit to</div>
-      {#
-        FIX 1 — XSS: office_name is user-influenced (comes from a QR URL param).
-        Jinja auto-escapes by default in .html templates; never add | safe here.
-      #}
-      <div class="ob-name">{{ office_name }}</div>
+  <!-- LEFT PANEL -->
+  <div class="login-left">
+    <img src="/static/logo.png" alt="DepEd Leyte" class="left-logo"/>
+    <div class="brand-text">
+      <div class="brand-title">LAKAD</div>
+      <div class="brand-subtitle">Client Services System</div>
+      <div class="brand-org">DepEd Leyte Division — Personnel Unit</div>
     </div>
+    <hr class="brand-rule"/>
+    <p class="brand-tagline">Submit and track your documents anywhere, anytime.</p>
+    <a href="/" class="left-back">← Back to Home</a>
   </div>
-  {% endif %}
 
-  <div class="card">
-    <div class="card-title">Sign In</div>
-    <div class="card-sub">
+  <!-- RIGHT PANEL -->
+  <div class="login-right">
+    <a href="/login" class="right-top-link">Staff Login →</a>
+
+    {% if office_name %}
+    <div class="office-banner">
+      <div class="ob-icon">🏢</div>
+      <div>
+        <div class="ob-label">After login you'll submit to</div>
+        {#
+          FIX 1 — XSS: office_name is user-influenced (comes from a QR URL param).
+          Jinja auto-escapes by default in .html templates; never add | safe here.
+        #}
+        <div class="ob-name">{{ office_name }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <h1 class="form-heading">Sign In</h1>
+    <p class="form-sub">
       {% if office_name %}
         {# FIX 1 — same field, auto-escaped #}
         Log in to submit documents to <strong>{{ office_name }}</strong>.
       {% else %}
-        Log in to submit and track your documents.
+        Welcome back. Sign in to your account.
       {% endif %}
-    </div>
+    </p>
 
-    {% if error %}<div class="error-box" role="alert">❌ {{ error }}</div>{% endif %}
+    {% if error %}<div class="error-box" role="alert">{{ error }}</div>{% endif %}
 
     {#
       FIX 2 — Lockout UI: show a countdown and disable the submit button when
@@ -59,7 +68,6 @@
     <form method="post" id="login-form" novalidate>
       {# FIX 3 — CSRF: token required on every POST form. #}
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-
       {#
         FIX 4 — Open Redirect: next_url is sanitised server-side by
         _safe_redirect_url() in client.py; we still emit it here only as a
@@ -71,9 +79,7 @@
         <label for="client-username">Username</label>
         {#
           FIX 5 — Username enumeration via autofill: autocomplete="username" is
-          kept (good UX) but autocomplete on the form itself is not disabled so
-          the browser can still offer saved credentials.
-          The id attribute is added so the <label for="…"> association is valid.
+          kept (good UX); id attribute added so the <label for="…"> association is valid.
         #}
         <input type="text" name="username" id="client-username"
                placeholder="Enter your username"
@@ -105,30 +111,19 @@
         </div>
       </div>
 
-      <button type="submit" class="btn-login"
-              id="login-submit"
+      <button type="submit" class="btn-login" id="login-submit"
               {% if lockout_remaining and lockout_remaining > 0 %}disabled{% endif %}>
-        🔑 Sign In &amp; Continue
+        Sign In
       </button>
     </form>
 
-    <div class="divider-or"><hr/><span>Don't have an account?</span><hr/></div>
-
-    {#
-      FIX 4 — Open Redirect: office_slug, office_name, and next_url are all
-      URL-encoded via Jinja's urlencode filter so they cannot inject extra query
-      parameters or path segments. next_url is additionally validated server-side.
-    #}
-    <a href="/client/register?office_slug={{ office_slug | urlencode }}&amp;office_name={{ office_name | urlencode }}&amp;next={{ next_url | urlencode }}"
-       class="btn-register">
-      ✨ Register — it's free &amp; instant
-    </a>
+    <div class="form-divider"><hr/></div>
+    <p class="register-link">Don't have an account?
+      {# FIX 4 — urlencode prevents query param injection #}
+      <a href="/client/register?office_slug={{ office_slug | urlencode }}&amp;office_name={{ office_name | urlencode }}&amp;next={{ next_url | urlencode }}">Register</a>
+    </p>
   </div>
 
-  <div class="footer-links">
-    <a href="/login">🔐 Staff Login</a>
-    <a href="/">👁 Dashboard</a>
-  </div>
 </div>
 
 <div id="loading-overlay" aria-hidden="true">
@@ -137,7 +132,6 @@
     <div class="loading-text">Signing in…</div>
   </div>
 </div>
-
 
 <script src="{{ url_for('static', filename='js/client_login.js') }}"></script>
 </body>

@@ -58,7 +58,7 @@
       <div class="login-prompt">
         <p>You need to log in before updating document status.</p>
         <div class="login-btns">
-          <a href="/client/login?next={{ request.path }}" class="btn btn-primary btn-sm">👤 Client Login</a>
+          <a href="/login?next={{ request.path }}" class="btn btn-primary btn-sm">👤 Client Login</a>
           <a href="/login?next={{ request.path }}" class="btn btn-secondary btn-sm">🔐 Staff Login</a>
         </div>
       </div>
@@ -73,7 +73,7 @@
     <h3 style="color:#92400E;">🔐 Login Required</h3>
     <p style="font-size:13px;color:#92400E;margin-bottom:14px;">You must be logged in to update document status. Please log in first.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <a href="/client/login?next=/office-action/{{ action }}" class="btn btn-primary" style="flex:1;justify-content:center;min-height:54px;">👤 Client Login</a>
+      <a href="/login?next=/office-action/{{ action }}" class="btn btn-primary" style="flex:1;justify-content:center;min-height:54px;">👤 Client Login</a>
       <a href="/login?next=/office-action/{{ action }}" class="btn btn-secondary" style="flex:1;justify-content:center;min-height:54px;">🔐 Staff Login</a>
     </div>
   </div>

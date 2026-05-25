@@ -1,3 +1,47 @@
+// Single modal mode — 'submit' or 'book'
+var _officeModalMode = 'submit';
+
+function toggleOfficeQR() {
+  _officeModalMode = 'submit';
+  document.getElementById('office-qr-desc').textContent = 'Choose which office you want to submit your documents to.';
+  const modal = document.getElementById('office-qr-modal');
+  if (!modal) return;
+  const isOpen = modal.style.display !== 'none';
+  modal.style.display = isOpen ? 'none' : 'flex';
+  document.body.style.overflow = isOpen ? '' : 'hidden';
+}
+
+function openBookingOfficeModal() {
+  _officeModalMode = 'book';
+  document.getElementById('office-qr-desc').textContent = 'Choose which office you want to book an appointment with.';
+  const modal = document.getElementById('office-qr-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function handleOfficeSelect(el) {
+  const card = el.closest('.office-qr-card');
+  if (_officeModalMode === 'book') {
+    window.location.href = card.getAttribute('data-book-url');
+  } else {
+    window.location.href = card.getAttribute('data-submit-url');
+  }
+}
+
+function filterOffices(q) {
+  const cards = document.querySelectorAll('.office-qr-card');
+  const none = document.getElementById('office-qr-none');
+  let visible = 0;
+  q = q.toLowerCase().trim();
+  cards.forEach(function(c) {
+    const name = c.getAttribute('data-name') || '';
+    if (q === '' || name.includes(q)) { c.style.display = 'flex'; visible++; }
+    else { c.style.display = 'none'; }
+  });
+  if (none) none.style.display = visible === 0 ? 'block' : 'none';
+}
+
 function filterOfficesC(query) {
   const q = query.toLowerCase().trim();
   const cards = document.querySelectorAll('.oqs-card-c');
@@ -12,20 +56,6 @@ function filterOfficesC(query) {
   document.getElementById('oqs-none-c').classList.toggle('visible', visible === 0);
 }
 
-function toggleOfficeModal() {
-    const m = document.getElementById('office-modal');
-    if(m){m.style.display=m.style.display==='none'?'flex':'none';}
-  }
-  function filterOfficeModal(q) {
-    const cards=document.querySelectorAll('.office-modal-card');
-    const none=document.getElementById('office-modal-none');
-    let v=0;q=q.toLowerCase().trim();
-    cards.forEach(c=>{
-      const name=c.getAttribute('data-name')||'';
-      if(q===''||name.includes(q)){c.style.display='block';v++;}else{c.style.display='none';}
-    });
-    if(none)none.style.display=v===0?'block':'none';
-  }
 
 // ── Document search + filter ───────────────────────────────────────────────
 
@@ -110,3 +140,11 @@ document.addEventListener('DOMContentLoaded', function() {
   _initCategoryFilter();
   applyFilters();
 });
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(function(p) { p.style.display = 'none'; });
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('tab-' + name).style.display = 'block';
+  btn.classList.add('active');
+}
+

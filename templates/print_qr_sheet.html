@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QR Code Sheet — LAKAD</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      color: #0E2A47;
+    }
+
+    /* ── Print bar (screen only) ── */
+    .print-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0E2A47;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      margin-bottom: 24px;
+      gap: 12px;
+    }
+    .print-bar-title {
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .print-bar-sub {
+      font-size: 12px;
+      color: rgba(255,255,255,.6);
+      margin-top: 2px;
+    }
+    .print-bar-actions { display: flex; gap: 8px; }
+    .pb-btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+    }
+    .pb-btn-print  { background: #C9A227; color: #0E2A47; }
+    .pb-btn-close  { background: rgba(255,255,255,.15); color: #fff; border: 1.5px solid rgba(255,255,255,.3); }
+    .pb-btn:hover  { opacity: .85; }
+
+    /* ── QR grid ── */
+    .qr-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    /* ── QR card ── */
+    .qr-card {
+      background: #fff;
+      border: 1.5px solid #D7CDB5;
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      outline: 1.5px dashed #D7CDB5;
+      outline-offset: 4px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .qr-card img {
+      width: 120px;
+      height: 120px;
+      display: block;
+    }
+
+    .qr-doc-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0E2A47;
+      text-align: center;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .qr-ref {
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: #C9A227;
+      letter-spacing: .05em;
+    }
+
+    .qr-meta {
+      font-size: 10px;
+      color: #8BA5B5;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #8BA5B5;
+      font-size: 15px;
+    }
+
+    /* ── Print styles ── */
+    @media print {
+      body { background: #fff; padding: 0; }
+
+      .print-bar { display: none; }
+
+      .qr-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+
+      .qr-card {
+        border: 1px solid #ccc;
+        outline: 1px dashed #ccc;
+        outline-offset: 3px;
+        border-radius: 8px;
+        padding: 10px;
+      }
+
+      @page {
+        margin: 15mm;
+        size: A4;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="print-bar">
+  <div>
+    <div class="print-bar-title">QR Code Sheet — {{ docs|length }} document{{ 's' if docs|length != 1 else '' }}</div>
+    <div class="print-bar-sub">LAKAD · DepEd Leyte Division — Personnel Unit</div>
+  </div>
+  <div class="print-bar-actions">
+    <button class="pb-btn pb-btn-close" onclick="window.close()">✕ Close</button>
+    <button class="pb-btn pb-btn-print" onclick="window.print()">🖨 Print</button>
+  </div>
+</div>
+
+{% if docs %}
+<div class="qr-grid">
+  {% for doc in docs %}
+  <div class="qr-card">
+    <div class="qr-doc-name">{{ doc.doc_name }}</div>
+    <div class="qr-ref">{{ doc.doc_id }}</div>
+    <img src="data:image/png;base64,{{ doc.qr_b64 }}" alt="QR for {{ doc.doc_name }}"/>
+    <div class="qr-meta">
+      {{ doc.office }}<br/>
+      {{ doc.created_at }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No documents found for the provided IDs.</div>
+{% endif %}
+
+<script>
+  window.addEventListener('load', function() {
+    window.print();
+  });
+</script>
+</body>
+</html>

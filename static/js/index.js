@@ -53,7 +53,6 @@ function onReady() {
   // Apply stored selections to current page checkboxes
   var restoredCount = applyStoredSelections();
   if (restoredCount > 0) {
-    syncSelectionBar();
     updateCartBadge();
   }
 
@@ -215,7 +214,7 @@ function restoreSelectionsFromUrl() {
   var newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
   window.history.replaceState({}, '', newUrl);
 
-  if (count > 0) { syncSelectionBar(); updateCartBadge(); }
+  if (count > 0) { updateCartBadge(); }
 }
 
 function setupPaginationWithSelection() {
@@ -495,27 +494,11 @@ function updateSelection() {
 
   // ── SAVE FIRST, then sync UI ──
   saveSelectionsToLocalStorage(); // updates localStorage with unchecked removed
-  syncSelectionBar();             // now reads the correct updated count
   updateCartBadge();              // badge also reads updated count
   // ─────────────────────────────
 
   updateSelectedPreview();
   updateSelectAllLabel();
-}
-
-function syncSelectionBar() {
-  // Total = all stored (cross-page) merged with current page
-  var storedIds  = restoreSelectionsFromLocalStorage();
-  var currentIds = getSelectedIds();
-  var total      = Array.from(new Set(storedIds.concat(currentIds))).length;
-
-  var bar = document.getElementById('selection-bar');
-  if (bar) {
-    bar.classList.toggle('visible', total > 0);
-    bar.setAttribute('aria-hidden', total > 0 ? 'false' : 'true');
-  }
-  var lbl = document.getElementById('sel-count-label');
-  if (lbl) lbl.textContent = total;
 }
 
 function deselectAll() {
@@ -530,7 +513,6 @@ function deselectAll() {
   localStorage.removeItem(CART_STORAGE_KEY);
   localStorage.removeItem(CART_DETAILS_KEY);
 
-  syncSelectionBar();
   updateSelectedPreview();
   updateSelectAllLabel();
   updateCartBadge();
@@ -632,31 +614,47 @@ function renderCartModal() {
   var updatedDetails = {};
 
   ids.forEach(function(id) {
-    // Start with stored title — works on any page
-    var title = (storedDetails[id] && storedDetails[id].title) ? storedDetails[id].title : id;
+    var d     = storedDetails[id] || {};
+    var title = d.title || id;
 
-    // Upgrade with live DOM name if doc is on current page
+    // Upgrade with live DOM data if doc row is on current page
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
     if (cb) {
       var row    = cb.closest('tr');
       var nameEl = row ? row.querySelector('.doc-name') : null;
       if (nameEl && nameEl.textContent.trim()) title = nameEl.textContent.trim();
+      if (row) {
+        d.ref      = row.dataset.ref      || d.ref      || '';
+        d.sender   = row.dataset.sender   || d.sender   || '';
+        d.category = row.dataset.category || d.category || '';
+        d.loggedBy = row.dataset.loggedBy || d.loggedBy || '';
+        d.office   = row.dataset.office   || d.office   || '';
+        d.date     = row.dataset.date     || d.date     || '';
+      }
     }
+    d.title = title;
+    updatedDetails[id] = d;
 
-    updatedDetails[id] = { title: title };
-
-    html += '<div class="cart-modal-item" data-doc-id="' + id + '">';
-    html +=   '<div class="cart-modal-item-info">';
-    html +=     '<div class="cart-modal-item-header">';
-    html +=       '<span class="cart-modal-doc-num" style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">' + id + '</span>';
+    html += '<div class="pending-doc-card" data-doc-id="' + id + '">';
+    html +=   '<div class="pending-doc-top">';
+    html +=     '<div style="min-width:0;flex:1;">';
+    html +=       '<h4 class="pending-doc-name">' + escHtml(title) + '</h4>';
+    html +=       '<p class="pending-doc-id">' + escHtml(id) + '</p>';
     html +=     '</div>';
-    html +=     '<div class="cart-modal-item-title" title="' + title.replace(/"/g, '&quot;') + '">' + title + '</div>';
+    html +=     '<button class="cart-modal-remove" onclick="removeFromCart(\'' + id + '\')" title="Remove">&#x2715;</button>';
     html +=   '</div>';
-    html +=   '<button class="cart-modal-remove" onclick="removeFromCart(\'' + id + '\')" title="Remove">&#x2715;</button>';
+    html +=   '<div class="pending-doc-meta">';
+    if (d.ref)      html += '<strong>Ref:</strong> '      + escHtml(d.ref)      + '<br>';
+    if (d.sender)   html += '<strong>Sender:</strong> '   + escHtml(d.sender)   + '<br>';
+    if (d.category) html += '<strong>Category:</strong> ' + escHtml(d.category) + '<br>';
+    if (d.loggedBy) html += '<strong>From:</strong> '     + escHtml(d.loggedBy) + '<br>';
+    if (d.office)   html += '<strong>Office:</strong> '   + escHtml(d.office)   + '<br>';
+    if (d.date)     html += '<strong>Date:</strong> '     + escHtml(d.date);
+    html +=   '</div>';
     html += '</div>';
   });
 
-  // Persist updated titles for next page navigation
+  // Persist enriched details for next page navigation
   saveCartDocDetails(updatedDetails);
   body.innerHTML = html;
 }
@@ -668,10 +666,18 @@ function addToCart(docId) {
     localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(ids));
     var cb = document.querySelector('.doc-checkbox[value="' + docId + '"]');
     if (cb) {
-      var row    = cb.closest('tr');
-      var nameEl = row ? row.querySelector('.doc-name') : null;
+      var row     = cb.closest('tr');
+      var nameEl  = row ? row.querySelector('.doc-name') : null;
       var details = getCartDocDetails();
-      details[docId] = { title: nameEl ? nameEl.textContent.trim() : docId };
+      details[docId] = {
+        title:    nameEl ? nameEl.textContent.trim() : docId,
+        ref:      row ? (row.dataset.ref      || '') : '',
+        sender:   row ? (row.dataset.sender   || '') : '',
+        category: row ? (row.dataset.category || '') : '',
+        loggedBy: row ? (row.dataset.loggedBy || '') : '',
+        office:   row ? (row.dataset.office   || '') : '',
+        date:     row ? (row.dataset.date     || '') : '',
+      };
       saveCartDocDetails(details);
     }
     updateCartBadge();
@@ -697,7 +703,6 @@ function removeFromCart(docId) {
   if (cb) {
     cb.checked = false;
     cb.closest('tr').classList.remove('row-selected');
-    syncSelectionBar();
     updateSelectAllLabel();
   }
 
@@ -713,7 +718,6 @@ function clearCart() {
   localStorage.removeItem(SELECTION_STORAGE_KEY);
   localStorage.removeItem(CART_STORAGE_KEY);
   localStorage.removeItem(CART_DETAILS_KEY);
-  syncSelectionBar();
   updateSelectAllLabel();
   updateCartBadge();
   renderCartModal();
@@ -727,7 +731,6 @@ function openRoutingModalFromCart() {
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
     if (cb) { cb.checked = true; cb.closest('tr').classList.add('row-selected'); }
   });
-  syncSelectionBar();
   closeCartModal();
   openRoutingModal();
 }
@@ -739,9 +742,24 @@ function openTransferModalFromCart() {
     var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
     if (cb) { cb.checked = true; cb.closest('tr').classList.add('row-selected'); }
   });
-  syncSelectionBar();
   closeCartModal();
   openTransferModal();
+}
+
+function printLoggingSlipFromCart() {
+  var ids = getCartDocIds();
+  if (!ids || ids.length === 0) { showToast('No documents in cart', 'warning'); return; }
+  var csrfToken = (document.getElementById('csrf-token-value') || {}).value || '';
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/logging-slip/print';
+  [['doc_ids', ids.join(',')], ['csrf_token', csrfToken]].forEach(function(pair) {
+    var inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = pair[0]; inp.value = pair[1];
+    form.appendChild(inp);
+  });
+  document.body.appendChild(form);
+  form.submit();
 }
 
 function toggleCartItem(docId, checked) {
@@ -752,7 +770,6 @@ function toggleCartItem(docId, checked) {
   } else {
     removeFromCart(docId);
   }
-  syncSelectionBar();
 }
 
 function initCart() {
@@ -903,7 +920,6 @@ function autoSelectByTime() {
     row.classList.toggle('row-selected', inRange);
     if (inRange) count++;
   });
-  syncSelectionBar();
   if (count === 0) {
     showToast('No documents found in that range.', 'warning');
   } else {
@@ -1203,7 +1219,7 @@ function checkPendingDocuments() {
     .then(function(data) {
       var count = data.count || 0;
       if (badge) { badge.textContent = count > 0 ? count : ''; badge.style.display = count > 0 ? 'block' : 'none'; }
-      if (headerBadge) { headerBadge.textContent = count > 0 ? count : ''; headerBadge.style.display = count > 0 ? 'block' : 'none'; }
+      if (headerBadge) { headerBadge.textContent = count > 0 ? count : ''; headerBadge.style.display = ''; headerBadge.classList.toggle('visible', count > 0); }
       if (banner) {
         banner.style.display = count > 0 ? 'flex' : 'none';
         if (ibBadge) ibBadge.textContent = count;
@@ -1497,4 +1513,112 @@ function inlineStatusChange(selectEl, docId) {
     })
     .catch(function() { showToast('Network error.', 'error'); });
   selectEl.dataset.prev = newStatus;
+}
+/* ── Appointments tab ── */
+var _currentAptId = null;
+
+function switchDashTab(name) {
+  document.getElementById('panel-docs').style.display = name === 'docs' ? '' : 'none';
+  document.getElementById('panel-appts').style.display = name === 'appts' ? '' : 'none';
+  document.getElementById('tab-docs-btn').classList.toggle('active', name === 'docs');
+  document.getElementById('tab-appts-btn').classList.toggle('active', name === 'appts');
+}
+
+function filterApptStatus(status, btn) {
+  document.querySelectorAll('.appt-stab').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  document.querySelectorAll('.appt-card-staff').forEach(function(c) {
+    c.style.display = (status === 'all' || c.dataset.status === status) ? '' : 'none';
+  });
+}
+
+function openConfirmModal(aptId, clientName, service, date, time) {
+  _currentAptId = aptId;
+  document.getElementById('confirm-apt-info').innerHTML =
+    '<strong>' + clientName + '</strong> · ' + service + '<br>' + date + ' at ' + time;
+  document.getElementById('confirm-staff-select').value = '';
+  document.getElementById('confirm-notes').value = '';
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+
+function openRejectModal(aptId) {
+  _currentAptId = aptId;
+  document.getElementById('reject-reason').value = '';
+  document.getElementById('reject-modal').style.display = 'flex';
+}
+
+function closeModals() {
+  document.getElementById('confirm-modal').style.display = 'none';
+  document.getElementById('reject-modal').style.display = 'none';
+}
+
+function submitConfirm() {
+  if (!_currentAptId) return;
+  var sel = document.getElementById('confirm-staff-select');
+  var parts = sel.value ? sel.value.split('|') : ['', ''];
+  var notes = document.getElementById('confirm-notes').value;
+  fetch('/staff/appointments/' + _currentAptId + '/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || '' },
+    body: JSON.stringify({ assigned_to: parts[0], assigned_to_name: parts[1], notes: notes })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) { closeModals(); location.reload(); }
+    else { alert('Error: ' + (d.error || 'Unknown error')); }
+  });
+}
+
+function submitReject() {
+  if (!_currentAptId) return;
+  var reason = document.getElementById('reject-reason').value.trim();
+  if (!reason) { alert('Please enter a reason.'); return; }
+  fetch('/staff/appointments/' + _currentAptId + '/reject', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || '' },
+    body: JSON.stringify({ reason: reason })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) { closeModals(); location.reload(); }
+    else { alert('Error: ' + (d.error || 'Unknown error')); }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  BULK DELETE (admin only)
+// ─────────────────────────────────────────────────────────────
+function confirmBulkDelete() {
+  var ids = getCartDocIds();
+  if (!ids || ids.length === 0) {
+    showToast('No documents selected.', 'warning');
+    return;
+  }
+  if (!confirm('Are you sure you want to delete ' + ids.length + ' document(s)? They will be moved to trash.')) {
+    return;
+  }
+  var csrfToken = (document.getElementById('csrf-token-value') || {}).value || '';
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/bulk-delete';
+  [['doc_ids', ids.join(',')], ['csrf_token', csrfToken]].forEach(function(pair) {
+    var inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = pair[0]; inp.value = pair[1];
+    form.appendChild(inp);
+  });
+  document.body.appendChild(form);
+  // Clear all selection storage before navigating away so the cart
+  // doesn't re-populate with IDs that no longer exist after deletion.
+  localStorage.removeItem(SELECTION_STORAGE_KEY);
+  localStorage.removeItem(CART_STORAGE_KEY);
+  localStorage.removeItem(CART_DETAILS_KEY);
+  form.submit();
+}
+
+function markAttended(aptId) {
+  if (!confirm('Mark this appointment as attended?')) return;
+  fetch('/staff/appointments/' + aptId + '/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || '' },
+    body: JSON.stringify({ status: 'attended', assigned_to: '', assigned_to_name: '', notes: '' })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) { location.reload(); }
+    else { alert('Error: ' + (d.error || 'Unknown error')); }
+  });
 }

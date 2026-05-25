@@ -53,7 +53,7 @@
       <p>❌ {{ result.msg }}</p>
       {% if result.get('login_required') %}
       <div class="login-btns">
-        <a href="/client/login?next={{ request.path }}" class="lb-client">👤 Client Login</a>
+        <a href="/login?next={{ request.path }}" class="lb-client">👤 Client Login</a>
         <a href="/login?next={{ request.path }}" class="lb-staff">🔐 Staff Login</a>
       </div>
       {% endif %}
@@ -75,7 +75,7 @@
   <div class="login-card">
     <p>Log in to update this document's status.</p>
     <div class="login-btns">
-      <a href="/client/login?next={{ request.path }}" class="lb-client">👤 Client Login</a>
+      <a href="/login?next={{ request.path }}" class="lb-client">👤 Client Login</a>
       <a href="/login?next={{ request.path }}" class="lb-staff">🔐 Staff Login</a>
     </div>
   </div>

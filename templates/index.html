@@ -54,13 +54,53 @@ var serverSessionData = {
         📥 Receive <span class="cart-badge" id="pending-badge-header">0</span>
       </button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openCartModal()" aria-label="Open document cart">
-        🛒 Cart <span class="cart-badge" id="cart-badge-header">0</span>
+        <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg> Cart <span class="cart-badge" id="cart-badge-header">0</span>
       </button>
       <a href="/add"              class="hdr-btn hdr-btn-primary">+ Add Document</a>
     </div>
     {% endif %}
   </div>
 
+
+  {# ── POST-LOG PRINT MODAL (disabled) ── #}
+  {#
+  {% if pending_print_ids %}
+  <div id="print-modal" class="modal-overlay open">
+    <div class="modal-sheet modal-sheet-sm">
+      <div class="modal-header modal-header-green">
+        <div class="modal-header-content">
+          <span class="modal-header-icon" aria-hidden="true">🖨</span>
+          <h2 class="modal-title">{{ pending_print_count }} Document{{ 's' if pending_print_count != 1 else '' }} Logged</h2>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:15px;color:#4A6070;line-height:1.6;">Your documents have been logged successfully. Print QR codes now to attach to the physical documents.</p>
+      </div>
+      <div class="modal-footer" style="justify-content:flex-end;gap:10px;">
+        <button class="btn btn-secondary" onclick="dismissPrintModal()">Later</button>
+        <a href="/staff/print-qr-sheet?ids={{ pending_print_ids|join(',') }}"
+           target="_blank"
+           class="btn btn-success"
+           onclick="dismissPrintModal()">🖨 Print QR Codes</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  #}
+
+  <div class="dashboard-tabs">
+    <button class="dash-tab active" id="tab-docs-btn" onclick="switchDashTab('docs')">
+      Documents
+    </button>
+    <button class="dash-tab" id="tab-appts-btn" onclick="switchDashTab('appts')">
+      Appointments
+      {% if staff_pending_appointments > 0 %}
+      <span class="dash-tab-badge">{{ staff_pending_appointments }}</span>
+      {% endif %}
+    </button>
+  </div>
+
+  <div id="panel-docs" class="dash-panel">
 
   {# ── FILTER BAR ── #}
   <div class="filter-strip" id="filter-sticky-bar" role="search" aria-label="Filter documents">
@@ -154,21 +194,31 @@ var serverSessionData = {
   </form>
   </div>
 
-  {# ── INCOMING BANNER ── #}
-  {% if logged_in and session.get('role') in ('staff', 'admin') %}
-  <div id="incoming-banner" class="dash-incoming" style="display:none;"
-       role="alert" tabindex="0"
-       onclick="showPendingDocumentsModal()"
-       onkeydown="if(event.key==='Enter'||event.key===' ')showPendingDocumentsModal()">
-    <div class="ib-icon">📥</div>
-    <div class="ib-body">
-      <div class="ib-title">Documents awaiting your acceptance</div>
-      <div class="ib-sub" id="ib-sub-text">Click to review and accept</div>
+
+  {# ── QR PRINT QUEUE (disabled) ── #}
+  {#
+  {% if unprinted_docs %}
+  <div class="print-queue-card">
+    <div class="pq-header">
+      <span class="pq-title">🖨 QR Print Queue</span>
+      <span class="pq-count">{{ unprinted_docs|length }} unprinted</span>
     </div>
-    <span class="ib-badge" id="ib-badge">0</span>
-    <span class="ib-cta">Review ›</span>
+    <div class="pq-list">
+      {% for doc in unprinted_docs %}
+      <label class="pq-item">
+        <input type="checkbox" class="pq-check" value="{{ doc.id }}" checked/>
+        <span class="pq-name">{{ doc.doc_name or 'Unnamed' }}</span>
+        <span class="pq-ref">{{ doc.doc_id }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <div class="pq-actions">
+      <button class="btn btn-ghost btn-sm" onclick="markAllPrinted()">Mark All as Printed</button>
+      <button class="btn btn-primary btn-sm" onclick="printSelectedQR()">🖨 Print Selected</button>
+    </div>
   </div>
   {% endif %}
+  #}
 
   {# ── STATS ROW ── #}
   <div class="dash-stats-row" role="navigation" aria-label="Filter by status">
@@ -225,40 +275,32 @@ var serverSessionData = {
     {% endif %}
   </div>
 
-  {# ── SELECTION BAR ── #}
-  {# Selection bar #}
-      {% if logged_in and session.get('role') in ['admin','staff'] %}
-      <div id="selection-bar" class="selection-bar" role="toolbar"
-           aria-label="Bulk actions" aria-hidden="true">
-        <span class="sel-info">
-          <span class="sel-count-label" id="sel-count-label">0</span> selected
-        </span>
-        <div class="sel-actions">
-          <button class="sel-btn sel-btn-purple" onclick="openRoutingModal()">📤 Routing Slip</button>
-          <button class="sel-btn sel-btn-amber"  onclick="openTransferModal()">🔄 Transfer</button>
-          <button class="sel-btn sel-btn-teal"   onclick="openStatusModal()">📋 Status</button>
-          <button class="sel-btn sel-btn-ghost"  onclick="deselectAll()">Deselect All</button>
-        </div>
-        <button class="sel-dismiss" onclick="deselectAll()" aria-label="Dismiss">✕</button>
-      </div>
-      {% endif %}
-
       {# Cart Modal #}
       {% if logged_in and session.get('role') in ['admin','staff'] %}
       <div id="cart-modal" class="cart-modal" role="dialog" aria-labelledby="cart-modal-title" aria-modal="true">
         <div class="cart-modal-overlay" onclick="closeCartModal()"></div>
         <div class="cart-modal-content">
           <div class="cart-modal-header">
-            <h2 id="cart-modal-title">📋 Document Cart</h2>
+            <h2 id="cart-modal-title"><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg> Document Cart</h2>
             <button class="cart-modal-close" onclick="closeCartModal()" aria-label="Close cart">✕</button>
           </div>
           <div class="cart-modal-body" id="cart-modal-body">
             <p class="cart-empty-msg" id="cart-empty-msg">No documents selected</p>
           </div>
           <div class="cart-modal-footer">
-            <button class="cart-modal-btn cart-route-btn" onclick="openRoutingModalFromCart()">📤 Route Documents</button>
-            <button class="cart-modal-btn cart-transfer-btn" onclick="openTransferModalFromCart()">🔄 Transfer Documents</button>
-            <button class="cart-modal-btn cart-clear-btn" onclick="clearCart()">Clear All</button>
+            <div class="cart-footer-row cart-footer-row-primary">
+              {% if can_route_documents %}
+              <button class="cart-modal-btn cart-route-btn" onclick="openRoutingModalFromCart()"><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg> Route</button>
+              {% endif %}
+              <button class="cart-modal-btn cart-transfer-btn" onclick="openTransferModalFromCart()"><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg> Transfer</button>
+              <button class="cart-modal-btn cart-print-btn" onclick="printLoggingSlipFromCart()"><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg> Print Slip</button>
+            </div>
+            <div class="cart-footer-row cart-footer-row-secondary">
+              {% if current_role == 'admin' %}
+              <button type="button" class="cart-modal-btn cart-delete-btn" onclick="confirmBulkDelete()"><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Delete</button>
+              {% endif %}
+              <button class="cart-modal-btn cart-clear-btn" onclick="clearCart()"><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg> Clear</button>
+            </div>
           </div>
         </div>
       </div>
@@ -318,19 +360,23 @@ var serverSessionData = {
                 <th scope="col" class="sortable {% if sort_col=='created_at' %}sort-active{% endif %}" onclick="sortBy('created_at')">Date &amp; Time <span class="sort-icon">{% if sort_col=='created_at' %}{{ '↑' if sort_dir=='asc' else '↓' }}{% else %}↕{% endif %}</span></th>
                 <th scope="col">Remarks</th>
                 <th scope="col" class="sortable {% if sort_col=='status' %}sort-active{% endif %}" onclick="sortBy('status')">Status <span class="sort-icon">{% if sort_col=='status' %}{{ '↑' if sort_dir=='asc' else '↓' }}{% else %}↕{% endif %}</span></th>
-                <th scope="col" class="sortable {% if sort_col=='due_date' %}sort-active{% endif %}" onclick="sortBy('due_date')">Due <span class="sort-icon">{% if sort_col=='due_date' %}{{ '↑' if sort_dir=='asc' else '↓' }}{% else %}↕{% endif %}</span></th>
                 <th scope="col" class="actions-col">Actions</th>
               </tr>
             </thead>
             <tbody id="docs-tbody">
               {% for doc in docs %}
-              {% set _is_overdue = doc.due_date and doc.due_date < today and doc.status not in ('Released','Archived','Returned') %}
-              <tr class="doc-row {% if _is_overdue %}row-overdue{% endif %}"
+              <tr class="doc-row"
                   onclick="rowClick(event,'{{ doc.id }}')"
                   onkeydown="if(event.key==='Enter')rowClick(event,'{{ doc.id }}')"
                   data-created-at="{{ doc.created_at or '' }}"
                   data-doc-id="{{ doc.id }}"
                   data-referred-to="{{ doc.referred_to or '' }}"
+                  data-ref="{{ doc.doc_id or '' }}"
+                  data-sender="{{ doc.sender_name or '' }}"
+                  data-category="{{ doc.category or '' }}"
+                  data-logged-by="{{ doc.logged_by or '' }}"
+                  data-office="{{ doc.office or doc.sender_org or '' }}"
+                  data-date="{{ (doc.created_at or '')[:10] }}"
                   tabindex="0"
                   aria-label="Document: {{ doc.doc_name }}">
 
@@ -411,20 +457,6 @@ var serverSessionData = {
                   {% endif %}
                 </td>
 
-                <td class="td-date" data-label="Due" onclick="event.stopPropagation()">
-                  {% if doc.due_date %}
-                    {% if doc.due_date < today and doc.status not in ('Released','Archived','Returned') %}
-                      <span class="due-badge due-overdue">⚠ {{ doc.due_date }}</span>
-                    {% elif doc.due_date <= today_plus3 and doc.status not in ('Released','Archived','Returned') %}
-                      <span class="due-badge due-soon">{{ doc.due_date }}</span>
-                    {% else %}
-                      <span class="due-badge due-ok">{{ doc.due_date }}</span>
-                    {% endif %}
-                  {% else %}
-                    <span class="td-empty">—</span>
-                  {% endif %}
-                </td>
-
                 <td class="td-actions" data-label="Actions" onclick="event.stopPropagation()">
                   <div class="kebab-menu">
                     <button class="kebab-btn" aria-label="Document actions" onclick="toggleKebabMenu(this)">
@@ -501,6 +533,107 @@ var serverSessionData = {
         </div>{# /table-wrap #}
       </div>{# /table-outer #}
       </main>
+
+  </div>{# /panel-docs #}
+
+  <div id="panel-appts" class="dash-panel" style="display:none;">
+    <div class="appt-panel-toolbar">
+      <div class="appt-status-tabs">
+        <button class="appt-stab active" onclick="filterApptStatus('all', this)">All</button>
+        <button class="appt-stab" onclick="filterApptStatus('pending', this)">Pending</button>
+        <button class="appt-stab" onclick="filterApptStatus('confirmed', this)">Confirmed</button>
+        <button class="appt-stab" onclick="filterApptStatus('attended', this)">Attended</button>
+        <button class="appt-stab" onclick="filterApptStatus('cancelled', this)">Cancelled</button>
+      </div>
+      <a href="/staff/appointments" class="btn-appt-full">Full View →</a>
+    </div>
+
+    <div id="appt-list-panel">
+      {% if staff_appointments %}
+        {% for apt in staff_appointments %}
+        <div class="appt-card-staff" data-status="{{ apt.status | lower }}">
+          <div class="appt-card-left">
+            <div class="appt-client-name">{{ apt.client_name }}</div>
+            <div class="appt-service">{{ apt.service_name or apt.service_code }}</div>
+            <div class="appt-office-label">{{ apt.office }}</div>
+            <div class="appt-meta-row">
+              <span>{{ apt.preferred_date }}</span>
+              <span>·</span>
+              <span>{{ apt.preferred_time }}</span>
+              {% if apt.queue_ticket %}
+              <span class="appt-ticket-badge">Ticket {{ apt.queue_ticket }}</span>
+              {% endif %}
+            </div>
+            {% if apt.purpose %}
+            <div class="appt-purpose-text">{{ apt.purpose }}</div>
+            {% endif %}
+            {% if apt.assigned_to_name %}
+            <div class="appt-assigned">Assigned to: <strong>{{ apt.assigned_to_name }}</strong></div>
+            {% endif %}
+          </div>
+          <div class="appt-card-right">
+            <span class="appt-status-badge appt-s-{{ apt.status | lower }}">{{ apt.status | capitalize }}</span>
+            {% if apt.status == 'pending' %}
+            <button class="btn-appt-confirm" onclick="openConfirmModal('{{ apt.id }}', '{{ apt.client_name }}', '{{ apt.service_name or apt.service_code }}', '{{ apt.preferred_date }}', '{{ apt.preferred_time }}')">Confirm</button>
+            <button class="btn-appt-reject" onclick="openRejectModal('{{ apt.id }}')">Reject</button>
+            {% elif apt.status == 'confirmed' %}
+            <button class="btn-appt-attend" onclick="markAttended('{{ apt.id }}')">Mark Attended</button>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="appt-empty-panel">
+          <div class="appt-empty-title">No appointments yet</div>
+          <div class="appt-empty-sub">Appointment bookings from clients will appear here.</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>{# /panel-appts #}
+
+  <!-- Confirm Modal -->
+  <div class="appt-modal-overlay" id="confirm-modal" style="display:none;">
+    <div class="appt-modal">
+      <div class="appt-modal-header">
+        <h3>Confirm Appointment</h3>
+        <button onclick="closeModals()" class="appt-modal-close">✕</button>
+      </div>
+      <div class="appt-modal-body">
+        <div id="confirm-apt-info" class="appt-modal-info"></div>
+        <label class="appt-modal-label">ASSIGN TO STAFF</label>
+        <select id="confirm-staff-select" class="appt-modal-select">
+          <option value="">— Unassigned —</option>
+          {% for staff in office_staff_list %}
+          <option value="{{ staff.username }}|{{ staff.full_name }}">{{ staff.full_name }}</option>
+          {% endfor %}
+        </select>
+        <label class="appt-modal-label">NOTES (OPTIONAL)</label>
+        <textarea id="confirm-notes" class="appt-modal-textarea" placeholder="Add a note..."></textarea>
+      </div>
+      <div class="appt-modal-footer">
+        <button onclick="submitConfirm()" class="btn-modal-confirm">Confirm Appointment</button>
+        <button onclick="closeModals()" class="btn-modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Modal -->
+  <div class="appt-modal-overlay" id="reject-modal" style="display:none;">
+    <div class="appt-modal">
+      <div class="appt-modal-header">
+        <h3>Reject Appointment</h3>
+        <button onclick="closeModals()" class="appt-modal-close">✕</button>
+      </div>
+      <div class="appt-modal-body">
+        <label class="appt-modal-label">REASON FOR REJECTION</label>
+        <textarea id="reject-reason" class="appt-modal-textarea" placeholder="Enter reason..." required></textarea>
+      </div>
+      <div class="appt-modal-footer">
+        <button onclick="submitReject()" class="btn-modal-reject">Reject Appointment</button>
+        <button onclick="closeModals()" class="btn-modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
 
 </div>{# /doc-page #}
 
@@ -805,5 +938,101 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 })();
 </script>
+
+{# ── QR PRINT QUEUE JS + CSS (disabled) ── #}
+{#
+<script>
+// ── Print modal ──
+function dismissPrintModal() {
+  var m = document.getElementById('print-modal');
+  if (m) m.style.display = 'none';
+  fetch('/staff/mark-qr-printed', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || ''},
+    body: JSON.stringify({ids: {{ pending_print_ids | tojson }}})
+  });
+}
+
+// ── Print queue ──
+function printSelectedQR() {
+  var ids = Array.from(document.querySelectorAll('.pq-check:checked')).map(function(c) { return c.value; });
+  if (!ids.length) return;
+  window.open('/staff/print-qr-sheet?ids=' + ids.join(','), '_blank');
+  setTimeout(function() {
+    fetch('/staff/mark-qr-printed', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || ''},
+      body: JSON.stringify({ids: ids})
+    }).then(function() { location.reload(); });
+  }, 2000);
+}
+
+function markAllPrinted() {
+  var ids = Array.from(document.querySelectorAll('.pq-check')).map(function(c) { return c.value; });
+  fetch('/staff/mark-qr-printed', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || ''},
+    body: JSON.stringify({ids: ids})
+  }).then(function() { location.reload(); });
+}
+</script>
+
+<style>
+/* ── Print queue card ── */
+.print-queue-card {
+  background: #fff;
+  border-left: 3px solid #C9A227;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(14,42,71,.07);
+}
+.pq-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.pq-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0E2A47;
+}
+.pq-count {
+  background: #C9A227;
+  color: #0E2A47;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.pq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.pq-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.pq-item:hover { background: #FAF8F3; }
+.pq-check { flex-shrink: 0; accent-color: #C9A227; width: 15px; height: 15px; cursor: pointer; }
+.pq-name { flex: 1; font-weight: 600; color: #0E2A47; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pq-ref  { font-family: 'Courier New', monospace; font-size: 11px; color: #8BA5B5; flex-shrink: 0; }
+.pq-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+</style>
+#}
 
 {% endblock %}

@@ -415,7 +415,7 @@ function checkPendingDocuments() {
       const bannerSub     = document.getElementById('ib-sub-text');
       // Only show badge when count > 0
       if (badge) { badge.textContent = data.count > 0 ? data.count : ''; badge.style.display = data.count > 0 ? 'block' : 'none'; }
-      if (headerBadge) { headerBadge.textContent = data.count > 0 ? data.count : ''; headerBadge.style.display = data.count > 0 ? 'block' : 'none'; }
+      if (headerBadge) { headerBadge.textContent = data.count > 0 ? data.count : ''; headerBadge.style.display = ''; headerBadge.classList.toggle('visible', data.count > 0); }
       if (banner && bannerCount) {
         bannerCount.textContent = data.count;
         banner.style.display = data.count > 0 ? 'block' : 'none';
@@ -478,6 +478,7 @@ function reloadPendingDocs() {
         return;
       }
       _pendingDocStaffMap = {};
+      window._pendingDocsList = docs;
       listContainer.innerHTML = docs.map(function (doc) {
         var docId = doc.id || doc.doc_id;
         _pendingDocStaffMap[docId] = {
@@ -508,11 +509,17 @@ function reloadPendingDocs() {
           '</div>' +
           '<div class="pending-doc-actions">' +
             '<a href="/view/' + docId + '" target="_blank" class="btn btn-ghost btn-sm">👁 View</a>' +
-            '<button class="btn btn-success btn-sm" onclick="openAcceptModal(\'' + docId + '\')">✓ Accept</button>' +
+            '<button class="btn btn-success btn-sm" onclick="acceptDocument(\'' + docId + '\',\'' + (doc.intended_for_username||'') + '\',\'' + (doc.intended_for_name||'').replace(/\'/g,"&#39;") + '\',\'' + (doc.pending_at_office||'') + '\')">✓ Accept</button>' +
             '<button class="btn btn-danger  btn-sm" onclick="showRejectionModal(\'' + docId + '\')">✕ Reject</button>' +
           '</div>' +
         '</div>';
       }).join('');
+      listContainer.innerHTML =
+        '<div style="padding:0 0 12px;display:flex;justify-content:flex-end;">' +
+          '<button class="btn btn-success" id="accept-all-btn" onclick="acceptAllDocuments()" style="font-weight:700;">' +
+          '✓ Accept All (' + docs.length + ')</button>' +
+        '</div>' +
+        listContainer.innerHTML;
     })
     .catch(function (err) {
       console.error('Error loading pending documents:', err);
@@ -580,38 +587,11 @@ function showToast(message, type) {
   }, 2500);
 }
 
-// ── Accept flow — uses confirmation modal instead of browser confirm() ────
-var _pendingDocStaffMap  = {};
-var _acceptPendingStaff  = '';
-var _acceptPendingStaffName = '';
-var _acceptPendingOffice = '';
+// ── Accept flow ────────────────────────────────────────────────────────────
+var _pendingDocStaffMap = {};
 
-function openAcceptModal(docId) {
-  document.getElementById('accept-doc-id').value = docId;
-  var info = _pendingDocStaffMap[docId] || {};
-  _acceptPendingStaff     = info.staff     || '';
-  _acceptPendingStaffName = info.staffName || '';
-  _acceptPendingOffice    = info.office    || '';
-  var nameEl = document.getElementById('accept-modal-doc-name');
-  if (nameEl) nameEl.textContent = info.docName || '';
-  var forEl = document.getElementById('accept-modal-intended-for');
-  if (forEl) {
-    if (info.staffName) {
-      forEl.textContent = 'Intended for: ' + info.staffName;
-      forEl.style.display = '';
-    } else {
-      forEl.style.display = 'none';
-    }
-  }
-  openModal('accept-confirm-modal');
-}
-
-function closeAcceptModal() { closeModal('accept-confirm-modal'); }
-
-function submitAccept() {
-  var docId     = document.getElementById('accept-doc-id').value;
+function acceptDocument(docId, intendedForUsername, intendedForName, office) {
   var csrfToken = window.CSRF_TOKEN || '';
-
   fetch('/accept-document/' + docId, {
     method: 'POST',
     headers: {
@@ -623,29 +603,54 @@ function submitAccept() {
   .then(function (r) { return r.json(); })
   .then(function (data) {
     if (data.ok) {
-      closeAcceptModal();
       showToast('Document received successfully');
-      var currentUser  = window.CURRENT_USERNAME || '';
-      var pendingStaff = _acceptPendingStaff;
-      var staffName    = _acceptPendingStaffName || pendingStaff;
-      if (currentUser && pendingStaff && pendingStaff !== currentUser) {
+      reloadPendingDocs();
+      var currentUser = window.CURRENT_USERNAME || '';
+      if (intendedForUsername && intendedForUsername !== currentUser) {
         setTimeout(function () {
           closePendingDocumentsModal();
-          _showPostAcceptDialog(docId, pendingStaff, staffName, _acceptPendingOffice);
+          _showPostAcceptDialog(docId, intendedForUsername, intendedForName, office || '');
         }, 800);
       } else {
-        setTimeout(function () {
-          closePendingDocumentsModal();
-          window.location.reload();
-        }, 800);
+        setTimeout(function () { window.location.reload(); }, 1500);
       }
     } else {
-      alert(data.error || 'Error accepting document. Please try again.');
+      showToast(data.error || 'Failed to accept document', 'error');
     }
   })
-  .catch(function (err) {
-    console.error('Accept error:', err);
-    alert('Network error. Please try again.');
+  .catch(function () { showToast('Network error. Please try again.', 'error'); });
+}
+
+function acceptAllDocuments() {
+  var docs = window._pendingDocsList || [];
+  if (!docs.length) return;
+  if (!confirm('Accept all ' + docs.length + ' pending documents?')) return;
+  var btn = document.getElementById('accept-all-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Accepting…'; }
+  var csrfToken = window.CSRF_TOKEN || '';
+  var success = 0;
+  var failed  = 0;
+  var promises = docs.map(function (doc) {
+    var docId = doc.id || doc.doc_id;
+    return fetch('/accept-document/' + docId, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: 'csrf_token=' + encodeURIComponent(csrfToken),
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) { if (data.ok) success++; else failed++; })
+    .catch(function () { failed++; });
+  });
+  Promise.all(promises).then(function () {
+    reloadPendingDocs();
+    if (failed === 0) {
+      showToast('All ' + success + ' documents accepted successfully');
+    } else {
+      showToast(success + ' accepted, ' + failed + ' failed', 'error');
+    }
   });
 }
 

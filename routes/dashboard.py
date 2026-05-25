@@ -5,6 +5,7 @@ import uuid
 import csv
 import io as _io
 import difflib
+import json
 from datetime import date as _date, timedelta as _timedelta
 
 from flask import (Blueprint, flash, jsonify, redirect,
@@ -17,6 +18,7 @@ from services.documents import (
     load_docs, now_str, generate_ref, restore_doc, save_doc,
 )
 from services.auth import get_all_users
+from services.appointments import get_all_appointments, get_appointment, update_appointment
 from services.misc import audit_log, load_saved_offices
 from services.cart_store import clear_cart
 from services.qr import generate_qr_b64, make_qr_png
@@ -87,21 +89,19 @@ def index():
     user_role = session.get("role", "")
 
     docs = load_docs()
-    
+
     if user_role != "admin":
+        from services.database import get_group_usernames
+        paired = get_group_usernames(current_username)
+        all_usernames = set([current_username] + paired)
         docs = [
             d for d in docs
             if (
-                # Staff can see documents they originally logged (for transferred docs)
-                d.get("original_logged_by") == current_username
-                # OR documents they logged but were never transferred (no original_logged_by)
-                or d.get("logged_by") == current_username
-                # OR documents they received
-                or d.get("received_by") == current_username
-                # OR documents they have accepted
-                or d.get("accepted_by") == current_username
-                # OR documents they have transferred (to see the status)
-                or d.get("transferred_by") == current_username
+                d.get("original_logged_by") in all_usernames
+                or d.get("logged_by") in all_usernames
+                or d.get("received_by") in all_usernames
+                or d.get("accepted_by") in all_usernames
+                or d.get("transferred_by") in all_usernames
             )
         ]
 
@@ -239,7 +239,6 @@ def index():
         "created_at": lambda d: d.get("created_at") or "",
         "status":     lambda d: (d.get("status") or "").lower(),
         "sender":     lambda d: (d.get("sender_name") or d.get("sender_org") or "").lower(),
-        "due_date":   lambda d: d.get("due_date") or "9999-12-31",
     }
     _sort_key = _SORT_KEYS.get(sort_col, _SORT_KEYS["created_at"])
     filtered = sorted(filtered, key=_sort_key, reverse=(sort_dir != "asc"))
@@ -256,8 +255,6 @@ def index():
             if d.get("status") in ("Pending", "Logged", "In Review"):
                 _office_map[_off]["pending"] += 1
             _today = now_str()[:10]
-            if d.get("due_date") and d["due_date"] < _today and d.get("status") not in ("Released", "Archived", "Returned"):
-                _office_map[_off]["overdue"] += 1
         office_stats = sorted(_office_map.values(), key=lambda x: -x["total"])[:10]
 
     try:
@@ -292,6 +289,23 @@ def index():
 
     staff_in_office = offices_dict.get(current_office, [])
 
+    # QR Print Queue disabled
+    # pending_print_ids   = session.pop('pending_print_ids', [])
+    # pending_print_count = session.pop('pending_print_count', 0)
+    # all_docs_list = load_docs()
+    # unprinted_docs = [d for d in all_docs_list
+    #                   if d.get('logged_by') == session.get('username')
+    #                   and not d.get('qr_printed')
+    #                   and not d.get('deleted')
+    #                   and d.get('status') not in ('Released', 'Archived')][:20]
+
+    current_role_val = session.get("role", "")
+    if current_role_val == "admin":
+        staff_appointments_list = get_all_appointments()
+    else:
+        staff_appointments_list = get_all_appointments(office=current_office)
+    staff_pending_appointments = len([a for a in staff_appointments_list if a.get("status") == "pending"])
+
     return render_template("index.html",
         docs=paginated, stats=get_stats(filtered),
         search=search, filter_status=filter_status,
@@ -305,6 +319,7 @@ def index():
         status_options=["All"] + get_dropdown_options("status"),
         cat_options=get_dropdown_options("category"),
         office_staff_names=office_staff_names,
+        office_staff_list=office_staff_list,
         office_stats=office_stats,
         today=now_str()[:10],
         today_plus3=(_date.today() + _timedelta(days=3)).strftime('%Y-%m-%d'),
@@ -317,7 +332,12 @@ def index():
         sorted_offices=sorted_offices,
         current_user_name=session.get('full_name', ''),
         current_user_role=session.get('role', ''),
-        is_admin=session.get('role') == 'admin')
+        is_admin=session.get('role') == 'admin',
+        # pending_print_ids=pending_print_ids,    # QR Print Queue disabled
+        # pending_print_count=pending_print_count, # QR Print Queue disabled
+        # unprinted_docs=unprinted_docs,           # QR Print Queue disabled
+        staff_appointments=staff_appointments_list,
+        staff_pending_appointments=staff_pending_appointments)
 
 
 @dashboard_bp.route("/dashboard")
@@ -354,7 +374,6 @@ def add():
                     "category":             request.form.get("category", "").strip(),
                     "description":          request.form.get("description", "").strip(),
                     "notes":                request.form.get("notes", "").strip(),
-                    "due_date":             request.form.get("due_date", "").strip(),
                 })
                 session["staff_cart"] = cart
                 session.modified = True
@@ -416,7 +435,6 @@ def add():
                     cart[i]["category"] = request.form.get("category", "").strip()
                     cart[i]["description"] = request.form.get("description", "").strip()
                     cart[i]["notes"] = request.form.get("notes", "") or request.form.get("description", "").strip()
-                    cart[i]["due_date"] = request.form.get("due_date", "").strip()
                     session["staff_cart"] = cart
                     session.modified = True
                     flash(f"✅ Document updated successfully.", "success")
@@ -442,7 +460,6 @@ def add():
                         "sender_org":     item["sender_org"],
                         "sender_contact": "",
                         "referred_to":    item["referred_to"],
-                        "due_date":       item.get("due_date", ""),
                         "forwarded_to":   "",
                         "recipient_name": "", "recipient_org": "", "recipient_contact": "",
                         "received_by":    actor,
@@ -489,7 +506,7 @@ def add():
                                 "action":    "Transferred",
                                 "officer":   actor,
                                 "timestamp": now_t,
-                                "remarks":   "Auto-transferred to referred staff",
+                                "remarks":   f"Auto-transferred to {ref_full_name} ({ref_office or 'N/A'}).",
                             })
                             doc["status"]                = "Transferred"
                             doc["transferred_to"]        = ref_username
@@ -513,6 +530,8 @@ def add():
                 # Routing slips are only created when the user explicitly routes/transfers
                 # documents via the routing action in routes/offices.py.
 
+                # session['pending_print_ids'] = logged_doc_ids    # QR Print Queue disabled
+                # session['pending_print_count'] = len(cart)       # QR Print Queue disabled
                 session.pop("staff_cart", None)
                 session.modified = True
                 clear_cart(session.get("username", ""))
@@ -577,6 +596,39 @@ def view_logging_slip(slip_id):
     return render_template("logging_slip.html", slip=slip, docs=docs)
 
 
+# ── Print Logging Slip ────────────────────────────────────────────────────────
+
+@dashboard_bp.route("/logging-slip/print", methods=["POST"])
+@login_required
+def print_logging_slip():
+    from services.misc import save_routing_slip
+    from services.documents import get_docs_by_ids
+
+    raw = request.form.get("doc_ids", "").strip()
+    id_list = [d.strip() for d in raw.split(",") if d.strip()][:_MAX_BATCH]
+    if not id_list:
+        flash("No documents selected.", "error")
+        return redirect(url_for("dashboard.index"))
+
+    docs_map = get_docs_by_ids(id_list)
+    docs = [docs_map[did] for did in id_list if did in docs_map]
+
+    slip_id = "LOG-" + str(uuid.uuid4())[:8].upper()
+    slip = {
+        "id":          slip_id,
+        "slip_no":     slip_id,
+        "type":        "logging",
+        "destination": "",
+        "slip_date":   _date.today().isoformat(),
+        "logged_at":   now_str(),
+        "prepared_by": session.get("full_name") or session.get("username"),
+        "from_office": session.get("office") or "DepEd Leyte Division",
+        "doc_ids":     id_list,
+    }
+    save_routing_slip(slip)
+    return render_template("logging_slip.html", slip=slip, docs=docs)
+
+
 # ── View / Edit / Delete ──────────────────────────────────────────────────────
 
 @dashboard_bp.route("/view/<doc_id>")
@@ -596,10 +648,24 @@ def view_doc(doc_id):
                 slip_type = s.get("type")
                 break
 
+    # Resolve transfer usernames to full names for display
+    all_users = get_all_users()
+    user_lookup = {u["username"]: u.get("full_name") or u["username"] for u in all_users}
+
+    transferred_to_name = (
+        doc.get("pending_at_staff_name")
+        or user_lookup.get(doc.get("transferred_to", ""), doc.get("transferred_to") or "")
+    )
+    transferred_by_name = user_lookup.get(
+        doc.get("transferred_by", ""), doc.get("transferred_by") or ""
+    )
+
     return render_template("detail.html", doc=doc,
                            qr_b64=generate_qr_b64(doc, request.host_url),
                            slip_type=slip_type,
-                           status_options=get_dropdown_options("status"))
+                           status_options=get_dropdown_options("status"),
+                           transferred_to_name=transferred_to_name,
+                           transferred_by_name=transferred_by_name)
 
 
 @dashboard_bp.route("/edit/<doc_id>", methods=["GET", "POST"])
@@ -680,6 +746,28 @@ def delete(doc_id):
     audit_log("doc_deleted", f"doc_id={doc_id} name={doc_name}",
               username=session.get("username", ""), ip=get_client_ip())
     flash(f"Document '{doc_name}' moved to trash. Admins can restore it.", "success")
+    return redirect(url_for("dashboard.index"))
+
+
+@dashboard_bp.route("/bulk-delete", methods=["POST"])
+@admin_required
+def bulk_delete():
+    doc_ids = request.form.get("doc_ids", "")
+    ids = [d.strip() for d in doc_ids.split(",") if d.strip()]
+    if not ids:
+        flash("No documents selected.", "warning")
+        return redirect(url_for("dashboard.index"))
+
+    deleted = 0
+    for doc_id in ids:
+        doc = get_doc(doc_id)
+        if doc:
+            delete_doc(doc_id, deleted_by=session.get("username", ""))
+            deleted += 1
+
+    audit_log("bulk_delete", f"Admin bulk deleted {deleted} documents: {', '.join(ids)}",
+              session.get("username"))
+    flash(f"{deleted} document(s) moved to trash.", "success")
     return redirect(url_for("dashboard.index"))
 
 
@@ -946,12 +1034,10 @@ def transfer_doc(doc_id):
             "officer":   current_full_name,
             "timestamp": now_str(),
             "remarks":   (
-                f"Re-routed from {new_staff_office or 'receiving office'} back to "
-                f"originating staff. Cycle {doc['routing_cycle']} completed. "
-                f"Transferred by {current_full_name}."
+                f"Re-routed to {new_staff_full_name} ({new_staff_office or 'N/A'}). "
+                f"Cycle {doc['routing_cycle']} completed."
                 if routing_back_to_origin else
-                f"Transferred to {new_staff_full_name} ({new_staff_office or 'N/A'}) from {current_office}. "
-                f"Previous status: {old_status}. Transferred by {current_full_name}."
+                f"Transferred to {new_staff_full_name} ({new_staff_office or 'N/A'})."
             ),
         })
 
@@ -1160,9 +1246,10 @@ def transfer_batch():
             "officer":   session.get("full_name") or session.get("username"),
             "timestamp": now_str(),
             "remarks":   (
-                f"Batch re-routed back to originating staff. Cycle {doc['routing_cycle']} completed."
+                f"Batch re-routed to {new_staff_full_name} ({new_staff_office or 'N/A'}). "
+                f"Cycle {doc['routing_cycle']} completed."
                 if routing_back else
-                f"Batch routed from {current_user} → {new_staff} at {new_staff_office or 'N/A'} {status_note}."
+                f"Batch transferred to {new_staff_full_name} ({new_staff_office or 'N/A'})."
             ),
         })
         save_doc(doc)
@@ -1171,6 +1258,7 @@ def transfer_batch():
     audit_log("doc_batch_transferred",
               f"count={transferred_count} to={new_staff} type={transfer_type}",
               username=session.get("username","?"), ip=get_client_ip())
+
     flash(f"{transferred_count} document(s) transferred to {new_staff_full_name} at {new_staff_office or 'N/A'}. Status changed to Routed", "success")
     return redirect(url_for("dashboard.index") + "?cart_cleared=1")
 
@@ -1749,12 +1837,12 @@ def export_csv():
     output = _io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["Ref No.", "Document", "Category", "Sender", "Sender Org",
-                     "Referred To", "Status", "Due Date", "Date Logged", "Remarks"])
+                     "Referred To", "Status", "Date Logged", "Remarks"])
     for d in docs:
         writer.writerow([
             d.get("doc_id",""), d.get("doc_name",""), d.get("category",""),
             d.get("sender_name",""), d.get("sender_org",""), d.get("referred_to",""),
-            d.get("status",""), d.get("due_date",""),
+            d.get("status",""),
             (d.get("created_at") or "")[:10], d.get("notes","") or d.get("description",""),
         ])
     output.seek(0)
@@ -1828,3 +1916,118 @@ def check_duplicate():
         if len(matches) >= 5:
             break
     return jsonify({"duplicates": matches})
+
+
+# ── QR Print Queue routes disabled ──────────────────────────────────────────
+# @dashboard_bp.route("/staff/print-qr-sheet")
+# @login_required
+# def print_qr_sheet():
+#     ids = request.args.get('ids', '')
+#     doc_ids = [i.strip() for i in ids.split(',') if i.strip()]
+#     docs = []
+#     for doc_id in doc_ids:
+#         doc = get_doc(doc_id)
+#         if doc and not doc.get('deleted'):
+#             qr_b64 = generate_qr_b64(doc, request.host_url)
+#             docs.append({
+#                 'id':         doc.get('id'),
+#                 'doc_name':   doc.get('doc_name', 'Unnamed'),
+#                 'doc_id':     doc.get('doc_id', ''),
+#                 'created_at': (doc.get('created_at') or '')[:10],
+#                 'office':     doc.get('logged_by_office', ''),
+#                 'qr_b64':     qr_b64,
+#             })
+#     return render_template('print_qr_sheet.html', docs=docs)
+#
+#
+# @dashboard_bp.route("/staff/mark-qr-printed", methods=["POST"])
+# @login_required
+# def mark_qr_printed():
+#     data = request.get_json(force=True, silent=True) or {}
+#     ids = data.get('ids', [])
+#     for doc_id in ids:
+#         doc = get_doc(doc_id)
+#         if doc:
+#             doc['qr_printed'] = True
+#             doc['updated_at'] = now_str()
+#             save_doc(doc)
+#     return jsonify(ok=True)
+
+
+@dashboard_bp.route("/staff/appointments")
+@login_required
+def staff_appointments():
+    if session.get("role") not in ("staff", "admin"):
+        return redirect(url_for("dashboard.index"))
+    current_username = session.get("username", "")
+    current_office   = session.get("office", "")
+    current_role     = session.get("role", "")
+
+    if current_role == "admin":
+        appointments = get_all_appointments()
+    else:
+        appointments = get_all_appointments(office=current_office)
+
+    all_users = get_all_users()
+    if current_role == "admin":
+        office_staff = sorted([
+            {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
+            for u in all_users
+            if u.get("role") != "client" and u.get("active", True)
+        ], key=lambda x: x["full_name"])
+    else:
+        office_staff = sorted([
+            {"username": u["username"], "full_name": u.get("full_name") or u["username"]}
+            for u in all_users
+            if u.get("office") == current_office
+            and u.get("role") != "client"
+            and u.get("active", True)
+        ], key=lambda x: x["full_name"])
+
+    pending_count = len([a for a in appointments if a.get("status") == "pending"])
+
+    return render_template("staff_appointments.html",
+                           appointments=appointments,
+                           office_staff=office_staff,
+                           pending_count=pending_count,
+                           current_office=current_office,
+                           current_role=current_role)
+
+
+@dashboard_bp.route("/staff/appointments/<apt_id>/confirm", methods=["POST"])
+@login_required
+def staff_confirm_appointment(apt_id):
+    if session.get("role") not in ("staff", "admin"):
+        return redirect(url_for("dashboard.index"))
+    data = request.get_json(force=True, silent=True) or {}
+    assigned_to      = data.get("assigned_to", "")
+    assigned_to_name = data.get("assigned_to_name", "")
+    notes            = data.get("notes", "")
+
+    status = data.get("status", "confirmed")
+    success = update_appointment(apt_id, {
+        "status":           status,
+        "assigned_to":      assigned_to,
+        "assigned_to_name": assigned_to_name,
+        "notes":            notes,
+    })
+    if success:
+        return jsonify(ok=True)
+    return jsonify(ok=False, error="Appointment not found"), 404
+
+
+@dashboard_bp.route("/staff/appointments/<apt_id>/reject", methods=["POST"])
+@login_required
+def staff_reject_appointment(apt_id):
+    if session.get("role") not in ("staff", "admin"):
+        return redirect(url_for("dashboard.index"))
+    data   = request.get_json(force=True, silent=True) or {}
+    reason = data.get("reason", "")
+
+    success = update_appointment(apt_id, {
+        "status": "cancelled",
+        "notes":  reason,
+    })
+    if success:
+        return jsonify(ok=True)
+    return jsonify(ok=False, error="Appointment not found"), 404

@@ -31,11 +31,29 @@
         <a href="/logout" class="nav-btn-ghost">Sign Out</a>
       {% endif %}
     {% else %}
-      <button class="nav-btn-ghost" onclick="openModal('signin')">Sign In</button>
-      <button class="nav-btn-solid" onclick="openModal('register')">✍️ Register Free</button>
+      <a href="/login" class="nav-btn-ghost">Sign In</a>
+      <a class="nav-btn-solid" href="/client/register">✍️ Register Free</a>
     {% endif %}
   </div>
+  <button class="nav-hamburger" id="navHamburger" aria-label="Open menu" aria-expanded="false" onclick="toggleMobileNav()">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+<!-- Mobile dropdown (mirrors nav-actions for ≤768px) -->
+<div class="nav-mobile-menu" id="navMobileMenu">
+  <a href="/download" class="nav-mobile-item">📱 Get the App</a>
+  {% if logged_in %}
+    {% if current_role in ('admin','staff') %}
+      <a href="/dashboard" class="nav-mobile-item">📊 Dashboard</a>
+    {% else %}
+      <a href="/client" class="nav-mobile-item">📋 My Documents</a>
+      <a href="/logout" class="nav-mobile-item">Sign Out</a>
+    {% endif %}
+  {% else %}
+    <a href="/login" class="nav-mobile-item">Sign In</a>
+    <a class="nav-mobile-item nav-mobile-solid" href="/client/register">✍️ Register Free</a>
+  {% endif %}
+</div>
 
 <!-- ═══ HERO ═══ -->
 <style>
@@ -101,7 +119,7 @@
       <!-- Subtitle -->
       <p style="margin:0 0 36px;font-size:15px;line-height:1.8;color:rgba(255,255,255,0.50);
                 max-width:440px;font-weight:400;">
-        The Personnel Unit's official platform for logging, routing, and monitoring all incoming and outgoing documents across DepEd Leyte Division offices.
+        The Personnel Unit's official platform for client services — managing requests, routing documents, and tracking every transaction across DepEd Leyte Division offices.
       </p>
 
       <!-- ── Jinja2 CTA block — logic untouched ── -->
@@ -155,23 +173,23 @@
         </div>
       {% else %}
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px;">
-          <button onclick="openModal('register')" class="hero-btn hero-btn-gold"
+          <a href="/client/register" class="hero-btn hero-btn-gold"
              style="display:inline-flex;align-items:center;gap:9px;padding:14px 30px;min-height:44px;
                     background:#c9a227;color:#0f2744;font-weight:700;font-size:14px;border-radius:7px;
-                    border:none;cursor:pointer;transition:opacity 200ms ease;
+                    text-decoration:none;transition:opacity 200ms ease;
                     box-shadow:0 4px 20px rgba(201,162,39,0.36);">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             Register Free
-          </button>
-          <button onclick="openModal('signin')" class="hero-btn hero-btn-outline"
+          </a>
+          <a href="/login" class="hero-btn hero-btn-outline"
              style="display:inline-flex;align-items:center;gap:9px;padding:14px 30px;min-height:44px;
                     background:transparent;color:rgba(255,255,255,0.82);font-weight:600;font-size:14px;
-                    border-radius:7px;cursor:pointer;
+                    border-radius:7px;text-decoration:none;
                     border:1px solid rgba(255,255,255,0.20);
                     transition:background 200ms ease,border-color 200ms ease;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
             Sign In
-          </button>
+          </a>
         </div>
       {% endif %}
 
@@ -404,7 +422,7 @@
           {% elif logged_in and current_role in ('admin','staff') %}
             <a href="/office-action/{{ sub_slug }}" class="btn-submit">📋 Open Office Page</a>
           {% else %}
-            <button class="btn-submit" onclick="openModal('signin')">🔑 Sign In to Submit</button>
+            <a href="/login" class="btn-submit">🔑 Sign In to Submit</a>
           {% endif %}
           <a href="/office-qr/{{ sub_slug }}.png" download="{{ sub_slug }}.png" class="btn-dl">⬇️ Download QR</a>
         </div>
@@ -514,79 +532,30 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    bindModalForm('signin-form', 'signin-error');
-    bindModalForm('register-form', 'register-error');
-  });
+});
 })();
 </script>
 
-<!-- Sign In Modal -->
-<div id="modal-signin" class="lp-modal-overlay" onclick="closeModalOnBackdrop(event, 'signin')" aria-modal="true" role="dialog" aria-label="Sign In">
-  <div class="lp-modal-box">
-    <button class="lp-modal-close" onclick="closeModal('signin')" aria-label="Close">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    <div class="lp-modal-header">
-      <img src="/static/logo.png" alt="DepEd seal" class="lp-modal-logo"/>
-      <h2 class="lp-modal-title">Sign In</h2>
-      <p class="lp-modal-sub">Personnel Unit · LAKAD Client Services</p>
-    </div>
-    <form id="signin-form" method="post" action="/client/login" class="lp-modal-form">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-      <input type="hidden" name="next_url" value="/"/>
-      <div class="lp-form-group">
-        <label class="lp-label" for="si-username">Username</label>
-        <input class="lp-input" type="text" id="si-username" name="username" placeholder="Enter your username" required autocomplete="username"/>
-      </div>
-      <div class="lp-form-group">
-        <label class="lp-label" for="si-password">Password</label>
-        <input class="lp-input" type="password" id="si-password" name="password" placeholder="Enter your password" required autocomplete="current-password"/>
-      </div>
-      <div class="lp-error-box" id="signin-error" style="display:none"></div>
-      <button type="submit" class="lp-submit-btn">Sign In</button>
-    </form>
-    <p class="lp-modal-footer-text">No account? <button class="lp-link-btn" onclick="switchModal('signin','register')">Register Free</button></p>
-  </div>
-</div>
 
-<!-- Register Modal -->
-<div id="modal-register" class="lp-modal-overlay" onclick="closeModalOnBackdrop(event, 'register')" aria-modal="true" role="dialog" aria-label="Register">
-  <div class="lp-modal-box">
-    <button class="lp-modal-close" onclick="closeModal('register')" aria-label="Close">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    <div class="lp-modal-header">
-      <img src="/static/logo.png" alt="DepEd seal" class="lp-modal-logo"/>
-      <h2 class="lp-modal-title">Create Account</h2>
-      <p class="lp-modal-sub">No email required — just a username and password</p>
-    </div>
-    <form id="register-form" method="post" action="/client/register" class="lp-modal-form">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-      <input type="hidden" name="next_url" value="/"/>
-      <div class="lp-form-group">
-        <label class="lp-label" for="rg-fullname">Full Name</label>
-        <input class="lp-input" type="text" id="rg-fullname" name="full_name" placeholder="Enter your full name" required autocomplete="name"/>
-      </div>
-      <div class="lp-form-group">
-        <label class="lp-label" for="rg-username">Username</label>
-        <input class="lp-input" type="text" id="rg-username" name="username" placeholder="Choose a username" required autocomplete="username"/>
-      </div>
-      <div class="lp-form-group">
-        <label class="lp-label" for="rg-password">Password</label>
-        <input class="lp-input" type="password" id="rg-password" name="password" placeholder="Minimum 8 characters" required autocomplete="new-password" minlength="8"/>
-      </div>
-      <div class="lp-form-group">
-        <label class="lp-label" for="rg-confirm">Confirm Password</label>
-        <input class="lp-input" type="password" id="rg-confirm" name="confirm_password" placeholder="Re-enter your password" required autocomplete="new-password"/>
-      </div>
-      <div class="lp-error-box" id="register-error" style="display:none"></div>
-      <button type="submit" class="lp-submit-btn">Create Account</button>
-    </form>
-    <p class="lp-modal-footer-text">Already have an account? <button class="lp-link-btn" onclick="switchModal('register','signin')">Sign In</button></p>
-  </div>
-</div>
 
 <script>
+function toggleLpPw(inputId, eyeId) {
+  var inp = document.getElementById(inputId);
+  var eye = document.getElementById(eyeId);
+  if (!inp || !eye) return;
+  if (inp.type === 'password') { inp.type = 'text';     eye.textContent = '🙈'; }
+  else                         { inp.type = 'password'; eye.textContent = '👁'; }
+}
+function toggleMobileNav() {
+  var menu = document.getElementById('navMobileMenu');
+  var btn  = document.getElementById('navHamburger');
+  var open = menu.classList.toggle('open');
+  btn.setAttribute('aria-expanded', open);
+}
+function closeNav() {
+  document.getElementById('navMobileMenu').classList.remove('open');
+  document.getElementById('navHamburger').setAttribute('aria-expanded', 'false');
+}
 function openModal(id) {
   document.getElementById('modal-' + id).classList.add('active');
   document.body.style.overflow = 'hidden';

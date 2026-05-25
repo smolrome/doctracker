@@ -1,44 +1,55 @@
 """
 services/database.py — Database connection, initialization, and migrations.
-Supports PostgreSQL (Railway) with automatic JSON file fallback for local dev.
+Supports PostgreSQL with automatic JSON file fallback for local dev.
 """
 import os
 import json
 
 try:
     import psycopg2
+    from psycopg2 import pool as pg_pool
     from psycopg2.extras import RealDictCursor
     from config import DATABASE_URL
     USE_DB = bool(DATABASE_URL)
 except ImportError:
     USE_DB = False
 
+_pool = None
+
+def _get_pool():
+    global _pool
+    if _pool is None:
+        _pool = pg_pool.ThreadedConnectionPool(
+            minconn=2,
+            maxconn=10,
+            dsn=DATABASE_URL,
+            cursor_factory=RealDictCursor,
+        )
+    return _pool
+
 
 class _ConnCtx:
-    """Wraps a psycopg2 connection so `with get_conn() as conn:` auto-closes it."""
-    def __init__(self, conn):
-        self._conn = conn
+    """Borrows a connection from the pool; returns it on exit."""
+    def __init__(self):
+        self._conn = None
+
     def __enter__(self):
+        self._conn = _get_pool().getconn()
+        self._conn.autocommit = False
         return self._conn
+
     def __exit__(self, exc_type, exc_val, exc_tb):
-        try:
-            if exc_type:
-                self._conn.rollback()
-            else:
-                self._conn.commit()
-        finally:
-            self._conn.close()  # ALWAYS close, even if commit/rollback raises
+        if exc_type:
+            self._conn.rollback()
+        else:
+            self._conn.commit()
+        _get_pool().putconn(self._conn)
         return False
-    # Forward attribute access so conn.cursor() etc. work directly too
-    def __getattr__(self, name):
-        return getattr(self._conn, name)
 
 
 def get_conn():
-    """Open a new database connection. Use as context manager — auto commits/closes."""
-    from config import DATABASE_URL
-    raw = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-    return _ConnCtx(raw)
+    """Borrow a connection from the pool. Use as context manager — auto commits/returns."""
+    return _ConnCtx()
 
 
 def init_db():
@@ -174,10 +185,84 @@ def _create_tables(cur):
             saved_at   TIMESTAMPTZ DEFAULT NOW()
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS appointments (
+            id              TEXT PRIMARY KEY,
+            client_name     TEXT NOT NULL,
+            client_username TEXT DEFAULT '',
+            office          TEXT DEFAULT '',
+            service_code    TEXT DEFAULT '',
+            service_name    TEXT DEFAULT '',
+            preferred_date  TEXT DEFAULT '',
+            preferred_time  TEXT DEFAULT '',
+            purpose         TEXT DEFAULT '',
+            status          TEXT DEFAULT 'pending',
+            queue_ticket    TEXT DEFAULT NULL,
+            queue_ticket_id INTEGER DEFAULT NULL,
+            source          TEXT DEFAULT 'web',
+            notes           TEXT DEFAULT '',
+            created_at      TEXT DEFAULT '',
+            updated_at      TEXT DEFAULT ''
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS so_records (
+            id                 SERIAL PRIMARY KEY,
+            filename           VARCHAR(255) NOT NULL,
+            so_type            VARCHAR(100) NOT NULL,
+            employee_full_name VARCHAR(255) NOT NULL,
+            employee_position  VARCHAR(255),
+            date_issued        VARCHAR(50),
+            generated_by       VARCHAR(100) NOT NULL,
+            generated_at       TIMESTAMP DEFAULT NOW(),
+            file_path          VARCHAR(500) NOT NULL
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS staff_pairings (
+            id         SERIAL PRIMARY KEY,
+            user_a     TEXT NOT NULL,
+            user_b     TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(user_a, user_b)
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS staff_groups (
+            id         SERIAL PRIMARY KEY,
+            group_name TEXT NOT NULL UNIQUE,
+            created_by TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS staff_group_members (
+            id       SERIAL PRIMARY KEY,
+            group_id INTEGER REFERENCES staff_groups(id) ON DELETE CASCADE,
+            username TEXT NOT NULL,
+            added_by TEXT NOT NULL,
+            added_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(group_id, username)
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS transfer_batches (
+            id                    TEXT PRIMARY KEY,
+            transferred_by        TEXT NOT NULL,
+            transferred_to        TEXT NOT NULL,
+            transferred_to_office TEXT,
+            transferred_to_name   TEXT,
+            transfer_type         TEXT,
+            doc_ids               JSONB NOT NULL,
+            created_at            TIMESTAMP DEFAULT NOW()
+        )
+    """)
     # Performance + audit query indexes
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(username)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(ts DESC)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_documents_created ON documents(created_at DESC)""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_so_records_generated ON so_records(generated_at DESC)""")
 
 
 def _run_migrations(cur):
@@ -232,6 +317,18 @@ def _run_migrations(cur):
     migrations.append(
         "ALTER TABLE saved_offices ADD COLUMN IF NOT EXISTS primary_recipient TEXT"
     )
+    migrations.append("ALTER TABLE appointments ADD COLUMN IF NOT EXISTS assigned_to TEXT DEFAULT ''")
+    migrations.append("ALTER TABLE appointments ADD COLUMN IF NOT EXISTS assigned_to_name TEXT DEFAULT ''")
+    migrations.append("ALTER TABLE users ADD COLUMN IF NOT EXISTS can_generate_so BOOLEAN DEFAULT FALSE")
+    migrations.append("ALTER TABLE users ADD COLUMN IF NOT EXISTS can_route_documents BOOLEAN DEFAULT FALSE")
+    migrations.append("CREATE INDEX IF NOT EXISTS idx_staff_pairings_a ON staff_pairings(user_a)")
+    migrations.append("CREATE INDEX IF NOT EXISTS idx_staff_pairings_b ON staff_pairings(user_b)")
+    migrations.append("CREATE INDEX IF NOT EXISTS idx_sgm_group ON staff_group_members(group_id)")
+    migrations.append("CREATE INDEX IF NOT EXISTS idx_sgm_username ON staff_group_members(username)")
+    migrations.append("ALTER TABLE staff_groups ADD COLUMN IF NOT EXISTS has_so_access BOOLEAN DEFAULT FALSE")
+    migrations.append("ALTER TABLE staff_groups ADD COLUMN IF NOT EXISTS has_shared_dashboard BOOLEAN DEFAULT TRUE")
+    migrations.append("CREATE TABLE IF NOT EXISTS transfer_batches (id TEXT PRIMARY KEY, transferred_by TEXT NOT NULL, transferred_to TEXT NOT NULL, transferred_to_office TEXT, transferred_to_name TEXT, transfer_type TEXT, doc_ids JSONB NOT NULL, created_at TIMESTAMP DEFAULT NOW())")
+    migrations.append("ALTER TABLE so_records ADD COLUMN IF NOT EXISTS doc_id TEXT REFERENCES documents(id) ON DELETE SET NULL")
     for sql in migrations:
         try:
             cur.execute("SAVEPOINT mig")
@@ -239,3 +336,160 @@ def _run_migrations(cur):
             cur.execute("RELEASE SAVEPOINT mig")
         except Exception as e:
             cur.execute("ROLLBACK TO SAVEPOINT mig")  # keep transaction alive
+
+
+def get_doc_by_id(doc_id: str):
+    """Fetch a document by its internal id. Returns the data dict or None."""
+    if not USE_DB or not doc_id:
+        return None
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT data FROM documents WHERE id = %s", (doc_id,))
+                row = cur.fetchone()
+                if not row:
+                    return None
+                data = row['data']
+                if isinstance(data, str):
+                    import json
+                    data = json.loads(data)
+                return data
+    except Exception as e:
+        print(f"Error in get_doc_by_id: {e}")
+        return None
+
+
+def get_paired_usernames(username: str) -> list:
+    """Legacy pair-based lookup — kept for backwards compatibility."""
+    if not USE_DB or not username:
+        return []
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT user_b AS partner FROM staff_pairings WHERE user_a = %s
+                    UNION
+                    SELECT user_a AS partner FROM staff_pairings WHERE user_b = %s
+                """, (username, username))
+                rows = cur.fetchall()
+                return [r['partner'] for r in rows]
+    except Exception:
+        return []
+
+
+def get_user_can_route_documents(username: str) -> bool:
+    """Return the can_route_documents flag for a user. Defaults to False if not set."""
+    uname = username.lower().strip()
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT can_route_documents FROM users WHERE username = %s", (uname,)
+                    )
+                    row = cur.fetchone()
+            return bool(row["can_route_documents"]) if row else False
+        except Exception:
+            return False
+    else:
+        return False
+
+
+def set_user_can_route_documents(username: str, value: bool) -> tuple:
+    """Set the can_route_documents flag for a user."""
+    uname = username.lower().strip()
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE users SET can_route_documents = %s WHERE username = %s",
+                        (value, uname),
+                    )
+            return True, None
+        except Exception as e:
+            return False, f"Database error: {e}"
+    else:
+        return False, "Database not available."
+
+
+def get_group_usernames(username: str) -> list:
+    """Return all usernames that share a shared_dashboard group with this user (excluding self)."""
+    if not USE_DB or not username:
+        return []
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT DISTINCT sgm2.username
+                    FROM staff_group_members sgm1
+                    JOIN staff_group_members sgm2 ON sgm1.group_id = sgm2.group_id
+                    JOIN staff_groups sg ON sgm1.group_id = sg.id
+                    WHERE sgm1.username = %s AND sgm2.username != %s
+                      AND sg.has_shared_dashboard = TRUE
+                """, (username, username))
+                rows = cur.fetchall()
+                return [list(row.values())[0] for row in rows]
+    except Exception as e:
+        print(f"Error getting group usernames: {e}")
+        return []
+
+
+def user_has_so_access(username: str) -> bool:
+    """Return True if user is member of any group with has_so_access = TRUE."""
+    if not USE_DB or not username:
+        return False
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT 1 FROM staff_group_members sgm
+                    JOIN staff_groups sg ON sgm.group_id = sg.id
+                    WHERE sgm.username = %s AND sg.has_so_access = TRUE
+                    LIMIT 1
+                """, (username,))
+                return cur.fetchone() is not None
+    except Exception as e:
+        print(f"Error checking SO access: {e}")
+        return False
+
+
+def create_transfer_batch(batch_id, transferred_by, transferred_to,
+                          transferred_to_office, transferred_to_name,
+                          transfer_type, doc_ids):
+    if not USE_DB:
+        return
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO transfer_batches
+                    (id, transferred_by, transferred_to, transferred_to_office,
+                     transferred_to_name, transfer_type, doc_ids, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, NOW())
+                ON CONFLICT (id) DO NOTHING
+            """, (batch_id, transferred_by, transferred_to, transferred_to_office,
+                  transferred_to_name, transfer_type, json.dumps(doc_ids)))
+
+
+def get_transfer_batch(batch_id):
+    if not USE_DB:
+        return None
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM transfer_batches WHERE id = %s", (batch_id,))
+            return cur.fetchone()
+
+
+def get_transfer_history(username, role):
+    if not USE_DB:
+        return []
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            if role == 'admin':
+                cur.execute("SELECT * FROM transfer_batches ORDER BY created_at DESC")
+            else:
+                cur.execute(
+                    "SELECT * FROM transfer_batches WHERE transferred_by = %s ORDER BY created_at DESC",
+                    (username,)
+                )
+            return cur.fetchall()

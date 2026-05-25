@@ -4,38 +4,51 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Scan QR — LAKAD</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Libre+Baskerville:wght@700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/client_scan.css') }}"/>
 </head>
 <body>
-<div class="topbar">
-  <div class="topbar-brand">
-    <img src="/static/logo.png" alt="DepEd Leyte Logo"/>
-    <span class="topbar-title">📷 Scan QR Code</span>
-  </div>
-  <a href="/client" class="topbar-back">← Back</a>
-</div>
 
-<div class="scanner-body">
-  <div class="camera-box" id="camera-box">
-    <video id="qr-video" playsinline autoplay muted></video>
-    <div class="scan-overlay">
-      <div class="scan-frame">
-        <div class="sc tl"></div><div class="sc tr"></div>
-        <div class="sc bl"></div><div class="sc br"></div>
-        <div class="scan-line"></div>
-      </div>
+<nav class="topbar">
+  <div class="topbar-brand">
+    <img src="/static/logo.png" alt="LAKAD Logo"/>
+    <div>
+      <div class="brand-name">LAKAD</div>
+      <span class="topbar-sub">Client Services System</span>
     </div>
   </div>
+  <div class="topbar-actions">
+    <a href="/client" class="tb-btn">← My Documents</a>
+  </div>
+</nav>
 
-  <div class="scan-title">Point camera at document QR</div>
-  <div class="scan-sub">Scan any document QR code to view and update its status.</div>
+<div class="scan-page">
 
-  <div class="scan-status status-idle" id="scan-status">📷 Starting camera...</div>
+  <div class="scan-hero">
+    <h1>Scan Document QR</h1>
+    <p>Point your camera at any document QR code to instantly view its status.</p>
+  </div>
 
-  <div class="btn-group">
-    <a href="#" id="result-btn" class="btn btn-found" style="display:none;">⚡ Open Document</a>
-    <a href="/client" class="btn btn-back">← My Documents</a>
+  <div class="scan-card">
+
+    <div id="camera-box" class="camera-box">
+      <video id="qr-video" playsinline autoplay muted></video>
+      <div class="scan-overlay">
+        <div class="scan-frame">
+          <div class="sc tl"></div><div class="sc tr"></div>
+          <div class="sc bl"></div><div class="sc br"></div>
+          <div class="scan-line"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="scan-status" class="scan-status">📷 Starting camera...</div>
+
+    <div class="btn-group">
+      <a href="#" id="result-btn" class="btn-found" style="display:none">⚡ Open Document</a>
+      <a href="/client" class="btn-back">← My Documents</a>
+    </div>
+
   </div>
 </div>
 

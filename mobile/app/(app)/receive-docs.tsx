@@ -65,9 +65,9 @@ export default function ReceiveDocs() {
   const [staffPickerDoc, setStaffPickerDoc]         = useState<PendingDoc | null>(null);
   const [staffPickerList, setStaffPickerList]       = useState<StaffMember[] | null>(null);
   const [staffPickerLoading, setStaffPickerLoading] = useState(false);
+  const [acceptAllLoading, setAcceptAllLoading] = useState(false);
 
   // ── Accept / forward modals ───────────────────────────────────────────────
-  const [acceptTarget, setAcceptTarget]   = useState<PendingDoc | null>(null);
   const [forwardTarget, setForwardTarget] = useState<{ responseDoc: any; pendingDoc: PendingDoc } | null>(null);
 
   // ── Toast ─────────────────────────────────────────────────────────────────
@@ -193,10 +193,6 @@ export default function ReceiveDocs() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const handleAccept = (doc: PendingDoc) => {
-    setAcceptTarget(doc);
-  };
-
   const openReject = (doc: PendingDoc) => {
     setRejectTarget(doc);
     setRejectReason('');
@@ -209,6 +205,41 @@ export default function ReceiveDocs() {
       return;
     }
     rejectMutation.mutate({ docId: rejectTarget.id, reason: rejectReason.trim() });
+  };
+
+  const handleAcceptAll = async () => {
+    if (!filteredDocs?.length) return;
+    Alert.alert(
+      'Accept All Documents',
+      `Accept all ${filteredDocs.length} pending documents?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Accept All',
+          style: 'default',
+          onPress: async () => {
+            setAcceptAllLoading(true);
+            let success = 0;
+            let failed = 0;
+            for (const doc of filteredDocs) {
+              try {
+                await api.post(`/documents/${doc.id}/accept`);
+                success++;
+              } catch {
+                failed++;
+              }
+            }
+            setAcceptAllLoading(false);
+            invalidate();
+            if (failed === 0) {
+              showToast(`All ${success} documents accepted successfully`);
+            } else {
+              showToast(`${success} accepted, ${failed} failed`);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // ── Render item ───────────────────────────────────────────────────────────
@@ -274,7 +305,7 @@ export default function ReceiveDocs() {
         {/* Actions */}
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <TouchableOpacity
-            onPress={() => handleAccept(doc)}
+            onPress={() => acceptMutation.mutate(doc)}
             disabled={isBusy}
             style={{
               flex: 1, backgroundColor: '#10B981', borderRadius: 10,
@@ -441,33 +472,55 @@ export default function ReceiveDocs() {
           <ActivityIndicator size="large" color="#0038A8" />
         </View>
       ) : (
-        <FlatList
-          data={filteredDocs}
-          keyExtractor={(d) => d.id}
-          renderItem={renderDoc}
-          contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#0038A8" />
-          }
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingTop: 80 }}>
-              <View style={{
-                width: 72, height: 72, borderRadius: 36,
-                backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center',
-                marginBottom: 16,
-              }}>
-                <Inbox size={32} color="#BFDBFE" />
-              </View>
-              <Text style={{ color: '#1E293B', fontSize: 16, fontWeight: '700', marginBottom: 6 }}>
-                All caught up!
-              </Text>
-              <Text style={{ color: '#94A3B8', fontSize: 13.5, textAlign: 'center', maxWidth: 260 }}>
-                No documents are pending your acceptance right now.
-              </Text>
+        <>
+          {filteredDocs.length > 0 && (
+            <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+              <TouchableOpacity
+                onPress={handleAcceptAll}
+                disabled={acceptAllLoading}
+                style={{
+                  backgroundColor: '#10B981', borderRadius: 10,
+                  paddingVertical: 10, paddingHorizontal: 16,
+                  flexDirection: 'row', alignItems: 'center', gap: 6,
+                  alignSelf: 'flex-end',
+                  opacity: acceptAllLoading ? 0.7 : 1,
+                }}
+              >
+                {acceptAllLoading
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>✓ Accept All ({filteredDocs.length})</Text>
+                }
+              </TouchableOpacity>
             </View>
-          }
-        />
+          )}
+          <FlatList
+            data={filteredDocs}
+            keyExtractor={(d) => d.id}
+            renderItem={renderDoc}
+            contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#0038A8" />
+            }
+            ListEmptyComponent={
+              <View style={{ alignItems: 'center', paddingTop: 80 }}>
+                <View style={{
+                  width: 72, height: 72, borderRadius: 36,
+                  backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 16,
+                }}>
+                  <Inbox size={32} color="#BFDBFE" />
+                </View>
+                <Text style={{ color: '#1E293B', fontSize: 16, fontWeight: '700', marginBottom: 6 }}>
+                  All caught up!
+                </Text>
+                <Text style={{ color: '#94A3B8', fontSize: 13.5, textAlign: 'center', maxWidth: 260 }}>
+                  No documents are pending your acceptance right now.
+                </Text>
+              </View>
+            }
+          />
+        </>
       )}
 
       {/* Category Picker Modal */}
@@ -574,49 +627,6 @@ export default function ReceiveDocs() {
                 )}
               </ScrollView>
             )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── Accept Confirm Modal ─────────────────────────────────────────── */}
-      <Modal visible={!!acceptTarget} transparent animationType="fade" onRequestClose={() => setAcceptTarget(null)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 10 }}>
-            <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 }}>
-              <CheckCircle size={28} color="#16A34A" />
-            </View>
-            <Text style={{ fontSize: 17, fontWeight: '800', color: '#1E293B', textAlign: 'center', marginBottom: 8 }}>Accept Document</Text>
-            <Text style={{ fontSize: 14.5, fontWeight: '700', color: '#1E293B', textAlign: 'center', marginBottom: 4 }} numberOfLines={2}>
-              {acceptTarget?.doc_name || acceptTarget?.doc_id}
-            </Text>
-            {acceptTarget?.intended_for_name ? (
-              <Text style={{ fontSize: 13, color: '#0038A8', textAlign: 'center', fontWeight: '600', marginBottom: 4 }}>
-                Intended for: <Text style={{ fontWeight: '700' }}>{acceptTarget.intended_for_name}</Text>
-              </Text>
-            ) : null}
-            <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 24 }}>
-              {acceptTarget?.pending_at_staff && acceptTarget.pending_at_staff !== user?.username
-                ? `Accept on behalf of ${acceptTarget.pending_at_staff_name || acceptTarget.pending_at_staff}?`
-                : 'Mark this document as received?'}
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TouchableOpacity
-                onPress={() => setAcceptTarget(null)}
-                style={{ flex: 1, borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff' }}
-              >
-                <Text style={{ color: '#64748B', fontWeight: '600', fontSize: 14 }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => acceptMutation.mutate(acceptTarget!)}
-                disabled={acceptMutation.isPending}
-                style={{ flex: 1, backgroundColor: '#10B981', borderRadius: 12, paddingVertical: 13, alignItems: 'center', opacity: acceptMutation.isPending ? 0.7 : 1 }}
-              >
-                {acceptMutation.isPending
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Receive Document</Text>
-                }
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       </Modal>

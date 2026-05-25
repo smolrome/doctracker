@@ -1,0 +1,497 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  /* ── Hero ── */
+  .sa-hero {
+    background: #0E2A47;
+    padding: 28px 32px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .sa-hero h1 {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 24px;
+    color: #fff;
+    margin: 0;
+    flex: 1;
+  }
+  .sa-pending-badge {
+    background: #C9A227;
+    color: #0E2A47;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  /* ── Page wrapper ── */
+  .sa-page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 28px 24px 60px;
+  }
+
+  /* ── Toolbar ── */
+  .sa-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  /* ── Tab row ── */
+  .sa-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .sa-tab {
+    padding: 7px 16px;
+    border-radius: 20px;
+    border: 1.5px solid #D7CDB5;
+    background: #fff;
+    color: #5A6E82;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sa-tab:hover { border-color: #0E2A47; color: #0E2A47; }
+  .sa-tab.active { background: #0E2A47; color: #fff; border-color: #0E2A47; }
+
+  /* ── Mine/All toggle ── */
+  .sa-toggle {
+    display: flex;
+    gap: 0;
+    border: 1.5px solid #D7CDB5;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .sa-toggle-btn {
+    padding: 7px 16px;
+    background: #fff;
+    color: #5A6E82;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .sa-toggle-btn.active { background: #0E2A47; color: #fff; }
+
+  /* ── Count ── */
+  .sa-count { font-size: 13px; color: #8BA5B5; }
+
+  /* ── Cards ── */
+  .sa-list { display: flex; flex-direction: column; gap: 12px; }
+  .sa-card {
+    background: #fff;
+    border: 1.5px solid #E8DFC8;
+    border-radius: 12px;
+    padding: 18px 20px;
+    border-left: 4px solid #D7CDB5;
+  }
+  .sa-card.status-pending   { border-left-color: #C9A227; }
+  .sa-card.status-confirmed { border-left-color: #16A34A; }
+  .sa-card.status-attended  { border-left-color: #4F46E5; }
+  .sa-card.status-cancelled { border-left-color: #DC2626; }
+
+  .sa-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .sa-client { font-size: 16px; font-weight: 700; color: #0E2A47; }
+  .sa-service { font-size: 13px; color: #5A6E82; margin-top: 2px; }
+  .sa-office  { font-size: 12px; color: #8BA5B5; margin-top: 2px; }
+
+  /* Status badges */
+  .sa-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .sa-badge-pending   { background: #FEF9C3; color: #92400E; }
+  .sa-badge-confirmed { background: #D1FAE5; color: #065F46; }
+  .sa-badge-attended  { background: #EDE9FE; color: #3730A3; }
+  .sa-badge-cancelled { background: #FEE2E2; color: #991B1B; }
+
+  .sa-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    font-size: 13px;
+    color: #5A6E82;
+    margin-bottom: 6px;
+  }
+  .sa-meta-item { display: flex; align-items: center; gap: 4px; }
+  .sa-purpose {
+    font-size: 13px;
+    color: #64748B;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .sa-assigned {
+    font-size: 12px;
+    color: #5A6E82;
+    margin-bottom: 8px;
+  }
+  .sa-assigned strong { color: #0E2A47; }
+
+  .sa-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .btn-confirm  { padding: 7px 16px; background: #C9A227; color: #0E2A47; border: none; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .btn-confirm:hover { background: #b8911f; }
+  .btn-reject   { padding: 7px 16px; background: transparent; color: #DC2626; border: 1.5px solid #DC2626; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-reject:hover { background: #FEE2E2; }
+  .btn-attended { padding: 7px 16px; background: #4F46E5; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .btn-attended:hover { background: #4338CA; }
+
+  /* ── Empty state ── */
+  .sa-empty { text-align: center; padding: 56px 24px; color: #8BA5B5; }
+  .sa-empty-title { font-weight: 700; font-size: 16px; margin-bottom: 6px; color: #5A6E82; }
+
+  /* ── Modals ── */
+  .sa-modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(14,42,71,0.45);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .sa-modal-overlay.open { display: flex; }
+  .sa-modal {
+    background: #fff;
+    border-radius: 14px;
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 460px;
+    margin: 16px;
+    box-shadow: 0 8px 40px rgba(14,42,71,0.18);
+  }
+  .sa-modal h2 {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 20px;
+    color: #0E2A47;
+    margin: 0 0 6px;
+  }
+  .sa-modal-meta {
+    font-size: 13px;
+    color: #5A6E82;
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+  .sa-modal label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #5A6E82;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+  .sa-modal select,
+  .sa-modal textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid #D7CDB5;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #0E2A47;
+    background: #FAF8F3;
+    box-sizing: border-box;
+    margin-bottom: 16px;
+  }
+  .sa-modal select:focus,
+  .sa-modal textarea:focus { outline: none; border-color: #0E2A47; }
+  .sa-modal textarea { resize: vertical; min-height: 80px; }
+  .sa-modal-actions { display: flex; gap: 10px; margin-top: 4px; }
+  .btn-modal-primary {
+    flex: 1; padding: 11px; background: #C9A227; color: #0E2A47;
+    border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .btn-modal-primary:hover { background: #b8911f; }
+  .btn-modal-primary.red { background: #DC2626; color: #fff; }
+  .btn-modal-primary.red:hover { background: #b91c1c; }
+  .btn-modal-cancel {
+    padding: 11px 20px; background: transparent; color: #5A6E82;
+    border: 1.5px solid #D7CDB5; border-radius: 8px; font-size: 14px;
+    font-weight: 600; cursor: pointer;
+  }
+  .btn-modal-cancel:hover { border-color: #0E2A47; color: #0E2A47; }
+
+  @media (max-width: 600px) {
+    .sa-hero { padding: 20px 16px 16px; }
+    .sa-page { padding: 16px 12px 48px; }
+    .sa-card { padding: 14px 14px; }
+  }
+</style>
+
+<!-- Hero -->
+<div class="sa-hero">
+  <h1>Appointments</h1>
+  {% if pending_count %}
+  <span class="sa-pending-badge">{{ pending_count }} pending</span>
+  {% endif %}
+</div>
+
+<div class="sa-page">
+
+  <!-- Toolbar -->
+  <div class="sa-toolbar">
+    <div class="sa-tabs" id="sa-tabs">
+      <button class="sa-tab active" onclick="setTab(this,'all')">All</button>
+      <button class="sa-tab" onclick="setTab(this,'pending')">Pending</button>
+      <button class="sa-tab" onclick="setTab(this,'confirmed')">Confirmed</button>
+      <button class="sa-tab" onclick="setTab(this,'today')">Today</button>
+      <button class="sa-tab" onclick="setTab(this,'attended')">Attended</button>
+      <button class="sa-tab" onclick="setTab(this,'cancelled')">Cancelled</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div class="sa-toggle">
+        <button class="sa-toggle-btn active" id="btn-all" onclick="setMine(false)">ALL</button>
+        <button class="sa-toggle-btn" id="btn-mine" onclick="setMine(true)">MINE</button>
+      </div>
+      <span class="sa-count" id="sa-count"></span>
+    </div>
+  </div>
+
+  <!-- Cards -->
+  <div class="sa-list" id="sa-list">
+    {% for apt in appointments %}
+    <div class="sa-card status-{{ apt.status | lower }}"
+         data-status="{{ apt.status | lower }}"
+         data-date="{{ apt.preferred_date }}"
+         data-assigned="{{ apt.assigned_to or '' }}">
+
+      <div class="sa-card-top">
+        <div>
+          <div class="sa-client">{{ apt.client_name or apt.client_username }}</div>
+          <div class="sa-service">{{ apt.service_name or apt.service_code or 'Appointment' }}</div>
+          {% if current_role == 'admin' %}
+          <div class="sa-office">{{ apt.office }}</div>
+          {% endif %}
+        </div>
+        <span class="sa-badge sa-badge-{{ apt.status | lower }}">{{ apt.status | capitalize }}</span>
+      </div>
+
+      <div class="sa-meta">
+        <span class="sa-meta-item">📅 {{ apt.preferred_date }}</span>
+        <span class="sa-meta-item">🕐 {{ apt.preferred_time }}</span>
+        {% if apt.queue_ticket %}
+        <span class="sa-meta-item">🎫 Ticket {{ apt.queue_ticket }}</span>
+        {% endif %}
+      </div>
+
+      {% if apt.purpose %}
+      <div class="sa-purpose">{{ apt.purpose }}</div>
+      {% endif %}
+
+      {% if apt.assigned_to_name %}
+      <div class="sa-assigned">Assigned to: <strong>{{ apt.assigned_to_name }}</strong></div>
+      {% endif %}
+
+      {% if apt.notes %}
+      <div class="sa-assigned">Notes: <strong>{{ apt.notes }}</strong></div>
+      {% endif %}
+
+      <div class="sa-actions">
+        {% if apt.status == 'pending' %}
+        <button class="btn-confirm"
+                onclick="openConfirmModal('{{ apt.id }}','{{ apt.client_name or apt.client_username }}','{{ apt.service_name or apt.service_code }}','{{ apt.preferred_date }}','{{ apt.preferred_time }}')">
+          Confirm
+        </button>
+        <button class="btn-reject" onclick="openRejectModal('{{ apt.id }}')">Reject</button>
+        {% elif apt.status == 'confirmed' %}
+        <button class="btn-attended" onclick="markAttended('{{ apt.id }}')">Mark Attended</button>
+        {% endif %}
+      </div>
+
+    </div>
+    {% endfor %}
+
+    <div id="sa-empty" style="display:none;">
+      <div class="sa-empty">
+        <div class="sa-empty-title">No appointments found</div>
+        <div>Try a different filter.</div>
+      </div>
+    </div>
+  </div>
+
+  {% if not appointments %}
+  <div class="sa-empty">
+    <div class="sa-empty-title">No appointments yet</div>
+    <div>Appointments booked by clients will appear here.</div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Confirm Modal -->
+<div class="sa-modal-overlay" id="confirm-modal">
+  <div class="sa-modal">
+    <h2>Confirm Appointment</h2>
+    <div class="sa-modal-meta" id="confirm-modal-meta"></div>
+    <label for="confirm-staff">Assign to Staff</label>
+    <select id="confirm-staff" onchange="syncStaffName()">
+      <option value="">— Unassigned —</option>
+      {% for s in office_staff %}
+      <option value="{{ s.username }}" data-name="{{ s.full_name }}">{{ s.full_name }}</option>
+      {% endfor %}
+    </select>
+    <label for="confirm-notes">Notes (optional)</label>
+    <textarea id="confirm-notes" placeholder="Add a note for the client or staff..."></textarea>
+    <div class="sa-modal-actions">
+      <button class="btn-modal-primary" onclick="submitConfirm()">Confirm Appointment</button>
+      <button class="btn-modal-cancel" onclick="closeModals()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="sa-modal-overlay" id="reject-modal">
+  <div class="sa-modal">
+    <h2>Reject Appointment</h2>
+    <div class="sa-modal-meta" id="reject-modal-meta"></div>
+    <label for="reject-reason">Reason for rejection <span style="color:#DC2626;">*</span></label>
+    <textarea id="reject-reason" placeholder="Explain why this appointment cannot be accommodated..."></textarea>
+    <div class="sa-modal-actions">
+      <button class="btn-modal-primary red" onclick="submitReject()">Reject Appointment</button>
+      <button class="btn-modal-cancel" onclick="closeModals()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var _currentAptId = null;
+var _currentTab   = 'all';
+var _mineOnly     = false;
+var _today        = new Date().toISOString().slice(0, 10);
+
+function setTab(btn, tab) {
+  _currentTab = tab;
+  document.querySelectorAll('.sa-tab').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function setMine(mine) {
+  _mineOnly = mine;
+  document.getElementById('btn-all').classList.toggle('active', !mine);
+  document.getElementById('btn-mine').classList.toggle('active', mine);
+  applyFilters();
+}
+
+function applyFilters() {
+  var cards   = document.querySelectorAll('#sa-list .sa-card');
+  var visible = 0;
+  var myUser  = window.CURRENT_USERNAME || '';
+  cards.forEach(function(c) {
+    var status   = c.dataset.status;
+    var date     = c.dataset.date;
+    var assigned = c.dataset.assigned;
+    var tabMatch = _currentTab === 'all'  ? true :
+                   _currentTab === 'today' ? date === _today :
+                   status === _currentTab;
+    var mineMatch = !_mineOnly || assigned === myUser;
+    c.style.display = (tabMatch && mineMatch) ? '' : 'none';
+    if (tabMatch && mineMatch) visible++;
+  });
+  var empty = document.getElementById('sa-empty');
+  if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
+  var countEl = document.getElementById('sa-count');
+  if (countEl) countEl.textContent = visible + ' appointment' + (visible !== 1 ? 's' : '');
+}
+
+function openConfirmModal(aptId, clientName, service, date, time) {
+  _currentAptId = aptId;
+  document.getElementById('confirm-modal-meta').innerHTML =
+    '<strong>' + clientName + '</strong> · ' + service + '<br>' + date + ' at ' + time;
+  document.getElementById('confirm-staff').value = '';
+  document.getElementById('confirm-notes').value = '';
+  document.getElementById('confirm-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function openRejectModal(aptId) {
+  _currentAptId = aptId;
+  document.getElementById('reject-reason').value = '';
+  document.getElementById('reject-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModals() {
+  document.querySelectorAll('.sa-modal-overlay').forEach(function(m) { m.classList.remove('open'); });
+  document.body.style.overflow = '';
+  _currentAptId = null;
+}
+
+function syncStaffName() {
+  var sel = document.getElementById('confirm-staff');
+  var opt = sel.options[sel.selectedIndex];
+  sel.dataset.selectedName = opt ? (opt.getAttribute('data-name') || '') : '';
+}
+
+function submitConfirm() {
+  if (!_currentAptId) return;
+  var sel            = document.getElementById('confirm-staff');
+  var assigned_to    = sel.value;
+  var assigned_to_name = sel.options[sel.selectedIndex] ? (sel.options[sel.selectedIndex].getAttribute('data-name') || '') : '';
+  var notes          = document.getElementById('confirm-notes').value.trim();
+  fetch('/staff/appointments/' + _currentAptId + '/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN },
+    body: JSON.stringify({ assigned_to: assigned_to, assigned_to_name: assigned_to_name, notes: notes }),
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) { window.location.reload(); }
+    else { alert('Failed to confirm: ' + (d.error || 'Unknown error')); }
+  });
+}
+
+function submitReject() {
+  if (!_currentAptId) return;
+  var reason = document.getElementById('reject-reason').value.trim();
+  if (!reason) { alert('Please provide a reason for rejection.'); return; }
+  fetch('/staff/appointments/' + _currentAptId + '/reject', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN },
+    body: JSON.stringify({ reason: reason }),
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) { window.location.reload(); }
+    else { alert('Failed to reject: ' + (d.error || 'Unknown error')); }
+  });
+}
+
+function markAttended(aptId) {
+  if (!confirm('Mark this appointment as attended?')) return;
+  fetch('/staff/appointments/' + aptId + '/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN },
+    body: JSON.stringify({ status: 'attended' }),
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) { window.location.reload(); }
+    else { alert('Failed to update: ' + (d.error || 'Unknown error')); }
+  });
+}
+
+document.querySelectorAll('.sa-modal-overlay').forEach(function(overlay) {
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModals(); });
+});
+
+window.addEventListener('DOMContentLoaded', applyFilters);
+</script>
+
+{% endblock %}

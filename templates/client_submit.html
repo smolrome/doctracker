@@ -4,8 +4,10 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Submit Documents — LAKAD</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/client_submit.css') }}"/>
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 </head>
 <body>
 <div class="topbar">
@@ -46,7 +48,6 @@
   <!-- Selected Office Banner -->
   {% if office_name %}
   <div class="selected-office-banner">
-    <div class="soab-icon">🏢</div>
     <div class="soab-content">
       <div class="soab-label">Submitting documents to:</div>
       <div class="soab-office">{{ office_name }}</div>
@@ -55,9 +56,9 @@
         <form method="post" style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
           <input type="hidden" name="_action" value="select_staff"/>
-          <label style="font-weight:600;color:rgba(255,255,255,.6);font-size:13px;">👤 Receiving Staff:</label>
           <select name="selected_staff"
                   style="padding:8px 12px;border:1.5px solid rgba(255,255,255,.2);border-radius:8px;font-size:14px;min-width:200px;background:rgba(255,255,255,.1);color:#fff;"
+                  class="staff-select-dropdown"
                   onchange="this.form.submit()">
             <option value="">-- Auto-assign --</option>
             {% for staff in office_staff_list %}
@@ -69,15 +70,6 @@
           </select>
         </form>
       </div>
-      {% if selected_staff %}
-      <div class="soab-staff" style="color:#6EE7B7;">
-        ✓ Selected: {{ office_staff_list | selectattr('username','equalto',selected_staff) | first | attr('full_name') if office_staff_list | selectattr('username','equalto',selected_staff) | list else 'Unknown' }}
-      </div>
-      {% elif not assigned_staff_name %}
-      <div class="soab-staff">👤 Will be auto-assigned to available staff</div>
-      {% elif assigned_staff_name %}
-      <div class="soab-staff">👤 Receiving Staff: {{ assigned_staff_name }}</div>
-      {% endif %}
       {% endif %}
     </div>
     <button type="button" class="soab-change" onclick="toggleOfficeQR()">Change Office</button>
@@ -119,7 +111,7 @@
       <div class="form-row">
         <div class="form-group">
           <label>Document Type</label>
-          <select name="category">
+          <select name="category" id="category-select">
             <option value="">— Select type —</option>
             {% for cat in category_options %}
             <option value="{{ cat }}">{{ cat }}</option>
@@ -129,14 +121,17 @@
         <div class="form-group">
           <label>Referred To <span class="req">*</span></label>
           <input type="text" name="referred_to"
-                 placeholder="e.g. SDS, Budget Officer" required/>
+                 placeholder="e.g. SDS, Budget Officer"
+                 value="{{ office_name }}"
+                 required/>
         </div>
       </div>
 
       {% if office_staff_list %}
       <div class="form-group" style="margin-top:0;">
-        <label>Which Staff Is This For? <span style="color:#6B7280;font-weight:400;font-size:12px;">(optional)</span></label>
-        <select name="referred_to_username" onchange="onStaffForChange(this)">
+        <label>Route To Staff <span style="color:#6B7280;font-weight:400;font-size:12px;">(optional)</span></label>
+        <small style="color:#8BA5B5;font-size:12px;display:block;margin-bottom:6px;">If filled, document will be automatically forwarded to this person after receipt.</small>
+        <select name="referred_to_username">
           <option value="">— Any / auto-assign —</option>
           {% for staff in office_staff_list %}
           <option value="{{ staff.username }}">{{ staff.full_name }}</option>
@@ -225,7 +220,9 @@
           </div>
           <div class="cmp-edit-field">
             <label>Referred To <span class="req">*</span></label>
-            <input type="text" name="referred_to" id="edit-referred-to" required/>
+            <input type="text" name="referred_to" id="edit-referred-to"
+                   value="{{ office_name }}"
+                   required/>
           </div>
         </div>
         <div class="cmp-edit-field">
@@ -306,32 +303,22 @@
   <div class="office-qr-overlay" onclick="toggleOfficeQR()"></div>
   <div class="office-qr-content">
     <div class="office-qr-header">
-      <h2>📍 Select an Office</h2>
+      <h2>Select Office</h2>
       <button class="office-qr-close" onclick="toggleOfficeQR()">✕</button>
     </div>
-    <p class="office-qr-desc">Choose the office you want to submit your documents to.</p>
+    <p class="office-qr-desc">Choose which office you want to submit your documents to.</p>
     <div class="office-qr-search">
       <input type="text" placeholder="🔍 Search offices…"
              oninput="filterOffices(this.value)"
              autocomplete="off"/>
     </div>
     <div class="office-qr-grid" id="office-qr-grid">
-      {% for office in saved_offices %}
+      {% for office in saved_offices | sort(attribute='office_name') %}
       <div class="office-qr-card" data-name="{{ office.office_name | lower }}">
-        {% if office.qr_code %}
-        <img class="office-qr-img"
-             src="/static/qr_codes/{{ office.qr_code }}"
-             alt="QR for {{ office.office_name }}"
-             onerror="this.style.display='none'"/>
-        {% endif %}
         <div class="office-qr-name">{{ office.office_name }}</div>
         <a href="/client/submit?office_id={{ office.id }}"
            class="office-qr-select"
-           onclick="showLoading('Loading office...')">Select</a>
-        {% if office.qr_code %}
-        <a href="/static/qr_codes/{{ office.qr_code }}"
-           download class="office-qr-download">⬇ Download QR</a>
-        {% endif %}
+           onclick="showLoading('Loading office...')">Select This Office</a>
       </div>
       {% endfor %}
       <div class="office-qr-none" id="office-qr-none" style="display:none;">
@@ -358,14 +345,12 @@
 {% endif %}
 
 <script>
-function onStaffForChange(sel) {
-  var opt = sel.options[sel.selectedIndex];
-  if (!opt || !opt.value) return;
-  var fullName = opt.text.trim();
-  var rtInput = document.querySelector('input[name="referred_to"]');
-  if (rtInput && fullName) rtInput.value = fullName;
-}
+new TomSelect('#category-select', {
+  create: false,
+  sortField: { field: 'text', direction: 'asc' },
+  placeholder: '— Select type —',
+  allowEmptyOption: true,
+});
 </script>
-
 </body>
 </html>

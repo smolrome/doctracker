@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Appointments — LAKAD</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Libre+Baskerville:wght@700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/client_appointments.css') }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/client_submit.css') }}"/>
+</head>
+<body>
+{% from 'macros/office_modal.html' import office_submit_modal %}
+
+<nav class="topbar">
+  <div class="topbar-brand">
+    <img src="/static/logo.png" alt="LAKAD Logo"/>
+    <div>
+      <div class="brand-name">LAKAD</div>
+      <span class="topbar-sub">Client Services System</span>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <a href="/client" class="tb-btn">← My Dashboard</a>
+    <a href="/client/logout" class="tb-btn tb-logout">Sign Out</a>
+  </div>
+</nav>
+
+<div class="appt-hero">
+  <h1>My Appointments</h1>
+  <p>View and manage your scheduled appointments with the Personnel Unit.</p>
+</div>
+
+<div class="appt-page">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="flash {{ cat }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <div class="appt-toolbar">
+    <span class="appt-count">{{ appointments|length }} appointment{{ 's' if appointments|length != 1 }}</span>
+    <button onclick="openOfficeForBooking()" class="btn-gold">+ Book Appointment</button>
+  </div>
+
+  {% if appointments %}
+    <div class="appt-list">
+      {% for apt in appointments %}
+      <div class="apt-card {% if apt.status == 'confirmed' %}apt-confirmed{% elif apt.status == 'cancelled' %}apt-cancelled{% elif apt.status == 'pending' %}apt-pending{% elif apt.status == 'attended' %}apt-attended{% endif %}">
+        <div class="apt-card-top">
+          <div class="apt-left">
+            <div class="apt-service">{{ apt.service_name or apt.service_code or 'Appointment' }}</div>
+            <div class="apt-office">{{ apt.office or '' }}</div>
+          </div>
+          <div class="apt-badge apt-badge-{{ apt.status | lower }}">{{ apt.status | capitalize }}</div>
+        </div>
+        <div class="apt-meta">
+          <span class="apt-meta-item">{{ apt.preferred_date }}</span>
+          <span class="apt-meta-sep">·</span>
+          <span class="apt-meta-item">{{ apt.preferred_time }}</span>
+          {% if apt.queue_ticket %}
+          <span class="apt-meta-sep">·</span>
+          <span class="apt-ticket">Ticket {{ apt.queue_ticket }}</span>
+          {% endif %}
+        </div>
+        {% if apt.purpose %}
+        <div class="apt-purpose">{{ apt.purpose }}</div>
+        {% endif %}
+        {% if apt.status in ['pending', 'confirmed'] %}
+        <div class="apt-footer" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <a href="/client/appointments/{{ apt.id }}/confirmation" class="btn-view-qr">View / Download QR</a>
+          <form method="post" action="/client/appointments/{{ apt.id }}/cancel">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+            <button type="submit" class="btn-cancel"
+                    onclick="return confirm('Cancel this appointment?')">Cancel Appointment</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <div class="appt-empty">
+      <div class="appt-empty-icon">
+        <svg width="48" height="48" fill="none" stroke="#D7CDB5" stroke-width="1.5" viewBox="0 0 24 24">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      </div>
+      <div class="appt-empty-title">No appointments yet</div>
+      <div class="appt-empty-text">Book an appointment to visit the Personnel Unit.</div>
+      <button onclick="openOfficeForBooking()" class="btn-gold">+ Book Appointment</button>
+    </div>
+  {% endif %}
+
+</div>
+
+{{ office_submit_modal(saved_offices) }}
+
+<script>
+var _officeModalMode = 'book';
+function openOfficeForBooking() {
+  _officeModalMode = 'book';
+  var desc = document.getElementById('office-qr-desc');
+  if (desc) desc.textContent = 'Choose which office you want to book an appointment with.';
+  var modal = document.getElementById('office-qr-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function toggleOfficeQR() {
+  var modal = document.getElementById('office-qr-modal');
+  if (!modal) return;
+  var isOpen = modal.style.display !== 'none';
+  modal.style.display = isOpen ? 'none' : 'flex';
+  document.body.style.overflow = isOpen ? '' : 'hidden';
+}
+function filterOffices(q) {
+  var cards = document.querySelectorAll('.office-qr-card');
+  var none = document.getElementById('office-qr-none');
+  var visible = 0; q = q.toLowerCase().trim();
+  cards.forEach(function(c) {
+    var name = c.getAttribute('data-name') || '';
+    if (q === '' || name.includes(q)) { c.style.display = 'flex'; visible++; }
+    else { c.style.display = 'none'; }
+  });
+  if (none) none.style.display = visible === 0 ? 'block' : 'none';
+}
+function handleOfficeSelect(el) {
+  var card = el.closest('.office-qr-card');
+  window.location.href = card.getAttribute('data-book-url');
+}
+</script>
+</body>
+</html>

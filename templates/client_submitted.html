@@ -4,23 +4,28 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Submission Confirmed — LAKAD</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/client_submitted.css') }}"/>
 </head>
 <body>
 
-<div class="topbar">
+<nav class="topbar">
   <div class="topbar-brand">
-    <img src="/static/logo.png" alt="Logo"/>
-    <span class="topbar-title">Submission Confirmed</span>
+    <img src="/static/logo.png" alt="LAKAD Logo" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.3);background:#fff;"/>
+    <div>
+      <div class="brand-name">LAKAD</div>
+      <span class="topbar-sub">Client Services System</span>
+    </div>
   </div>
-</div>
+  <div class="topbar-actions">
+    <a href="/client" class="tb-btn">← My Documents</a>
+  </div>
+</nav>
 
 <div class="page">
 
   <!-- HERO -->
   <div class="hero">
-    <div class="hero-icon">🎉</div>
     <div class="hero-title">
       {% if qr_list|length == 1 %}
         Document Submitted!
@@ -40,7 +45,7 @@
 
   <!-- INSTRUCTIONS -->
   <div class="instructions">
-    <div class="instructions-title">📌 What Happens Next</div>
+    <div class="instructions-title">What Happens Next</div>
     <ul class="steps-list">
       <li>
         <div class="step-circle">1</div>
@@ -73,11 +78,13 @@
       <div>
         <div class="doc-meta">
           <strong>From:</strong> {{ doc.sender_org or '—' }}<br/>
-          <strong>Referred To:</strong> {{ doc.referred_to or '—' }}<br/>
+          <strong>Submitted To:</strong> {{ doc.referred_to or '—' }}<br/>
+          {% if doc.pending_at_staff_name %}<strong>Will be received by:</strong> {{ doc.pending_at_staff_name }}<br/>{% endif %}
+          {% if doc.intended_for_name %}<strong>Routed to:</strong> {{ doc.intended_for_name }}<br/>{% endif %}
           {% if doc.category %}<strong>Type:</strong> {{ doc.category }}<br/>{% endif %}
           <strong>Date Filed:</strong> {{ doc.doc_date or doc.created_at[:10] }}
         </div>
-        <div class="status-pending">⏳ Pending — awaiting receipt</div>
+        <div class="status-pending">Pending — awaiting receipt</div>
       </div>
       <div class="qr-wrap">
         <img src="data:image/png;base64,{{ qr_b64 }}" class="qr-img" alt="QR Code"/>
@@ -92,7 +99,12 @@
   <!-- ACTION BUTTONS -->
   <div class="actions">
     <a href="/client" class="btn-action btn-primary-action">📂 My Documents</a>
-    <a href="/client/submit" class="btn-action btn-secondary-action">➕ Submit More</a>
+    {% set first_doc = qr_list[0][0] if qr_list else none %}
+    {% if first_doc and first_doc.target_office_slug %}
+    <a href="/client/submit?office_slug={{ first_doc.target_office_slug | urlencode }}&office_name={{ first_doc.target_office_name | urlencode }}" class="btn-action btn-secondary-action">Submit More</a>
+    {% else %}
+    <a href="/client/submit?pick_office=1" class="btn-action btn-secondary-action">Submit More</a>
+    {% endif %}
   </div>
 
 </div>

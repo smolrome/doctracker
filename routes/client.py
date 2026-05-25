@@ -25,12 +25,13 @@ from flask import (Blueprint, abort, flash, jsonify, redirect, render_template,
 from urllib.parse import urlparse
 
 from services.auth import (
-    check_rate_limit, create_user, get_user, reset_rate_limit,
+    approve_user, check_rate_limit, create_user, get_user, reset_rate_limit,
     update_last_login, verify_user,
 )
 from services.documents import (
     get_doc, insert_doc, load_docs, now_str, generate_ref,
 )
+from services.appointments import get_appointments_by_client, create_appointment, get_appointment, cancel_appointment
 from services.misc import audit_log, load_saved_offices
 from services.qr import create_doc_token, generate_qr_b64, make_doc_status_qr_png
 from services.dropdown_options import get_dropdown_options
@@ -161,97 +162,13 @@ def _get_owned_doc(doc_id: str):
 
 @client_bp.route("/login", methods=["GET", "POST"])
 def login():
-    if is_logged_in():
-        role = session.get("role")
-        return redirect(url_for("client.portal") if role == "client"
-                        else url_for("dashboard.index"))
-
-    csrf_token = _getcsrf_token()
-    error = None
-    lockout_remaining = 0
-
-    if request.method == "POST":
-        # FIX 2 – validate CSRF on login POST too (prevents login CSRF)
-        _require_csrf()
-        is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "").strip()
-        ip = get_client_ip()
-        allowed, wait = check_rate_limit("login", f"{ip}:{username.lower()}")
-        if not allowed:
-            mins = max(1, wait // 60)
-            error = f"Too many failed attempts. Try again in {mins} minute{'s' if mins != 1 else ''}."
-            lockout_remaining = wait
-            audit_log("client_login_blocked", f"username={username}",
-                      username=username, ip=ip)
-            if is_xhr:
-                return jsonify({'success': False, 'error': error})
-        else:
-            # NOTE (FIX 5): verify_user MUST perform a constant-time dummy bcrypt
-            # compare even when the username is not found so that timing differences
-            # cannot be used to enumerate valid usernames.
-            full_name, role, office = verify_user(username, password)
-            if full_name:
-                reset_rate_limit("login", f"{ip}:{username.lower()}")
-
-                # Check if client account is pending approval
-                if role == "client":
-                    from services.auth import get_user
-                    user = get_user(username.lower().strip())
-                    if user and not user.get("approved", True):
-                        error = "Your account is pending approval. Please wait for the administrator to approve your registration."
-                        if is_xhr:
-                            return jsonify({'success': False, 'error': error})
-                        return render_template("client_login.html", error=error,
-                                               lockout_remaining=0,
-                                               csrf_token=csrf_token,
-                                               office_slug=request.args.get("office_slug", ""),
-                                               office_name=request.args.get("office_name", ""),
-                                               next_url=request.args.get("next", ""))
-
-                # FIX 4 – regenerate session to prevent session fixation
-                _regenerate_session({
-                    "logged_in":   True,
-                    "username":    username.lower().strip(),
-                    "full_name":   full_name,
-                    "role":        role,
-                    "office":      office,
-                    "last_active": time.time(),
-                })
-                # NOTE: set PERMANENT_SESSION_LIFETIME in app config to e.g. 30 min
-                session.permanent = True
-                update_last_login(username.lower().strip())
-                audit_log("client_login_ok", f"role={role}",
-                          username=username, ip=ip)
-                raw_next = (request.form.get("next_url", "").strip()
-                            or request.args.get("next", "").strip())
-                # FIX 1 – validate next_url before redirecting
-                safe_next = _safe_redirect_url(
-                    raw_next,
-                    fallback=url_for("client.portal") if role == "client"
-                             else url_for("dashboard.index"),
-                )
-                redirect_url = (
-                    (safe_next if safe_next != url_for("client.portal") else url_for("client.portal"))
-                    if role == "client" else url_for("dashboard.index")
-                )
-                if is_xhr:
-                    return jsonify({'success': True, 'redirect': redirect_url})
-                return redirect(redirect_url)
-            else:
-                error = "Invalid username or password."
-                audit_log("client_login_fail", f"username={username}",
-                          username=username, ip=ip)
-                if is_xhr:
-                    return jsonify({'success': False, 'error': error})
-
-    return render_template("client_login.html", error=error,
-                           lockout_remaining=lockout_remaining,
-                           csrf_token=csrf_token,
-                           office_slug=request.args.get("office_slug", ""),
-                           office_name=request.args.get("office_name", ""),
-                           next_url=request.args.get("next", ""))
+    # Login is centralised at /login (auth.login).
+    # Carry any ?next= param through so QR-scan redirect flows still work.
+    next_param = request.args.get("next", "")
+    target = url_for("auth.login")
+    if next_param:
+        target = f"{target}?next={next_param}"
+    return redirect(target)
 
 
 @client_bp.route("/register", methods=["GET", "POST"])
@@ -296,21 +213,75 @@ def register():
             full_name = request.form.get("full_name", "").strip()
             password  = request.form.get("password", "").strip()
             confirm   = request.form.get("confirm_password", "").strip()
+            email     = request.form.get("email", "").strip()
+            office    = request.form.get("office", "").strip()
             if not full_name:
                 error = "Full name is required."
             elif not username:
                 error = "Username is required."
+            elif not office:
+                error = "School/Office is required."
             elif len(password) < 8:
                 error = "Password must be at least 8 characters."
             elif password != confirm:
                 error = "Passwords do not match."
             else:
-                ok, err = create_user(username, password, full_name, role="client")
+                ok, err = create_user(username, password, full_name, role="client", office=office, email=email)
                 if ok:
+                    _office_slug = request.form.get("office_slug", "").strip()
+                    if _office_slug:
+                        # Walk-in via office QR — auto-approve and log them in immediately
+                        approve_user(username)
+                        _next_url = request.form.get("next_url", "").strip()
+                        _regenerate_session({
+                            'username':           username,
+                            'role':               'client',
+                            'full_name':          full_name,
+                            'office':             office,
+                            'submit_office_slug': request.form.get('office_slug', ''),
+                            'submit_office_name': request.form.get('office_name', ''),
+                        })
+                        session.permanent = True
+                        audit_log("client_walkin_register",
+                                  f"office_slug={_office_slug}",
+                                  username=username, ip=get_client_ip())
+                        safe_next = _safe_redirect_url(_next_url, "")
+                        if safe_next and safe_next.startswith("/client/submit"):
+                            return redirect(safe_next)
+                        return redirect(url_for("client.portal"))
+                    # Online registration — requires admin approval
+                    try:
+                        from config import MAIL_ENABLED
+                        from services.email import send_admin_notification
+                        if MAIL_ENABLED:
+                            send_admin_notification(
+                                subject='New Client Registration — Pending Approval',
+                                body=(
+                                    f'A new client has registered and is awaiting your approval.\n\n'
+                                    f'Name:     {full_name}\n'
+                                    f'Username: {username}\n\n'
+                                    f'Login to LAKAD to approve or reject this account:\n'
+                                    f'/pending-clients'
+                                )
+                            )
+                    except Exception:
+                        pass
+                    # Push notification to all admin users
+                    try:
+                        from services.auth import get_all_users
+                        from blueprints.api import send_push_notification
+                        for _admin in get_all_users():
+                            if _admin.get('role') == 'admin' and _admin.get('username'):
+                                send_push_notification(
+                                    username=_admin['username'],
+                                    title='New Client Registration',
+                                    body=f'{full_name} (@{username}) has registered and is awaiting approval.',
+                                    data={'screen': '/pending-clients', 'type': 'pending_client'},
+                                )
+                    except Exception:
+                        pass  # never block registration
                     msg = (
-                        "Registration successful! Your account is pending approval "
-                        "by the administrator. You will be able to login once your "
-                        "account is approved."
+                        "Registration submitted. Awaiting admin approval."
                     )
                     if is_xhr:
                         return jsonify({'success': True, 'message': msg})
@@ -331,10 +302,25 @@ def register():
 @client_bp.route("")
 @_require_client
 def portal():
+    username     = session.get("username")
+    docs         = load_docs()
+    my_docs      = [d for d in docs if d.get("submitted_by") == username]
+    appointments = get_appointments_by_client(username)
+    return render_template("client_portal.html",
+                           docs=my_docs,
+                           appointments=appointments,
+                           saved_offices=_get_saved_offices(),
+                           csrf_token=_getcsrf_token())
+
+
+@client_bp.route("/documents")
+@_require_client
+def my_documents():
     username = session.get("username")
     docs     = load_docs()
     my_docs  = [d for d in docs if d.get("submitted_by") == username]
-    return render_template("client_portal.html", docs=my_docs,
+    return render_template("client_documents.html",
+                           docs=my_docs,
                            saved_offices=_get_saved_offices(),
                            csrf_token=_getcsrf_token())
 
@@ -511,6 +497,15 @@ def restore(doc_id):
 @_require_client
 def scan():
     return render_template("client_scan.html")
+
+
+# ── Logout ────────────────────────────────────────────────────────────────────
+
+@client_bp.route("/logout")
+def client_logout():
+    session.clear()
+    flash("You have been logged out.", "success")
+    return redirect(url_for("client.login"))
 
 
 # ── Document submission (cart flow) ──────────────────────────────────────────
@@ -715,6 +710,20 @@ def submit():
                 for u in all_users
                 if u.get("role") in ("staff", "admin")
             ]
+        if not selected_staff and office_staff_list:
+            # Find the primary recipient for this office from saved_offices
+            primary_username = ""
+            for off in _get_saved_offices():
+                if off.get("office_slug", "") == office_slug or \
+                   off.get("office_name", "").strip().lower() == office_name.strip().lower():
+                    primary_username = off.get("primary_recipient", "")
+                    break
+            # Use primary if they are in the staff list, else fall back to first
+            staff_usernames = [s["username"] for s in office_staff_list]
+            if primary_username and primary_username in staff_usernames:
+                selected_staff = primary_username
+            else:
+                selected_staff = office_staff_list[0]["username"]
 
     return render_template("client_submit.html",
                            cart=cart, error=error, doc={},
@@ -769,6 +778,95 @@ def submitted_batch():
     if not qr_list:
         return redirect(url_for("client.portal"))
     return render_template("client_submitted.html", qr_list=qr_list, batch=True)
+
+
+# ── Appointments ──────────────────────────────────────────────────────────────
+
+@client_bp.route("/appointments")
+@_require_client
+def my_appointments():
+    username = session.get('username', '')
+    appointments = get_appointments_by_client(username)
+    return render_template('client_appointments.html',
+                           appointments=appointments,
+                           saved_offices=_get_saved_offices(),
+                           csrf_token=_getcsrf_token())
+
+
+@client_bp.route("/appointments/book", methods=["GET", "POST"])
+@_require_client
+def book_appointment():
+    from services.queue_bridge import get_queue_services
+    offices = load_saved_offices()
+    services = get_queue_services()
+    if request.method == "POST":
+        _require_csrf()
+        office = request.form.get("office", "").strip()
+        service_code = request.form.get("service_code", "").strip()
+        service_name = next((s['name'] for s in services if s['code'] == service_code), service_code)
+        preferred_date = request.form.get("preferred_date", "").strip()
+        preferred_time = request.form.get("preferred_time", "").strip()
+        purpose = request.form.get("purpose", "").strip()
+        if not all([office, service_code, preferred_date, preferred_time, purpose]):
+            flash("All fields are required.", "error")
+            return render_template('client_book_appointment.html',
+                                   offices=offices, services=services,
+                                   csrf_token=_getcsrf_token())
+        apt = create_appointment({
+            'client_name':     session.get('full_name') or session.get('username'),
+            'client_username': session.get('username'),
+            'office':          office,
+            'service_code':    service_code,
+            'service_name':    service_name,
+            'preferred_date':  preferred_date,
+            'preferred_time':  preferred_time,
+            'purpose':         purpose,
+            'source':          'web',
+        })
+        return redirect(url_for('client.appointment_confirmation', apt_id=apt['id']))
+    selected_office = request.args.get('office_name', '')
+    selected_office_slug = request.args.get('office_slug', '')
+    return render_template('client_book_appointment.html',
+                           offices=offices, services=services,
+                           selected_office=selected_office,
+                           selected_office_slug=selected_office_slug,
+                           csrf_token=_getcsrf_token())
+
+
+
+@client_bp.route("/appointments/<apt_id>/confirmation")
+@_require_client
+def appointment_confirmation(apt_id):
+    from services.appointments import get_appointment
+    apt = get_appointment(apt_id)
+    if not apt or apt.get('client_username') != session.get('username'):
+        return redirect(url_for('client.my_appointments'))
+    import qrcode, io, base64
+    qr_data = f"APT:{apt['id']}:{apt.get('office','')}:{apt.get('preferred_date','')}:{apt.get('preferred_time','')}"
+    qr = qrcode.make(qr_data)
+    buf = io.BytesIO()
+    qr.save(buf, format='PNG')
+    qr_b64 = base64.b64encode(buf.getvalue()).decode()
+    return render_template('client_appointment_confirmation.html',
+                           apt=apt,
+                           qr_b64=qr_b64,
+                           csrf_token=_getcsrf_token())
+
+
+@client_bp.route("/appointments/<apt_id>/cancel", methods=["POST"])
+@_require_client
+def cancel_client_appointment(apt_id):
+    _require_csrf()
+    apt = get_appointment(apt_id)
+    if not apt or apt.get('client_username') != session.get('username'):
+        flash("Appointment not found.", "error")
+        return redirect(url_for('client.my_appointments'))
+    if apt.get('status') not in ('pending', 'confirmed'):
+        flash("This appointment cannot be cancelled.", "error")
+        return redirect(url_for('client.my_appointments'))
+    cancel_appointment(apt_id)
+    flash("Appointment cancelled.", "success")
+    return redirect(url_for('client.my_appointments'))
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

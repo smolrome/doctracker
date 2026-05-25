@@ -18,6 +18,20 @@
   window.CURRENT_USERNAME = "{{ session.get('username', '') }}";
   window.CURRENT_OFFICE   = "{{ session.get('office',   '') }}";
 </script>
+<script>
+  /* Clear cart on any page that receives ?cart_cleared=1 */
+  (function () {
+    if (new URLSearchParams(location.search).get('cart_cleared') === '1') {
+      localStorage.removeItem('doctracker_selected_docs');
+      localStorage.removeItem('doctracker_cart_docs');
+      localStorage.removeItem('doctracker_cart_details');
+      /* Strip param from address bar without reload */
+      var u = new URL(location.href);
+      u.searchParams.delete('cart_cleared');
+      history.replaceState(null, '', u.toString());
+    }
+  })();
+</script>
 {% endif %}
 
 <!-- ═══ NAV ═══ -->
@@ -38,9 +52,9 @@
     <div class="nav-seal">
       <img src="/static/logo.png" alt="DepEd Leyte Logo" class="nav-logo"/>
     </div>
-    <div class="nav-brand-text">
-      <div class="nav-brand-main">Personnel Unit Docket</div>
-      <div class="nav-brand-sub">DepEd · SDO Leyte Division</div>
+    <div class="brand-text">
+      <span class="brand-name">LAKAD</span>
+      <span class="brand-sub">Client Services System</span>
     </div>
   </a>
 
@@ -73,6 +87,18 @@
               <span class="dd-text">Office QR Codes<span class="dd-desc">Print QR for offices</span></span>
             </a>
             {% endif %}
+            {% if can_generate_so %}
+            <a href="/so-request" class="dd-item">
+              <span class="dd-icon">📄</span>
+              <span class="dd-text">Special Order<span class="dd-desc">Generate SO documents</span></span>
+            </a>
+            {% endif %}
+            {% if can_generate_so %}
+            <a href="/so-history" class="dd-item">
+              <span class="dd-icon">🗂️</span>
+              <span class="dd-text">SO History<span class="dd-desc">View generated SO documents</span></span>
+            </a>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -89,10 +115,15 @@
             <a href="/pending-clients" class="dd-item">
               <span class="dd-icon">⏳</span>
               <span class="dd-text">Pending Clients<span class="dd-desc">Approve new client registrations</span></span>
+              <span id="pending-clients-badge" style="display:none;background:#DC2626;color:#fff;font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;margin-left:auto;min-width:20px;text-align:center;line-height:18px;flex-shrink:0;" aria-label="pending client registrations"></span>
             </a>
             <a href="/manage-users" class="dd-item">
               <span class="dd-icon">👥</span>
               <span class="dd-text">Users<span class="dd-desc">Add, edit, deactivate accounts</span></span>
+            </a>
+            <a href="/manage-pairings" class="dd-item">
+              <span class="dd-icon">🤝</span>
+              <span class="dd-text">Staff Pairings<span class="dd-desc">Share document visibility between staff</span></span>
             </a>
             <a href="/office-staff" class="dd-item">
               <span class="dd-icon">🏢</span>
@@ -101,6 +132,10 @@
             <a href="/office-documents" class="dd-item">
               <span class="dd-icon">📁</span>
               <span class="dd-text">Office Documents<span class="dd-desc">View documents by office</span></span>
+            </a>
+            <a href="/appointments" class="dd-item">
+              <span class="dd-icon">📅</span>
+              <span class="dd-text">Appointments<span class="dd-desc">Manage client appointments</span></span>
             </a>
             <a href="/activity-log" class="dd-item">
               <span class="dd-icon">📋</span>
@@ -194,29 +229,6 @@
 </div>
 {% endif %}
 
-<!-- ── Accept Confirmation Modal ── -->
-<div id="accept-confirm-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="accept-modal-title">
-  <div class="modal-sheet modal-sheet-sm">
-    <div class="modal-header modal-header-green">
-      <div class="modal-header-content">
-        <span class="modal-header-icon" aria-hidden="true">✅</span>
-        <h2 class="modal-title" id="accept-modal-title">Accept Document</h2>
-      </div>
-      <button class="modal-close-btn" onclick="closeAcceptModal()" aria-label="Close">✕</button>
-    </div>
-    <div class="modal-body">
-      <p id="accept-modal-doc-name" style="margin:0 0 6px;font-size:15px;font-weight:700;color:#1E293B;"></p>
-      <p id="accept-modal-intended-for" style="margin:0 0 10px;font-size:13px;color:#0038A8;font-weight:600;display:none;"></p>
-      <p class="modal-body-text">Mark this document as <strong>received</strong>? It will be added to your dashboard.</p>
-      <input type="hidden" id="accept-doc-id" value="">
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeAcceptModal()">Cancel</button>
-      <button class="btn btn-success" onclick="submitAccept()">✓ Accept Document</button>
-    </div>
-  </div>
-</div>
-
 <!-- ── Rejection Reason Modal ── -->
 <div id="rejection-reason-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="rejection-modal-title">
   <div class="modal-sheet modal-sheet-sm">
@@ -259,6 +271,12 @@
     {% if current_role in ('admin','staff') %}
       <a href="/office-qr-page" class="nav-btn" onclick="closeMenu()">🖨️ Office QR Codes</a>
     {% endif %}
+    {% if can_generate_so %}
+      <a href="/so-request" class="nav-btn" onclick="closeMenu()">📄 Special Order</a>
+    {% endif %}
+    {% if can_generate_so %}
+      <a href="/so-history" class="nav-btn" onclick="closeMenu()">🗂️ SO History</a>
+    {% endif %}
     {% if current_role == 'admin' %}
       <div class="nav-divider"></div>
       <div class="nav-drawer-section">Admin</div>
@@ -266,6 +284,7 @@
       <a href="/manage-users"     class="nav-btn" onclick="closeMenu()">👥 Manage Users</a>
       <a href="/office-staff"     class="nav-btn" onclick="closeMenu()">🏢 Office Staff</a>
       <a href="/office-documents" class="nav-btn" onclick="closeMenu()">📁 Office Documents</a>
+      <a href="/appointments"     class="nav-btn" onclick="closeMenu()">📅 Appointments</a>
       <a href="/activity-log"     class="nav-btn" onclick="closeMenu()">📋 Audit Log</a>
       <a href="/dropdown-options" class="nav-btn" onclick="closeMenu()">⚙️ Dropdown Options</a>
       <a href="/trash"            class="nav-btn" onclick="closeMenu()">🗑️ Trash</a>
@@ -361,5 +380,32 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/base.js') }}"></script>
+
+{% if logged_in and current_role == 'admin' %}
+<script>
+/* ── Pending clients badge ──────────────────────────────────────────────── */
+(function pollPendingClientsBadge() {
+  function refresh() {
+    fetch('/api/admin/pending-clients-count', {credentials: 'same-origin'})
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(d) {
+        if (!d) return;
+        var el = document.getElementById('pending-clients-badge');
+        if (!el) return;
+        if (d.count > 0) {
+          el.textContent = d.count;
+          el.style.display = '';
+          el.setAttribute('aria-label', d.count + ' pending client registration' + (d.count === 1 ? '' : 's'));
+        } else {
+          el.style.display = 'none';
+        }
+      })
+      .catch(function() {});
+  }
+  refresh();
+  setInterval(refresh, 60000);   // re-poll every 60 s
+})();
+</script>
+{% endif %}
 </body>
 </html>

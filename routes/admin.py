@@ -8,8 +8,9 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from services.auth import (
     create_user, delete_user, get_all_users, set_user_active,
     update_user_password, update_user, approve_user, get_pending_clients,
-    update_user_documents_handled,
+    update_user_documents_handled, set_user_can_generate_so,
 )
+from services.database import set_user_can_route_documents, user_has_so_access
 from services.email import (
     generate_invite_token, get_all_tokens, send_invite_email,
     send_credentials_email,
@@ -39,6 +40,8 @@ def manage_users():
     except Exception:
         pass
     users = get_all_users()
+    for u in users:
+        u["has_so_access"] = user_has_so_access(u["username"])
     from services.misc import load_saved_offices
     offices = load_saved_offices()
     return render_template("manage_users.html", users=users,
@@ -159,7 +162,7 @@ def _compute_staff_live_stats():
     today     = str(_date.today())
 
     staff_users = [u for u in all_users
-                   if u.get("role") in ("staff", "admin") and u.get("active", True)]
+                   if u.get("role") == "staff" and u.get("active", True)]
 
     presence = get_user_presence({u.get("username", "") for u in staff_users})
 
@@ -196,6 +199,16 @@ def _compute_staff_live_stats():
 
     stats.sort(key=lambda x: -x["total"])
 
+    # Group by office (alphabetical office order; within each office, total-desc order preserved)
+    from collections import defaultdict as _dd
+    _groups = _dd(list)
+    for s in stats:
+        _groups[s["office"]].append(s)
+    office_groups = [
+        {"office": k, "staff": v}
+        for k, v in sorted(_groups.items())
+    ]
+
     total_docs        = len([d for d in docs if not d.get("deleted")])
     today_docs        = sum(1 for d in docs
                             if (d.get("created_at") or "")[:10] == today and not d.get("deleted"))
@@ -209,7 +222,7 @@ def _compute_staff_live_stats():
         "active_staff":      active_staff,
         "pending_transfers": pending_transfers,
     }
-    return stats, totals
+    return stats, totals, office_groups
 
 
 @admin_bp.route("/staff-live")
@@ -218,10 +231,11 @@ def staff_live():
     token = request.args.get("token", "")
     if not STAFF_LIVE_TOKEN or not token or not secrets.compare_digest(token, STAFF_LIVE_TOKEN):
         return "Access denied", 403
-    stats, totals = _compute_staff_live_stats()
+    stats, totals, office_groups = _compute_staff_live_stats()
     last_updated = datetime.now().strftime("%b %d, %Y %I:%M %p")
     return render_template("staff_live.html",
                            staff_stats=stats,
+                           office_groups=office_groups,
                            totals=totals,
                            last_updated=last_updated,
                            live_token=token)
@@ -233,11 +247,12 @@ def staff_live_data():
     token = request.args.get("token", "")
     if not STAFF_LIVE_TOKEN or not token or not secrets.compare_digest(token, STAFF_LIVE_TOKEN):
         return jsonify(error="Access denied"), 403
-    stats, totals = _compute_staff_live_stats()
+    stats, totals, office_groups = _compute_staff_live_stats()
     return jsonify({
-        "staff":        stats,
-        "totals":       totals,
-        "last_updated": datetime.now().strftime("%b %d, %Y %I:%M %p"),
+        "staff":         stats,
+        "office_groups": office_groups,
+        "totals":        totals,
+        "last_updated":  datetime.now().strftime("%b %d, %Y %I:%M %p"),
     })
 
 
@@ -469,6 +484,13 @@ def pending_clients():
     pending = get_pending_clients()
     return render_template("pending_clients.html", pending_clients=pending,
                            admin_username=ADMIN_USERNAME)
+
+
+@admin_bp.route("/api/admin/pending-clients-count")
+@admin_required
+def pending_clients_count():
+    """JSON: count of unapproved client accounts. Polled by the nav badge."""
+    return jsonify(count=len(get_pending_clients()))
 
 
 @admin_bp.route("/office-documents")
@@ -851,6 +873,265 @@ def edit_user_route(username):
     return redirect(url_for("admin.manage_users"))
 
 
+@admin_bp.route("/toggle-so-access/<username>", methods=["POST"])
+@admin_required
+def toggle_so_access(username):
+    """Grant or revoke can_generate_so for a staff user."""
+    if username == ADMIN_USERNAME:
+        flash("Admin always has SO access.", "error")
+        return redirect(url_for("admin.manage_users"))
+    all_users = get_all_users()
+    user = next((u for u in all_users if u.get("username") == username), None)
+    if not user:
+        flash(f"User '{username}' not found.", "error")
+        return redirect(url_for("admin.manage_users"))
+    new_value = not bool(user.get("can_generate_so", False))
+    ok, err = set_user_can_generate_so(username, new_value)
+    if ok:
+        action = "granted" if new_value else "revoked"
+        audit_log("so_access_toggled",
+                  f"user={username} can_generate_so={new_value}",
+                  username=session.get("username", "admin"),
+                  ip=get_client_ip())
+        flash(f"✅ SO access {action} for '{username}'.", "success")
+    else:
+        flash(f"Failed to update SO access: {err}", "error")
+    return redirect(url_for("admin.manage_users"))
+
+
+@admin_bp.route("/toggle-route-access/<username>", methods=["POST"])
+@admin_required
+def toggle_route_access(username):
+    """Grant or revoke can_route_documents for a staff user."""
+    if username == ADMIN_USERNAME:
+        flash("Admin always has Route access.", "error")
+        return redirect(url_for("admin.manage_users"))
+    all_users = get_all_users()
+    user = next((u for u in all_users if u.get("username") == username), None)
+    if not user:
+        flash(f"User '{username}' not found.", "error")
+        return redirect(url_for("admin.manage_users"))
+    new_value = not bool(user.get("can_route_documents", False))
+    ok, err = set_user_can_route_documents(username, new_value)
+    if ok:
+        action = "granted" if new_value else "revoked"
+        audit_log("route_access_toggled",
+                  f"user={username} can_route_documents={new_value}",
+                  username=session.get("username", "admin"),
+                  ip=get_client_ip())
+        flash(f"✅ Route access {action} for '{username}'.", "success")
+    else:
+        flash(f"Failed to update Route access: {err}", "error")
+    return redirect(url_for("admin.manage_users"))
+
+
+@admin_bp.route("/manage-pairings")
+@admin_required
+def manage_pairings():
+    from services.database import USE_DB, get_conn
+    from services.auth import get_all_users
+    groups = []
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id, group_name, created_by, has_so_access, has_shared_dashboard,
+                               to_char(created_at, 'Mon DD, YYYY') AS created_date
+                        FROM staff_groups
+                        ORDER BY created_at DESC
+                    """)
+                    raw_groups = cur.fetchall() or []
+                    # Fetch members for each group
+                    for g in raw_groups:
+                        cur.execute("""
+                            SELECT id, username, added_by,
+                                   to_char(added_at, 'Mon DD, YYYY') AS added_date
+                            FROM staff_group_members
+                            WHERE group_id = %s
+                            ORDER BY added_at ASC
+                        """, (g['id'],))
+                        members = cur.fetchall() or []
+                        groups.append({
+                            'id':                 g['id'],
+                            'group_name':         g['group_name'],
+                            'created_by':         g['created_by'],
+                            'created_date':       g['created_date'],
+                            'has_so_access':      bool(g['has_so_access']),
+                            'has_shared_dashboard': bool(g['has_shared_dashboard']),
+                            'members':            list(members),
+                        })
+        except Exception:
+            pass
+    all_users = get_all_users()
+    staff_users = [u for u in all_users if u.get("role") in ("staff", "admin")]
+    # Build username → full_name map for display
+    name_map = {u['username']: (u.get('full_name') or u['username']) for u in all_users}
+    return render_template("manage_pairings.html",
+                           groups=groups,
+                           staff_users=staff_users,
+                           name_map=name_map)
+
+
+@admin_bp.route("/manage-pairings/create-group", methods=["POST"])
+@admin_required
+def create_group():
+    from services.database import USE_DB, get_conn
+    group_name = request.form.get("group_name", "").strip()
+    if not group_name:
+        flash("Group name is required.", "error")
+        return redirect(url_for("admin.manage_pairings"))
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO staff_groups (group_name, created_by)
+                        VALUES (%s, %s)
+                        ON CONFLICT (group_name) DO NOTHING
+                    """, (group_name, session.get("username", "admin")))
+            audit_log("group_created", f"group_name={group_name}",
+                      username=session.get("username", "admin"), ip=get_client_ip())
+            flash(f"Group '{group_name}' created.", "success")
+        except Exception as e:
+            flash(f"Failed to create group: {e}", "error")
+    else:
+        flash("Database not available.", "error")
+    return redirect(url_for("admin.manage_pairings"))
+
+
+@admin_bp.route("/manage-pairings/add-member", methods=["POST"])
+@admin_required
+def add_group_member():
+    from services.database import USE_DB, get_conn
+    group_id = request.form.get("group_id", "").strip()
+    username = request.form.get("username", "").strip()
+    if not group_id or not username:
+        flash("Group and staff member are required.", "error")
+        return redirect(url_for("admin.manage_pairings"))
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO staff_group_members (group_id, username, added_by)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (group_id, username) DO NOTHING
+                    """, (int(group_id), username, session.get("username", "admin")))
+            audit_log("group_member_added", f"group_id={group_id} username={username}",
+                      username=session.get("username", "admin"), ip=get_client_ip())
+            flash(f"Added {username} to group.", "success")
+        except Exception as e:
+            flash(f"Failed to add member: {e}", "error")
+    else:
+        flash("Database not available.", "error")
+    return redirect(url_for("admin.manage_pairings"))
+
+
+@admin_bp.route("/manage-pairings/remove-member/<int:member_id>", methods=["POST"])
+@admin_required
+def remove_group_member(member_id):
+    from services.database import USE_DB, get_conn
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT username, group_id FROM staff_group_members WHERE id = %s", (member_id,))
+                    row = cur.fetchone()
+                    if row:
+                        cur.execute("DELETE FROM staff_group_members WHERE id = %s", (member_id,))
+                        audit_log("group_member_removed",
+                                  f"member_id={member_id} username={row['username']} group_id={row['group_id']}",
+                                  username=session.get("username", "admin"), ip=get_client_ip())
+                        flash(f"Removed {row['username']} from group.", "success")
+                    else:
+                        flash("Member not found.", "error")
+        except Exception as e:
+            flash(f"Failed to remove member: {e}", "error")
+    else:
+        flash("Database not available.", "error")
+    return redirect(url_for("admin.manage_pairings"))
+
+
+@admin_bp.route("/manage-pairings/delete-group/<int:group_id>", methods=["POST"])
+@admin_required
+def delete_group(group_id):
+    from services.database import USE_DB, get_conn
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT group_name FROM staff_groups WHERE id = %s", (group_id,))
+                    row = cur.fetchone()
+                    if row:
+                        cur.execute("DELETE FROM staff_groups WHERE id = %s", (group_id,))
+                        audit_log("group_deleted",
+                                  f"group_id={group_id} group_name={row['group_name']}",
+                                  username=session.get("username", "admin"), ip=get_client_ip())
+                        flash(f"Group '{row['group_name']}' deleted.", "success")
+                    else:
+                        flash("Group not found.", "error")
+        except Exception as e:
+            flash(f"Failed to delete group: {e}", "error")
+    else:
+        flash("Database not available.", "error")
+    return redirect(url_for("admin.manage_pairings"))
+
+
+@admin_bp.route("/manage-pairings/toggle-so-access/<int:group_id>", methods=["POST"])
+@admin_required
+def toggle_group_so_access(group_id):
+    from services.database import USE_DB, get_conn
+    if not USE_DB:
+        flash("Database not available.", "error")
+        return redirect(url_for("admin.manage_pairings"))
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT group_name, has_so_access FROM staff_groups WHERE id = %s", (group_id,))
+                row = cur.fetchone()
+                if not row:
+                    flash("Group not found.", "error")
+                    return redirect(url_for("admin.manage_pairings"))
+                new_val = not bool(row['has_so_access'])
+                cur.execute("UPDATE staff_groups SET has_so_access = %s WHERE id = %s", (new_val, group_id))
+        audit_log("group_so_access_toggled",
+                  f"group_id={group_id} group_name={row['group_name']} has_so_access={new_val}",
+                  username=session.get("username", "admin"), ip=get_client_ip())
+        state = "enabled" if new_val else "disabled"
+        flash(f"SO Access {state} for group '{row['group_name']}'.", "success")
+    except Exception as e:
+        flash(f"Failed to update SO access: {e}", "error")
+    return redirect(url_for("admin.manage_pairings"))
+
+
+@admin_bp.route("/manage-pairings/toggle-shared-dashboard/<int:group_id>", methods=["POST"])
+@admin_required
+def toggle_group_shared_dashboard(group_id):
+    from services.database import USE_DB, get_conn
+    if not USE_DB:
+        flash("Database not available.", "error")
+        return redirect(url_for("admin.manage_pairings"))
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT group_name, has_shared_dashboard FROM staff_groups WHERE id = %s", (group_id,))
+                row = cur.fetchone()
+                if not row:
+                    flash("Group not found.", "error")
+                    return redirect(url_for("admin.manage_pairings"))
+                new_val = not bool(row['has_shared_dashboard'])
+                cur.execute("UPDATE staff_groups SET has_shared_dashboard = %s WHERE id = %s", (new_val, group_id))
+        audit_log("group_shared_dashboard_toggled",
+                  f"group_id={group_id} group_name={row['group_name']} has_shared_dashboard={new_val}",
+                  username=session.get("username", "admin"), ip=get_client_ip())
+        state = "enabled" if new_val else "disabled"
+        flash(f"Shared Dashboard {state} for group '{row['group_name']}'.", "success")
+    except Exception as e:
+        flash(f"Failed to update Shared Dashboard: {e}", "error")
+    return redirect(url_for("admin.manage_pairings"))
+
+
 @admin_bp.route("/clear-database", methods=["POST"])
 @admin_required
 def clear_database():
@@ -1143,5 +1424,67 @@ def bulk_create_users():
         mail_enabled=MAIL_ENABLED,
         saved_offices=saved_offices,
     )
+
+
+# ── Appointments ──────────────────────────────────────────────────────────────
+
+@admin_bp.route("/appointments")
+@admin_required
+def admin_appointments():
+    from services.appointments import get_all_appointments
+    from services.misc import load_saved_offices
+    date   = request.args.get('date', '')
+    office = request.args.get('office', '')
+    status = request.args.get('status', '')
+    appointments = get_all_appointments(
+        date=date or None,
+        office=office or None,
+        status=status or None,
+    )
+    offices = load_saved_offices()
+    from datetime import datetime as _dt
+    return render_template('admin_appointments.html',
+        appointments=appointments,
+        offices=offices,
+        filter_date=date,
+        filter_office=office,
+        filter_status=status,
+        today_date=_dt.now().strftime('%Y-%m-%d'),
+    )
+
+
+@admin_bp.route("/appointments/<apt_id>/confirm", methods=["POST"])
+@admin_required
+def confirm_appointment(apt_id):
+    from services.appointments import get_appointment, update_appointment
+    from services.queue_bridge import push_appointment_ticket
+    apt = get_appointment(apt_id)
+    if not apt:
+        flash("Appointment not found.", "error")
+        return redirect(url_for('admin.admin_appointments'))
+    result = push_appointment_ticket(
+        service_code=apt.get('service_code', 'GENERAL'),
+        client_name=apt.get('client_name', ''),
+        lakad_ref=apt.get('id', ''),
+        appointment_id=apt.get('id', ''),
+        priority=1,
+    )
+    updates = {'status': 'confirmed'}
+    if result:
+        updates['queue_ticket']    = result['ticket_number']
+        updates['queue_ticket_id'] = result['ticket_id']
+    update_appointment(apt_id, updates)
+    ticket_label = result['ticket_number'] if result else 'N/A'
+    flash(f"Appointment confirmed. Queue ticket: {ticket_label}", "success")
+    return redirect(url_for('admin.admin_appointments'))
+
+
+@admin_bp.route("/appointments/<apt_id>/cancel", methods=["POST"])
+@admin_required
+def admin_cancel_appointment(apt_id):
+    from services.appointments import cancel_appointment
+    cancel_appointment(apt_id)
+    flash("Appointment cancelled.", "success")
+    return redirect(url_for('admin.admin_appointments'))
 
     return redirect(url_for("dashboard.index"))

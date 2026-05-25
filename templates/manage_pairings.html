@@ -1,0 +1,466 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+/* ── Page header ── */
+.mp-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.mp-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--navy, #0E2A47);
+  flex: 1;
+}
+.mp-desc {
+  color: #64748b;
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+/* ── Two-column layout ── */
+.mp-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 800px) {
+  .mp-layout { grid-template-columns: 1fr; }
+}
+
+/* ── Create group card ── */
+.mp-create-card {
+  background: #fff;
+  border: 1.5px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  overflow: hidden;
+  position: sticky;
+  top: 16px;
+}
+.mp-card-head {
+  background: linear-gradient(135deg, #fef9ec, #fef3c7);
+  border-bottom: 1.5px solid #C9A227;
+  padding: 14px 20px;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--navy, #0E2A47);
+}
+.mp-card-body { padding: 18px 20px; }
+.mp-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #9ca3af;
+  margin-bottom: 5px;
+}
+.mp-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  background: #fff;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .15s;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+.mp-input:focus { border-color: var(--teal, #0E7490); }
+.mp-btn-create {
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(135deg, #C9A227, #b08a1e);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter .15s;
+}
+.mp-btn-create:hover { filter: brightness(1.08); }
+
+/* ── Groups list ── */
+.mp-groups-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.mp-groups-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--navy, #0E2A47);
+  flex: 1;
+}
+.mp-badge {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
+  border-radius: 20px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.mp-groups-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Group card ── */
+.mp-group-card {
+  background: #fff;
+  border: 1.5px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: box-shadow .18s;
+}
+.mp-group-card:hover {
+  box-shadow: 0 4px 18px rgba(14,42,71,.1);
+}
+.mp-group-head {
+  background: linear-gradient(135deg, #0E2A47, #163B60);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mp-group-name {
+  font-weight: 800;
+  font-size: 14px;
+  color: #fff;
+  flex: 1;
+}
+.mp-group-meta {
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+  white-space: nowrap;
+}
+.mp-member-count {
+  background: #C9A227;
+  color: #fff;
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ── Member list ── */
+.mp-members {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  min-height: 40px;
+}
+.mp-member-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid #f8fafc;
+}
+.mp-member-row:last-child { border-bottom: none; }
+.mp-member-avatar {
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #0369a1;
+  flex-shrink: 0;
+}
+.mp-member-info { flex: 1; min-width: 0; }
+.mp-member-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mp-member-uname {
+  font-size: 11px;
+  color: #9ca3af;
+}
+.mp-btn-remove-member {
+  width: 22px;
+  height: 22px;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: background .15s;
+  padding: 0;
+}
+.mp-btn-remove-member:hover { background: #fee2e2; }
+.mp-no-members {
+  font-size: 12px;
+  color: #9ca3af;
+  font-style: italic;
+  padding: 4px 0;
+}
+
+/* ── Add member row ── */
+.mp-add-member {
+  padding: 10px 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: #FAFCFF;
+  border-bottom: 1px solid #f1f5f9;
+}
+.mp-select-member {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1.5px solid var(--border, #e2e8f0);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  background: #fff;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .15s;
+}
+.mp-select-member:focus { border-color: var(--teal, #0E7490); }
+.mp-btn-add-member {
+  padding: 7px 14px;
+  background: #0E7490;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s;
+}
+.mp-btn-add-member:hover { background: #0a5f74; }
+
+/* ── Group feature badges ── */
+.mp-badge-on-shared {
+  background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE;
+  border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.mp-badge-on-so {
+  background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;
+  border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.mp-badge-off {
+  background: #F1F5F9; color: #94A3B8; border: 1px solid #E2E8F0;
+  border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+
+/* ── Group footer: toggle buttons + delete ── */
+.mp-group-footer {
+  padding: 10px 16px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mp-footer-toggles { display: flex; gap: 6px; flex: 1; }
+.mp-btn-toggle-shared {
+  padding: 6px 12px;
+  background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE;
+  border-radius: 7px; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer; white-space: nowrap; transition: background .15s;
+}
+.mp-btn-toggle-shared:hover { background: #DBEAFE; }
+.mp-btn-toggle-so {
+  padding: 6px 12px;
+  background: #FFF8E7; color: #92400E; border: 1px solid #FCD34D;
+  border-radius: 7px; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer; white-space: nowrap; transition: background .15s;
+}
+.mp-btn-toggle-so:hover { background: #FEF3C7; }
+.mp-btn-delete-group {
+  padding: 6px 14px;
+  background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;
+  border-radius: 7px; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer; transition: background .15s;
+}
+.mp-btn-delete-group:hover { background: #fee2e2; }
+
+/* ── Empty state ── */
+.mp-empty {
+  background: #fff;
+  border: 1.5px dashed #e2e8f0;
+  border-radius: 14px;
+  padding: 48px 24px;
+  text-align: center;
+  color: #9ca3af;
+}
+.mp-empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+.mp-empty-title { font-size: 15px; font-weight: 700; color: #6b7280; margin-bottom: 4px; }
+.mp-empty-sub { font-size: 13px; }
+</style>
+
+<div class="mp-header">
+  <a href="/manage-users" class="sh-back">← Users</a>
+  <div class="mp-title">👥 Staff Groups</div>
+</div>
+<p class="mp-desc">
+  Staff members in the same group share document visibility on the dashboard.
+  A member can belong to multiple groups.
+</p>
+
+<div class="mp-layout">
+
+  <!-- LEFT: Create group -->
+  <div class="mp-create-card">
+    <div class="mp-card-head">➕ Create New Group</div>
+    <div class="mp-card-body">
+      <form method="POST" action="/manage-pairings/create-group">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="mp-label">Group Name</label>
+        <input type="text" name="group_name" class="mp-input"
+               placeholder="e.g. Records Team" required autocomplete="off">
+        <button type="submit" class="mp-btn-create">Create Group</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- RIGHT: Groups list -->
+  <div>
+    <div class="mp-groups-header">
+      <span class="mp-groups-title">Existing Groups</span>
+      <span class="mp-badge">{{ groups|length }}</span>
+    </div>
+
+    {% if groups %}
+    <div class="mp-groups-grid">
+      {% for g in groups %}
+
+      {# Build set of usernames already in this group for the Add Member dropdown #}
+      {% set member_usernames = g.members | map(attribute='username') | list %}
+
+      <div class="mp-group-card">
+
+        <!-- Group header -->
+        <div class="mp-group-head">
+          <span class="mp-group-name">{{ g.group_name }}</span>
+          {% if g.has_shared_dashboard %}
+          <span class="mp-badge-on-shared">👥 Shared Dashboard</span>
+          {% else %}
+          <span class="mp-badge-off">👥 No Shared Dashboard</span>
+          {% endif %}
+          {% if g.has_so_access %}
+          <span class="mp-badge-on-so">⚡ SO Access</span>
+          {% else %}
+          <span class="mp-badge-off">⚡ No SO Access</span>
+          {% endif %}
+          <span class="mp-member-count">{{ g.members|length }} member{{ 's' if g.members|length != 1 else '' }}</span>
+          <span class="mp-group-meta">{{ g.created_date or '' }}</span>
+        </div>
+
+        <!-- Members -->
+        <div class="mp-members">
+          {% if g.members %}
+            {% for m in g.members %}
+            <div class="mp-member-row">
+              <div class="mp-member-avatar">{{ (name_map.get(m.username) or m.username)[0] | upper }}</div>
+              <div class="mp-member-info">
+                <div class="mp-member-name">{{ name_map.get(m.username) or m.username }}</div>
+                <div class="mp-member-uname">{{ m.username }}</div>
+              </div>
+              <form method="POST" action="/manage-pairings/remove-member/{{ m.id }}" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="mp-btn-remove-member"
+                        title="Remove {{ m.username }}"
+                        onclick="return confirm('Remove {{ name_map.get(m.username) or m.username }} from {{ g.group_name }}?')">×</button>
+              </form>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="mp-no-members">No members yet — add someone below.</div>
+          {% endif %}
+        </div>
+
+        <!-- Add member -->
+        <div class="mp-add-member">
+          <form method="POST" action="/manage-pairings/add-member"
+                style="display:flex;gap:8px;align-items:center;flex:1;margin:0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="group_id" value="{{ g.id }}">
+            <select name="username" class="mp-select-member" required>
+              <option value="">— Add member —</option>
+              {% for u in staff_users %}
+              {% if u.username not in member_usernames %}
+              <option value="{{ u.username }}">{{ u.full_name or u.username }}</option>
+              {% endif %}
+              {% endfor %}
+            </select>
+            <button type="submit" class="mp-btn-add-member">Add</button>
+          </form>
+        </div>
+
+        <!-- Footer: toggle shared dashboard + toggle SO access + delete -->
+        <div class="mp-group-footer">
+          <div class="mp-footer-toggles">
+            <form method="POST" action="/manage-pairings/toggle-shared-dashboard/{{ g.id }}" style="margin:0;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="mp-btn-toggle-shared">
+                {{ '👥 Disable Shared Dashboard' if g.has_shared_dashboard else '👥 Enable Shared Dashboard' }}
+              </button>
+            </form>
+            <form method="POST" action="/manage-pairings/toggle-so-access/{{ g.id }}" style="margin:0;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="mp-btn-toggle-so">
+                {{ '⚡ Disable SO Access' if g.has_so_access else '⚡ Enable SO Access' }}
+              </button>
+            </form>
+          </div>
+          <form method="POST" action="/manage-pairings/delete-group/{{ g.id }}" style="margin:0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="mp-btn-delete-group"
+                    onclick="return confirm('Delete group \'{{ g.group_name }}\' and all its members?')">
+              🗑 Delete Group
+            </button>
+          </form>
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="mp-empty">
+      <div class="mp-empty-icon">👥</div>
+      <div class="mp-empty-title">No groups yet</div>
+      <div class="mp-empty-sub">Create a group using the form on the left.</div>
+    </div>
+    {% endif %}
+
+  </div><!-- /right -->
+
+</div><!-- /mp-layout -->
+
+{% endblock %}

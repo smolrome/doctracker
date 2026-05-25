@@ -402,7 +402,6 @@ def api_export_csv():
             d.get('sender_org', ''),
             d.get('referred_to', ''),
             d.get('status', ''),
-            d.get('due_date', ''),
             (d.get('created_at') or '')[:10],
             d.get('notes', '') or d.get('description', ''),
         ])
@@ -453,7 +452,6 @@ def api_create_document():
         "remarks": data.get('remarks', ''),
         "notes": data.get('notes', ''),
         "doc_date": data.get('doc_date', now_str()),
-        "due_date": data.get('due_date', ''),
         "status": "Pending",
         "created_at": now_str(),
         "logged_by": user_id,
@@ -2973,20 +2971,54 @@ def api_client_register():
     password  = data.get('password', '')
     full_name = data.get('full_name', '').strip()
     email     = data.get('email', '').strip()
+    office    = data.get('office', '').strip()
     if not username or not password or not full_name:
         return jsonify(error='username, password, and full_name are required'), 400
+    if not office:
+        return jsonify(error='office is required'), 400
     if len(password) < 8:
         return jsonify(error='Password must be at least 8 characters'), 400
-    from services.auth import get_user_by_username as _get_u, create_user as _create_u
+    from services.auth import get_user as _get_u, create_user as _create_u
     if _get_u(username):
         return jsonify(error='Username already taken'), 409
     success, msg = _create_u(
         username=username, full_name=full_name,
         password=password, role='client',
-        office='', email=email,
+        office=office, email=email,
     )
     if not success:
         return jsonify(error=msg or 'Registration failed'), 400
+    # Notify admin — never block registration if email fails
+    try:
+        from config import MAIL_ENABLED
+        from services.email import send_admin_notification
+        if MAIL_ENABLED:
+            send_admin_notification(
+                subject='New Client Registration — Pending Approval',
+                body=(
+                    f'A new client has registered and is awaiting your approval.\n\n'
+                    f'Name:     {full_name}\n'
+                    f'Username: {username}\n'
+                    f'Email:    {email or "not provided"}\n\n'
+                    f'Login to LAKAD to approve or reject this account:\n'
+                    f'/pending-clients'
+                )
+            )
+    except Exception:
+        pass
+    # Push notification to all admin users
+    try:
+        from services.auth import get_all_users
+        for _admin in get_all_users():
+            if _admin.get('role') == 'admin' and _admin.get('username'):
+                send_push_notification(
+                    username=_admin['username'],
+                    title='New Client Registration',
+                    body=f'{full_name} (@{username}) has registered and is awaiting approval.',
+                    data={'screen': '/pending-clients', 'type': 'pending_client'},
+                )
+    except Exception:
+        pass  # never block registration
     return jsonify(message='Registration submitted. Awaiting admin approval.'), 201
 
 

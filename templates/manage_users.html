@@ -8,12 +8,6 @@
   border: 1px solid #BFDBFE; border-radius: 4px;
   font-size: 11px; font-weight: 600; padding: 2px 7px;
 }
-.btn-resend {
-  padding: 5px 10px; border-radius: 6px; border: 1px solid #F59E0B;
-  background: #FFFBEB; color: #B45309; font-size: 12px; font-weight: 600;
-  cursor: pointer; white-space: nowrap;
-}
-.btn-resend:hover { background: #FEF3C7; border-color: #D97706; }
 </style>
 
 <div class="page-header">
@@ -26,6 +20,7 @@
   <a href="/bulk-create-users" class="btn btn-primary">👥 Bulk Create Accounts</a>
   <a href="/send-invite" class="btn btn-secondary">📧 Send Invite</a>
   <a href="/staff-document-stats" class="btn btn-secondary">📊 Staff Stats</a>
+  <a href="/manage-pairings" class="btn btn-secondary">🤝 Staff Pairings</a>
   <a href="/activity-log" class="btn btn-secondary">📋 Activity Log</a>
   <a href="/trash" class="btn btn-secondary">🗑️ Trash</a>
 </div>
@@ -119,60 +114,82 @@
             {% for doc in user.documents_handled %}<span class="doc-type-tag">{{ doc }}</span>{% endfor %}
           </div>
           {% endif %}
+          <div class="badges-row">
+            {% if user.role == 'client' %}
+            <span class="role-badge role-client">👤 Client</span>
+            {% elif user.role == 'admin' %}
+            <span class="role-badge role-admin">🔐 Admin</span>
+            {% else %}
+            <span class="role-badge role-staff">🏢 Staff</span>
+            {% endif %}
+            {% if user.role in ('staff', 'admin') %}
+              {% if user.role == 'admin' or user.has_so_access %}
+              <span class="role-badge" style="background:#ECFDF5;color:#065F46;border:1px solid #6EE7B7;">📄 SO Access</span>
+              {% else %}
+              <span class="role-badge" style="background:#F1F5F9;color:#94A3B8;border:1px solid #E2E8F0;">📄 No SO</span>
+              {% endif %}
+              {% if user.role == 'admin' or user.can_route_documents %}
+              <span class="role-badge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">📤 Route Access</span>
+              {% else %}
+              <span class="role-badge" style="background:#F1F5F9;color:#94A3B8;border:1px solid #E2E8F0;">📤 No Route</span>
+              {% endif %}
+            {% endif %}
+            {% if is_disabled %}
+            <span class="role-badge badge-disabled">⛔ Disabled</span>
+            {% else %}
+            <span class="role-badge badge-active">● Active</span>
+            {% endif %}
+          </div>
         </div>
       </div>
       <div class="user-actions">
-        {% if user.role == 'client' %}
-        <span class="role-badge role-client">👤 Client</span>
-        {% elif user.role == 'admin' %}
-        <span class="role-badge role-admin">🔐 Admin</span>
-        {% else %}
-        <span class="role-badge role-staff">🏢 Staff</span>
-        {% endif %}
-
-        {% if is_disabled %}
-        <span class="role-badge badge-disabled">⛔ Disabled</span>
-        <form method="post" action="/enable-user/{{ user.username }}" style="margin:0;">
-          <button type="submit" class="btn-ena">✅ Enable</button>
-        </form>
-        {% else %}
-        <span class="role-badge badge-active">● Active</span>
-        {% if user.username != admin_username %}
-        <form method="post" action="/disable-user/{{ user.username }}" style="margin:0;"
-              onsubmit="return confirm('Disable {{ user.username }}? They will be locked out immediately.')">
-          <button type="submit" class="btn-dis">🚫 Disable</button>
-        </form>
-        {% endif %}
-        {% endif %}
-
-        {% if user.username != admin_username %}
-        <button type="button" class="btn-edit"
-                data-username="{{ user.username|e }}"
-                data-fullname="{{ (user.full_name or '')|e }}"
-                data-email="{{ (user.email or '')|e }}"
-                data-role="{{ user.role|e }}"
-                data-office="{{ (user.office or '')|e }}"
-                data-documents="{{ (user.documents_handled or [])|join(', ')|e }}"
-                onclick="openEditModal(this)">✏️ Edit</button>
-        {% endif %}
-
-        {% if user.username != admin_username %}
-        <button type="button" class="btn-pwd" onclick="openPwdModal('{{ user.username }}')">🔑 Password</button>
-        {% endif %}
-
-        {% if user.username != admin_username and user.email %}
-        <form method="post" action="/resend-credentials/{{ user.username }}" style="margin:0;"
-              onsubmit="return confirm('Reset password and resend login credentials to {{ user.email }}?')">
-          <button type="submit" class="btn-resend">📧 Resend Credentials</button>
-        </form>
-        {% endif %}
-
-        {% if user.username != admin_username %}
-        <form method="post" action="/delete-user/{{ user.username }}" style="margin:0;"
-              onsubmit="return confirm('Permanently delete {{ user.username }}? This cannot be undone.')">
-          <button type="submit" class="btn-del-sm">🗑 Delete</button>
-        </form>
-        {% endif %}
+        <button class="user-gear-btn" onclick="toggleGearMenu(this)" aria-label="User actions">⚙️</button>
+        <div class="gear-menu">
+          {% if is_disabled %}
+          <form method="post" action="/enable-user/{{ user.username }}" style="margin:0;">
+            <button type="submit" class="gear-item">✅ Enable Account</button>
+          </form>
+          {% else %}
+            {% if user.username != admin_username %}
+            <form method="post" action="/disable-user/{{ user.username }}" style="margin:0;"
+                  onsubmit="return confirm('Disable {{ user.username }}? They will be locked out immediately.')">
+              <button type="submit" class="gear-item">🚫 Disable Account</button>
+            </form>
+            {% endif %}
+          {% endif %}
+          {% if user.username != admin_username and user.role in ('staff',) %}
+          <form method="post" action="/toggle-route-access/{{ user.username }}" style="margin:0;"
+                onsubmit="return confirm('{{ 'Revoke' if user.can_route_documents else 'Grant' }} Route access for {{ user.username }}?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="gear-item">{{ '🚫 Revoke Route Access' if user.can_route_documents else '✅ Grant Route Access' }}</button>
+          </form>
+          {% endif %}
+          <div class="gear-divider"></div>
+          {% if user.username != admin_username %}
+          <button type="button" class="gear-item"
+                  data-username="{{ user.username|e }}"
+                  data-fullname="{{ (user.full_name or '')|e }}"
+                  data-email="{{ (user.email or '')|e }}"
+                  data-role="{{ user.role|e }}"
+                  data-office="{{ (user.office or '')|e }}"
+                  data-documents="{{ (user.documents_handled or [])|join(', ')|e }}"
+                  onclick="openEditModal(this)">✏️ Edit User</button>
+          <button type="button" class="gear-item" onclick="openPwdModal('{{ user.username }}')">🔑 Change Password</button>
+          {% endif %}
+          {% if user.username != admin_username and user.email %}
+          <form method="post" action="/resend-credentials/{{ user.username }}" style="margin:0;"
+                onsubmit="return confirm('Reset password and resend login credentials to {{ user.email }}?')">
+            <button type="submit" class="gear-item">📧 Resend Credentials</button>
+          </form>
+          {% endif %}
+          <div class="gear-divider"></div>
+          {% if user.username != admin_username %}
+          <form method="post" action="/delete-user/{{ user.username }}" style="margin:0;"
+                onsubmit="return confirm('Permanently delete {{ user.username }}? This cannot be undone.')">
+            <button type="submit" class="gear-item danger">🗑 Delete Account</button>
+          </form>
+          {% endif %}
+        </div>
       </div>
     </div>
     {% endfor %}
@@ -276,6 +293,25 @@
   </div>
 </div>
 
+<script>
+function toggleGearMenu(btn) {
+  const menu = btn.nextElementSibling;
+  const isOpen = menu.classList.contains('open');
+  document.querySelectorAll('.gear-menu.open').forEach(m => m.classList.remove('open', 'gear-menu-up'));
+  if (!isOpen) {
+    menu.classList.add('open');
+    const rect = menu.getBoundingClientRect();
+    if (rect.bottom > window.innerHeight) {
+      menu.classList.add('gear-menu-up');
+    }
+  }
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.user-actions')) {
+    document.querySelectorAll('.gear-menu.open').forEach(m => m.classList.remove('open', 'gear-menu-up'));
+  }
+});
+</script>
 <script src="{{ url_for('static', filename='js/manage_users.js') }}"></script>
 
 {% endblock %}
