@@ -236,41 +236,53 @@ var serverSessionData = {
     </div>
 
     <a class="dash-stat-card si-default {% if filter_status=='All' %}dsc-active{% endif %}" href="#" onclick="event.preventDefault();statFilter('All')" aria-pressed="{{ 'true' if filter_status=='All' else 'false' }}">
-      <span class="dsc-num">{{ stats.total }}</span><span class="dsc-label">All</span>
+      <div class="dsc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4zM4 9h16M9 4v16"/></svg></div>
+      <div class="dsc-meta"><span class="dsc-num">{{ stats.total }}</span><span class="dsc-label">All</span></div>
     </a>
     <a class="dash-stat-card si-pending {% if filter_status=='Pending' %}dsc-active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Pending')" aria-pressed="{{ 'true' if filter_status=='Pending' else 'false' }}">
-      <span class="dsc-num">{{ stats.pending }}</span><span class="dsc-label">Pending</span>
+      <div class="dsc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+      <div class="dsc-meta"><span class="dsc-num">{{ stats.pending }}</span><span class="dsc-label">Pending</span></div>
     </a>
     <a class="dash-stat-card si-logged {% if filter_status=='Logged' %}dsc-active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Logged')" aria-pressed="{{ 'true' if filter_status=='Logged' else 'false' }}">
-      <span class="dsc-num">{{ stats.logged or 0 }}</span><span class="dsc-label">Logged</span>
+      <div class="dsc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></div>
+      <div class="dsc-meta"><span class="dsc-num">{{ stats.logged or 0 }}</span><span class="dsc-label">Logged</span></div>
     </a>
     <a class="dash-stat-card si-received {% if filter_status=='Received' %}dsc-active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Received')" aria-pressed="{{ 'true' if filter_status=='Received' else 'false' }}">
-      <span class="dsc-num">{{ stats.received }}</span><span class="dsc-label">Received</span>
+      <div class="dsc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7l9 6 9-6M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7M3 7l9-4 9 4"/></svg></div>
+      <div class="dsc-meta"><span class="dsc-num">{{ stats.received }}</span><span class="dsc-label">Received</span></div>
     </a>
     <a class="dash-stat-card si-review {% if filter_status=='In Review' %}dsc-active{% endif %}" href="#" onclick="event.preventDefault();statFilter('In Review')" aria-pressed="{{ 'true' if filter_status=='In Review' else 'false' }}">
-      <span class="dsc-num">{{ stats.in_review }}</span><span class="dsc-label">In Review</span>
+      <div class="dsc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4M11 8v3l2 1"/></svg></div>
+      <div class="dsc-meta"><span class="dsc-num">{{ stats.in_review }}</span><span class="dsc-label">In Review</span></div>
     </a>
     <a class="dash-stat-card si-routed {% if filter_status=='Routed' %}dsc-active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Routed')" aria-pressed="{{ 'true' if filter_status=='Routed' else 'false' }}">
-      <span class="dsc-num">{{ stats.routed }}</span><span class="dsc-label">Routed</span>
+      <div class="dsc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M6 8v6a4 4 0 0 0 4 4h6"/></svg></div>
+      <div class="dsc-meta"><span class="dsc-num">{{ stats.routed }}</span><span class="dsc-label">Routed</span></div>
     </a>
     <a class="dash-stat-card si-transferred {% if filter_status=='Transferred' %}dsc-active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Transferred')" aria-pressed="{{ 'true' if filter_status=='Transferred' else 'false' }}">
-      <span class="dsc-num">{{ stats.transferred }}</span><span class="dsc-label">Transferred</span>
+      <div class="dsc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 3l5 5-5 5M21 8H9M8 21l-5-5 5-5M3 16h12"/></svg></div>
+      <div class="dsc-meta"><span class="dsc-num">{{ stats.transferred }}</span><span class="dsc-label">Transferred</span></div>
     </a>
     <a class="dash-stat-card si-released {% if filter_status=='Released' %}dsc-active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Released')" aria-pressed="{{ 'true' if filter_status=='Released' else 'false' }}">
-      <span class="dsc-num">{{ stats.released }}</span><span class="dsc-label">Released</span>
+      <div class="dsc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></div>
+      <div class="dsc-meta"><span class="dsc-num">{{ stats.released }}</span><span class="dsc-label">Released</span></div>
     </a>
     <a class="dash-stat-card si-hold {% if filter_status=='On Hold' %}dsc-active{% endif %}" href="#" onclick="event.preventDefault();statFilter('On Hold')" aria-pressed="{{ 'true' if filter_status=='On Hold' else 'false' }}">
-      <span class="dsc-num">{{ stats.on_hold }}</span><span class="dsc-label">On Hold</span>
+      <div class="dsc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></div>
+      <div class="dsc-meta"><span class="dsc-num">{{ stats.on_hold }}</span><span class="dsc-label">On Hold</span></div>
     </a>
     <a class="dash-stat-card si-returned {% if filter_status=='Returned' %}dsc-active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Returned')" aria-pressed="{{ 'true' if filter_status=='Returned' else 'false' }}">
-      <span class="dsc-num">{{ stats.returned or 0 }}</span><span class="dsc-label">Returned</span>
+      <div class="dsc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 5 5v0a5 5 0 0 1-5 5H9"/></svg></div>
+      <div class="dsc-meta"><span class="dsc-num">{{ stats.returned or 0 }}</span><span class="dsc-label">Returned</span></div>
     </a>
     <a class="dash-stat-card si-archived {% if filter_status=='Archived' %}dsc-active{% endif %}" href="#" onclick="event.preventDefault();statFilter('Archived')" aria-pressed="{{ 'true' if filter_status=='Archived' else 'false' }}">
-      <span class="dsc-num">{{ stats.archived }}</span><span class="dsc-label">Archived</span>
+      <div class="dsc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg></div>
+      <div class="dsc-meta"><span class="dsc-num">{{ stats.archived }}</span><span class="dsc-label">Archived</span></div>
     </a>
     {% if stats.unknown > 0 %}
     <a class="dash-stat-card si-default" href="#" onclick="event.preventDefault();statFilter('Unknown')" aria-pressed="false">
-      <span class="dsc-num">{{ stats.unknown }}</span><span class="dsc-label">Unknown</span>
+      <div class="dsc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></svg></div>
+      <div class="dsc-meta"><span class="dsc-num">{{ stats.unknown }}</span><span class="dsc-label">Unknown</span></div>
     </a>
     {% endif %}
   </div>
