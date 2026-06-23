@@ -14,7 +14,6 @@ var sortedOffices       = [];
 var primaryRecipients   = {};   // {office_name: recipient_username}
 var transferSingleDocId = null;
 var currentTransferIds  = null;
-var currentRoutingIds   = null;
 
 var SELECTION_STORAGE_KEY = 'doctracker_selected_docs';
 var CART_STORAGE_KEY      = 'doctracker_cart_docs';
@@ -38,7 +37,6 @@ function onReady() {
   setupSortableHeaders();
   renderRelativeDates();
   recalcStickyOffsets();
-  initSlipDate();
   checkPendingDocuments();
   setupPaginationWithSelection();
   initCart();
@@ -765,17 +763,6 @@ function clearCartByIds(ids) {
   renderCartModal();
 }
 
-function openRoutingModalFromCart() {
-  var ids = getCartDocIds();
-  if (ids.length === 0) { showToast('No documents in cart to route', 'warning'); return; }
-  ids.forEach(function(id) {
-    var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
-    if (cb) { cb.checked = true; cb.closest('tr').classList.add('row-selected'); }
-  });
-  closeCartModal();
-  openRoutingModal(ids);
-}
-
 function openTransferModalFromCart() {
   var ids = getCartDocIds();
   if (ids.length === 0) { showToast('No documents in cart to transfer', 'warning'); return; }
@@ -846,53 +833,8 @@ document.addEventListener('keydown', function(e) {
 
 
 // ─────────────────────────────────────────────────────────────
-//  ROUTING MODAL
+//  SELECTION GROUPING (used by updateSelectedPreview)
 // ─────────────────────────────────────────────────────────────
-function openRoutingModal(ids) {
-  currentRoutingIds = Array.isArray(ids) ? ids : null;
-  openModal('routing-modal');
-  initSlipDate();
-
-  var groupingInfo = analyzeReferredToGrouping();
-  if (currentRoutingIds) groupingInfo.totalDocs = currentRoutingIds.length;
-  updateSelectedPreview();
-
-  var hintEl = document.getElementById('routing-hint');
-  if (hintEl) {
-    if (groupingInfo.groupCount > 1) {
-      hintEl.innerHTML = '&#128203; Documents will be grouped by "Referred To" &#8212; ' + groupingInfo.groupCount + ' routing slips will be created.';
-    } else if (groupingInfo.totalDocs > 0 && groupingInfo.referredTo) {
-      hintEl.innerHTML = '&#10003; All selected documents have the same "Referred To" &#8212; 1 routing slip will be created.';
-    } else {
-      hintEl.innerHTML = '&#128161; Enter a destination office above, or select documents with "Referred To" values.';
-    }
-  }
-
-  var destInput = document.getElementById('route-dest');
-  var prev      = document.getElementById('modal-dest-preview');
-  if (destInput) {
-    if (groupingInfo.allSame && groupingInfo.referredTo) {
-      destInput.value = groupingInfo.referredTo;
-      if (prev) prev.textContent = groupingInfo.referredTo;
-    } else {
-      destInput.value = '';
-      if (prev) prev.textContent = '(enter below)';
-    }
-  }
-
-  var titleEl = document.getElementById('routing-modal-title');
-  if (titleEl) {
-    if (groupingInfo.groupCount > 1) {
-      titleEl.innerHTML = '&#128228; Create Routing Slip <span class="rp-count" id="sel-count">' + groupingInfo.totalDocs + ' selected (' + groupingInfo.groupCount + ' groups)</span>';
-    } else {
-      titleEl.innerHTML = '&#128228; Create Routing Slip <span class="rp-count" id="sel-count">' + groupingInfo.totalDocs + ' selected</span>';
-    }
-  }
-
-  var btn = document.querySelector('#routing-modal .btn-route');
-  if (btn) { btn.disabled = false; btn.textContent = (groupingInfo.groupCount > 1 ? 'Create Routing Slips' : 'Create Routing Slip'); }
-}
-
 function analyzeReferredToGrouping() {
   var checked   = document.querySelectorAll('.doc-checkbox:checked');
   var totalDocs = checked.length;
@@ -923,125 +865,6 @@ function analyzeReferredToGrouping() {
   };
 }
 
-function closeRoutingModal() { closeModal('routing-modal'); }
-
-function initSlipDate() {
-  var sd = document.getElementById('slip-date');
-  if (sd && !sd.value) sd.value = new Date().toISOString().slice(0, 10);
-}
-
-function toggleModalTimeRange(on) {
-  var tf  = document.getElementById('time-from-field');
-  var tt  = document.getElementById('time-to-field');
-  var btn = document.getElementById('btn-auto-select');
-  if (tf)  tf.style.display  = on ? '' : 'none';
-  if (tt)  tt.style.display  = on ? '' : 'none';
-  if (btn) btn.style.display = on ? '' : 'none';
-  if (!on) {
-    var tfv = document.getElementById('time-from'); if (tfv) tfv.value = '';
-    var ttv = document.getElementById('time-to');   if (ttv) ttv.value = '';
-  }
-}
-
-function autoSelectByTime() {
-  var useTime = document.getElementById('use-time-range').checked;
-  var tf = document.getElementById('time-from').value;
-  var tt = document.getElementById('time-to').value;
-  var sd = document.getElementById('slip-date').value;
-  if (useTime && (!tf || !tt)) { showToast('Please set both From and To times.', 'warning'); return; }
-  var count = 0;
-  document.querySelectorAll('.doc-checkbox').forEach(function(cb) {
-    var row = cb.closest('tr');
-    var ts  = row.dataset.createdAt || '';
-    var inRange = false;
-    if (ts) {
-      var dateOk = !sd || ts.slice(0, 10) === sd;
-      var timeOk = ts.slice(11, 16) >= tf && ts.slice(11, 16) <= tt;
-      inRange = dateOk && timeOk;
-    }
-    cb.checked = inRange;
-    row.classList.toggle('row-selected', inRange);
-    if (inRange) count++;
-  });
-  if (count === 0) {
-    showToast('No documents found in that range.', 'warning');
-  } else {
-    showToast(count + ' document' + (count > 1 ? 's' : '') + ' selected by time range.', 'success');
-    var btn = document.getElementById('btn-auto-select');
-    if (btn) { var orig = btn.textContent; btn.textContent = '&#10003; ' + count + ' selected'; setTimeout(function() { btn.textContent = orig; }, 2000); }
-  }
-  updateSelectedPreview();
-}
-
-function submitRouting() {
-  var groupingInfo = analyzeReferredToGrouping();
-  var groups       = groupingInfo.groups;
-  var groupKeys    = Object.keys(groups);
-  var useGrouped   = groupKeys.length > 1;
-  var _destInput  = document.getElementById('route-dest-input');
-  var _destHidden = document.getElementById('route-dest');
-  if (_destInput && _destHidden) _destHidden.value = _destInput.value.trim();
-  var manualDest  = _destHidden ? _destHidden.value.trim() : '';
-
-  if (manualDest && useGrouped) {
-    if (!confirm('Route ALL documents to "' + manualDest + '"?\n\nOK = all to manual destination.\nCancel = separate slips per "Referred To".')) return;
-    useGrouped = false;
-  }
-
-  if (!manualDest && useGrouped) {
-    var hasEmpty = groupKeys.some(function(k) { return k === '(No Referred To)'; });
-    if (hasEmpty) {
-      showToast('Some documents have no "Referred To". Enter a destination manually.', 'warning');
-      var el = document.getElementById('route-dest-input');
-      el.focus(); el.style.borderColor = '#FCA5A5'; el.style.background = 'rgba(220,38,38,.15)';
-      setTimeout(function() { el.style.borderColor = ''; el.style.background = ''; }, 2500);
-      return;
-    }
-  }
-
-  if (!useGrouped) {
-    var dest = manualDest || groupingInfo.referredTo || '';
-    if (!dest) {
-      var el = document.getElementById('route-dest-input');
-      el.focus(); el.style.borderColor = '#FCA5A5'; el.style.background = 'rgba(220,38,38,.15)';
-      setTimeout(function() { el.style.borderColor = ''; el.style.background = ''; }, 2500);
-      showToast('Please enter a destination office.', 'warning'); return;
-    }
-    var ids = currentRoutingIds || restoreSelectionsFromLocalStorage();
-    if (!ids.length) { showToast('No documents selected.', 'warning'); return; }
-    var btn = document.querySelector('#routing-modal .btn-route');
-    if (btn) { if (btn.disabled) return; btn.disabled = true; btn.textContent = 'Creating slip...'; }
-    document.getElementById('routing-doc-ids').value    = ids.join(',');
-    document.getElementById('routing-dest-field').value = dest;
-    document.getElementById('routing-notes').value      = document.getElementById('route-notes').value;
-    document.getElementById('routing-slip-date').value  = document.getElementById('slip-date').value;
-    document.getElementById('routing-time-from').value  = document.getElementById('time-from').value;
-    document.getElementById('routing-time-to').value    = document.getElementById('time-to').value;
-    document.getElementById('routing-recipient').value  = (document.getElementById('route-recipient').value || '').trim();
-    document.getElementById('routing-form').submit();
-    return;
-  }
-
-  var btn = document.querySelector('#routing-modal .btn-route');
-  if (btn) { if (btn.disabled) return; btn.disabled = true; btn.textContent = 'Creating ' + groupKeys.length + ' slips...'; }
-
-  var form = document.getElementById('routing-form');
-  form.querySelectorAll('.grouped-data').forEach(function(el) { el.remove(); });
-
-  function addHidden(name, val) {
-    var inp = document.createElement('input');
-    inp.type = 'hidden'; inp.name = name; inp.className = 'grouped-data'; inp.value = val;
-    form.appendChild(inp);
-  }
-  addHidden('grouped_routing',   JSON.stringify(groups));
-  addHidden('grouped_notes',     document.getElementById('route-notes').value || '');
-  addHidden('grouped_slip_date', document.getElementById('slip-date').value);
-  addHidden('grouped_time_from', document.getElementById('time-from').value);
-  addHidden('grouped_time_to',   document.getElementById('time-to').value);
-  addHidden('recipient',         (document.getElementById('route-recipient').value || '').trim());
-  form.action = '/routing-slip/create-grouped';
-  form.submit();
-}
 
 
 // ─────────────────────────────────────────────────────────────

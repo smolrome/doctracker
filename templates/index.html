@@ -302,9 +302,6 @@ var serverSessionData = {
           </div>
           <div class="cart-modal-footer">
             <div class="cart-footer-row cart-footer-row-primary">
-              {% if can_route_documents %}
-              <button class="cart-modal-btn cart-route-btn" onclick="openRoutingModalFromCart()"><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg> Route</button>
-              {% endif %}
               <button class="cart-modal-btn cart-transfer-btn" onclick="openTransferModalFromCart()"><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg> Transfer</button>
               <button class="cart-modal-btn cart-print-btn" onclick="printLoggingSlipFromCart()"><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg> Print Slip</button>
             </div>
@@ -661,81 +658,6 @@ var serverSessionData = {
    MODALS
 ══════════════════════════════════════════════════════════ #}
 
-{# ROUTING MODAL #}
-<div id="routing-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="routing-modal-title">
-  <div class="route-panel">
-    <div class="rp-header">
-      <div class="rp-title" id="routing-modal-title">
-        📤 Create Routing Slip
-        <span class="rp-count" id="sel-count">0 selected</span>
-      </div>
-      <button class="rp-close" onclick="closeRoutingModal()">✕ Close</button>
-    </div>
-    <div id="selected-preview" class="rp-selected-preview">
-      <div class="rp-selected-label">Selected Documents</div>
-      <div id="selected-list" class="rp-selected-list"></div>
-    </div>
-    <div class="rp-from-to">
-      <span class="rp-from-label">FROM</span>
-      <span class="rp-from-name">{{ current_office or current_full_name or current_user or 'Your Office' }}</span>
-      <span class="rp-arrow">→</span>
-      <span class="rp-to-label">TO</span>
-      <span class="rp-to-name" id="modal-dest-preview">(enter below)</span>
-    </div>
-    <div class="rp-fields">
-      <div class="rp-field">
-        <label for="route-dest-input">📍 Destination Office *</label>
-        <div style="position:relative;" id="office-dd-wrap">
-          <input type="text" class="rp-input" id="route-dest-input"
-            placeholder="Type to search offices…"
-            autocomplete="off"
-            oninput="filterOfficeDd(this.value)"
-            style="width:100%;box-sizing:border-box;"/>
-          <div id="office-dd-list"
-            style="display:none;position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;
-                   background:#fff;border:1.5px solid #CBD5E1;border-radius:10px;z-index:999;margin-top:4px;
-                   box-shadow:0 4px 16px rgba(0,0,0,.1);">
-          </div>
-        </div>
-        <input type="hidden" id="route-dest"/>
-      </div>
-      <div class="rp-field">
-        <label for="route-recipient">👤 Received By <span class="rp-optional">(optional)</span></label>
-        <input type="text" class="rp-input" id="route-recipient"
-          placeholder="Auto-filled from office assignment"
-          autocomplete="off"/>
-      </div>
-      <div class="rp-field">
-        <label for="slip-date">📅 Slip Date</label>
-        <input type="date" class="rp-input" id="slip-date"/>
-      </div>
-      <div class="rp-field rp-field-span2">
-        <label class="rp-checkbox-label" for="use-time-range">
-          <input type="checkbox" id="use-time-range" onchange="toggleModalTimeRange(this.checked)"/>
-          🕐 Include Time Range <span class="rp-optional">(optional)</span>
-        </label>
-      </div>
-      <div class="rp-field" id="time-from-field" style="display:none">
-        <label for="time-from">From</label>
-        <input type="time" class="rp-input" id="time-from"/>
-      </div>
-      <div class="rp-field" id="time-to-field" style="display:none">
-        <label for="time-to">To</label>
-        <input type="time" class="rp-input" id="time-to"/>
-      </div>
-      <div class="rp-field rp-field-full">
-        <label for="route-notes">📝 Notes (optional)</label>
-        <textarea class="rp-notes" id="route-notes" rows="2" placeholder="e.g. For immediate action…"></textarea>
-      </div>
-    </div>
-    <div class="rp-bottom">
-      <button class="btn-time-filter" id="btn-auto-select" onclick="autoSelectByTime()" style="display:none;">⏱️ Auto-select by Time</button>
-      <p class="rp-hint" id="routing-hint">💡 Documents will be grouped by "Referred To" to create multiple routing slips.</p>
-      <button class="btn-route" onclick="submitRouting()">🚀 Create Routing Slip</button>
-    </div>
-  </div>
-</div>
-
 {# TRANSFER MODAL #}
 <div id="transfer-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="transfer-modal-title">
   <div class="route-panel route-panel-sm">
@@ -807,18 +729,6 @@ var serverSessionData = {
     </div>
   </div>
 </div>
-
-{# Hidden routing form #}
-<form method="post" action="/routing-slip/create" id="routing-form" style="display:none;">
-  <input type="hidden" name="doc_ids"     id="routing-doc-ids"/>
-  <input type="hidden" name="destination" id="routing-dest-field"/>
-  <input type="hidden" name="notes"       id="routing-notes"/>
-  <input type="hidden" name="slip_date"   id="routing-slip-date"/>
-  <input type="hidden" name="time_from"   id="routing-time-from"/>
-  <input type="hidden" name="time_to"     id="routing-time-to"/>
-  <input type="hidden" name="recipient"   id="routing-recipient"/>
-  <input type="hidden" name="csrf_token"  value="{{ csrf_token }}"/>
-</form>
 
 {# ── Quick Note Modal ── #}
 <div id="quick-note-modal" class="dash-modal-overlay" onclick="if(event.target===this)closeQuickNote()">

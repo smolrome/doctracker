@@ -7,8 +7,6 @@ Covers:
   - /office-qr-page POST with office_name creates QR data
   - /welcome is publicly accessible (no login needed)
   - /office-staff requires @admin_required
-  - /routing-slip/create requires @login_required
-  - /routing-slip/create POST creates a slip and redirects
   - /routing-slip/<slip_id> GET loads an existing slip
   - /routing-slip/<slip_id> GET 404s/redirects for unknown slip
   - /routed-documents requires @login_required
@@ -102,70 +100,23 @@ class TestWelcomePage:
         assert rv.status_code == 200
 
 
-# ── /routing-slip/create ──────────────────────────────────────────────────────
-
-class TestCreateRoutingSlip:
-    def test_unauthenticated_redirected(self, client):
-        rv = client.post("/routing-slip/create", data={}, follow_redirects=False)
-        assert rv.status_code in (302, 403)
-
-    def test_empty_post_shows_error(self, staff_client):
-        """POST without doc_ids or destination flashes an error and redirects."""
-        csrf = _csrf(staff_client)
-        rv = staff_client.post(
-            "/routing-slip/create",
-            data={"doc_ids": "", "destination": "", "csrf_token": csrf},
-            follow_redirects=True,
-        )
-        assert rv.status_code == 200
-        body = rv.data.decode()
-        assert "select" in body.lower() or "required" in body.lower() or "please" in body.lower()
-
-    def test_valid_slip_creation_redirects(self, staff_client, app):
-        """POST with valid doc_ids and destination creates a slip and redirects."""
-        with app.app_context():
-            doc = _make_doc("Slip Test Doc")
-        csrf = _csrf(staff_client)
-        rv = staff_client.post(
-            "/routing-slip/create",
-            data={
-                "doc_ids":     doc["id"],
-                "destination": "Division Office",
-                "notes":       "Test routing slip",
-                "csrf_token":  csrf,
-            },
-            follow_redirects=False,
-        )
-        assert rv.status_code == 302
-        # Should redirect to the new slip's view page
-        location = rv.headers.get("Location", "")
-        assert "routing-slip" in location or "cart_cleared" in location
-
-
 # ── /routing-slip/<slip_id> ────────────────────────────────────────────────────
 
 class TestViewRoutingSlip:
     def _create_slip(self, app, staff_client):
-        """Helper: create a real slip via POST and return its slip_id."""
+        """Helper: create a real slip directly via build_transfer_slip and return
+        its slip_id. The routing /routing-slip/create endpoint was removed when the
+        routing feature was folded into transfer, but view_routing_slip is shared
+        infrastructure that transfer still depends on — so we build the fixture the
+        same way transfer does."""
+        from services.misc import build_transfer_slip
         with app.app_context():
             doc = _make_doc("Slip View Doc")
-        csrf = _csrf(staff_client)
-        rv = staff_client.post(
-            "/routing-slip/create",
-            data={
-                "doc_ids":     doc["id"],
-                "destination": "Test Destination",
-                "csrf_token":  csrf,
-            },
-            follow_redirects=False,
-        )
-        # Extract slip_id from redirect location
-        location = rv.headers.get("Location", "")
-        # Location: /routing-slip/<slip_id>?cart_cleared=1
-        parts = location.split("/routing-slip/")
-        if len(parts) > 1:
-            return parts[1].split("?")[0]
-        return None
+            slip_id = build_transfer_slip(
+                [doc["id"]], "Test Destination", "Origin Office",
+                "Test Officer", "Recipient Name",
+            )
+        return slip_id
 
     def test_unauthenticated_redirected(self, client):
         rv = client.get("/routing-slip/ANYSLIID", follow_redirects=False)
