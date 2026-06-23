@@ -1429,25 +1429,16 @@ def transfer_batch():
     # one routing slip for the whole batch (all docs share new_staff_office),
     # then go to the printable slip page. INTERNAL transfers are unchanged.
     is_external = new_staff_office.strip().lower() != current_office.strip().lower()
-    # --- TEMP DEBUG (remove after diagnosing batch slip redirect) ---
-    try:
-        from flask import current_app as _capp
-        _msg = ("[TRANSFER-BATCH DEBUG] "
-                f"new_staff_office={new_staff_office!r} current_office={current_office!r} "
-                f"is_external={is_external!r} transferred_count={transferred_count!r} "
-                f"transfer_type={transfer_type!r} new_office={new_office!r} new_staff={new_staff!r}")
-        _capp.logger.info(_msg)
-        print(_msg, flush=True)
-    except Exception:
-        pass
-    # --- END TEMP DEBUG ---
     if is_external and transferred_count:
         from services.misc import build_transfer_slip
         slip_id = build_transfer_slip(
             id_list, new_staff_office, current_office,
             current_full_name, new_staff_full_name or new_staff_office,
         )
-        return redirect(url_for("offices.view_routing_slip", slip_id=slip_id))
+        # Carry the same cart-clear signal the dashboard redirect uses so the
+        # slip page clears the localStorage cart (matches offices.py slip
+        # redirects). routing_slip.html honors ?cart_cleared=1.
+        return redirect(url_for("offices.view_routing_slip", slip_id=slip_id) + "?cart_cleared=1")
 
     return redirect(url_for("dashboard.index") + "?cart_cleared=1")
 
