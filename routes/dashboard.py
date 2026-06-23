@@ -55,6 +55,25 @@ def _get_staff_by_office(current_username: str = ""):
     return offices
 
 
+def _offices_with_staff(all_users=None) -> set:
+    """
+    Return the set of office names (lowercased, stripped) that have at least one
+    non-client user assigned. Authoritative source — derived from user records,
+    not the GET-only offices_dict — for deciding whether an office-level transfer
+    is permitted. Office-level transfers are only allowed for staffless offices.
+    """
+    if all_users is None:
+        all_users = get_all_users()
+    staffed = set()
+    for u in all_users:
+        if u.get("role") == "client":
+            continue
+        office = (u.get("office") or "").strip().lower()
+        if office:
+            staffed.add(office)
+    return staffed
+
+
 def _get_user_office(username: str) -> str:
     """Get the office of a specific user from the database."""
     if not username:
@@ -68,14 +87,27 @@ def _get_user_office(username: str) -> str:
 
 def _build_offices_dict_and_sorted(current_username: str, current_office: str):
     """
-    Build offices_dict (staff grouped by office) and sorted_offices
-    (office names sorted: current_office first, No Office last).
+    Build offices_dict (staff grouped by office) and sorted_offices.
+
+    offices_dict groups staff by office (drives the staff sub-dropdown).
+    sorted_offices is the full list of registered offices from saved_offices
+    (so offices with no assigned staff still appear), excluding "No Office"
+    and the user's own current_office. Sorted alphabetically.
     """
     offices_dict = _get_staff_by_office(current_username)
-    sorted_offices = sorted(
-        offices_dict.keys(),
-        key=lambda x: (x == "No Office", x != current_office, x.lower())
-    )
+
+    # Source the office list from the saved_offices table, not from the set of
+    # offices that happen to have staff assigned. This ensures all registered
+    # offices are available as External transfer destinations.
+    office_names = {
+        (o.get("office_name") or "").strip()
+        for o in load_saved_offices()
+        if (o.get("office_name") or "").strip()
+    }
+    office_names.discard("No Office")
+    office_names.discard(current_office)
+
+    sorted_offices = sorted(office_names, key=lambda x: x.lower())
     return offices_dict, sorted_offices
 
 
@@ -1000,32 +1032,61 @@ def transfer_doc(doc_id):
     if request.method == "POST":
         transfer_type = request.form.get("transfer_type", "").strip()
         new_staff     = request.form.get("new_staff", "").strip()
+        new_office    = request.form.get("new_office", "").strip()
 
-        if not new_staff:
-            if is_ajax: return jsonify({"ok": False, "error": "Please select a staff member"}), 400
-            flash("Please select a staff member.", "error")
+        # A specific staff member is required, EXCEPT when transferring to an
+        # office that has no registered staff — then an office-level transfer
+        # (no specific recipient) is allowed and the doc lands in that office's
+        # general pending queue.
+        if not new_staff and not new_office:
+            if is_ajax: return jsonify({"ok": False, "error": "Please select a staff member or office"}), 400
+            flash("Please select a staff member or office.", "error")
             return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
 
-        if new_staff == current_user:
-            if is_ajax: return jsonify({"ok": False, "error": "You cannot route to yourself"}), 400
-            flash("You cannot route to yourself.", "error")
-            return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
+        all_users = get_all_users()
 
-        all_users   = get_all_users()
-        valid_staff = [u["username"] for u in all_users if u.get("role") != "client"]
+        if new_staff:
+            # ── Staff-level transfer (existing behavior) ──
+            if new_staff == current_user:
+                if is_ajax: return jsonify({"ok": False, "error": "You cannot route to yourself"}), 400
+                flash("You cannot route to yourself.", "error")
+                return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
 
-        if new_staff not in valid_staff:
-            if is_ajax: return jsonify({"ok": False, "error": "Invalid staff member selected"}), 400
-            flash("Invalid staff member selected.", "error")
-            return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
+            valid_staff = [u["username"] for u in all_users if u.get("role") != "client"]
+            if new_staff not in valid_staff:
+                if is_ajax: return jsonify({"ok": False, "error": "Invalid staff member selected"}), 400
+                flash("Invalid staff member selected.", "error")
+                return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
 
-        new_staff_office    = ""
-        new_staff_full_name = ""
-        for u in all_users:
-            if u.get("username") == new_staff:
-                new_staff_office    = u.get("office", "")
-                new_staff_full_name = u.get("full_name", "") or new_staff
-                break
+            new_staff_office    = ""
+            new_staff_full_name = ""
+            for u in all_users:
+                if u.get("username") == new_staff:
+                    new_staff_office    = u.get("office", "")
+                    new_staff_full_name = u.get("full_name", "") or new_staff
+                    break
+        else:
+            # ── Office-level transfer (office has no registered staff) ──
+            valid_offices = {(o.get("office_name") or "").strip().lower()
+                             for o in load_saved_offices()}
+            if new_office.strip().lower() not in valid_offices:
+                if is_ajax: return jsonify({"ok": False, "error": "Invalid office selected"}), 400
+                flash("Invalid office selected.", "error")
+                return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
+
+            # Office-level transfers are only for offices with no registered
+            # staff. A staffed office must route to a specific person.
+            if new_office.strip().lower() in _offices_with_staff(all_users):
+                if is_ajax: return jsonify({"ok": False, "error": "Please select a staff member for this office"}), 400
+                flash("Please select a staff member for this office.", "error")
+                return redirect(url_for("dashboard.transfer_doc", doc_id=doc_id))
+
+            new_staff           = ""          # no specific recipient
+            new_staff_office    = new_office
+            new_staff_full_name = ""
+
+        # Human-readable recipient for log/flash messages (office-level has no name)
+        recipient_display = new_staff_full_name or "the office's general queue"
 
         original_logger = doc.get("original_logged_by", doc.get("logged_by", ""))
         old_status      = doc.get("status", "")
@@ -1072,14 +1133,14 @@ def transfer_doc(doc_id):
                 f"Re-routed to {new_staff_full_name} ({new_staff_office or 'N/A'}). "
                 f"Cycle {doc['routing_cycle']} completed."
                 if routing_back_to_origin else
-                f"Transferred to {new_staff_full_name} ({new_staff_office or 'N/A'})."
+                f"Transferred to {recipient_display} ({new_staff_office or 'N/A'})."
             ),
         })
 
         save_doc(doc)
         audit_log(
             "doc_rerouted" if routing_back_to_origin else "doc_transferred",
-            f"doc_id={doc_id} from={current_user} to={new_staff} "
+            f"doc_id={doc_id} from={current_user} to={new_staff or 'office:' + new_staff_office} "
             f"cycle={doc.get('routing_cycle',0)} doc_name={doc.get('doc_name','')[:60]}",
             username=current_user, ip=get_client_ip()
         )
@@ -1091,7 +1152,7 @@ def transfer_doc(doc_id):
             )
         else:
             flash(
-                f"Document routed to {new_staff_full_name} at "
+                f"Document routed to {recipient_display} at "
                 f"{new_staff_office or 'N/A'} {status_note}.", "success"
             )
 
@@ -1199,8 +1260,14 @@ def transfer_batch():
         flash("No documents selected.", "error")
         return redirect(url_for("dashboard.index"))
 
-    if not new_staff or not transfer_type:
-        flash("Please select transfer type and staff member.", "error")
+    if not transfer_type:
+        flash("Please select a transfer type.", "error")
+        return redirect(url_for("dashboard.index"))
+
+    # A specific staff member is required, EXCEPT for an office-level transfer
+    # to an office with no registered staff (new_staff empty, new_office set).
+    if not new_staff and not new_office:
+        flash("Please select a staff member or office.", "error")
         return redirect(url_for("dashboard.index"))
 
     id_list = [d.strip() for d in doc_ids.split(",") if d.strip()][:_MAX_BATCH]
@@ -1212,23 +1279,45 @@ def transfer_batch():
     current_user = session.get("username", "")
     user_role    = session.get("role", "")
     all_users    = get_all_users()
-    valid_staff  = [u["username"] for u in all_users if u.get("role") != "client"]
 
-    if new_staff not in valid_staff:
-        flash("Invalid staff member.", "error")
-        return redirect(url_for("dashboard.index"))
+    if new_staff:
+        # ── Staff-level transfer (existing behavior) ──
+        valid_staff = [u["username"] for u in all_users if u.get("role") != "client"]
+        if new_staff not in valid_staff:
+            flash("Invalid staff member.", "error")
+            return redirect(url_for("dashboard.index"))
 
-    if new_staff == current_user:
-        flash("Cannot transfer to yourself.", "error")
-        return redirect(url_for("dashboard.index"))
+        if new_staff == current_user:
+            flash("Cannot transfer to yourself.", "error")
+            return redirect(url_for("dashboard.index"))
 
-    new_staff_office = ""
-    new_staff_full_name = ""
-    for u in all_users:
-        if u.get("username") == new_staff:
-            new_staff_office = u.get("office", "")
-            new_staff_full_name = u.get("full_name", "") or new_staff
-            break
+        new_staff_office = ""
+        new_staff_full_name = ""
+        for u in all_users:
+            if u.get("username") == new_staff:
+                new_staff_office = u.get("office", "")
+                new_staff_full_name = u.get("full_name", "") or new_staff
+                break
+    else:
+        # ── Office-level transfer (office has no registered staff) ──
+        valid_offices = {(o.get("office_name") or "").strip().lower()
+                         for o in load_saved_offices()}
+        if new_office.strip().lower() not in valid_offices:
+            flash("Invalid office.", "error")
+            return redirect(url_for("dashboard.index"))
+
+        # Office-level transfers are only for offices with no registered staff.
+        # A staffed office must route to a specific person.
+        if new_office.strip().lower() in _offices_with_staff(all_users):
+            flash("Please select a staff member for this office.", "error")
+            return redirect(url_for("dashboard.index"))
+
+        new_staff           = ""          # no specific recipient
+        new_staff_office    = new_office
+        new_staff_full_name = ""
+
+    # Human-readable recipient for log/flash messages (office-level has no name)
+    recipient_display = new_staff_full_name or "the office's general queue"
 
     status_note       = "(Inside Office)" if transfer_type == "inside_office" else "(Outside Office)"
     transferred_count = 0
@@ -1284,17 +1373,17 @@ def transfer_batch():
                 f"Batch re-routed to {new_staff_full_name} ({new_staff_office or 'N/A'}). "
                 f"Cycle {doc['routing_cycle']} completed."
                 if routing_back else
-                f"Batch transferred to {new_staff_full_name} ({new_staff_office or 'N/A'})."
+                f"Batch transferred to {recipient_display} ({new_staff_office or 'N/A'})."
             ),
         })
         save_doc(doc)
         transferred_count += 1
 
     audit_log("doc_batch_transferred",
-              f"count={transferred_count} to={new_staff} type={transfer_type}",
+              f"count={transferred_count} to={new_staff or 'office:' + new_staff_office} type={transfer_type}",
               username=session.get("username","?"), ip=get_client_ip())
 
-    flash(f"{transferred_count} document(s) transferred to {new_staff_full_name} at {new_staff_office or 'N/A'}. Status changed to Routed", "success")
+    flash(f"{transferred_count} document(s) transferred to {recipient_display} at {new_staff_office or 'N/A'}. Status changed to Routed", "success")
     return redirect(url_for("dashboard.index") + "?cart_cleared=1")
 
 

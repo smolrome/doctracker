@@ -79,20 +79,36 @@ function updateStaff() {
 
   if (!office) return;
 
-  populateStaff(office);
+  const hasStaff = populateStaff(office);
   show('step-staff-block');
+
+  // Office has no registered staff: allow the office-level transfer to proceed
+  // straight to submit (there is no specific staff member to pick).
+  if (!hasStaff) show('step-submit-block');
 }
 
 function populateStaff(office) {
   const staffSelect = document.getElementById('new_staff');
+  const staffList = (office && officesData[office]) ? officesData[office] : [];
+
+  if (staffList.length === 0) {
+    // Office has no registered staff — allow an office-level transfer.
+    // The document will land in this office's general pending queue
+    // (the server leaves pending_at_staff empty). Returning false lets the
+    // caller take the document straight to submit.
+    staffSelect.innerHTML =
+      '<option value="">— No registered staff — document will be sent to this office\'s general queue —</option>';
+    staffSelect.disabled = true;
+    return false;
+  }
+
+  staffSelect.disabled = false;
   staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
-
-  if (!office || !officesData[office]) return;
-
-  for (const s of officesData[office]) {
+  for (const s of staffList) {
     const name = s.full_name || s.username;
     staffSelect.innerHTML += `<option value="${s.username}">${name} (@${s.username})</option>`;
   }
+  return true;
 }
 
 function onStaffChange() {
