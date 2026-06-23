@@ -1,6 +1,18 @@
 const officesData   = JSON.parse(document.getElementById('offices-data').textContent || '{}');
 const sortedOffices = JSON.parse(document.getElementById('sorted-offices').textContent || '[]');
 const currentOffice = JSON.parse(document.getElementById('current-office-data').textContent);
+// {office_name: recipient_username} — primary_recipient is a username, omitted when unset
+const primaryRecipients = JSON.parse((document.getElementById('primary-recipients') || {}).textContent || '{}');
+
+// Resolve a username to a display name using any office's staff list in officesData.
+function _lookupStaffName(username) {
+  for (const office in officesData) {
+    for (const s of officesData[office]) {
+      if (s.username === username) return s.full_name || s.username;
+    }
+  }
+  return username;
+}
 
 // Get user name and role from server session data
 var currentUserName = null;
@@ -50,6 +62,9 @@ if (type === 'inside_office') {
   show('step-office-block');
   populateStaff(currentOffice);
   show('step-staff-block');
+  // Internal: reveal submit only if a primary-recipient default was
+  // pre-selected. Never auto-reveal office-level for your own office.
+  if (document.getElementById('new_staff').value) show('step-submit-block');
 
 } else {
   document.getElementById('staff-step-label').textContent = 'Step 3: Select Staff';
@@ -79,35 +94,56 @@ function updateStaff() {
 
   if (!office) return;
 
-  const hasStaff = populateStaff(office);
+  const reveal = populateStaff(office);
   show('step-staff-block');
 
-  // Office has no registered staff: allow the office-level transfer to proceed
-  // straight to submit (there is no specific staff member to pick).
-  if (!hasStaff) show('step-submit-block');
+  // Reveal submit when a default/target is set (case 1 pre-select, case 2
+  // recipient) or for an office-level transfer (case 3, staffless + no
+  // recipient). Case 1 with no default returns false → user must pick first.
+  if (reveal) show('step-submit-block');
 }
 
+// Populate the staff dropdown for an office. Returns true when the submit
+// block should be revealed immediately (a default/target is set, or it's an
+// office-level transfer); false when the user still needs to pick someone.
 function populateStaff(office) {
   const staffSelect = document.getElementById('new_staff');
   const staffList = (office && officesData[office]) ? officesData[office] : [];
+  const recipient = primaryRecipients[office] || '';
 
-  if (staffList.length === 0) {
-    // Office has no registered staff — allow an office-level transfer.
-    // The document will land in this office's general pending queue
-    // (the server leaves pending_at_staff empty). Returning false lets the
-    // caller take the document straight to submit.
+  if (staffList.length > 0) {
+    // ── Case 1: office has staff. Pre-select the primary recipient if it
+    //    matches one of them; otherwise the user must choose. ──
+    staffSelect.disabled = false;
+    let html = '<option value="">-- Select Staff --</option>';
+    let matched = false;
+    for (const s of staffList) {
+      const name = s.full_name || s.username;
+      const isSel = (s.username === recipient);
+      if (isSel) matched = true;
+      html += `<option value="${s.username}"${isSel ? ' selected' : ''}>${name} (@${s.username})</option>`;
+    }
+    staffSelect.innerHTML = html;
+    staffSelect.value = matched ? recipient : '';
+    return matched;   // reveal submit only when a default was pre-selected
+  }
+
+  if (recipient) {
+    // ── Case 2: no staff, but a primary recipient is configured. Route to
+    //    that specific username (submits as a normal staff transfer). ──
+    staffSelect.disabled = false;
+    const name = _lookupStaffName(recipient);
     staffSelect.innerHTML =
-      '<option value="">— No registered staff — document will be sent to this office\'s general queue —</option>';
-    staffSelect.disabled = true;
-    return false;
+      `<option value="${recipient}" selected>📌 Primary recipient — ${name} (@${recipient})</option>`;
+    staffSelect.value = recipient;
+    return true;
   }
 
-  staffSelect.disabled = false;
-  staffSelect.innerHTML = '<option value="">-- Select Staff --</option>';
-  for (const s of staffList) {
-    const name = s.full_name || s.username;
-    staffSelect.innerHTML += `<option value="${s.username}">${name} (@${s.username})</option>`;
-  }
+  // ── Case 3: no staff and no primary recipient — office-level general queue.
+  //    Keep the select empty/disabled so new_staff submits blank. ──
+  staffSelect.innerHTML =
+    '<option value="">— No primary recipient — document will be sent to this office\'s general queue —</option>';
+  staffSelect.disabled = true;
   return true;
 }
 

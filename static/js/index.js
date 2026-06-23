@@ -11,6 +11,7 @@ var currentUserName     = null;
 var currentUserRole     = null;
 var officesData         = {};
 var sortedOffices       = [];
+var primaryRecipients   = {};   // {office_name: recipient_username}
 var transferSingleDocId = null;
 var currentTransferIds  = null;
 var currentRoutingIds   = null;
@@ -73,6 +74,7 @@ function initModalData() {
   try {
     officesData   = JSON.parse((document.getElementById('offices-data')  || {}).textContent || '{}');
     sortedOffices = JSON.parse((document.getElementById('sorted-offices') || {}).textContent || '[]');
+    primaryRecipients = JSON.parse((document.getElementById('primary-recipients') || {}).textContent || '{}');
 
     var officeEl = document.getElementById('current-office-data');
     modalCurrentOffice = officeEl ? JSON.parse(officeEl.textContent || 'null') : null;
@@ -88,6 +90,7 @@ function initModalData() {
     console.error('initModalData error:', e);
     officesData        = {};
     sortedOffices      = [];
+    primaryRecipients  = {};
     modalCurrentOffice = (typeof serverSessionData !== 'undefined' && serverSessionData.office)
       ? serverSessionData.office : null;
   }
@@ -1049,6 +1052,12 @@ function onTransferTypeChangeIndex() {
     officeSelect.value = modalCurrentOffice; officeSelect.disabled = true;
     var info = document.getElementById('transfer-office-info'); if (info) info.textContent = 'Auto-selected: your office';
     _showBlock('transfer-office-block'); _populateTransferStaff(modalCurrentOffice); _showBlock('transfer-staff-block'); _setStep(3);
+    // Internal: reveal submit only if a primary-recipient default was
+    // pre-selected. Never auto-reveal office-level for your own office.
+    if (document.getElementById('transfer-staff').value) {
+      _showBlock('transfer-submit-block');
+      var btnIn = document.getElementById('btn-do-transfer'); if (btnIn) btnIn.disabled = false;
+    }
   } else {
     var lbl2 = document.getElementById('transfer-office-label'); if (lbl2) lbl2.textContent = 'Select Office';
     var opts = '<option value="">— Select Office —</option>';
@@ -1067,18 +1076,64 @@ function updateTransferStaffIndex() {
   _hideBlock('transfer-staff-block'); _hideBlock('transfer-submit-block');
   var btn = document.getElementById('btn-do-transfer'); if (btn) btn.disabled = true;
   if (!office) return;
-  _populateTransferStaff(office); _showBlock('transfer-staff-block'); _setStep(3);
+  var reveal = _populateTransferStaff(office);
+  _showBlock('transfer-staff-block'); _setStep(3);
+  // Reveal submit for case 1 default, case 2 recipient, and case 3 (office-level
+  // general queue). Case 1 with no default → user must pick (handled on change).
+  if (reveal) { _showBlock('transfer-submit-block'); if (btn) btn.disabled = false; }
 }
 
+// Resolve a username to a display name using any office's staff list.
+function _lookupStaffNameIndex(username) {
+  for (var office in officesData) {
+    var list = officesData[office] || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].username === username) return list[i].full_name || list[i].username;
+    }
+  }
+  return username;
+}
+
+// Populate the transfer staff dropdown. Returns true when the submit block
+// should be revealed immediately (a default/target is set, or it's an
+// office-level transfer); false when the user still needs to pick someone.
 function _populateTransferStaff(office) {
   var sel = document.getElementById('transfer-staff');
-  sel.innerHTML = '<option value="">— Select Staff —</option>';
-  if (!office || !officesData[office]) return;
-  officesData[office].forEach(function(s) {
-    var name = s.full_name || s.username;
-    sel.innerHTML += '<option value="' + s.username + '">' + name + ' (@' + s.username + ')</option>';
-  });
-  sel.disabled = false;
+  var staffList = (office && officesData[office]) ? officesData[office] : [];
+  var recipient = primaryRecipients[office] || '';
+
+  if (staffList.length > 0) {
+    // ── Case 1: office has staff. Pre-select the primary recipient if it
+    //    matches one of them; otherwise the user must choose. ──
+    sel.disabled = false;
+    var html = '<option value="">— Select Staff —</option>';
+    var matched = false;
+    staffList.forEach(function(s) {
+      var name = s.full_name || s.username;
+      var isSel = (s.username === recipient);
+      if (isSel) matched = true;
+      html += '<option value="' + s.username + '"' + (isSel ? ' selected' : '') + '>' + name + ' (@' + s.username + ')</option>';
+    });
+    sel.innerHTML = html;
+    sel.value = matched ? recipient : '';
+    return matched;   // reveal submit only when a default was pre-selected
+  }
+
+  if (recipient) {
+    // ── Case 2: no staff, but a primary recipient is configured. Route to
+    //    that specific username (submits as a normal staff transfer). ──
+    sel.disabled = false;
+    var nm = _lookupStaffNameIndex(recipient);
+    sel.innerHTML = '<option value="' + recipient + '" selected>📌 Primary recipient — ' + nm + ' (@' + recipient + ')</option>';
+    sel.value = recipient;
+    return true;
+  }
+
+  // ── Case 3: no staff and no primary recipient — office-level general queue.
+  //    Keep the select empty/disabled so new_staff submits blank. ──
+  sel.innerHTML = '<option value="">— No primary recipient — document will be sent to this office\'s general queue —</option>';
+  sel.disabled = true;
+  return true;
 }
 
 function onTransferStaffChangeIndex() {
@@ -1098,7 +1153,10 @@ function submitTransfer() {
   var staff        = document.getElementById('transfer-staff').value;
   var selectedIds  = transferSingleDocId ? [transferSingleDocId] : (currentTransferIds || getSelectedIds());
 
-  if (!transferType || !staff) { showToast('Please complete all steps.', 'warning'); return; }
+  if (!transferType)           { showToast('Please complete all steps.', 'warning'); return; }
+  // staff may be empty for an office-level transfer (case 3: staffless office,
+  // no primary recipient) — in that case an office must be set instead.
+  if (!staff && !office)       { showToast('Please select a staff member or office.', 'warning'); return; }
   if (!selectedIds.length)     { showToast('Please select at least one document.', 'warning'); return; }
 
   var btn = document.getElementById('btn-do-transfer');

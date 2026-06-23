@@ -74,6 +74,26 @@ def _offices_with_staff(all_users=None) -> set:
     return staffed
 
 
+def _office_primary_recipients() -> dict:
+    """
+    Map {office_name: primary_recipient_username} for offices that have a
+    non-empty primary_recipient.
+
+    primary_recipient is stored as a USERNAME — both recipient pickers
+    (office_staff.js and office_qr_page.html) submit option value =
+    staff.username — so these values align with the staff usernames in
+    officesData and can be matched directly against staff <option> values.
+    Offices with no recipient set are omitted (keys present ⇒ has a default).
+    """
+    recipients = {}
+    for o in load_saved_offices():
+        name = (o.get("office_name") or "").strip()
+        rec  = (o.get("primary_recipient") or "").strip()
+        if name and rec:
+            recipients[name] = rec
+    return recipients
+
+
 def _get_user_office(username: str) -> str:
     """Get the office of a specific user from the database."""
     if not username:
@@ -362,6 +382,7 @@ def index():
         current_office=current_office,
         offices_dict=offices_dict,
         sorted_offices=sorted_offices,
+        primary_recipients=_office_primary_recipients(),  # {office_name: recipient_username}
         current_user_name=session.get('full_name', ''),
         current_user_role=session.get('role', ''),
         is_admin=session.get('role') == 'admin',
@@ -1172,6 +1193,7 @@ def transfer_doc(doc_id):
     offices_dict, sorted_offices = _build_offices_dict_and_sorted(
         current_user, current_user_office
     )
+    primary_recipients = _office_primary_recipients()
 
     original_logger = doc.get("original_logged_by", "")
 
@@ -1179,6 +1201,7 @@ def transfer_doc(doc_id):
         "transfer.html", doc=doc,
         offices_dict=offices_dict,
         sorted_offices=sorted_offices,
+        primary_recipients=primary_recipients,     # ← {office_name: recipient_username}
         current_office=current_user_office,
         current_user_name=session.get("full_name", ""),
         current_user_role=session.get("role", ""),
