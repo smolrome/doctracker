@@ -297,7 +297,9 @@ def create_routing_slip():
                   f"docs={len(doc_ids)} ids={','.join(str(x) for x in doc_ids[:5])}",
               username=session.get("username", ""), ip=get_client_ip())
     flash(f"✅ Routing slip {slip_no} created successfully!", "success")
-    return redirect(url_for("offices.view_routing_slip", slip_id=slip_id) + "?cart_cleared=1")
+    # Scoped cart clear: remove only the routed docs, keep the rest of the cart.
+    return redirect(url_for("offices.view_routing_slip", slip_id=slip_id,
+                            cleared_ids=",".join(str(d) for d in doc_ids)))
 
 
 @offices_bp.route("/routing-slip/create-grouped", methods=["POST"])
@@ -335,7 +337,8 @@ def create_grouped_routing_slip():
     import base64
     
     created_slips = []
-    
+    all_routed_ids = []   # union of every routed doc → scoped cart clear
+
     for destination, doc_ids in groups.items():
         # Skip empty/no referred to groups
         if destination == "(No Referred To)" or not destination:
@@ -370,7 +373,8 @@ def create_grouped_routing_slip():
             "is_grouped": True,
         }
         save_routing_slip(slip)
-        
+        all_routed_ids.extend(doc_ids)
+
         # Update every document in this group
         for doc_id in doc_ids:
             doc = get_doc(doc_id)
@@ -413,12 +417,15 @@ def create_grouped_routing_slip():
     if created_slips:
         session["last_rerouted_slip_id"] = created_slips[-1]
     
+    # Scoped cart clear: remove only the routed docs (union across all groups).
+    _cleared = ",".join(str(d) for d in all_routed_ids)
     if len(created_slips) == 1:
         flash(f"✅ 1 routing slip created successfully!", "success")
-        return redirect(url_for("offices.view_routing_slip", slip_id=created_slips[0]) + "?cart_cleared=1")
+        return redirect(url_for("offices.view_routing_slip", slip_id=created_slips[0],
+                                cleared_ids=_cleared))
     else:
         flash(f"✅ {len(created_slips)} routing slips created successfully!", "success")
-        return redirect(url_for("offices.routed_documents") + "?cart_cleared=1")
+        return redirect(url_for("offices.routed_documents", cleared_ids=_cleared))
 
 
 @offices_bp.route("/routing-slip/<slip_id>")
@@ -740,7 +747,9 @@ def reroute_slip():
     flash(f"✅ Documents re-routed to \"{new_destination}\" (New Slip: {new_slip_no}).", "success")
     # Store new slip_id in session for the template to show a reprint link
     session["last_rerouted_slip_id"] = new_slip_id
-    return redirect(url_for("offices.routed_documents") + "?cart_cleared=1")
+    # Scoped cart clear: remove only the re-routed docs, keep the rest.
+    return redirect(url_for("offices.routed_documents",
+                            cleared_ids=",".join(str(d) for d in doc_ids)))
 
 
 @offices_bp.route("/routing-slip/<slip_id>/delete", methods=["POST"])

@@ -1193,7 +1193,8 @@ def transfer_doc(doc_id):
             return redirect(url_for("offices.view_routing_slip", slip_id=slip_id))
 
         if is_ajax: return jsonify({"ok": True})
-        return redirect(url_for("dashboard.view_doc", doc_id=doc_id) + "?cart_cleared=1")
+        # Scoped cart clear: remove only this doc, not the user's whole cart.
+        return redirect(url_for("dashboard.view_doc", doc_id=doc_id, cleared_ids=doc_id))
 
     # ── GET ──
     all_users      = get_all_users()
@@ -1361,6 +1362,7 @@ def transfer_batch():
 
     status_note       = "(Inside Office)" if transfer_type == "inside_office" else "(Outside Office)"
     transferred_count = 0
+    transferred_ids   = []   # only docs actually transferred → scoped cart clear
 
     for doc_id in id_list:
         doc = get_doc(doc_id)
@@ -1418,6 +1420,7 @@ def transfer_batch():
         })
         save_doc(doc)
         transferred_count += 1
+        transferred_ids.append(doc_id)
 
     audit_log("doc_batch_transferred",
               f"count={transferred_count} to={new_staff or 'office:' + new_staff_office} type={transfer_type}",
@@ -1435,12 +1438,14 @@ def transfer_batch():
             id_list, new_staff_office, current_office,
             current_full_name, new_staff_full_name or new_staff_office,
         )
-        # Carry the same cart-clear signal the dashboard redirect uses so the
-        # slip page clears the localStorage cart (matches offices.py slip
-        # redirects). routing_slip.html honors ?cart_cleared=1.
-        return redirect(url_for("offices.view_routing_slip", slip_id=slip_id) + "?cart_cleared=1")
+        # Scoped cart clear on the slip page: remove only the transferred docs,
+        # leaving any un-transferred docs in the user's cart. routing_slip.html
+        # honors ?cleared_ids=...
+        return redirect(url_for("offices.view_routing_slip", slip_id=slip_id,
+                                cleared_ids=",".join(transferred_ids)))
 
-    return redirect(url_for("dashboard.index") + "?cart_cleared=1")
+    # Scoped cart clear: remove only the transferred docs from the cart.
+    return redirect(url_for("dashboard.index", cleared_ids=",".join(transferred_ids)))
 
 
 # ── QR download ───────────────────────────────────────────────────────────────

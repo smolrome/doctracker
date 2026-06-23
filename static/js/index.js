@@ -43,14 +43,23 @@ function onReady() {
   setupPaginationWithSelection();
   initCart();
 
-  // Check if this page was redirected after a successful transfer/routing
-  var urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('cart_cleared') === '1') {
-    clearCart();
-    // Remove the query parameter from URL without reloading
-    urlParams.delete('cart_cleared');
+  // Check if this page was redirected after a successful transfer/routing.
+  //   ?cleared_ids=ID1,ID2 → remove ONLY those docs (scoped, keeps the rest).
+  //   ?cart_cleared=1       → legacy wipe-all (backward-compat fallback).
+  // (On the dashboard the base.html inline handler usually strips the param
+  // first; this stays correct/idempotent either way.)
+  var urlParams  = new URLSearchParams(window.location.search);
+  var clearedIds = urlParams.get('cleared_ids');
+  if (clearedIds) {
+    clearCartByIds(clearedIds.split(',').filter(Boolean));
+    urlParams.delete('cleared_ids');
     var newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
     window.history.replaceState({}, document.title, newUrl);
+  } else if (urlParams.get('cart_cleared') === '1') {
+    clearCart();
+    urlParams.delete('cart_cleared');
+    var newUrl2 = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+    window.history.replaceState({}, document.title, newUrl2);
   }
 
   // Apply stored selections to current page checkboxes
@@ -727,6 +736,33 @@ function clearCart() {
   updateCartBadge();
   renderCartModal();
   showToast('Cart cleared', 'info');
+}
+
+// Remove ONLY the given doc IDs from the cart (used after a transfer/routing
+// redirect carries ?cleared_ids=...). Leaves any un-transferred docs intact.
+// Mirrors removeFromCart's per-ID logic for a list, then recomputes the badge.
+function clearCartByIds(ids) {
+  if (!ids || !ids.length) return;
+  var idSet = {};
+  ids.forEach(function(id) { idSet[id] = true; });
+
+  var sel = restoreSelectionsFromLocalStorage().filter(function(id) { return !idSet[id]; });
+  if (sel.length) localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(sel));
+  else            localStorage.removeItem(SELECTION_STORAGE_KEY);
+  saveCartDocIds(sel);   // keep CART_STORAGE_KEY in sync (removes key if empty)
+
+  var details = getCartDocDetails();
+  ids.forEach(function(id) { delete details[id]; });
+  saveCartDocDetails(details);   // removes key if empty
+
+  ids.forEach(function(id) {
+    var cb = document.querySelector('.doc-checkbox[value="' + id + '"]');
+    if (cb) { cb.checked = false; var tr = cb.closest('tr'); if (tr) tr.classList.remove('row-selected'); }
+  });
+
+  updateSelectAllLabel();
+  updateCartBadge();
+  renderCartModal();
 }
 
 function openRoutingModalFromCart() {

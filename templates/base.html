@@ -19,17 +19,48 @@
   window.CURRENT_OFFICE   = "{{ session.get('office',   '') }}";
 </script>
 <script>
-  /* Clear cart on any page that receives ?cart_cleared=1 */
+  /* Clear cart after a transfer/routing redirect.
+     ?cleared_ids=ID1,ID2  → remove ONLY those docs (scoped).
+     ?cart_cleared=1        → legacy wipe-all (backward-compat fallback).
+     Keys: doctracker_selected_docs / doctracker_cart_docs are JSON arrays of
+     ID strings; doctracker_cart_details is a JSON object keyed by ID. */
   (function () {
-    if (new URLSearchParams(location.search).get('cart_cleared') === '1') {
-      localStorage.removeItem('doctracker_selected_docs');
-      localStorage.removeItem('doctracker_cart_docs');
-      localStorage.removeItem('doctracker_cart_details');
-      /* Strip param from address bar without reload */
-      var u = new URL(location.href);
-      u.searchParams.delete('cart_cleared');
-      history.replaceState(null, '', u.toString());
+    var p          = new URLSearchParams(location.search);
+    var clearedIds = p.get('cleared_ids');
+    var wipeAll    = p.get('cart_cleared') === '1';
+    if (!clearedIds && !wipeAll) return;
+
+    var SEL = 'doctracker_selected_docs', DOCS = 'doctracker_cart_docs', DET = 'doctracker_cart_details';
+    function _arr(k) { try { var v = JSON.parse(localStorage.getItem(k) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+    function _setArr(k, a) { if (a.length) localStorage.setItem(k, JSON.stringify(a)); else localStorage.removeItem(k); }
+
+    if (clearedIds) {
+      var ids = clearedIds.split(',').filter(Boolean);
+      _setArr(SEL,  _arr(SEL).filter(function (id) { return ids.indexOf(id) === -1; }));
+      _setArr(DOCS, _arr(DOCS).filter(function (id) { return ids.indexOf(id) === -1; }));
+      var det = {}; try { det = JSON.parse(localStorage.getItem(DET) || '{}') || {}; } catch (e) {}
+      ids.forEach(function (id) { delete det[id]; });
+      if (Object.keys(det).length) localStorage.setItem(DET, JSON.stringify(det));
+      else localStorage.removeItem(DET);
+    } else {
+      localStorage.removeItem(SEL); localStorage.removeItem(DOCS); localStorage.removeItem(DET);
     }
+
+    /* Recompute the badge from what remains (DOM may not be parsed yet). */
+    function _refreshBadge() {
+      var n = _arr(SEL).length;
+      ['cart-badge', 'cart-badge-header'].forEach(function (bid) {
+        var b = document.getElementById(bid);
+        if (b) { b.textContent = n; b.classList && b.classList.toggle('visible', n > 0); }
+      });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _refreshBadge);
+    else _refreshBadge();
+
+    /* Strip both params without reload. */
+    p.delete('cleared_ids'); p.delete('cart_cleared');
+    var nu = location.pathname + (p.toString() ? '?' + p.toString() : '');
+    history.replaceState(null, '', nu);
   })();
 </script>
 {% endif %}

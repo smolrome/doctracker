@@ -156,22 +156,42 @@ document.addEventListener('DOMContentLoaded', function () {
     }, 5000);
   });
 
-  // Check if this page was redirected after a successful transfer/routing
-  var urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('cart_cleared') === '1') {
-    // Clear cart from localStorage
-    var CART_STORAGE_KEY = 'doctracker_cart_docs';
-    var CART_DETAILS_KEY = 'doctracker_cart_details';
+  // Clear cart after a transfer/routing redirect.
+  //   ?cleared_ids=ID1,ID2 → remove ONLY those docs (scoped).
+  //   ?cart_cleared=1       → legacy wipe-all (backward-compat fallback).
+  // (Usually preempted by the base.html inline handler, which strips the param
+  // first; kept consistent so it is correct on any page that loads base.js.)
+  var urlParams  = new URLSearchParams(window.location.search);
+  var clearedIds = urlParams.get('cleared_ids');
+  var wipeAll    = urlParams.get('cart_cleared') === '1';
+  if (clearedIds || wipeAll) {
     var SELECTION_STORAGE_KEY = 'doctracker_selected_docs';
-    localStorage.removeItem(CART_STORAGE_KEY);
-    localStorage.removeItem(CART_DETAILS_KEY);
-    localStorage.removeItem(SELECTION_STORAGE_KEY);
-    
-    // Update cart badge if it exists
+    var CART_STORAGE_KEY      = 'doctracker_cart_docs';
+    var CART_DETAILS_KEY      = 'doctracker_cart_details';
+    var _arr = function (k) { try { var v = JSON.parse(localStorage.getItem(k) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
+    var _setArr = function (k, a) { if (a.length) localStorage.setItem(k, JSON.stringify(a)); else localStorage.removeItem(k); };
+
+    if (clearedIds) {
+      var ids = clearedIds.split(',').filter(Boolean);
+      _setArr(SELECTION_STORAGE_KEY, _arr(SELECTION_STORAGE_KEY).filter(function (id) { return ids.indexOf(id) === -1; }));
+      _setArr(CART_STORAGE_KEY,      _arr(CART_STORAGE_KEY).filter(function (id) { return ids.indexOf(id) === -1; }));
+      var det = {}; try { det = JSON.parse(localStorage.getItem(CART_DETAILS_KEY) || '{}') || {}; } catch (e) {}
+      ids.forEach(function (id) { delete det[id]; });
+      if (Object.keys(det).length) localStorage.setItem(CART_DETAILS_KEY, JSON.stringify(det));
+      else localStorage.removeItem(CART_DETAILS_KEY);
+    } else {
+      localStorage.removeItem(CART_STORAGE_KEY);
+      localStorage.removeItem(CART_DETAILS_KEY);
+      localStorage.removeItem(SELECTION_STORAGE_KEY);
+    }
+
+    // Recompute the badge from what remains.
+    var remaining = _arr(SELECTION_STORAGE_KEY).length;
     var cartBadge = document.getElementById('cart-badge-header');
-    if (cartBadge) cartBadge.textContent = '0';
-    
-    // Remove the query parameter from URL without reloading
+    if (cartBadge) cartBadge.textContent = remaining;
+
+    // Remove the query parameters from the URL without reloading.
+    urlParams.delete('cleared_ids');
     urlParams.delete('cart_cleared');
     var newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
     window.history.replaceState({}, document.title, newUrl);
