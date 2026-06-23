@@ -1040,17 +1040,19 @@ def transfer_doc(doc_id):
     current_user = session.get("username", "")
     user_role    = session.get("role", "")
 
-    # Authorization mirrors the index visibility set: a user may route a doc if
-    # they own it OR share a shared-dashboard group with one of its owners — the
-    # same {current_user} ∪ get_group_usernames(current_user) set that decides
-    # which docs they can see. received_by is intentionally excluded (it stores a
-    # full name, not a username, so gating on it is a no-op / collision risk).
-    from services.database import get_group_usernames
-    visible_set  = {current_user} | set(get_group_usernames(current_user))
+    # A user may route a doc if they own it OR share a group with one of its
+    # owners that has BOTH shared dashboard AND shared transfer enabled. This is
+    # the TRANSFER set (get_group_transfer_usernames), which is narrower than the
+    # VISIBILITY set (get_group_usernames, dashboard flag only) used by the index
+    # filter — so "can see" can be granted without "can transfer". current_user
+    # is always in transfer_set, so a user always transfers their OWN docs
+    # regardless of group/flags. received_by is excluded (stores a full name).
+    from services.database import get_group_transfer_usernames
+    transfer_set = {current_user} | set(get_group_transfer_usernames(current_user))
     owner_fields = {doc.get("original_logged_by"), doc.get("logged_by"),
                     doc.get("accepted_by"), doc.get("transferred_by")}
     owner_fields.discard(None); owner_fields.discard("")
-    can_transfer = (user_role == "admin") or bool(owner_fields & visible_set)
+    can_transfer = (user_role == "admin") or bool(owner_fields & transfer_set)
 
     if user_role != "admin" and not can_transfer:
         if is_ajax: return jsonify({"ok": False, "error": "Not authorized to route this document"}), 403
@@ -1384,10 +1386,11 @@ def transfer_batch():
     skipped_missing   = 0    # doc_id not found
     skipped_unauth    = 0    # caller not authorized to transfer this doc
 
-    # Same visibility-coherent authorization set as the single transfer route:
-    # {current_user} ∪ shared-dashboard group-mates. received_by excluded.
-    from services.database import get_group_usernames
-    visible_set = {current_user} | set(get_group_usernames(current_user))
+    # Same authorization set as the single transfer route: {current_user} ∪
+    # group-mates whose group has BOTH shared dashboard AND shared transfer on.
+    # current_user is always present, so own-doc transfers are never blocked.
+    from services.database import get_group_transfer_usernames
+    transfer_set = {current_user} | set(get_group_transfer_usernames(current_user))
 
     for doc_id in id_list:
         doc = get_doc(doc_id)
@@ -1395,12 +1398,12 @@ def transfer_batch():
             skipped_missing += 1
             continue
         # Authorized if admin, OR one of the doc's owner identities falls in the
-        # caller's {self ∪ shared-dashboard group} set. Skips are COUNTED, not
+        # caller's {self ∪ shared-transfer group} set. Skips are COUNTED, not
         # silently dropped (see honest-feedback block after the loop).
         owner_fields = {doc.get("original_logged_by"), doc.get("logged_by"),
                         doc.get("accepted_by"), doc.get("transferred_by")}
         owner_fields.discard(None); owner_fields.discard("")
-        can_transfer = (user_role == "admin") or bool(owner_fields & visible_set)
+        can_transfer = (user_role == "admin") or bool(owner_fields & transfer_set)
         if not can_transfer:
             skipped_unauth += 1
             continue

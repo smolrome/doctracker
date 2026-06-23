@@ -39,9 +39,14 @@ def _set_office(client, office=OFFICE):
 
 
 def _patch_group(monkeypatch, mapping):
-    """Make get_group_usernames(u) return mapping[u] (default [])."""
+    """
+    Make get_group_transfer_usernames(u) return mapping[u] (default []).
+
+    The transfer gate keys on get_group_transfer_usernames (dashboard AND
+    transfer flags both ON); these tests simulate that "both ON" state.
+    """
     import services.database as db
-    monkeypatch.setattr(db, "get_group_usernames", lambda u: mapping.get(u, []))
+    monkeypatch.setattr(db, "get_group_transfer_usernames", lambda u: mapping.get(u, []))
 
 
 def _make_doc(owner, status="Received"):

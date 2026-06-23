@@ -372,6 +372,9 @@
           {% else %}
           <span class="mp-badge-off">👥 No Shared Dashboard</span>
           {% endif %}
+          {% if g.has_shared_transfer %}
+          <span class="mp-badge-on-shared">🔄 Shared Transfer</span>
+          {% endif %}
           {% if g.has_so_access %}
           <span class="mp-badge-on-so">⚡ SO Access</span>
           {% else %}
@@ -431,6 +434,15 @@
                 {{ '👥 Disable Shared Dashboard' if g.has_shared_dashboard else '👥 Enable Shared Dashboard' }}
               </button>
             </form>
+            {# Shared Transfer depends on Shared Dashboard — toggle is hidden entirely when dashboard is off #}
+            {% if g.has_shared_dashboard %}
+            <form method="POST" action="/manage-pairings/toggle-shared-transfer/{{ g.id }}" style="margin:0;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="mp-btn-toggle-shared">
+                {{ '🔄 Disable Shared Transfer' if g.has_shared_transfer else '🔄 Enable Shared Transfer' }}
+              </button>
+            </form>
+            {% endif %}
             <form method="POST" action="/manage-pairings/toggle-so-access/{{ g.id }}" style="margin:0;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <button type="submit" class="mp-btn-toggle-so">

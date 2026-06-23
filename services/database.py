@@ -337,6 +337,36 @@ def _run_migrations(cur):
         except Exception as e:
             cur.execute("ROLLBACK TO SAVEPOINT mig")  # keep transaction alive
 
+    # ── Shared Transfer capability: column + ONE-TIME backfill ────────────────
+    # Migrations above are plain idempotent ALTER ... IF NOT EXISTS (no version
+    # table). A backfill UPDATE is NOT idempotent, so it must run exactly once —
+    # otherwise it would re-assert TRUE on every boot and clobber an admin who
+    # later turned Shared Transfer off. Guard on column existence: if the column
+    # is missing we are creating it now (first run) → safe to backfill; on every
+    # later boot the column already exists → skip the backfill entirely.
+    try:
+        cur.execute("SAVEPOINT mig_stx")
+        cur.execute("""
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'staff_groups' AND column_name = 'has_shared_transfer'
+        """)
+        _stx_column_exists = cur.fetchone() is not None
+        cur.execute(
+            "ALTER TABLE staff_groups ADD COLUMN IF NOT EXISTS "
+            "has_shared_transfer BOOLEAN DEFAULT FALSE"
+        )
+        if not _stx_column_exists:
+            # Preserve current production behavior: today every shared-dashboard
+            # group can already transfer, so existing dashboard-on groups inherit
+            # transfer-on. New groups created later default to FALSE (opt-in).
+            cur.execute(
+                "UPDATE staff_groups SET has_shared_transfer = TRUE "
+                "WHERE has_shared_dashboard = TRUE"
+            )
+        cur.execute("RELEASE SAVEPOINT mig_stx")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT mig_stx")  # keep transaction alive
+
 
 def get_doc_by_id(doc_id: str):
     """Fetch a document by its internal id. Returns the data dict or None."""
@@ -432,6 +462,38 @@ def get_group_usernames(username: str) -> list:
                 return [list(row.values())[0] for row in rows]
     except Exception as e:
         print(f"Error getting group usernames: {e}")
+        return []
+
+
+def get_group_transfer_usernames(username: str) -> list:
+    """
+    Return usernames that share a group with this user where BOTH shared
+    dashboard AND shared transfer are enabled (excluding self).
+
+    Mirrors get_group_usernames but requires has_shared_transfer = TRUE in
+    addition to has_shared_dashboard = TRUE, so the dependency is enforced at
+    the data layer: if a group's shared dashboard is off, transfer is moot even
+    if has_shared_transfer is a stale TRUE. This set gates TRANSFER only; the
+    index visibility filter keeps using get_group_usernames (dashboard flag).
+    """
+    if not USE_DB or not username:
+        return []
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT DISTINCT sgm2.username
+                    FROM staff_group_members sgm1
+                    JOIN staff_group_members sgm2 ON sgm1.group_id = sgm2.group_id
+                    JOIN staff_groups sg ON sgm1.group_id = sg.id
+                    WHERE sgm1.username = %s AND sgm2.username != %s
+                      AND sg.has_shared_dashboard = TRUE
+                      AND sg.has_shared_transfer = TRUE
+                """, (username, username))
+                rows = cur.fetchall()
+                return [list(row.values())[0] for row in rows]
+    except Exception as e:
+        print(f"Error getting group transfer usernames: {e}")
         return []
 
 

@@ -937,6 +937,7 @@ def manage_pairings():
                 with conn.cursor() as cur:
                     cur.execute("""
                         SELECT id, group_name, created_by, has_so_access, has_shared_dashboard,
+                               has_shared_transfer,
                                to_char(created_at, 'Mon DD, YYYY') AS created_date
                         FROM staff_groups
                         ORDER BY created_at DESC
@@ -959,6 +960,7 @@ def manage_pairings():
                             'created_date':       g['created_date'],
                             'has_so_access':      bool(g['has_so_access']),
                             'has_shared_dashboard': bool(g['has_shared_dashboard']),
+                            'has_shared_transfer':  bool(g.get('has_shared_transfer')),
                             'members':            list(members),
                         })
         except Exception:
@@ -1121,7 +1123,19 @@ def toggle_group_shared_dashboard(group_id):
                     flash("Group not found.", "error")
                     return redirect(url_for("admin.manage_pairings"))
                 new_val = not bool(row['has_shared_dashboard'])
-                cur.execute("UPDATE staff_groups SET has_shared_dashboard = %s WHERE id = %s", (new_val, group_id))
+                # Shared Transfer DEPENDS on Shared Dashboard. Turning the
+                # dashboard off forces transfer off in the same update so the row
+                # is never left with a stale has_shared_transfer = TRUE (which the
+                # data-layer helper already ignores, but we keep state honest).
+                if new_val:
+                    cur.execute(
+                        "UPDATE staff_groups SET has_shared_dashboard = %s WHERE id = %s",
+                        (new_val, group_id))
+                else:
+                    cur.execute(
+                        "UPDATE staff_groups SET has_shared_dashboard = %s, "
+                        "has_shared_transfer = FALSE WHERE id = %s",
+                        (new_val, group_id))
         audit_log("group_shared_dashboard_toggled",
                   f"group_id={group_id} group_name={row['group_name']} has_shared_dashboard={new_val}",
                   username=session.get("username", "admin"), ip=get_client_ip())
@@ -1129,6 +1143,43 @@ def toggle_group_shared_dashboard(group_id):
         flash(f"Shared Dashboard {state} for group '{row['group_name']}'.", "success")
     except Exception as e:
         flash(f"Failed to update Shared Dashboard: {e}", "error")
+    return redirect(url_for("admin.manage_pairings"))
+
+
+@admin_bp.route("/manage-pairings/toggle-shared-transfer/<int:group_id>", methods=["POST"])
+@admin_required
+def toggle_group_shared_transfer(group_id):
+    from services.database import USE_DB, get_conn
+    if not USE_DB:
+        flash("Database not available.", "error")
+        return redirect(url_for("admin.manage_pairings"))
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT group_name, has_shared_transfer, has_shared_dashboard "
+                    "FROM staff_groups WHERE id = %s", (group_id,))
+                row = cur.fetchone()
+                if not row:
+                    flash("Group not found.", "error")
+                    return redirect(url_for("admin.manage_pairings"))
+                new_val = not bool(row['has_shared_transfer'])
+                # DEPENDENCY GUARD: transfer cannot be enabled without dashboard.
+                if new_val and not bool(row['has_shared_dashboard']):
+                    flash(
+                        f"Enable Shared Dashboard first — Shared Transfer requires "
+                        f"it for group '{row['group_name']}'.", "error")
+                    return redirect(url_for("admin.manage_pairings"))
+                cur.execute(
+                    "UPDATE staff_groups SET has_shared_transfer = %s WHERE id = %s",
+                    (new_val, group_id))
+        audit_log("group_shared_transfer_toggled",
+                  f"group_id={group_id} group_name={row['group_name']} has_shared_transfer={new_val}",
+                  username=session.get("username", "admin"), ip=get_client_ip())
+        state = "enabled" if new_val else "disabled"
+        flash(f"Shared Transfer {state} for group '{row['group_name']}'.", "success")
+    except Exception as e:
+        flash(f"Failed to update Shared Transfer: {e}", "error")
     return redirect(url_for("admin.manage_pairings"))
 
 
