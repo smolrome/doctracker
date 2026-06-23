@@ -2,6 +2,25 @@
    routing_slip.css — LAKAD · DepEd Leyte Division
    ============================================================ */
 
+/* ── Self-hosted masthead fonts (paths relative to this CSS file) ── */
+@font-face {
+  font-family: 'Old English Text MT';
+  src: url('../fonts/OLDENGL.TTF') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Calibri';
+  src: url('../fonts/calibri.ttf') format('truetype');
+  font-weight: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Calibri';
+  src: url('../fonts/calibrib.ttf') format('truetype');
+  font-weight: bold;
+  font-display: swap;
+}
+
 *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -209,8 +228,8 @@ body {
 }
 
 .lh-republic {
-  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
-  font-size: 11.5px;
+  font-family: 'Old English Text MT', serif;
+  font-size: 11pt;
   font-weight: 600;
   color: #374151;
   letter-spacing: .06em;
@@ -218,8 +237,8 @@ body {
 }
 
 .lh-dept {
-  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
-  font-size: 14px;
+  font-family: 'Old English Text MT', serif;
+  font-size: 14pt;
   font-weight: 700;
   color: var(--navy);
   letter-spacing: .04em;
@@ -227,8 +246,8 @@ body {
 }
 
 .lh-region {
-  font-family: 'Palatino Linotype', serif;
-  font-size: 13px;
+  font-family: 'Cinzel', serif;
+  font-size: 11pt;
   font-weight: 700;
   color: var(--navy);
   letter-spacing: .08em;
@@ -237,8 +256,8 @@ body {
 }
 
 .lh-division {
-  font-family: 'Palatino Linotype', serif;
-  font-size: 12px;
+  font-family: 'Cinzel', serif;
+  font-size: 11pt;
   font-weight: 700;
   color: var(--navy);
   letter-spacing: .07em;
@@ -594,11 +613,12 @@ body {
   gap: 1px;
 }
 .sof-row {
-  font-size: 9px;
+  font-family: 'Calibri', 'Carlito', sans-serif;
+  font-size: 9pt;
   color: #111;
   line-height: 1.7;
 }
-.sof-row b { font-weight: 700; }
+.sof-row b { font-weight: bold; }
 
 /* Right: page number box */
 .sof-pagebox {
