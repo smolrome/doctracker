@@ -462,6 +462,47 @@ def save_routing_slip_json(slip: dict):
     return True
 
 
+def build_transfer_slip(doc_ids, destination, from_office, prepared_by,
+                        recipient_name) -> str:
+    """
+    Create a routing_slips record for an EXTERNAL transfer and return its
+    slip_id. Mirrors create_routing_slip (routes/offices.py) exactly so a
+    transfer-generated slip renders identically through routing_slip.html.
+
+    INTERNAL transfers must NOT call this — they create no slip.
+    notes/time_from/time_to are blank (the transfer form has none);
+    slip_date defaults to today; type defaults to "routing" in
+    save_routing_slip.
+    """
+    from services.qr import create_slip_token
+
+    slip_id = str(uuid.uuid4())[:8].upper()
+    slip_no = generate_slip_no()
+
+    recv_token = create_slip_token(slip_id, "SLIP_RECEIVE")
+    rel_token  = create_slip_token(slip_id, "SLIP_RELEASE")
+
+    slip = {
+        "id":          slip_id,
+        "slip_no":     slip_no,
+        "destination": destination,
+        "from_office": from_office,
+        "prepared_by": prepared_by,
+        "doc_ids":     doc_ids,
+        "notes":       "",
+        "slip_date":   now_str()[:10],
+        "time_from":   "",
+        "time_to":     "",
+        "created_at":  now_str(),
+        "recv_token":  recv_token,
+        "rel_token":   rel_token,
+        "recipient":   recipient_name,
+        "status":      "Routed",
+    }
+    save_routing_slip(slip)
+    return slip_id
+
+
 def get_routing_slip(slip_id: str) -> dict | None:
     if USE_DB:
         try:

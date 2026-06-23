@@ -1177,6 +1177,21 @@ def transfer_doc(doc_id):
                 f"{new_staff_office or 'N/A'} {status_note}.", "success"
             )
 
+        # EXTERNAL transfer → create a routing slip and send the user to the
+        # printable slip page. Authority is the OFFICE comparison: if the
+        # destination office differs from the sender's own office it is
+        # external; if they match (even when transfer_type=="outside_office"
+        # because the user picked their own office) it is INTERNAL — no slip.
+        is_external = new_staff_office.strip().lower() != current_office.strip().lower()
+        if is_external:
+            from services.misc import build_transfer_slip
+            slip_id = build_transfer_slip(
+                [doc_id], new_staff_office, current_office,
+                current_full_name, new_staff_full_name or new_staff_office,
+            )
+            if is_ajax: return jsonify({"ok": True, "slip_id": slip_id})
+            return redirect(url_for("offices.view_routing_slip", slip_id=slip_id))
+
         if is_ajax: return jsonify({"ok": True})
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id) + "?cart_cleared=1")
 
@@ -1299,9 +1314,11 @@ def transfer_batch():
         flash("No valid document IDs.", "error")
         return redirect(url_for("dashboard.index"))
 
-    current_user = session.get("username", "")
-    user_role    = session.get("role", "")
-    all_users    = get_all_users()
+    current_user      = session.get("username", "")
+    current_full_name = session.get("full_name") or session.get("username") or ""
+    current_office    = session.get("office") or "DepEd Leyte Division"
+    user_role         = session.get("role", "")
+    all_users         = get_all_users()
 
     if new_staff:
         # ── Staff-level transfer (existing behavior) ──
@@ -1407,6 +1424,31 @@ def transfer_batch():
               username=session.get("username","?"), ip=get_client_ip())
 
     flash(f"{transferred_count} document(s) transferred to {recipient_display} at {new_staff_office or 'N/A'}. Status changed to Routed", "success")
+
+    # EXTERNAL transfer (destination office differs from sender's office) →
+    # one routing slip for the whole batch (all docs share new_staff_office),
+    # then go to the printable slip page. INTERNAL transfers are unchanged.
+    is_external = new_staff_office.strip().lower() != current_office.strip().lower()
+    # --- TEMP DEBUG (remove after diagnosing batch slip redirect) ---
+    try:
+        from flask import current_app as _capp
+        _msg = ("[TRANSFER-BATCH DEBUG] "
+                f"new_staff_office={new_staff_office!r} current_office={current_office!r} "
+                f"is_external={is_external!r} transferred_count={transferred_count!r} "
+                f"transfer_type={transfer_type!r} new_office={new_office!r} new_staff={new_staff!r}")
+        _capp.logger.info(_msg)
+        print(_msg, flush=True)
+    except Exception:
+        pass
+    # --- END TEMP DEBUG ---
+    if is_external and transferred_count:
+        from services.misc import build_transfer_slip
+        slip_id = build_transfer_slip(
+            id_list, new_staff_office, current_office,
+            current_full_name, new_staff_full_name or new_staff_office,
+        )
+        return redirect(url_for("offices.view_routing_slip", slip_id=slip_id))
+
     return redirect(url_for("dashboard.index") + "?cart_cleared=1")
 
 
