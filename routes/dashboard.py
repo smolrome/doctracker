@@ -1040,12 +1040,19 @@ def transfer_doc(doc_id):
     current_user = session.get("username", "")
     user_role    = session.get("role", "")
 
-    # Original logger, current staff, or accepted by this user can route
-    is_original  = doc.get("original_logged_by") == current_user
-    is_current   = doc.get("logged_by") == current_user
-    is_accepted  = doc.get("accepted_by") == current_user
+    # Authorization mirrors the index visibility set: a user may route a doc if
+    # they own it OR share a shared-dashboard group with one of its owners — the
+    # same {current_user} ∪ get_group_usernames(current_user) set that decides
+    # which docs they can see. received_by is intentionally excluded (it stores a
+    # full name, not a username, so gating on it is a no-op / collision risk).
+    from services.database import get_group_usernames
+    visible_set  = {current_user} | set(get_group_usernames(current_user))
+    owner_fields = {doc.get("original_logged_by"), doc.get("logged_by"),
+                    doc.get("accepted_by"), doc.get("transferred_by")}
+    owner_fields.discard(None); owner_fields.discard("")
+    can_transfer = (user_role == "admin") or bool(owner_fields & visible_set)
 
-    if user_role != "admin" and not is_original and not is_current and not is_accepted:
+    if user_role != "admin" and not can_transfer:
         if is_ajax: return jsonify({"ok": False, "error": "Not authorized to route this document"}), 403
         flash("You are not authorized to route this document.", "error")
         return redirect(url_for("dashboard.view_doc", doc_id=doc_id))
@@ -1145,17 +1152,28 @@ def transfer_doc(doc_id):
         current_full_name = session.get("full_name") or session.get("username")
         current_office    = session.get("office") or "DepEd Leyte Division"
 
+        remark = (
+            f"Re-routed to {new_staff_full_name} ({new_staff_office or 'N/A'}). "
+            f"Cycle {doc['routing_cycle']} completed."
+            if routing_back_to_origin else
+            f"Transferred to {recipient_display} ({new_staff_office or 'N/A'})."
+        )
+        # Provenance: when a group-mate (a non-owner, non-admin actor) moves an
+        # owner's doc, record BOTH who moved it and who originated it — without
+        # overwriting any owner field. Owners' own transfers keep the plain remark.
+        doc_owners = {doc.get("original_logged_by"), doc.get("logged_by"), doc.get("accepted_by")}
+        if user_role != "admin" and current_user not in doc_owners:
+            remark += (
+                f" By {current_full_name} — acting on document originated by "
+                f"{doc.get('original_logged_by') or 'N/A'}."
+            )
+
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
             "action":    action_label,
             "officer":   current_full_name,
             "timestamp": now_str(),
-            "remarks":   (
-                f"Re-routed to {new_staff_full_name} ({new_staff_office or 'N/A'}). "
-                f"Cycle {doc['routing_cycle']} completed."
-                if routing_back_to_origin else
-                f"Transferred to {recipient_display} ({new_staff_office or 'N/A'})."
-            ),
+            "remarks":   remark,
         })
 
         save_doc(doc)
@@ -1363,19 +1381,28 @@ def transfer_batch():
     status_note       = "(Inside Office)" if transfer_type == "inside_office" else "(Outside Office)"
     transferred_count = 0
     transferred_ids   = []   # only docs actually transferred → scoped cart clear
+    skipped_missing   = 0    # doc_id not found
+    skipped_unauth    = 0    # caller not authorized to transfer this doc
+
+    # Same visibility-coherent authorization set as the single transfer route:
+    # {current_user} ∪ shared-dashboard group-mates. received_by excluded.
+    from services.database import get_group_usernames
+    visible_set = {current_user} | set(get_group_usernames(current_user))
 
     for doc_id in id_list:
         doc = get_doc(doc_id)
         if not doc:
+            skipped_missing += 1
             continue
-        # Allow transfer if user is admin, OR the current logged_by, OR original logger, OR accepted by this user
-        can_transfer = (
-            user_role == "admin" or
-            doc.get("logged_by") == current_user or
-            doc.get("original_logged_by") == current_user or
-            doc.get("accepted_by") == current_user
-        )
+        # Authorized if admin, OR one of the doc's owner identities falls in the
+        # caller's {self ∪ shared-dashboard group} set. Skips are COUNTED, not
+        # silently dropped (see honest-feedback block after the loop).
+        owner_fields = {doc.get("original_logged_by"), doc.get("logged_by"),
+                        doc.get("accepted_by"), doc.get("transferred_by")}
+        owner_fields.discard(None); owner_fields.discard("")
+        can_transfer = (user_role == "admin") or bool(owner_fields & visible_set)
         if not can_transfer:
+            skipped_unauth += 1
             continue
 
         old_status      = doc.get("status", "")
@@ -1406,27 +1433,60 @@ def transfer_batch():
         # NOTE: logged_by is NOT updated here — the receiving staff takes
         # ownership only after they accept via the receive modal.
 
+        remark = (
+            f"Batch re-routed to {new_staff_full_name} ({new_staff_office or 'N/A'}). "
+            f"Cycle {doc['routing_cycle']} completed."
+            if routing_back else
+            f"Batch transferred to {recipient_display} ({new_staff_office or 'N/A'})."
+        )
+        # Provenance for group-mate (non-owner, non-admin) transfers — record both
+        # the actor and the original owner without overwriting any owner field.
+        doc_owners = {doc.get("original_logged_by"), doc.get("logged_by"), doc.get("accepted_by")}
+        if user_role != "admin" and current_user not in doc_owners:
+            remark += (
+                f" By {current_full_name} — acting on document originated by "
+                f"{doc.get('original_logged_by') or 'N/A'}."
+            )
         doc.setdefault("travel_log", []).append({
             "office":    new_staff_office or "DepEd Leyte Division Office",
             "action":    action_label,
             "officer":   session.get("full_name") or session.get("username"),
             "timestamp": now_str(),
-            "remarks":   (
-                f"Batch re-routed to {new_staff_full_name} ({new_staff_office or 'N/A'}). "
-                f"Cycle {doc['routing_cycle']} completed."
-                if routing_back else
-                f"Batch transferred to {recipient_display} ({new_staff_office or 'N/A'})."
-            ),
+            "remarks":   remark,
         })
         save_doc(doc)
         transferred_count += 1
         transferred_ids.append(doc_id)
 
     audit_log("doc_batch_transferred",
-              f"count={transferred_count} to={new_staff or 'office:' + new_staff_office} type={transfer_type}",
+              f"count={transferred_count} skipped_unauth={skipped_unauth} "
+              f"skipped_missing={skipped_missing} "
+              f"to={new_staff or 'office:' + new_staff_office} type={transfer_type}",
               username=session.get("username","?"), ip=get_client_ip())
 
-    flash(f"{transferred_count} document(s) transferred to {recipient_display} at {new_staff_office or 'N/A'}. Status changed to Routed", "success")
+    # Honest feedback — never flash success when nothing actually transferred,
+    # and surface skipped docs instead of silently dropping them.
+    if transferred_count == 0:
+        flash(
+            f"No documents were transferred. "
+            f"{skipped_unauth} not permitted, {skipped_missing} not found.",
+            "error"
+        )
+        return redirect(url_for("dashboard.index"))
+
+    if skipped_unauth or skipped_missing:
+        flash(
+            f"{transferred_count} document(s) transferred to {recipient_display} at "
+            f"{new_staff_office or 'N/A'}. Skipped {skipped_unauth} not permitted, "
+            f"{skipped_missing} not found.",
+            "warning"
+        )
+    else:
+        flash(
+            f"{transferred_count} document(s) transferred to {recipient_display} at "
+            f"{new_staff_office or 'N/A'}. Status changed to Routed",
+            "success"
+        )
 
     # EXTERNAL transfer (destination office differs from sender's office) →
     # one routing slip for the whole batch (all docs share new_staff_office),
