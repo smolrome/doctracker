@@ -415,7 +415,12 @@ var serverSessionData = {
                 <td class="td-text" data-label="Referred To">{{ doc.referred_to or '—' }}</td>
 
                 <td class="td-date" data-label="Date">
-                  {% if doc.created_at %}
+                  {% if doc.date_received %}
+                    <span class="date-main">{{ doc.date_received[:10] }}</span>
+                    {% if doc.date_received[11:16] %}
+                    <span class="date-time">{{ doc.date_received | time12 }}</span>
+                    {% endif %}
+                  {% elif doc.created_at %}
                     <span class="date-main">{{ doc.created_at[:10] }}</span>
                     <span class="date-time">{{ doc.created_at | time12 }}</span>
                   {% else %}
