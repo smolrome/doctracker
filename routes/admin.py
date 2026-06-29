@@ -3,7 +3,7 @@ routes/admin.py — Admin-only routes: user management, activity log, invites.
 """
 from datetime import datetime
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
 from services.auth import (
     create_user, delete_user, get_all_users, set_user_active,
@@ -1231,9 +1231,14 @@ def clear_database():
                   username=username,
                   ip=get_client_ip())
         flash(f"Database cleared — {count} document(s) and all routing slips permanently deleted.", "success")
+        return redirect(url_for("admin.staff_document_stats"))
 
     except Exception as e:
+        # get_conn() context manager already rolled back the failing transaction;
+        # there is no SQLAlchemy db.session in this module to roll back.
+        current_app.logger.exception("clear_database failed")
         flash(f"Clear failed: {e}", "error")
+        return redirect(url_for("admin.staff_document_stats"))
 
 
 @admin_bp.route("/api/parse-excel-users", methods=["POST"])

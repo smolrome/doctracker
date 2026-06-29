@@ -9,7 +9,7 @@ Supports the DepEd Leyte Division tracking sheet format:
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pandas as pd
 
@@ -50,8 +50,45 @@ COLUMN_MAP = {
 }
 
 
+# Word-order-insensitive fallback: {token frozenset -> field}
+_TOKEN_MAP: dict = {}
+for _k, _v in COLUMN_MAP.items():
+    _TOKEN_MAP.setdefault(frozenset(_k.split()), _v)
+
+
 def _norm(col: str) -> str:
-    return str(col).strip().lower()
+    # case-insensitive, trimmed, and internal whitespace collapsed
+    return " ".join(str(col).strip().lower().split())
+
+
+def _lookup_field(header: str):
+    """Map a header to a field. Tries exact (normalized) match first, then a
+    word-order-insensitive token-set match so 'RECEIVED DATE' == 'DATE RECEIVED'."""
+    h = _norm(header)
+    return COLUMN_MAP.get(h) or _TOKEN_MAP.get(frozenset(h.split()))
+
+
+def _parse_date(val, warnings=None, label="date") -> str:
+    """Normalize a cell to ISO 'YYYY-MM-DD'. Accepts real Excel dates
+    (datetime/Timestamp), text dates like '5/26/2026', and Excel date serials.
+    Blanks -> ''. Unparseable values are kept verbatim and logged to `warnings`."""
+    if isinstance(val, datetime):
+        return val.strftime("%Y-%m-%d")
+    s = _str(val)
+    if not s:
+        return ""
+    for fmt in ("%m/%d/%Y", "%m/%d/%y", "%Y-%m-%d", "%m-%d-%Y", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(s, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    try:  # Excel date serial stored as a number/text (epoch 1899-12-30)
+        return (datetime(1899, 12, 30) + timedelta(days=float(s))).strftime("%Y-%m-%d")
+    except (ValueError, OverflowError):
+        pass
+    if warnings is not None:
+        warnings.append(f"Could not parse {label} value '{s}' — kept as-is.")
+    return s
 
 
 def _str(val) -> str:
@@ -95,7 +132,7 @@ def parse_excel(file_bytes: bytes, filename: str) -> tuple[list[dict], list[str]
 
     col_index = {}
     for i, h in enumerate(headers):
-        field = COLUMN_MAP.get(h)
+        field = _lookup_field(h)
         if field and field not in col_index:
             col_index[field] = i
 
@@ -109,6 +146,11 @@ def parse_excel(file_bytes: bytes, filename: str) -> tuple[list[dict], list[str]
         def get(field):
             idx = col_index.get(field)
             return _str(row[idx]) if idx is not None and idx < len(row) else ""
+
+        def get_date(field):
+            idx = col_index.get(field)
+            raw = row[idx] if idx is not None and idx < len(row) else None
+            return _parse_date(raw, warnings, label=field)
 
         doc_name = get("doc_name")
         sender   = get("sender_name")
@@ -125,9 +167,9 @@ def parse_excel(file_bytes: bytes, filename: str) -> tuple[list[dict], list[str]
             "referred_to":  get("referred_to"),
             "forwarded_to": get("forwarded_to"),
             "routed_to":    get("routed_to"),
-            "date_received":get("date_received"),
+            "date_received":get_date("date_received"),
             "time_received":get("time_received"),
-            "date_released":get("date_released"),
+            "date_released":get_date("date_released"),
             "user_email":   get("user_email"),
             "notes":        get("notes"),
         })
