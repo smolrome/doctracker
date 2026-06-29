@@ -4,7 +4,6 @@ routes/scanning.py — All QR scan actions:
   - /doc-scan/<token>         — one-time RECEIVE/RELEASE token scan
   - /receive/<doc_id>         — legacy manual receive/release
   - /upload-qr                — upload QR image to auto-log
-  - /scan                     — AI document scan
   - /office-qr/<action>.png   — generate office QR PNG
   - /doc-qr-download/<token>  — download doc token QR PNG
 """
@@ -291,15 +290,6 @@ def upload_qr():
 
 # ── AI document scan ──────────────────────────────────────────────────────────
 
-_SCAN_PROMPT = """
-Analyze this document and extract all relevant fields.
-Return ONLY a valid JSON object with these exact keys (use empty string if not found):
-{"doc_name":"","doc_id":"","category":"","description":"","sender_name":"","sender_org":"",
-"sender_contact":"","recipient_name":"","recipient_org":"","recipient_contact":"",
-"date_received":"","date_released":"","notes":""}
-Return ONLY the JSON. No markdown, no explanation.
-"""
-
 @scanning_bp.route("/api/doc-lookup/<doc_id>", methods=["GET"])
 @login_required
 def web_doc_lookup(doc_id):
@@ -368,54 +358,6 @@ def web_receive_from_client(doc_id):
 @login_required
 def staff_scan():
     return render_template("staff_scan.html")
-
-
-@scanning_bp.route("/scan", methods=["GET", "POST"])
-@login_required
-def ai_scan():
-    extracted = error = None
-    try:
-        import anthropic
-        import json
-        ai_client = anthropic.Anthropic()
-        ai_ok = True
-    except Exception:
-        ai_ok = False
-
-    if request.method == "POST":
-        if not ai_ok:
-            error = "Anthropic library not configured."
-        else:
-            uploaded = request.files.get("document")
-            if not uploaded or not uploaded.filename:
-                error = "Please select a file."
-            else:
-                try:
-                    import json
-                    b64  = base64.standard_b64encode(uploaded.read()).decode()
-                    mime = uploaded.content_type or "image/jpeg"
-                    content = (
-                        [{"type": "document",
-                          "source": {"type": "base64", "media_type": "application/pdf", "data": b64}},
-                         {"type": "text", "text": _SCAN_PROMPT}]
-                        if mime == "application/pdf" else
-                        [{"type": "image",
-                          "source": {"type": "base64", "media_type": mime, "data": b64}},
-                         {"type": "text", "text": _SCAN_PROMPT}]
-                    )
-                    resp = ai_client.messages.create(
-                        model="claude-sonnet-4-6",
-                        max_tokens=1024,
-                        messages=[{"role": "user", "content": content}],
-                    )
-                    raw       = resp.content[0].text.strip().replace("```json", "").replace("```", "").strip()
-                    extracted = json.loads(raw)
-                except Exception as e:
-                    error = f"Scan failed: {e}"
-
-    from config import STATUS_OPTIONS
-    return render_template("scan.html", extracted=extracted, error=error,
-                           status_options=STATUS_OPTIONS)
 
 
 # ── QR PNG generation endpoints ───────────────────────────────────────────────
