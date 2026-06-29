@@ -169,8 +169,12 @@ def index():
     filter_office    = request.args.get("office", "All")
     filter_cat       = request.args.get("cat", "All")
     filter_staff     = request.args.get("staff", "All")
+    filter_batch     = request.args.get("import_batch", "").strip()
 
     filtered = docs
+
+    if filter_batch:
+        filtered = [d for d in filtered if d.get("import_batch_id") == filter_batch]
 
     if search:
         def _matches(d, q):

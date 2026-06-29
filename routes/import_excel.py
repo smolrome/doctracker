@@ -8,7 +8,8 @@ from services.excel_import import import_excel, parse_excel
 from services.dropdown_options import get_dropdown_options
 from services.misc import audit_log, load_saved_offices
 from services.auth import get_all_users
-from services.documents import load_docs, save_doc
+from services.documents import load_docs, save_doc, get_doc, delete_doc, restore_doc
+from services.database import create_import_batch, get_import_batches, get_import_batch
 from utils import admin_required, get_client_ip
 
 import_bp = Blueprint("import_excel", __name__)
@@ -118,7 +119,116 @@ def import_confirm():
               username=session.get("username", "admin"),
               ip=get_client_ip())
 
+    # Record the import as a batch (history index). Never let bookkeeping
+    # failure break a successful import.
+    if summary.get("imported") and summary.get("batch_id"):
+        try:
+            create_import_batch(
+                summary["batch_id"],
+                session.get("username", "admin"),
+                filename,
+                summary.get("doc_ids", []),
+                summary["imported"],
+            )
+        except Exception as e:
+            summary.setdefault("warnings", []).append(f"Import history not recorded: {e}")
+
     return render_template("import_excel.html", summary=summary, filename=filename)
+
+
+@import_bp.route("/import-excel/history")
+@admin_required
+def import_history():
+    """List past imports as batches, newest first, with a live not-trashed count."""
+    batches = get_import_batches()
+
+    # Single scan of all docs to compute live (not-trashed) counts per batch,
+    # so the page reflects reality after deletes/restores.
+    counts = {}
+    for d in load_docs(include_deleted=True):
+        bid = d.get("import_batch_id")
+        if not bid:
+            continue
+        c = counts.setdefault(bid, {"alive": 0, "deleted": 0})
+        if d.get("deleted"):
+            c["deleted"] += 1
+        else:
+            c["alive"] += 1
+
+    rows = []
+    for b in batches:
+        bid = b.get("id")
+        c = counts.get(bid, {"alive": 0, "deleted": 0})
+        rows.append({
+            "id":          bid,
+            "filename":    b.get("filename") or "(unnamed)",
+            "imported_by": b.get("imported_by") or "—",
+            "row_count":   b.get("row_count") or 0,
+            "created_at":  b.get("created_at") or "",
+            "alive":       c["alive"],
+            "deleted":     c["deleted"],
+        })
+
+    return render_template("import_history.html", batches=rows)
+
+
+def _batch_doc_ids(batch_id):
+    """Resolve the doc ids for a batch — from the index row, falling back to a
+    stamp scan if the row is missing (e.g. JSON mode or a lost record)."""
+    batch = get_import_batch(batch_id)
+    doc_ids = list(batch.get("doc_ids") or []) if batch else []
+    if not doc_ids:
+        doc_ids = [d.get("id") for d in load_docs(include_deleted=True)
+                   if d.get("import_batch_id") == batch_id]
+    return batch, doc_ids
+
+
+@import_bp.route("/import-excel/batch/<batch_id>/delete", methods=["POST"])
+@admin_required
+def delete_batch(batch_id):
+    """Soft-delete every document in an import batch via the existing trash."""
+    batch, doc_ids = _batch_doc_ids(batch_id)
+    if not doc_ids:
+        flash("No documents found for that import batch.", "error")
+        return redirect(url_for("import_excel.import_history"))
+
+    username = session.get("username", "admin")
+    deleted = 0
+    for did in doc_ids:
+        doc = get_doc(did)
+        if doc and not doc.get("deleted"):
+            delete_doc(did, deleted_by=username)
+            deleted += 1
+
+    audit_log("import_batch_deleted",
+              f"batch={batch_id} file={(batch or {}).get('filename','')} deleted={deleted}",
+              username=username, ip=get_client_ip())
+    flash(f"🗑️ Moved {deleted} document(s) from this import to Trash. You can restore the batch from here.", "success")
+    return redirect(url_for("import_excel.import_history"))
+
+
+@import_bp.route("/import-excel/batch/<batch_id>/restore", methods=["POST"])
+@admin_required
+def restore_batch(batch_id):
+    """Restore every soft-deleted document in an import batch (undo a batch delete)."""
+    batch, doc_ids = _batch_doc_ids(batch_id)
+    if not doc_ids:
+        flash("No documents found for that import batch.", "error")
+        return redirect(url_for("import_excel.import_history"))
+
+    username = session.get("username", "admin")
+    restored = 0
+    for did in doc_ids:
+        doc = get_doc(did)
+        if doc and doc.get("deleted"):
+            restore_doc(did)
+            restored += 1
+
+    audit_log("import_batch_restored",
+              f"batch={batch_id} file={(batch or {}).get('filename','')} restored={restored}",
+              username=username, ip=get_client_ip())
+    flash(f"♻️ Restored {restored} document(s) from Trash.", "success")
+    return redirect(url_for("import_excel.import_history"))
 
 
 @import_bp.route("/import-excel/reassign", methods=["GET", "POST"])

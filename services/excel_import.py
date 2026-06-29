@@ -195,10 +195,16 @@ def import_excel(file_bytes: bytes, filename: str,
         "errors":   [],
         "warnings": warnings,
         "docs":     [],
+        "batch_id": "",
+        "doc_ids":  [],
     }
 
     if not rows:
         return summary
+
+    # One batch identity shared by every doc in this upload (forward-only).
+    import_batch_id = str(uuid.uuid4())
+    imported_at     = now_str()   # single shared timestamp for the whole batch
 
     # Build all doc dicts first (no DB calls yet)
     docs_to_insert = []
@@ -218,6 +224,26 @@ def import_excel(file_bytes: bytes, filename: str,
                 else:
                     auto_status = "Received"
 
+            # Timeline (travel_log) mirroring the manual-log shape: imported, then status.
+            _tl_office = default_office or "DepEd Leyte Division Office"
+            travel_log = [
+                {
+                    "office":    _tl_office,
+                    "action":    "Document Imported from Excel",
+                    "officer":   imported_by,
+                    "timestamp": imported_at,
+                    "remarks":   f"Imported from {filename}. Batch of {len(rows)}.",
+                },
+                {
+                    "office":    _tl_office,
+                    "action":    f"Status Updated to {auto_status}",
+                    "officer":   imported_by,
+                    "timestamp": imported_at,
+                    "remarks":   "Set at import (override)." if default_status
+                                 else "Set at import (auto-detected from remarks).",
+                },
+            ]
+
             doc = {
                 "id":           uid,
                 "doc_id":       doc_id,
@@ -225,10 +251,11 @@ def import_excel(file_bytes: bytes, filename: str,
                 "category":     "Special Order",
                 "status":       auto_status,
                 "sender_name":  row["sender_name"],
-                "sender_org":   default_office or row["sender_org"],
+                "sender_org":   row["sender_org"],          # origin UNIT/OFFICE from the sheet — preserved
                 "received_by":  default_staff_name or row["received_by"],
                 "logged_by":    default_staff_username or "",
                 "original_logged_by": default_staff_username or "",
+                "logged_by_office": default_office or "",   # assigned owning office (canonical, like manual log)
                 "referred_to":  row["referred_to"],
                 "forwarded_to": row["forwarded_to"],
                 "routed_to":    row["routed_to"],
@@ -238,6 +265,10 @@ def import_excel(file_bytes: bytes, filename: str,
                 "created_at":   ts,
                 "created_by":   imported_by,
                 "source":       f"Imported from {filename}",
+                "import_batch_id": import_batch_id,
+                "import_filename": filename,
+                "imported_at":     imported_at,
+                "travel_log":   travel_log,
                 "deleted":      False,
             }
             docs_to_insert.append(doc)
@@ -253,10 +284,14 @@ def import_excel(file_bytes: bytes, filename: str,
         try:
             _batch_insert(docs_to_insert, session_id=imported_by)
             summary["imported"] = len(docs_to_insert)
+            summary["batch_id"] = import_batch_id
+            summary["doc_ids"]  = [d["id"] for d in docs_to_insert]
         except Exception as e:
             summary["errors"].append(f"Batch insert failed: {e}")
             summary["imported"] = 0
             summary["docs"] = []
+            summary["batch_id"] = ""
+            summary["doc_ids"] = []
 
     return summary
 

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Import History — LAKAD{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <a href="{{ url_for('import_excel.import_page') }}" class="page-back">← Import</a>
+  <div class="page-title">Import History</div>
+</div>
+
+<div style="color:var(--muted);margin:8px 0 18px;font-size:14px;">
+  Past Excel imports, newest first. Deleting a batch moves all its documents to Trash
+  (they vanish from the dashboard) — you can restore the whole batch here.
+  Only imports made after this feature was added appear below.
+</div>
+
+{% if batches %}
+<div style="overflow-x:auto;border:1px solid var(--border, #e5e7eb);border-radius:10px;">
+  <table style="width:100%;border-collapse:collapse;font-size:14px;">
+    <thead>
+      <tr style="background:var(--surface-2, #f8fafc);text-align:left;">
+        <th style="padding:10px 12px;">File</th>
+        <th style="padding:10px 12px;">Imported by</th>
+        <th style="padding:10px 12px;">When</th>
+        <th style="padding:10px 12px;">Live / Imported</th>
+        <th style="padding:10px 12px;text-align:right;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in batches %}
+      {% set when = b.created_at.strftime('%Y-%m-%d %H:%M') if b.created_at and b.created_at is not string else (b.created_at or '—')[:16].replace('T',' ') %}
+      <tr style="border-top:1px solid var(--border, #e5e7eb);">
+        <td style="padding:10px 12px;font-weight:600;">{{ b.filename }}</td>
+        <td style="padding:10px 12px;">{{ b.imported_by }}</td>
+        <td style="padding:10px 12px;white-space:nowrap;">{{ when }}</td>
+        <td style="padding:10px 12px;white-space:nowrap;">
+          <span style="font-weight:700;">{{ b.alive }}</span>
+          <span style="color:var(--muted);"> / {{ b.row_count }}</span>
+          {% if b.deleted %}
+          <span style="color:#991B1B;font-size:12px;"> &nbsp;({{ b.deleted }} in trash)</span>
+          {% endif %}
+        </td>
+        <td style="padding:10px 12px;text-align:right;white-space:nowrap;">
+          <a href="{{ url_for('dashboard.index', import_batch=b.id) }}"
+             class="btn btn-sm" style="padding:6px 10px;border:1px solid var(--border,#cbd5e1);border-radius:6px;text-decoration:none;">
+            View docs
+          </a>
+          {% if b.alive %}
+          <form method="POST" action="{{ url_for('import_excel.delete_batch', batch_id=b.id) }}" style="display:inline;margin:0;">
+            <button type="submit" class="btn btn-sm"
+                    style="padding:6px 10px;background:#DC2626;color:#fff;border:none;border-radius:6px;cursor:pointer;"
+                    onclick="return confirm('Move all {{ b.alive }} document(s) from this import to Trash? You can restore them from this page.')">
+              🗑️ Delete batch
+            </button>
+          </form>
+          {% endif %}
+          {% if b.deleted %}
+          <form method="POST" action="{{ url_for('import_excel.restore_batch', batch_id=b.id) }}" style="display:inline;margin:0;">
+            <button type="submit" class="btn btn-sm"
+                    style="padding:6px 10px;background:#059669;color:#fff;border:none;border-radius:6px;cursor:pointer;"
+                    onclick="return confirm('Restore all trashed document(s) from this import?')">
+              ♻️ Restore batch
+            </button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div style="text-align:center;padding:48px 16px;color:var(--muted);">
+  <div style="font-size:40px;">📭</div>
+  <div style="font-weight:700;margin-top:8px;">No imports recorded yet</div>
+  <div style="margin-top:4px;">Imports made from now on will appear here.</div>
+</div>
+{% endif %}
+
+{% endblock %}

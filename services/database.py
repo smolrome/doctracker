@@ -258,6 +258,16 @@ def _create_tables(cur):
             created_at            TIMESTAMP DEFAULT NOW()
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS import_batches (
+            id          TEXT PRIMARY KEY,
+            imported_by TEXT,
+            filename    TEXT,
+            doc_ids     JSONB NOT NULL,
+            row_count   INTEGER,
+            created_at  TIMESTAMP DEFAULT NOW()
+        )
+    """)
     # Performance + audit query indexes
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(username)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(ts DESC)""")
@@ -328,6 +338,7 @@ def _run_migrations(cur):
     migrations.append("ALTER TABLE staff_groups ADD COLUMN IF NOT EXISTS has_so_access BOOLEAN DEFAULT FALSE")
     migrations.append("ALTER TABLE staff_groups ADD COLUMN IF NOT EXISTS has_shared_dashboard BOOLEAN DEFAULT TRUE")
     migrations.append("CREATE TABLE IF NOT EXISTS transfer_batches (id TEXT PRIMARY KEY, transferred_by TEXT NOT NULL, transferred_to TEXT NOT NULL, transferred_to_office TEXT, transferred_to_name TEXT, transfer_type TEXT, doc_ids JSONB NOT NULL, created_at TIMESTAMP DEFAULT NOW())")
+    migrations.append("CREATE TABLE IF NOT EXISTS import_batches (id TEXT PRIMARY KEY, imported_by TEXT, filename TEXT, doc_ids JSONB NOT NULL, row_count INTEGER, created_at TIMESTAMP DEFAULT NOW())")
     migrations.append("ALTER TABLE so_records ADD COLUMN IF NOT EXISTS doc_id TEXT REFERENCES documents(id) ON DELETE SET NULL")
     for sql in migrations:
         try:
@@ -555,3 +566,56 @@ def get_transfer_history(username, role):
                     (username,)
                 )
             return cur.fetchall()
+
+
+def create_import_batch(batch_id, imported_by, filename, doc_ids, row_count):
+    """Record one Excel import as a batch. DB-only, mirroring transfer_batches;
+    in JSON mode the docs are self-describing via their import_batch_id stamp."""
+    if not USE_DB:
+        return
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO import_batches
+                    (id, imported_by, filename, doc_ids, row_count, created_at)
+                VALUES (%s, %s, %s, %s::jsonb, %s, NOW())
+                ON CONFLICT (id) DO NOTHING
+            """, (batch_id, imported_by, filename, json.dumps(doc_ids), row_count))
+
+
+def get_import_batches():
+    """All import batches, newest first. Uses the import_batches index in DB mode;
+    reconstructs from stamped docs in JSON mode so local testing still works."""
+    if USE_DB:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM import_batches ORDER BY created_at DESC")
+                return cur.fetchall()
+    # JSON fallback — group stamped documents by import_batch_id
+    from services.documents import load_docs
+    groups = {}
+    for d in load_docs(include_deleted=True):
+        bid = d.get("import_batch_id")
+        if not bid:
+            continue
+        g = groups.setdefault(bid, {
+            "id":          bid,
+            "imported_by": d.get("created_by", ""),
+            "filename":    d.get("import_filename", ""),
+            "doc_ids":     [],
+            "row_count":   0,
+            "created_at":  d.get("imported_at", ""),
+        })
+        g["doc_ids"].append(d.get("id"))
+        g["row_count"] += 1
+    return sorted(groups.values(), key=lambda g: g.get("created_at") or "", reverse=True)
+
+
+def get_import_batch(batch_id):
+    """One import batch row (or reconstructed dict in JSON mode), or None."""
+    if USE_DB:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM import_batches WHERE id = %s", (batch_id,))
+                return cur.fetchone()
+    return next((b for b in get_import_batches() if b.get("id") == batch_id), None)

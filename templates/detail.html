@@ -340,6 +340,8 @@
       {% set dot_class = 'dot-review' %}{% set dot_icon = '🔍' %}
     {% elif 'submit' in entry_action or 'logged' in entry_action or 'creat' in entry_action %}
       {% set dot_class = 'dot-create' %}{% set dot_icon = '📋' %}
+    {% elif 'import' in entry_action %}
+      {% set dot_class = 'dot-create' %}{% set dot_icon = '🗂️' %}
     {% else %}
       {% set dot_class = '' %}{% set dot_icon = '📌' %}
     {% endif %}
