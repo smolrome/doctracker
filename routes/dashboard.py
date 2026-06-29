@@ -288,7 +288,7 @@ def index():
     # ── Sorting ──────────────────────────────────────────────────────────────────
     _SORT_KEYS = {
         "doc_name":   lambda d: (d.get("doc_name") or "").lower(),
-        "created_at": lambda d: d.get("date_received") or d.get("created_at") or "",
+        "created_at": lambda d: ((d.get("date_received") or d.get("created_at") or "")[:10], d.get("created_at") or ""),
         "status":     lambda d: (d.get("status") or "").lower(),
         "sender":     lambda d: (d.get("sender_name") or d.get("sender_org") or "").lower(),
     }
