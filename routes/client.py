@@ -333,7 +333,11 @@ def track(doc_id):
     if not doc:
         flash("Document not found.", "error")
         return redirect(url_for("client.portal"))
-    return render_template("client_track.html", doc=doc,
+    # Read-only client-safe presentation layer — never mutates the document.
+    from services.auth import get_all_users
+    from services.client_view import build_client_track_view
+    view = build_client_track_view(doc, get_all_users())
+    return render_template("client_track.html", doc=doc, view=view,
                            qr_b64=generate_qr_b64(doc, request.host_url),
                            csrf_token=_getcsrf_token())
 

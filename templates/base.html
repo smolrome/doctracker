@@ -104,10 +104,6 @@
               <span class="dd-icon">📷</span>
               <span class="dd-text">Scan QR<span class="dd-desc">Live camera QR scanner</span></span>
             </a>
-            <a href="/upload-qr" class="dd-item">
-              <span class="dd-icon">📤</span>
-              <span class="dd-text">Upload QR Image<span class="dd-desc">Process a QR from photo</span></span>
-            </a>
             {% if current_role in ('admin','staff') %}
             <a href="/office-qr-page" class="dd-item">
               <span class="dd-icon">🖨️</span>
@@ -139,26 +135,10 @@
         <div class="nav-dropdown-menu">
           <div class="dd-section">
             <span class="dd-label">Manage</span>
-            <a href="/pending-clients" class="dd-item">
-              <span class="dd-icon">⏳</span>
-              <span class="dd-text">Pending Clients<span class="dd-desc">Approve new client registrations</span></span>
-              <span id="pending-clients-badge" style="display:none;background:#DC2626;color:#fff;font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;margin-left:auto;min-width:20px;text-align:center;line-height:18px;flex-shrink:0;" aria-label="pending client registrations"></span>
-            </a>
             <a href="/manage-users" class="dd-item">
               <span class="dd-icon">👥</span>
-              <span class="dd-text">Users<span class="dd-desc">Add, edit, deactivate accounts</span></span>
-            </a>
-            <a href="/manage-pairings" class="dd-item">
-              <span class="dd-icon">🤝</span>
-              <span class="dd-text">Staff Pairings<span class="dd-desc">Share document visibility between staff</span></span>
-            </a>
-            <a href="/office-staff" class="dd-item">
-              <span class="dd-icon">🏢</span>
-              <span class="dd-text">Office Staff<span class="dd-desc">View offices and staff count</span></span>
-            </a>
-            <a href="/office-documents" class="dd-item">
-              <span class="dd-icon">📁</span>
-              <span class="dd-text">Office Documents<span class="dd-desc">View documents by office</span></span>
+              <span class="dd-text">Users<span class="dd-desc">Accounts, pending clients &amp; pairings</span></span>
+              <span id="pending-clients-badge" style="display:none;background:#DC2626;color:#fff;font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;margin-left:auto;min-width:20px;text-align:center;line-height:18px;flex-shrink:0;" aria-label="pending client registrations"></span>
             </a>
             <a href="/appointments" class="dd-item">
               <span class="dd-icon">📅</span>
@@ -175,6 +155,18 @@
             <a href="/trash" class="dd-item">
               <span class="dd-icon">🗑️</span>
               <span class="dd-text">Trash<span class="dd-desc">Recover deleted documents</span></span>
+            </a>
+          </div>
+          <div class="dd-divider"></div>
+          <div class="dd-section">
+            <span class="dd-label">Offices</span>
+            <a href="/office-staff" class="dd-item">
+              <span class="dd-icon">🏢</span>
+              <span class="dd-text">Office Staff<span class="dd-desc">View offices and staff count</span></span>
+            </a>
+            <a href="/office-documents" class="dd-item">
+              <span class="dd-icon">📁</span>
+              <span class="dd-text">Office Documents<span class="dd-desc">View documents by office</span></span>
             </a>
           </div>
           <div class="dd-divider"></div>
@@ -293,7 +285,6 @@
   {% if logged_in %}
     <div class="nav-drawer-section">Actions</div>
     <a href="/staff-scan" class="nav-btn" onclick="closeMenu()">📷 Scan QR</a>
-    <a href="/upload-qr" class="nav-btn" onclick="closeMenu()">📤 Upload QR Image</a>
     {% if current_role in ('admin','staff') %}
       <a href="/office-qr-page" class="nav-btn" onclick="closeMenu()">🖨️ Office QR Codes</a>
     {% endif %}
@@ -306,16 +297,17 @@
     {% if current_role == 'admin' %}
       <div class="nav-divider"></div>
       <div class="nav-drawer-section">Admin</div>
-      <a href="/pending-clients"   class="nav-btn" onclick="closeMenu()">⏳ Pending Clients</a>
       <a href="/manage-users"     class="nav-btn" onclick="closeMenu()">👥 Manage Users</a>
-      <a href="/office-staff"     class="nav-btn" onclick="closeMenu()">🏢 Office Staff</a>
-      <a href="/office-documents" class="nav-btn" onclick="closeMenu()">📁 Office Documents</a>
       <a href="/appointments"     class="nav-btn" onclick="closeMenu()">📅 Appointments</a>
       <a href="/activity-log"     class="nav-btn" onclick="closeMenu()">📋 Audit Log</a>
       <a href="/dropdown-options" class="nav-btn" onclick="closeMenu()">⚙️ Dropdown Options</a>
       <a href="/trash"            class="nav-btn" onclick="closeMenu()">🗑️ Trash</a>
       <a href="/import-excel"     class="nav-btn" onclick="closeMenu()">📥 Import Excel</a>
       <a href="/backup"           class="nav-btn" onclick="closeMenu()">🗄️ Backup &amp; Restore</a>
+      <div class="nav-divider"></div>
+      <div class="nav-drawer-section">Offices</div>
+      <a href="/office-staff"     class="nav-btn" onclick="closeMenu()">🏢 Office Staff</a>
+      <a href="/office-documents" class="nav-btn" onclick="closeMenu()">📁 Office Documents</a>
       <!-- CHANGED: visually separated, clearly labelled danger -->
       <div class="nav-divider"></div>
       <div class="nav-drawer-section nav-drawer-section-danger">⚠️ Danger Zone</div>

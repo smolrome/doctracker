@@ -145,10 +145,37 @@ def insert_doc(doc: dict):
         _save_docs_json(docs)
 
 
+def _maybe_notify_client(old_status, doc: dict):
+    """Client-notification choke point — fire on a REAL milestone transition.
+
+    Called by save_doc / batch_save_docs after a successful write. Notifies the
+    submitting client only when the status actually CHANGED into a milestone
+    status. Failure-isolated: must NEVER raise, so it can never break
+    persistence. notify_client itself is imported lazily to avoid a circular
+    import (documents ↔ client_notify) and dispatches on a background thread.
+    """
+    try:
+        new_status = (doc.get("status") or "").strip()
+        if new_status == (old_status or "").strip():
+            return  # dedup: re-save / double-scan with no real change
+        if not (doc.get("submitted_by") or "").strip():
+            return  # staff-logged doc — no client to notify
+        from services.client_notify import MILESTONE_STATUSES, notify_client
+        if new_status not in MILESTONE_STATUSES:
+            return  # internal Transferred/Routed etc. — do not notify
+        notify_client(doc, new_status)
+    except Exception:
+        pass
+
+
 def save_doc(doc: dict):
     """Upsert an existing document."""
     doc = normalize_status_fields(doc)
+    old_status = None
     if USE_DB:
+        # One read to detect a transition (old persisted status) before the upsert.
+        prev = get_doc(doc["id"])
+        old_status = prev.get("status") if prev else None
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
@@ -165,19 +192,29 @@ def save_doc(doc: dict):
         docs = load_docs()
         for i, d in enumerate(docs):
             if d["id"] == doc["id"]:
+                old_status = d.get("status")   # free — the matched old doc
                 docs[i] = doc
                 break
         else:
             docs.insert(0, doc)
         _save_docs_json(docs)
 
+    # Persistence succeeded (DB errors re-raise above and never reach here).
+    _maybe_notify_client(old_status, doc)
+
 
 def batch_save_docs(docs: list[dict]):
     """Save multiple documents in a single DB transaction."""
     if not docs:
         return
+    old_status_map = {}   # id → old persisted status, for transition detection
+    succeeded = False
     if USE_DB:
         try:
+            # ONE batch read of old statuses before writing (not N queries).
+            ids = [d["id"] for d in docs if d.get("id")]
+            prev_map = get_docs_by_ids(ids)
+            old_status_map = {i: (p.get("status")) for i, p in prev_map.items()}
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     for doc in docs:
@@ -188,12 +225,16 @@ def batch_save_docs(docs: list[dict]):
                                ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data""",
                             (ndoc["id"], json.dumps(ndoc), ndoc.get("created_at", now_str()))
                         )
+            succeeded = True
         except Exception as e:
             print(f"[services.documents] batch_save_docs DB error: {e}")
     else:
         # JSON fallback — load once, update all, save once
         all_docs = load_docs(include_deleted=True)
         doc_map = {d["id"]: i for i, d in enumerate(all_docs)}
+        # Capture old statuses BEFORE the update loop overwrites them (free).
+        old_status_map = {d["id"]: all_docs[doc_map[d["id"]]].get("status")
+                          for d in docs if d.get("id") in doc_map}
         for doc in docs:
             ndoc = normalize_status_fields(doc)
             if ndoc["id"] in doc_map:
@@ -201,6 +242,12 @@ def batch_save_docs(docs: list[dict]):
             else:
                 all_docs.insert(0, ndoc)
         _save_docs_json(all_docs)
+        succeeded = True
+
+    # Notify per doc only if the batch write actually succeeded.
+    if succeeded:
+        for doc in docs:
+            _maybe_notify_client(old_status_map.get(doc.get("id")), doc)
 
 
 def delete_doc(doc_id: str, deleted_by: str = ""):

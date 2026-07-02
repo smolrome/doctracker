@@ -11,16 +11,16 @@
 <div class="summary-box">
   <div>
     <h2>📊 Documents by Office</h2>
-    <p>View all documents assigned to each office</p>
+    <p>Grouped by office. Some documents are inferred from the sender when it matches a known office — not confirmed assignments.</p>
   </div>
   <div class="summary-stats">
     <div class="stat-item">
-      <div class="stat-number">{{ office_docs|length }}</div>
+      <div class="stat-number">{{ office_total }}</div>
       <div class="stat-label">Offices</div>
     </div>
     <div class="stat-item">
       <div class="stat-number">{{ assigned_docs }}</div>
-      <div class="stat-label">Assigned Docs</div>
+      <div class="stat-label">Grouped Docs</div>
     </div>
     <div class="stat-item">
       <div class="stat-number">{{ unassigned_count }}</div>

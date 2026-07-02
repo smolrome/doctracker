@@ -105,11 +105,48 @@ def get_all_tokens() -> list[dict]:
 
 # ── Email sending ─────────────────────────────────────────────────────────────
 
+# Explicit socket timeout (seconds) for all outbound SMTP so a stalled Gmail
+# connection can never hang the caller (or a background notification thread).
+SMTP_TIMEOUT = 15
+
+
+def send_email(to_email: str, subject: str, body: str,
+               html_body: str = "") -> tuple[bool, str]:
+    """General-purpose plaintext (optionally HTML) email to a single address.
+
+    Reuses the Gmail SMTP_SSL transport shared by the other senders. Gated by
+    MAIL_ENABLED, guards an empty recipient, sets an explicit socket timeout,
+    and NEVER raises — returns (ok, message) so callers can branch safely.
+    """
+    if not MAIL_ENABLED:
+        return False, "Email not configured. Set MAIL_SENDER and GMAIL_APP_PASSWORD."
+    if not (to_email or "").strip():
+        return False, "No recipient email address."
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"]    = f"DepEd LAKAD <{MAIL_SENDER}>"
+    msg["To"]      = to_email
+    msg.attach(MIMEText(body, "plain"))
+    if html_body:
+        msg.attach(MIMEText(html_body, "html"))
+
+    try:
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP_SSL(GMAIL_SMTP_HOST, GMAIL_SMTP_PORT,
+                              context=ctx, timeout=SMTP_TIMEOUT) as server:
+            server.login(MAIL_SENDER, GMAIL_APP_PASSWORD)
+            server.sendmail(MAIL_SENDER, to_email, msg.as_string())
+        return True, ""
+    except Exception as e:
+        return False, f"Email error: {e}"
+
+
 def send_invite_email(to_email: str, to_name: str = "",
                       base_url: str = "") -> tuple[bool, str]:
-    """Send invite via Brevo API. Returns (success, token_or_error)."""
+    """Send invite via Gmail SMTP. Returns (success, token_or_error)."""
     if not MAIL_ENABLED:
-        return False, "Email not configured. Set BREVO_API_KEY in Railway Variables."
+        return False, "Email not configured. Set MAIL_SENDER and GMAIL_APP_PASSWORD."
 
     token  = generate_invite_token(to_email, to_name)
     base   = (base_url or APP_URL).rstrip("/")

@@ -18,20 +18,53 @@
 
 <div class="page">
   {% set status = doc.status %}
+  {% set sd = view.status_display %}
+  {% set cur = view.current %}
   {% set sc = 's-' + status if status in ['Pending','Received','Released','Transferred','Routed'] else 's-default' %}
-  {% set icons = {'Pending':'⏳','Received':'📥','Released':'✅','Rejected':'❌'} %}
 
+  <!-- Status hero (all statuses covered by the view-model) -->
   <div class="status-hero {{ sc }}">
-    <div class="status-icon">{{ icons.get(status,'📄') }}</div>
-    <div class="status-label">{{ status }}</div>
-    <div class="status-sub">
-      {% if status=='Pending'  %}Submitted — awaiting processing at the office.
-      {% elif status=='Received' %}Received at DepEd Leyte Division Office.
-      {% elif status=='Released' %}Processed and released from the office.
-      {% elif status=='Rejected' %}Document was not accepted. You may delete this document.
-      {% else %}{{ status }}{% endif %}
-    </div>
+    <div class="status-icon">{{ sd.icon }}</div>
+    <div class="status-label">{{ sd.label }}</div>
+    <div class="status-sub">{{ sd.sub_text }}</div>
   </div>
+
+  <!-- CURRENT STATUS: where to go, who to look for -->
+  {% if cur.state != 'done' %}
+  <div class="card" style="border:2px solid #BFDBFE;background:#EFF6FF;">
+    <div class="card-title">📍 Where is my document now?</div>
+    {% if cur.location_office %}
+    <div class="meta-item meta-full" style="margin-bottom:10px;">
+      <div class="meta-label">Current Office / Location</div>
+      <div class="meta-value" style="font-weight:800;font-size:17px;">{{ cur.location_office }}</div>
+    </div>
+    {% endif %}
+    {% if cur.handler_name %}
+    <div class="meta-item meta-full" style="margin-bottom:10px;">
+      <div class="meta-label">Who to look for</div>
+      <div class="meta-value" style="font-weight:800;font-size:17px;">
+        {{ cur.handler_name }}
+        {% if cur.handler_role_label %}<span style="font-weight:600;color:#2563EB;font-size:13px;"> · {{ cur.handler_role_label }}</span>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+    <div style="color:#1E3A8A;font-size:14px;margin-top:4px;">{{ cur.message }}</div>
+  </div>
+  {% else %}
+  <div class="card" style="border:2px solid #BBF7D0;background:#F0FDF4;">
+    <div class="card-title">✅ Complete</div>
+    <div style="color:#166534;font-size:14px;">{{ cur.message }}</div>
+    {% if cur.location_office %}<div style="color:#166534;font-size:13px;margin-top:4px;">Released from: {{ cur.location_office }}</div>{% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Rejection reason (the one internal note a client is entitled to see) -->
+  {% if view.rejection_reason %}
+  <div class="card" style="border:2px solid #FECACA;background:#FEF2F2;">
+    <div class="card-title" style="color:#991B1B;">❌ Reason not accepted</div>
+    <div style="color:#991B1B;font-size:14px;">{{ view.rejection_reason }}</div>
+  </div>
+  {% endif %}
 
   <!-- Action Card for Rejected / Pending Documents -->
   {% if status in ('Rejected', 'Pending') %}
@@ -111,50 +144,18 @@
     </div>
   </div>
 
-  <!-- Timeline -->
-  {% if doc.travel_log or doc.created_at %}
+  <!-- Movement history (deduped, client-safe — no internal officer/remarks) -->
+  {% if view.history %}
   <div class="card">
     <div class="card-title">🗺️ Document Timeline</div>
     <ul class="timeline">
-      {# Show initial submission first if not in travel_log #}
-      {% if doc.created_at and (not doc.travel_log or 'Submitted' not in doc.travel_log[0].get('action', '')) %}
+      {# Most recent first #}
+      {% for item in view.history|reverse %}
       <li class="tl-item">
-        <div class="tl-dot create">
-          {{ '📱' if doc.submitted_by else '🖊️' }}
-        </div>
+        <div class="tl-dot create">📄</div>
         <div class="tl-body">
-          <div class="tl-action">{{ 'Submitted' if doc.submitted_by else 'Logged' }}</div>
-          <div class="tl-meta">{{ doc.target_office_name or 'DepEd Leyte Division Office' }} · {{ doc.created_at[:16].replace('T',' ') if doc.created_at else '' }}</div>
-        </div>
-      </li>
-      {% endif %}
-      
-      {# Show travel_log entries in reverse (most recent first) #}
-      {% for log in doc.travel_log|reverse %}
-      {% set action_lower = log.action|lower if log.action else '' %}
-      {% set dt = 'receive' if 'receive' in action_lower else ('release' if 'release' in action_lower else ('reroute' if 'reroute' in action_lower else ('route' if 'route' in action_lower else 'create'))) %}
-      <li class="tl-item">
-        <div class="tl-dot {{ dt }}">
-          {% if 'receive' in action_lower %}📥
-          {% elif 'release' in action_lower or 'picked up' in action_lower %}✅
-          {% elif 'reroute' in action_lower %}🔁
-          {% elif 'route' in action_lower %}🚚
-          {% elif 'reject' in action_lower %}❌
-          {% elif 'on hold' in action_lower or 'hold' in action_lower %}⏸️
-          {% elif 'archived' in action_lower %}📦
-          {% else %}📄
-          {% endif %}
-        </div>
-        <div class="tl-body">
-          <div class="tl-action">
-            {% if ('route' in action_lower or 'reroute' in action_lower) and log.office %}
-              {{ log.action }} to {{ log.office }}
-            {% else %}
-              {{ log.action }}
-            {% endif %}
-          </div>
-          <div class="tl-meta">{{ log.office if 'route' not in action_lower and 'reroute' not in action_lower else '' }} {% if log.office and log.timestamp %}·{% endif %} {{ log.timestamp[:16].replace('T',' ') if log.timestamp else '' }}</div>
-          {% if log.remarks %}<div class="tl-remark">{{ log.remarks }}</div>{% endif %}
+          <div class="tl-action">{{ item.label }}</div>
+          <div class="tl-meta">{{ item.office }}{% if item.office and item.date %} · {% endif %}{{ item.date }}</div>
         </div>
       </li>
       {% endfor %}

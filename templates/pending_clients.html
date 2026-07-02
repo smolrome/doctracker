@@ -11,6 +11,8 @@
         <p class="subtitle">Review and approve client account registrations</p>
     </div>
 
+    {% include "_admin_users_tabs.html" %}
+
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="flash-messages">

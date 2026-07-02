@@ -45,7 +45,8 @@ def manage_users():
     from services.misc import load_saved_offices
     offices = load_saved_offices()
     return render_template("manage_users.html", users=users,
-                           admin_username=ADMIN_USERNAME, offices=offices)
+                           admin_username=ADMIN_USERNAME, offices=offices,
+                           active_tab="users")
 
 
 @admin_bp.route("/staff-document-stats")
@@ -483,7 +484,7 @@ def pending_clients():
         pass
     pending = get_pending_clients()
     return render_template("pending_clients.html", pending_clients=pending,
-                           admin_username=ADMIN_USERNAME)
+                           admin_username=ADMIN_USERNAME, active_tab="pending")
 
 
 @admin_bp.route("/api/admin/pending-clients-count")
@@ -533,23 +534,35 @@ def office_documents():
             }
     
     unassigned_docs = []
-    
+
+    # Normalized (strip + casefold) office-name lookup → canonical office_docs key.
+    # Removes case/spacing fragility in matching. READ-ONLY: nothing is written to docs.
+    def _norm(s):
+        return (s or "").strip().casefold()
+    office_by_norm = {_norm(name): name for name in office_docs}
+
     for doc in docs:
-        target = doc.get("target_office_name", "").strip()
-        pending = doc.get("pending_at_office", "").strip()
-        logged_by = doc.get("logged_by", "").strip()
-        
-        staff_office = user_office_map.get(logged_by, "")
-        
-        if target and target in office_docs:
-            office_docs[target]["docs"].append(doc)
-            office_docs[target]["count"] += 1
-        elif pending and pending in office_docs:
-            office_docs[pending]["docs"].append(doc)
-            office_docs[pending]["count"] += 1
-        elif staff_office and staff_office in office_docs:
-            office_docs[staff_office]["docs"].append(doc)
-            office_docs[staff_office]["count"] += 1
+        target       = _norm(doc.get("target_office_name"))
+        pending      = _norm(doc.get("pending_at_office"))
+        logged_by    = doc.get("logged_by", "").strip()
+        staff_office = _norm(user_office_map.get(logged_by, ""))
+        # sender_org is noisy (holds towns/districts/external senders too), so it is
+        # only used as a display inference when it EXACTLY matches a known office name.
+        sender_org   = _norm(doc.get("sender_org"))
+
+        match = None
+        if target and target in office_by_norm:
+            match = office_by_norm[target]
+        elif pending and pending in office_by_norm:
+            match = office_by_norm[pending]
+        elif staff_office and staff_office in office_by_norm:
+            match = office_by_norm[staff_office]
+        elif sender_org and sender_org in office_by_norm:
+            match = office_by_norm[sender_org]
+
+        if match:
+            office_docs[match]["docs"].append(doc)
+            office_docs[match]["count"] += 1
         else:
             unassigned_docs.append(doc)
     
@@ -574,6 +587,7 @@ def office_documents():
                            unassigned_count=len(unassigned_docs),
                            total_docs=total_docs,
                            assigned_docs=assigned_docs,
+                           office_total=office_total,
                            office_page=office_page,
                            office_total_pages=office_total_pages,
                            admin_username=ADMIN_USERNAME)
@@ -972,7 +986,8 @@ def manage_pairings():
     return render_template("manage_pairings.html",
                            groups=groups,
                            staff_users=staff_users,
-                           name_map=name_map)
+                           name_map=name_map,
+                           active_tab="pairings")
 
 
 @admin_bp.route("/manage-pairings/create-group", methods=["POST"])

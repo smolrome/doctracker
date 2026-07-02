@@ -1,0 +1,39 @@
+{# Shared admin tab bar for the Users hub: Users / Pending Clients / Staff Pairings.
+   Pass `active_tab` as one of: 'users', 'pending', 'pairings'. #}
+<style>
+.admin-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--border, #e2e8f0);
+  margin-bottom: 20px;
+}
+.admin-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: #64748b;
+  text-decoration: none;
+  border: 2px solid transparent;
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  margin-bottom: -2px;
+  transition: color .15s, background .15s;
+}
+.admin-tab:hover { color: var(--navy, #0E2A47); background: #f8fafc; }
+.admin-tab.active {
+  color: var(--navy, #0E2A47);
+  background: #fff;
+  border-color: var(--border, #e2e8f0);
+  border-bottom: 2px solid #fff;
+}
+</style>
+<div class="admin-tabs">
+  <a href="/manage-users" class="admin-tab {% if active_tab == 'users' %}active{% endif %}">👥 Users</a>
+  <a href="/pending-clients" class="admin-tab {% if active_tab == 'pending' %}active{% endif %}">⏳ Pending Clients</a>
+  <a href="/manage-pairings" class="admin-tab {% if active_tab == 'pairings' %}active{% endif %}">🤝 Staff Pairings</a>
+</div>
