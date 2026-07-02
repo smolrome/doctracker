@@ -7,10 +7,15 @@ import time
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from services.auth import (
-    check_rate_limit, create_user, get_user, get_user_can_generate_so, reset_rate_limit,
-    update_last_login, update_user, update_user_password, verify_password, verify_user,
+    check_rate_limit, create_user, get_user, get_user_by_email, get_user_can_generate_so,
+    reset_rate_limit, update_last_login, update_user, update_user_password, verify_password,
+    verify_user,
 )
-from services.email import validate_invite_token, consume_invite_token
+from services.email import validate_invite_token, consume_invite_token, send_email
+from services.password_reset import (
+    check_reset_rate_limit, consume_reset_token, create_reset_token,
+    set_password, verify_reset_token,
+)
 from services.misc import audit_log, load_saved_offices, save_office
 from services.cart_store import save_cart, load_cart, clear_cart
 from utils import get_client_ip, is_logged_in
@@ -174,6 +179,138 @@ def register():
                            token_email=token_email,
                            token_name=token_name,
                            existing_offices=existing_offices)
+
+
+# ── Self-service password reset (Checkpoint B) ──────────────────────────────────
+
+# Single generic response for EVERY request-reset outcome (exists / doesn't
+# exist / no email on file / rate-limited). Identical text + status = no
+# account enumeration.
+_RESET_GENERIC_MSG = "If an account exists for that email, a reset link has been sent."
+
+
+@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    """Request a password reset link by email. Never reveals whether the email
+    matched an account, whether that account has an email on file, or whether
+    the request was throttled — the POST response is always identical."""
+    if is_logged_in():
+        return redirect(url_for("dashboard.index"))
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        ip = get_client_ip()
+
+        # Rate limit FIRST (per-email AND per-IP). A blocked request produces the
+        # SAME generic response below — we simply don't create/send anything.
+        allowed, _reason = check_reset_rate_limit(email, ip)
+
+        if allowed and email:
+            user = get_user_by_email(email)
+            # Only users WITH an email on file can self-reset. Clients without an
+            # email silently fall through to the same generic response.
+            if user and user.get("email") and user.get("username"):
+                try:
+                    raw_token = create_reset_token(user["username"])
+                    link = url_for("auth.reset_password", token=raw_token,
+                                   _external=True)
+                    _send_reset_email(user["email"], user.get("full_name", ""), link)
+                except Exception:
+                    # A mail/token failure must NOT change the response or 500.
+                    pass
+
+        # Audit without leaking which email was targeted or the outcome.
+        audit_log("password_reset_requested", "", username="anonymous", ip=ip)
+        return render_template("forgot_password.html", submitted=True,
+                               generic_msg=_RESET_GENERIC_MSG)
+
+    return render_template("forgot_password.html", submitted=False,
+                           generic_msg=_RESET_GENERIC_MSG)
+
+
+@auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    """Set a new password using a valid reset token. Re-verifies the token on
+    POST (never trusts the GET), validates the password server-side, sets it via
+    the existing Werkzeug/bcrypt path, then consumes the single-use token."""
+    if is_logged_in():
+        return redirect(url_for("dashboard.index"))
+
+    if request.method == "POST":
+        # FIX: re-verify on POST — never trust the token validity from GET.
+        username = verify_reset_token(token)
+        if not username:
+            return render_template("reset_password.html", token=token, valid=False)
+
+        new_pw  = request.form.get("password", "").strip()
+        confirm = request.form.get("confirm_password", "").strip()
+
+        error = None
+        if len(new_pw) < 8:
+            error = "Password must be at least 8 characters."
+        elif new_pw != confirm:
+            error = "Passwords do not match."
+
+        if error:
+            # Token is NOT consumed on validation failure — user can retry.
+            return render_template("reset_password.html", token=token,
+                                   valid=True, error=error)
+
+        ok, err = set_password(username, new_pw)
+        if not ok:
+            return render_template("reset_password.html", token=token,
+                                   valid=True, error=err or "Could not set password.")
+
+        # Consume ONLY after a successful password set (single use).
+        consume_reset_token(token)
+        audit_log("password_reset_completed", "", username=username,
+                  ip=get_client_ip())
+        flash("Your password has been reset. Please sign in with your new password.",
+              "success")
+        return redirect(url_for("auth.login"))
+
+    # GET — show the form only for a currently-valid token.
+    username = verify_reset_token(token)
+    return render_template("reset_password.html", token=token, valid=bool(username))
+
+
+def _send_reset_email(to_email: str, to_name: str, link: str):
+    """Build and send the reset email via the shared send_email (Milestone 2).
+    NO password is ever included — only a one-time, 45-minute link."""
+    greeting = f"Hi {to_name}," if to_name else "Hello,"
+    subject  = "Reset your DepEd LAKAD password"
+    body = (
+        f"{greeting}\n\n"
+        "We received a request to reset your DepEd Leyte LAKAD password.\n"
+        "Click the link below to choose a new password. This link expires in "
+        "45 minutes and can only be used once:\n\n"
+        f"{link}\n\n"
+        "If you did not request this, you can safely ignore this email — your "
+        "password will not change.\n"
+    )
+    html_body = f"""
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;">
+      <div style="background:#0D1B2A;padding:28px;text-align:center;border-radius:12px 12px 0 0;">
+        <div style="font-size:22px;font-weight:800;color:#fff;">LAKAD — DepEd Leyte</div>
+      </div>
+      <div style="background:#fff;padding:32px;border-radius:0 0 12px 12px;">
+        <p>{greeting}</p>
+        <p>We received a request to reset your <strong>DepEd Leyte LAKAD</strong> password.</p>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="{link}" style="background:#3B82F6;color:#fff;text-decoration:none;
+             padding:14px 32px;border-radius:8px;font-weight:700;font-size:16px;display:inline-block;">
+            Reset My Password
+          </a>
+        </div>
+        <p style="color:#92400E;background:#FFF3CD;padding:12px;border-radius:6px;font-size:13px;">
+          This link expires in 45 minutes and can only be used once.
+        </p>
+        <p style="color:#666;font-size:12px;word-break:break-all;">Or copy: {link}</p>
+        <p style="color:#666;font-size:12px;">If you did not request this, you can safely ignore this email.</p>
+      </div>
+    </div>
+    """
+    send_email(to_email, subject, body, html_body=html_body)
 
 
 @auth_bp.route("/logout")

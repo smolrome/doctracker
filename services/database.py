@@ -161,6 +161,28 @@ def _create_tables(cur):
             created_at TIMESTAMP DEFAULT NOW()
         )
     """)
+    # Self-service password reset — HASHED, single-use, time-limited tokens.
+    # Mirrors invite_tokens / doc_qr_tokens storage, but stores token_hash
+    # (SHA-256 of the urlsafe token) as the key — the raw token is NEVER stored.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            token_hash TEXT PRIMARY KEY,
+            username   TEXT NOT NULL,
+            used       BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT NOW(),
+            expires_at TIMESTAMP NOT NULL
+        )
+    """)
+    # DB-backed reset-request rate limiter (one row per request event).
+    # Counted per-scope within a rolling window so limits hold across workers.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_rate_limits (
+            id         SERIAL PRIMARY KEY,
+            scope      TEXT NOT NULL,
+            identifier TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
     # Customizable dropdown options for document types
     cur.execute("""
         CREATE TABLE IF NOT EXISTS dropdown_options (
@@ -340,6 +362,9 @@ def _run_migrations(cur):
     migrations.append("CREATE TABLE IF NOT EXISTS transfer_batches (id TEXT PRIMARY KEY, transferred_by TEXT NOT NULL, transferred_to TEXT NOT NULL, transferred_to_office TEXT, transferred_to_name TEXT, transfer_type TEXT, doc_ids JSONB NOT NULL, created_at TIMESTAMP DEFAULT NOW())")
     migrations.append("CREATE TABLE IF NOT EXISTS import_batches (id TEXT PRIMARY KEY, imported_by TEXT, filename TEXT, doc_ids JSONB NOT NULL, row_count INTEGER, created_at TIMESTAMP DEFAULT NOW())")
     migrations.append("ALTER TABLE so_records ADD COLUMN IF NOT EXISTS doc_id TEXT REFERENCES documents(id) ON DELETE SET NULL")
+    # Password reset — indexes for token lookups and rate-limit window scans
+    migrations.append("CREATE INDEX IF NOT EXISTS idx_prt_username ON password_reset_tokens(username)")
+    migrations.append("CREATE INDEX IF NOT EXISTS idx_prrl_lookup ON password_reset_rate_limits(scope, identifier, created_at)")
     for sql in migrations:
         try:
             cur.execute("SAVEPOINT mig")

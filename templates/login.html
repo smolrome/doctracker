@@ -28,6 +28,16 @@
     <h1 class="form-heading">Sign In</h1>
     <p class="form-sub">Welcome back. Sign in to your account.</p>
 
+    {# Flash messages — e.g. the success notice after a password reset. #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+      <div class="error-box" role="status"
+           {% if category == 'success' %}style="background:#ECFDF5;color:#065F46;border-color:#A7F3D0;"{% endif %}>
+        {{ message }}
+      </div>
+      {% endfor %}
+    {% endwith %}
+
     {# FIX 1 — XSS: error is server-generated but Jinja auto-escaping is the
        last line of defence; role="alert" announces it to screen readers. #}
     {% if error %}
@@ -82,6 +92,10 @@
               {% if lockout_remaining and lockout_remaining > 0 %}disabled{% endif %}>
         Sign In
       </button>
+
+      <p class="forgot-link" style="text-align:center;margin-top:14px;font-size:14px;">
+        <a href="{{ url_for('auth.forgot_password') }}">Forgot password?</a>
+      </p>
     </form>
 
     <div class="form-divider"><hr/></div>

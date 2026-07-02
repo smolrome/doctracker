@@ -169,6 +169,20 @@ RATE_LIMITS = {
     "api":           {"max": 200, "window": 60,   "lockout": 60},    # API protection
 }
 
+# ── Self-service password reset (Checkpoint A: secure token core) ───────────────
+# Tokens are single-use, time-limited, and stored HASHED (never raw). A new
+# token for a user invalidates that user's prior unused tokens.
+PASSWORD_RESET_TOKEN_TTL_MINUTES = 45
+PASSWORD_RESET_MIN_PASSWORD_LENGTH = 8
+
+# Reset-REQUEST throttle. Enforced per-email AND per-IP within a rolling window.
+# DB-backed counter (JSON fallback) so limits hold across gunicorn workers —
+# the in-memory RATE_LIMITS above are per-process and would leak under multi-worker.
+PASSWORD_RESET_RATE_LIMITS = {
+    "email": {"max": 3,  "window": 3600},   # 3 requests / email / hour
+    "ip":    {"max": 10, "window": 3600},   # 10 requests / IP / hour
+}
+
 # ── Document statuses ──────────────────────────────────────────────────────────
 
 STATUS_OPTIONS = [

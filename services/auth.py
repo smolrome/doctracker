@@ -359,6 +359,43 @@ def get_user(username: str) -> dict | None:
         return None
 
 
+def get_user_by_email(email: str) -> dict | None:
+    """
+    Look up a single user by email address (case-insensitive), covering BOTH
+    staff and client roles. Returns {username, email, role, full_name} or None.
+    Never returns password_hash. Used by the self-service password reset flow.
+    """
+    target = (email or "").strip().lower()
+    if not target:
+        return None
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT username, role, full_name,
+                                  COALESCE(email, '') AS email
+                           FROM users
+                           WHERE LOWER(email) = %s AND COALESCE(email, '') <> ''
+                           LIMIT 1""",
+                        (target,),
+                    )
+                    row = cur.fetchone()
+                    return dict(row) if row else None
+        except Exception:
+            return None
+    else:
+        for u in _load_users_json():
+            if (u.get("email", "") or "").strip().lower() == target:
+                return {
+                    "username":  u.get("username", ""),
+                    "email":     u.get("email", ""),
+                    "role":      u.get("role", "staff"),
+                    "full_name": u.get("full_name", ""),
+                }
+        return None
+
+
 def approve_user(username: str) -> tuple[bool, str | None]:
     """Approve a client user. Returns (success, error_message)."""
     uname = username.lower().strip()
