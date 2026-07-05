@@ -377,10 +377,10 @@ def delete(doc_id):
 @client_bp.route("/trash")
 @_require_client
 def trash():
-    """Show client's deleted documents (soft-deleted), auto-delete if older than 30 days."""
+    """Show client's deleted documents (soft-deleted). Trash persists until the
+    client explicitly empties it via the permanent-delete routes."""
     username = session.get("username", "")
     from services.documents import load_docs, delete_doc_forever
-    from datetime import datetime, timedelta
 
     all_docs = load_docs(include_deleted=True)
     my_deleted_docs = [
@@ -388,14 +388,7 @@ def trash():
         if d.get("deleted") and d.get("submitted_by") == username
     ]
 
-    thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
-    remaining_docs = []
-    for doc in my_deleted_docs:
-        deleted_at = doc.get("deleted_at", "")[:10] if doc.get("deleted_at") else ""
-        if deleted_at and deleted_at < thirty_days_ago:
-            delete_doc_forever(doc.get("id", ""))
-        else:
-            remaining_docs.append(doc)
+    remaining_docs = my_deleted_docs
 
     return render_template("client_trash.html", docs=remaining_docs,
                            csrf_token=_getcsrf_token())
