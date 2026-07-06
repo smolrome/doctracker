@@ -1201,57 +1201,115 @@ def toggle_group_shared_transfer(group_id):
 @admin_bp.route("/clear-database", methods=["POST"])
 @admin_required
 def clear_database():
-    """Permanently delete all documents. Admin only. Irreversible."""
+    """ARM step of the two-step wipe. Deletes NOTHING.
+
+    Takes a mandatory, VERIFIED pre-wipe backup first — no backup, no wipe.
+    On success it arms a single-use token in the session and streams the
+    just-written backup to the admin as a download. The actual, atomic wipe
+    happens only at POST /clear-database/confirm once armed.
+    """
+    from services.backup import write_backup_to_disk
+    from flask import send_file
+    import os
+
+    username = session.get("username", "admin")
+
+    # HARD PRECONDITION: a real, verified safety backup must exist first.
+    ok, filepath, err = write_backup_to_disk()
+    if not ok:
+        # Never leave a stale armed state behind on failure.
+        session.pop("clear_db_armed", None)
+        session.pop("clear_db_backup", None)
+        current_app.logger.error("clear_database arm aborted — backup failed: %s", err)
+        flash(f"Clear aborted — mandatory safety backup failed: {err} "
+              "No data was deleted.", "error")
+        return redirect(url_for("admin.staff_document_stats"))
+
+    # Arm: single-use token (secrets, like the app's CSRF token) + backup path,
+    # both held server-side in the session.
+    token = secrets.token_hex(32)
+    session["clear_db_armed"]  = token
+    session["clear_db_backup"] = filepath
+
+    audit_log("database_clear_armed",
+              f"backup={os.path.basename(filepath)} size={os.path.getsize(filepath)}",
+              username=username, ip=get_client_ip())
+
+    # The response IS the backup download. The armed state lives in the session,
+    # so when the admin returns to the page the final-wipe button is available.
+    # NOTHING is deleted here.
+    flash("Safety backup created and downloaded. Confirm again to permanently "
+          "wipe the database.", "success")
+    return send_file(filepath, mimetype="application/json",
+                     as_attachment=True,
+                     download_name=os.path.basename(filepath))
+
+
+@admin_bp.route("/clear-database/confirm", methods=["POST"])
+@admin_required
+def clear_database_confirm():
+    """FIRE step of the two-step wipe. Requires a prior armed backup.
+
+    Verifies the single-use arm token, then wipes documents + routing slips in
+    a SINGLE get_conn() transaction (atomic — fixes the old two-transaction
+    non-atomic wipe). Permanent and irreversible.
+    """
     from services.database import USE_DB, get_conn
     import os, json as _json
 
     username = session.get("username", "admin")
-    count = 0
 
+    # Consume the armed state (single-use). Absent → not armed / session expired.
+    armed_token  = session.pop("clear_db_armed", None)
+    backup_path  = session.pop("clear_db_backup", None)
+    submitted    = request.form.get("arm_token", "")
+
+    if not armed_token:
+        flash("Clear not armed or session expired — please start again.", "error")
+        return redirect(url_for("admin.staff_document_stats"))
+
+    # Constant-time token comparison (mirrors app.py CSRF validation).
+    if not submitted or not secrets.compare_digest(armed_token, submitted):
+        current_app.logger.warning("clear_database_confirm token mismatch by %s", username)
+        flash("Confirmation token mismatch — clear aborted. Please start again.", "error")
+        return redirect(url_for("admin.staff_document_stats"))
+
+    count = 0
     try:
         if USE_DB:
-            # Delete documents
+            # SINGLE transaction: both deletes commit together on clean exit, or
+            # both roll back if either fails. get_conn() auto-commits/rolls back.
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute("SELECT COUNT(*) AS cnt FROM documents")
                     row = cur.fetchone()
                     count = row["cnt"] if row else 0
                     cur.execute("DELETE FROM documents")
-
-            # Delete routing slips in a separate committed transaction
-            with get_conn() as conn:
-                with conn.cursor() as cur:
                     cur.execute("DELETE FROM routing_slips")
         else:
             path = "documents.json"
             if os.path.exists(path):
                 with open(path) as f:
-                    docs = _json.load(f)
-                count = len(docs)
-                with open(path, "w") as f:
-                    _json.dump([], f)
-            slips_path = "routing_slips.json"
-            if os.path.exists(slips_path):
-                with open(slips_path, "w") as f:
-                    _json.dump({}, f)
+                    count = len(_json.load(f))
 
-        # Also wipe JSON fallback files regardless of mode
+        # JSON fallback wipe (unconditional, as before).
         for fpath, empty in [("documents.json", []), ("routing_slips.json", {})]:
             if os.path.exists(fpath):
                 with open(fpath, "w") as f:
                     _json.dump(empty, f)
 
         audit_log("database_cleared",
-                  f"deleted_count={count}",
+                  f"deleted_count={count} "
+                  f"backup={os.path.basename(backup_path) if backup_path else '?'}",
                   username=username,
                   ip=get_client_ip())
         flash(f"Database cleared — {count} document(s) and all routing slips permanently deleted.", "success")
         return redirect(url_for("admin.staff_document_stats"))
 
     except Exception as e:
-        # get_conn() context manager already rolled back the failing transaction;
-        # there is no SQLAlchemy db.session in this module to roll back.
-        current_app.logger.exception("clear_database failed")
+        # get_conn() already rolled the failed transaction back; nothing partial
+        # was committed thanks to the single-transaction structure above.
+        current_app.logger.exception("clear_database_confirm failed")
         flash(f"Clear failed: {e}", "error")
         return redirect(url_for("admin.staff_document_stats"))
 

@@ -14,6 +14,7 @@ Backup includes:
 """
 
 import json
+import os
 from datetime import datetime
 from io import BytesIO
 
@@ -21,6 +22,18 @@ from services.database import USE_DB, get_conn
 from services.documents import load_docs, save_doc, insert_doc, get_doc, now_str, batch_save_docs
 
 BACKUP_VERSION = "2"
+
+# App-owned directory for mandatory pre-wipe safety backups. Anchored to the
+# app package root (the parent of this services/ dir), NOT the root-owned cron
+# dump dir (~/deployments/backups/databases/) — so the web process can always
+# write here. Sits inside the app tree alongside its other working-dir data.
+_APP_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PREWIPE_BACKUP_DIR = os.path.join(_APP_ROOT, "backups", "pre-wipe")
+
+# A real full backup (thousands of docs) is large. Anything at/below this floor
+# means the export produced a near-empty husk and must count as a FAILED backup
+# — a husk must never green-light a destructive wipe.
+PREWIPE_MIN_BYTES = 200
 
 
 # ── Excel export ──────────────────────────────────────────────────────────────
@@ -340,6 +353,40 @@ def create_backup() -> dict:
         "saved_offices": len(backup["saved_offices"]),
     }
     return backup
+
+
+def write_backup_to_disk() -> tuple[bool, str | None, str]:
+    """Create a full backup and write it to the app-owned pre-wipe directory.
+
+    Reuses create_backup() + the same json.dumps(..., indent=2, default=str)
+    serialization as backup_download(). After writing, VERIFIES the file exists
+    and is above PREWIPE_MIN_BYTES so a near-empty husk can never be mistaken for
+    a real backup.
+
+    Never raises — returns (success, filepath_or_None, error_msg) so the caller
+    (the destructive clear route) can abort cleanly without a verified backup.
+    """
+    filepath = None
+    try:
+        os.makedirs(PREWIPE_BACKUP_DIR, exist_ok=True)
+        data = create_backup()
+        payload = json.dumps(data, indent=2, default=str).encode("utf-8")
+        filename = f"prewipe_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        filepath = os.path.join(PREWIPE_BACKUP_DIR, filename)
+        with open(filepath, "wb") as f:
+            f.write(payload)
+
+        # Verify: the file must exist AND clear the empty-husk floor.
+        if not os.path.exists(filepath):
+            return (False, None, "Backup file was not written to disk.")
+        size = os.path.getsize(filepath)
+        if size <= PREWIPE_MIN_BYTES:
+            return (False, filepath,
+                    f"Backup looks empty ({size} bytes, floor {PREWIPE_MIN_BYTES}) "
+                    "— refusing to proceed.")
+        return (True, filepath, "")
+    except Exception as e:
+        return (False, filepath, f"{type(e).__name__}: {e}")
 
 
 def create_selective_backup(export_items: list, filter_office: str = "", date_from: str = "", date_to: str = "") -> dict:
