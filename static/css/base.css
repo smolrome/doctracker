@@ -167,20 +167,6 @@ nav::after {
 .nav-btn.danger  { background: rgba(220,38,38,.35); border-color: rgba(220,38,38,.5); }
 .nav-btn.danger:hover { background: rgba(220,38,38,.55); }
 
-/* Danger drawer variant (mobile) */
-.nav-btn-danger-drawer {
-  background: rgba(220,38,38,.18) !important;
-  border: 1.5px solid rgba(220,38,38,.4) !important;
-  color: #FCA5A5 !important;
-  font-weight: 700 !important;
-  width: 100% !important;
-  justify-content: center !important;
-}
-.nav-btn-danger-drawer:hover {
-  background: rgba(220,38,38,.35) !important;
-  color: #fff !important;
-}
-
 /* ── Dropdown ── */
 .nav-dropdown { position: relative; }
 .nav-dropdown-trigger {
@@ -292,10 +278,6 @@ nav::after {
   font-size: 11px; font-weight: 800; letter-spacing: .1em;
   text-transform: uppercase; color: rgba(255,255,255,.4);
   padding: 8px 4px 2px;
-}
-/* CHANGED: danger section label is visually distinct */
-.nav-drawer-section-danger {
-  color: #FCA5A5;
 }
 
 

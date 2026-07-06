@@ -181,15 +181,6 @@
               <span class="dd-text">Database Management<span class="dd-desc">Back up, restore, or clear data</span></span>
             </a>
           </div>
-          <div class="dd-divider"></div>
-          <div class="dd-section">
-            <span class="dd-label">Danger Zone</span>
-            <!-- Clear Database now lives on the guarded Database Management page -->
-            <a href="/backup" class="dd-item danger">
-              <span class="dd-icon">⚠️</span>
-              <span class="dd-text">Clear Database<span class="dd-desc">Guarded two-step wipe (Database Management)</span></span>
-            </a>
-          </div>
         </div>
       </div>
       {% endif %}
@@ -308,10 +299,6 @@
       <div class="nav-drawer-section">Offices</div>
       <a href="/office-staff"     class="nav-btn" onclick="closeMenu()">🏢 Office Staff</a>
       <a href="/office-documents" class="nav-btn" onclick="closeMenu()">📁 Office Documents</a>
-      <!-- CHANGED: visually separated, clearly labelled danger -->
-      <div class="nav-divider"></div>
-      <div class="nav-drawer-section nav-drawer-section-danger">⚠️ Danger Zone</div>
-      <a href="/backup" class="nav-btn nav-btn-danger-drawer" onclick="closeMenu()">⚠️ Clear Database</a>
     {% endif %}
     <div class="nav-divider"></div>
     <a href="/"       class="nav-btn" onclick="closeMenu()">🏠 Dashboard</a>
@@ -320,50 +307,6 @@
     <a href="/"      class="nav-btn" onclick="closeMenu()">🏠 Dashboard</a>
     <a href="/login" class="nav-btn primary" onclick="closeMenu()">🔐 Staff Login</a>
   {% endif %}
-</div>
-
-<!-- ═══ Clear DB modal ═══ -->
-<!-- CHANGED: requires typing DELETE to unlock the confirm button -->
-<div id="clear-db-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cleardb-modal-title">
-  <div class="modal-sheet modal-sheet-sm">
-    <div class="modal-header modal-header-red">
-      <div class="modal-header-content">
-        <span class="modal-header-icon" aria-hidden="true">⚠️</span>
-        <h2 class="modal-title" id="cleardb-modal-title">Clear Entire Database?</h2>
-      </div>
-      <button class="modal-close-btn" onclick="closeClearDBModal()" aria-label="Close">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="modal-warning-box">
-        This will <strong>permanently delete every document</strong> in the system. This action cannot be undone.
-      </div>
-      <p class="modal-body-text" style="margin-top:12px;color:#B45309;font-weight:700;">
-        Download a backup first before doing this!
-      </p>
-      <div class="form-group" style="margin-top:16px;">
-        <label class="form-label" for="cleardb-confirm-input">
-          Type <code class="confirm-code">DELETE</code> to confirm
-        </label>
-        <input
-          type="text"
-          id="cleardb-confirm-input"
-          class="form-input"
-          placeholder="Type DELETE here"
-          oninput="onClearDBType(this.value)"
-          autocomplete="off"
-          spellcheck="false"/>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeClearDBModal()">Cancel</button>
-      <form method="POST" action="/clear-database" style="margin:0;">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-        <button type="submit" id="cleardb-confirm-btn" class="btn btn-danger-solid" disabled>
-          🗑️ Delete Everything
-        </button>
-      </form>
-    </div>
-  </div>
 </div>
 
 <!-- ═══ FLASH ═══ -->

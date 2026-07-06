@@ -199,27 +199,6 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 
-// ── Clear DB modal ────────────────────────────────────────────────────────
-function confirmClearDB() {
-  // Reset the typed-confirmation input each time the modal opens
-  const input = document.getElementById('cleardb-confirm-input');
-  const btn   = document.getElementById('cleardb-confirm-btn');
-  if (input) input.value = '';
-  if (btn)   btn.disabled = true;
-  openModal('clear-db-modal');
-}
-
-function closeClearDBModal() {
-  closeModal('clear-db-modal');
-}
-
-// CHANGED: unlock the Delete button only after typing exactly "DELETE"
-function onClearDBType(value) {
-  const btn = document.getElementById('cleardb-confirm-btn');
-  if (btn) btn.disabled = (value.trim() !== 'DELETE');
-}
-
-
 // ══════════════════════════════════════════════════════════
 //  PER-ACTION THEMED LOADER
 // ══════════════════════════════════════════════════════════
