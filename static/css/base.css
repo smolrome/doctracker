@@ -1,5 +1,8 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Global inline-SVG icon (Lucide-style 24x24 stroke). Canonical `.icon`. */
+.icon { display:inline-block; vertical-align:middle; width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+
 :root {
   /* Government-official palette */
   --g-start: #0E2A47;   /* official navy */

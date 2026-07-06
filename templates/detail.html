@@ -259,7 +259,7 @@
 <!-- ── DESCRIPTION / NOTES ── -->
 {% if doc.description or doc.notes %}
 <div class="card">
-  <div class="card-title"><span class="icon">📝</span> Notes &amp; Remarks</div>
+  <div class="card-title"><span class="emoji-badge">📝</span> Notes &amp; Remarks</div>
   <hr class="card-divider">
   {% if doc.description %}
   <div {% if doc.notes %}style="margin-bottom:18px;"{% endif %}>
@@ -307,7 +307,7 @@
 <!-- ═══ TRAVEL LOG ═══ -->
 <div class="card">
   <div class="log-header-row">
-    <div class="card-title"><span class="icon">📋</span> Document Timeline</div>
+    <div class="card-title"><span class="emoji-badge">📋</span> Document Timeline</div>
     <div class="log-count">{{ doc.travel_log|length }} ENTRIES</div>
   </div>
   <hr class="card-divider">

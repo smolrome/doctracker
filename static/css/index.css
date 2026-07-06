@@ -1209,8 +1209,6 @@ th.cb-cell { background: #F1F7FB; }
   opacity: 1;
 }
 
-.icon { display:inline-block; vertical-align:middle; width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-
 .cart-modal-footer {
   display: flex;
   flex-direction: column;

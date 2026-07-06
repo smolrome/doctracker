@@ -73,7 +73,7 @@
     color: var(--muted);
   }
   
-  .empty-offices .icon {
+  .empty-offices .emoji-badge {
     font-size: 48px;
     margin-bottom: 16px;
     opacity: 0.5;
