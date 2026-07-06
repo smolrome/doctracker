@@ -1110,6 +1110,31 @@ def _export_office_traffic() -> list[dict]:
 
 # ── Restore ───────────────────────────────────────────────────────────────────
 
+class RestoreError(Exception):
+    """Raised when a restore is refused (guard) or fails and is rolled back.
+
+    Carries the restore `summary` (with status "guard_refused" / "rolled_back")
+    so callers can surface structured detail. The route's generic except-block
+    flashes str(error); the harness inspects `.summary`.
+    """
+    def __init__(self, message: str, summary: dict | None = None):
+        super().__init__(message)
+        self.summary = summary
+
+
+# Admin identity is a single, unambiguous field: users.role. Mirrors the app's
+# own canonical checks (utils.admin_required, blueprints.api._is_admin_user).
+_ADMIN_ROLES = ("admin", "superadmin")
+
+
+def _backup_has_admin(users: list) -> bool:
+    """True iff at least one backup users-row has an admin role."""
+    return any(
+        isinstance(u, dict) and (u.get("role") in _ADMIN_ROLES)
+        for u in (users or [])
+    )
+
+
 def restore_backup(backup: dict, mode: str = "merge") -> dict:
     """
     Restore from a backup dict.
@@ -1117,15 +1142,18 @@ def restore_backup(backup: dict, mode: str = "merge") -> dict:
     mode='replace' — wipe ALL tables and reload everything (full clean-slate restore)
     Returns a summary dict with counts of what was restored.
 
-    Stage 2: in DB mode this restores EVERY table present in the backup, with
-    ALL columns (fixing the column-drop bug), in FK-safe dependency order, and
-    resets serial sequences so restored ids don't collide with future inserts.
-    The documents carve-out (payload-shaped rows) is preserved. Transaction
-    structure is intentionally unchanged (per-table commits) — atomicity is
-    Stage 3.
+    Stage 3: in DB mode the ENTIRE restore — wipe + all table loads + sequence
+    resets — runs inside ONE transaction on ONE connection, committing once on
+    clean exit. Any failure rolls the whole thing back (never a half-wiped DB)
+    and raises RestoreError carrying a "rolled_back" summary. A lockout guard
+    refuses a replace that would leave no admin login.
+
+    On success summary["status"] == "committed". Notifications are suppressed
+    during document restore (silent restore).
     """
     summary = {
         "mode":          mode,
+        "status":        "committed",   # overwritten to rolled_back/guard_refused on failure
         "documents":     0,
         "users":         0,
         "routing_slips": 0,
@@ -1148,34 +1176,111 @@ def restore_backup(backup: dict, mode: str = "merge") -> dict:
             summary["tables"][k] = summary[k]
         return summary
 
-    # ── DB mode: dynamic, full-coverage restore ──
+    # ── DB mode: dynamic, full-coverage, SINGLE-TRANSACTION restore ──
+
+    # LOCKOUT GUARD (before any wipe): a replace restore from a backup with no
+    # admin would delete every login and leave no administrator. Refuse it.
+    if mode == "replace" and not _backup_has_admin(backup.get("users")):
+        summary["status"] = "guard_refused"
+        raise RestoreError(
+            "Refusing replace restore: the backup contains no admin user "
+            "(role 'admin'/'superadmin'). A replace would delete every login and "
+            "leave no administrator. Use merge, or restore a backup that includes "
+            "an admin.",
+            summary,
+        )
+
     data_tables = [t for t in backup.keys() if t != "meta"]
+    current_table = None   # visible in except for failed_table reporting
+    try:
+        # ONE connection, ONE transaction. _ConnCtx commits on clean exit and
+        # rolls the WHOLE thing back on any exception (database.py:_ConnCtx).
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                deps  = _fk_dependencies(cur)
+                order = _topo_sort_tables(data_tables, deps)
 
-    # FK-safe order: parents before children (topological over live FK edges).
-    with get_conn() as conn:
-        with conn.cursor() as cur:
-            deps = _fk_dependencies(cur)
-    order = _topo_sort_tables(data_tables, deps)
+                # Replace: clear ALL tables first, children before parents so no
+                # FK trips mid-wipe. Rolls back with everything else on failure.
+                if mode == "replace":
+                    _wipe_tables(cur, list(reversed(order)))
 
-    # Replace mode: clear ALL restorable tables first, children before parents
-    # (reverse dependency order) so no FK is violated mid-wipe. This now includes
-    # users — a replace restore is a true clean-slate reload.
-    if mode == "replace":
-        _wipe_tables(list(reversed(order)))
+                # Load parents before children on the shared cursor.
+                for table in order:
+                    current_table = table
+                    rows = backup.get(table) or []
+                    if table == "documents":
+                        n = _restore_documents_tx(cur, rows, mode, summary)
+                    else:
+                        n = _restore_table_generic(cur, table, rows, mode, summary)
+                    summary["tables"][table] = n
+                    if table in ("users", "routing_slips", "saved_offices", "office_traffic"):
+                        summary[table] = n
 
-    for table in order:
-        rows = backup.get(table) or []
-        if table == "documents":
-            # Payload-shaped rows go through the app's document writer.
-            n = _restore_documents(rows, mode, summary)
-        else:
-            n = _restore_table_generic(table, rows, mode, summary)
-        summary["tables"][table] = n
-        if table in ("users", "routing_slips", "saved_offices", "office_traffic"):
-            summary[table] = n
+                # SINGLE final sequence-reset pass (setval is non-transactional,
+                # so run it only once every load has succeeded). _reset_serial
+                # detects each table's real serial column and skips tables that
+                # have none (TEXT-id or token/slug/username-keyed) silently.
+                for table in order:
+                    if table == "documents":
+                        continue
+                    current_table = f"{table} (sequence reset)"
+                    _reset_serial(cur, table)
+                current_table = None
+            # ← implicit COMMIT here on clean exit
+    except RestoreError:
+        raise
+    except Exception as e:
+        # _ConnCtx already ROLLED BACK on the exception. Report all-or-nothing.
+        summary["status"]       = "rolled_back"
+        summary["failed_table"] = current_table
+        summary["tables"]       = {}
+        for k in ("documents", "users", "routing_slips", "saved_offices", "office_traffic"):
+            summary[k] = 0
+        summary["errors"].append(
+            f"Restore rolled back at '{current_table}': {type(e).__name__}: {e}"
+        )
+        raise RestoreError(
+            f"Restore failed and was fully rolled back (at '{current_table}'): {e}",
+            summary,
+        ) from e
+
     summary["documents"] = summary["tables"].get("documents", 0)
-
+    summary["status"] = "committed"
     return summary
+
+
+def _restore_documents_tx(cur, docs: list, mode: str, summary: dict) -> int:
+    """Insert documents on the SHARED cursor — single-transaction, silent restore.
+
+    Deliberately does NOT use batch_save_docs (which opens its own connection,
+    commits independently, and fires client notifications). normalize_status_fields
+    is applied so data normalization is preserved; NO notifications fire. Any DB
+    error propagates to roll back the whole restore.
+    """
+    if not docs:
+        return 0
+    from services.documents import normalize_status_fields
+    from psycopg2.extras import Json
+    if mode == "replace":
+        stmt = ("INSERT INTO documents (id, data, created_at) VALUES (%s, %s, %s) "
+                "ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data")
+    else:
+        stmt = ("INSERT INTO documents (id, data, created_at) VALUES (%s, %s, %s) "
+                "ON CONFLICT (id) DO NOTHING")
+    count = 0
+    valid = 0
+    for doc in docs:
+        if not isinstance(doc, dict) or not doc.get("id"):
+            summary["errors"].append(f"Skipped invalid document: {str(doc)[:60]}")
+            summary["skipped"] += 1
+            continue
+        valid += 1
+        ndoc = normalize_status_fields(doc)
+        cur.execute(stmt, (ndoc["id"], Json(ndoc), ndoc.get("created_at") or now_str()))
+        count += cur.rowcount
+    summary["skipped"] += max(0, valid - count)   # merge-mode conflicts
+    return count
 
 
 def _fk_dependencies(cur) -> dict:
@@ -1240,102 +1345,106 @@ def _table_columns(cur, table: str) -> list:
 
 
 def _reset_serial(cur, table: str):
-    """If `table`.id is backed by a sequence, advance it past the current MAX(id).
+    """Advance `table`'s serial sequence past its current MAX value, if it has one.
 
-    Uses is_called=(rows exist) so the next nextval is MAX(id)+1 when populated,
-    or 1 when the table is empty. No-op for tables whose id isn't a serial.
+    Detects the table's ACTUAL serial-backed column (does NOT assume it's named
+    'id'): a column whose default is nextval(...) or a GENERATED identity column.
+    Tables with no such column — e.g. token/slug/username-keyed tables like
+    doc_qr_tokens, saved_offices, push_tokens — are skipped SILENTLY (no error),
+    as are TEXT-id tables. Uses is_called=(rows exist) so the next nextval is
+    MAX+1 when populated, or 1 when empty.
     """
-    cur.execute("SELECT pg_get_serial_sequence(%s, 'id') AS seq", (f'public."{table}"',))
+    # Find the serial/identity column from the live schema (never assume 'id').
+    cur.execute(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = %s
+          AND (column_default LIKE 'nextval(%%' OR is_identity = 'YES')
+        ORDER BY ordinal_position
+        LIMIT 1
+        """,
+        (table,),
+    )
     row = cur.fetchone()
-    seq = row["seq"] if row else None
+    if not row:
+        return  # no serial-backed column → nothing to reset
+    col = row["column_name"]
+
+    cur.execute("SELECT pg_get_serial_sequence(%s, %s) AS seq", (f'public."{table}"', col))
+    srow = cur.fetchone()
+    seq = srow["seq"] if srow else None
     if not seq:
         return
     cur.execute(
-        f'SELECT setval(%s, COALESCE((SELECT MAX(id) FROM "{table}"), 1), '
-        f'(SELECT MAX(id) IS NOT NULL FROM "{table}"))',
+        f'SELECT setval(%s, COALESCE((SELECT MAX("{col}") FROM "{table}"), 1), '
+        f'(SELECT MAX("{col}") IS NOT NULL FROM "{table}"))',
         (seq,),
     )
 
 
-def _restore_table_generic(table: str, rows: list, mode: str, summary: dict) -> int:
+def _restore_table_generic(cur, table: str, rows: list, mode: str, summary: dict) -> int:
     """Insert every backup row of `table` using ALL columns present (∩ live schema).
 
-    Fixes the column-drop bug: whatever the backup captured (SELECT *) is written
-    back. json/jsonb columns are adapted via psycopg2 Json. Serial sequences are
-    reset to MAX(id) afterward so restored ids don't collide with future inserts.
-    ON CONFLICT DO NOTHING keeps merge-mode idempotent and is a no-op after the
-    replace-mode wipe. Per-table connection/commit — transaction structure
-    unchanged (Stage 3).
+    Runs on the caller's SHARED cursor (single-transaction restore): NO own
+    connection, NO commit, and exceptions PROPAGATE so a failure rolls the whole
+    restore back. Fixes the column-drop bug (whatever SELECT * captured is written
+    back); json/jsonb columns are adapted via psycopg2 Json. ON CONFLICT DO NOTHING
+    keeps merge idempotent and is a no-op after the replace-mode wipe. Sequence
+    resets are handled once, at the end, by the caller (setval is non-transactional).
     """
     if not rows:
         return 0
     from psycopg2.extras import Json
+    cols_types = _table_columns(cur, table)
+    live_cols  = [c for c, _ in cols_types]
+    jsonb_cols = {c for c, dt in cols_types if dt in ("json", "jsonb")}
+
+    present: set = set()
+    for r in rows:
+        if isinstance(r, dict):
+            present.update(r.keys())
+    insert_cols = [c for c in live_cols if c in present]
+    if not insert_cols:
+        # Rows exist but none of their columns match the live schema — a real
+        # schema mismatch. Fail loudly (rolls back the whole restore).
+        raise RestoreError(f"{table}: no backup columns match the live schema", summary)
+
+    col_sql = ", ".join(f'"{c}"' for c in insert_cols)
+    ph      = ", ".join(["%s"] * len(insert_cols))
+    stmt    = f'INSERT INTO "{table}" ({col_sql}) VALUES ({ph}) ON CONFLICT DO NOTHING'
+
     count = 0
-    try:
-        with get_conn() as conn:
-            with conn.cursor() as cur:
-                cols_types = _table_columns(cur, table)
-                live_cols  = [c for c, _ in cols_types]
-                jsonb_cols = {c for c, dt in cols_types if dt in ("json", "jsonb")}
+    valid = 0
+    for r in rows:
+        if not isinstance(r, dict):
+            summary["skipped"] += 1
+            continue
+        valid += 1
+        vals = []
+        for c in insert_cols:
+            v = r.get(c)
+            if v is not None and c in jsonb_cols:
+                v = Json(v)
+            vals.append(v)
+        cur.execute(stmt, vals)
+        count += cur.rowcount
 
-                present: set = set()
-                for r in rows:
-                    if isinstance(r, dict):
-                        present.update(r.keys())
-                insert_cols = [c for c in live_cols if c in present]
-                if not insert_cols:
-                    summary["errors"].append(f"{table}: no matching columns to restore")
-                    return 0
-
-                col_sql = ", ".join(f'"{c}"' for c in insert_cols)
-                ph      = ", ".join(["%s"] * len(insert_cols))
-                stmt    = f'INSERT INTO "{table}" ({col_sql}) VALUES ({ph}) ON CONFLICT DO NOTHING'
-
-                valid = 0
-                for r in rows:
-                    if not isinstance(r, dict):
-                        summary["skipped"] += 1
-                        continue
-                    valid += 1
-                    vals = []
-                    for c in insert_cols:
-                        v = r.get(c)
-                        if v is not None and c in jsonb_cols:
-                            v = Json(v)
-                        vals.append(v)
-                    cur.execute(stmt, vals)
-                    count += cur.rowcount
-
-                # Rows present in the backup but not inserted (merge-mode conflicts).
-                summary["skipped"] += max(0, valid - count)
-
-                # Reset serial sequence if this table has a serial id column.
-                if "id" in live_cols:
-                    _reset_serial(cur, table)
-            conn.commit()
-    except Exception as e:
-        summary["errors"].append(f"{table} restore error: {e}")
-        return 0
+    # Rows present in the backup but not inserted (merge-mode conflicts).
+    summary["skipped"] += max(0, valid - count)
     return count
 
 
-def _wipe_tables(tables: list):
-    """Delete all rows from the given tables — replace mode only.
+def _wipe_tables(cur, tables: list):
+    """Delete all rows from the given tables on the SHARED cursor — replace only.
 
-    Broadened in Stage 2 to cover EVERY restorable table (previously only 4),
-    so a replace restore is a true clean slate. Callers pass tables in reverse
-    dependency order (children before parents) so FK checks never trip. NOTE:
-    this now includes users. Transaction structure unchanged: still a single
-    connection/commit here (Stage 3 will unify wipe + load into one txn).
+    NO own connection, NO commit — part of the caller's single restore
+    transaction, so it rolls back with everything else on any later failure
+    (never a half-wiped DB). Callers pass tables in reverse dependency order
+    (children before parents) so FK checks never trip. NOTE: this includes users.
     """
-    try:
-        with get_conn() as conn:
-            with conn.cursor() as cur:
-                for t in tables:
-                    cur.execute(f'DELETE FROM "{t}"')
-            conn.commit()
-    except Exception as e:
-        raise RuntimeError(f"Failed to clear tables before replace — restore aborted: {e}") from e
+    for t in tables:
+        cur.execute(f'DELETE FROM "{t}"')
 
 
 def _restore_documents(docs: list, mode: str, summary: dict) -> int:

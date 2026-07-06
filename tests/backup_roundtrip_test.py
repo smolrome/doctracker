@@ -132,15 +132,16 @@ def _truncate_all(cur):
         cur.execute(f"TRUNCATE {joined} RESTART IDENTITY CASCADE")
 
 
-def _phase_seed():
-    """SOURCE db: build full schema, insert representative rows in all 21 tables."""
-    from services.database import init_db, get_conn
-    init_db()  # _create_tables + _run_migrations → full migrated 21-table schema
-    with get_conn() as conn:
-        with conn.cursor() as cur:
-            # Repeatability: clear the SOURCE db first so re-runs start empty
-            # (otherwise the fixed seed IDs raise UniqueViolation on the 2nd run).
-            _truncate_all(cur)
+def _seed_all(cur):
+    """Truncate, then insert one representative row into every one of the 21 tables.
+
+    Shared by _phase_seed (source) and _phase_atomicity (target baseline).
+    """
+    # Repeatability: clear first so re-runs start empty (otherwise the fixed
+    # seed IDs raise UniqueViolation on the 2nd run).
+    _truncate_all(cur)
+    if True:
+        if True:
             # documents — id lives both as PK and inside data JSONB (app convention)
             cur.execute(
                 "INSERT INTO documents (id, data) VALUES (%s, %s)",
@@ -251,7 +252,94 @@ def _phase_seed():
                    VALUES (%s,%s,%s,%s,%s)""",
                 ("ib-1", "rt_admin", "import.xlsx", json.dumps(["doc-0001"]), 1),
             )
+
+
+def _phase_seed():
+    """SOURCE db: build full schema, insert representative rows in all 21 tables."""
+    from services.database import init_db, get_conn
+    init_db()  # _create_tables + _run_migrations → full migrated 21-table schema
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            _seed_all(cur)
     print("SEED_OK")
+
+
+def _snapshot(cur, tables):
+    """Per-table (count, content-hash) fingerprint of the current DB state.
+
+    Content hash is md5 over the text of every row (order-independent). Excludes
+    sequence values (setval is non-transactional, so those may legitimately
+    differ after a rolled-back restore).
+    """
+    snap = {}
+    for t in tables:
+        cur.execute(f'SELECT COUNT(*) AS c FROM "{t}"')
+        cnt = cur.fetchone()["c"]
+        cur.execute(
+            f'SELECT md5(COALESCE(string_agg(x, %s ORDER BY x), %s)) AS h '
+            f'FROM (SELECT r::text AS x FROM "{t}" AS r) sub',
+            ("|", ""),
+        )
+        snap[t] = {"count": cnt, "hash": cur.fetchone()["h"]}
+    return snap
+
+
+def _phase_atomicity():
+    """Prove restore atomicity: a mid-restore failure leaves the TARGET UNCHANGED.
+
+    Seeds a known baseline, snapshots it, then runs a REPLACE restore of a backup
+    with an injected FK-violating so_records row. The restore must raise
+    RestoreError(status=rolled_back) and the target must be byte-identical to the
+    baseline afterward — proving the replace-wipe rolled back too.
+    """
+    from services.database import init_db, get_conn
+    from services.backup import restore_backup, RestoreError
+    init_db()
+
+    # Baseline: seed the target, then snapshot counts + content hashes.
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            _seed_all(cur)
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            baseline = _snapshot(cur, ALL_TABLES)
+
+    # Build a backup guaranteed to fail mid-restore: inject an so_records row
+    # whose doc_id references a non-existent document (FK violation against
+    # documents, which is loaded BEFORE so_records and AFTER the replace-wipe).
+    with open(_BACKUP_JSON, encoding="utf-8") as f:
+        bad = json.load(f)
+    bad.setdefault("so_records", [])
+    bad["so_records"].append({
+        "id": 999999, "filename": "atomicity_bad.pdf", "so_type": "X",
+        "employee_full_name": "Should Not Persist", "generated_by": "test",
+        "file_path": "/x", "doc_id": "__does_not_exist__",
+    })
+
+    raised = False
+    status = None
+    try:
+        restore_backup(bad, mode="replace")
+    except RestoreError as e:
+        raised = True
+        status = (e.summary or {}).get("status")
+    if not raised:
+        sys.exit("ATOMICITY FAIL: restore did NOT raise on an FK-violating row "
+                 "(a partial/committed restore is possible)")
+    if status != "rolled_back":
+        sys.exit(f"ATOMICITY FAIL: expected status 'rolled_back', got {status!r}")
+
+    # The target MUST equal the baseline — proving the wipe rolled back too.
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            after = _snapshot(cur, ALL_TABLES)
+    if after != baseline:
+        diffs = {t: {"baseline": baseline.get(t), "after": after.get(t)}
+                 for t in ALL_TABLES if baseline.get(t) != after.get(t)}
+        sys.exit(f"ATOMICITY FAIL: target changed after a rolled-back restore: {diffs}")
+
+    print("ATOMICITY_STATUS=" + status)
+    print("ATOMICITY_OK=1")
 
 
 def _phase_capture():
@@ -343,6 +431,7 @@ _PHASES = {
     "prep_target": _phase_prep_target,
     "restore": _phase_restore,
     "diff": _phase_diff,
+    "atomicity": _phase_atomicity,
 }
 
 
@@ -433,6 +522,16 @@ def main():
     print("    those fields are null, the restore dropped them (expected current bug).")
     print("  * saved_offices: primary_recipient should be 'juan.delacruz'. If null,")
     print("    restore dropped it (expected current bug).")
+    print("=" * 74)
+
+    # ── Stage 3: atomicity proof (separate phase; re-seeds the target) ──
+    atom = _run_phase("atomicity", tgt)
+    print("\n" + "=" * 74)
+    print("ATOMICITY PROOF (rolled-back restore leaves target unchanged)")
+    print("=" * 74)
+    print(f"  restore raised RestoreError, status = {atom.get('ATOMICITY_STATUS','?')}")
+    print(f"  target identical to baseline after rollback: "
+          f"{'YES' if atom.get('ATOMICITY_OK') == '1' else 'NO'}")
     print("=" * 74)
 
 
