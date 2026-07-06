@@ -4,6 +4,43 @@
 
 .backup-wrap { max-width:820px; margin:0 auto; padding:32px 16px 64px; }
 
+/* ── Tab bar ── */
+.backup-tabs {
+  display:flex; gap:4px; flex-wrap:wrap;
+  border-bottom:2px solid var(--border); margin-bottom:24px;
+}
+.backup-tab {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:12px 20px; font-family:inherit; font-size:.95rem; font-weight:700;
+  color:var(--muted); background:transparent; cursor:pointer;
+  border:2px solid transparent; border-bottom:none;
+  border-radius:10px 10px 0 0; margin-bottom:-2px;
+  transition:color .15s, background .15s;
+}
+.backup-tab:hover { color:var(--navy); background:#F8FAFC; }
+.backup-tab.active {
+  color:var(--navy); background:#fff;
+  border-color:var(--border); border-bottom:2px solid #fff;
+}
+/* Restore tab reads as a danger zone */
+.backup-tab.danger { color:#B91C1C; }
+.backup-tab.danger:hover { color:#991B1B; background:#FEF2F2; }
+.backup-tab.danger.active {
+  color:#991B1B; background:#fff;
+  border-color:#FCA5A5; border-bottom:2px solid #fff;
+}
+
+/* ── Tab panels ── */
+.backup-panel { display:none; }
+.backup-panel.active { display:block; }
+
+/* ── Danger-zone card (Restore) ── */
+.backup-card.danger-zone {
+  border:1.5px solid #FCA5A5;
+  box-shadow:0 2px 12px rgba(220,38,38,.08);
+}
+.backup-card.danger-zone .backup-card-title { color:#991B1B; }
+
 /* ── Page header ── */
 .backup-page-header {
   display:flex; align-items:center; gap:16px;

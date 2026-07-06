@@ -18,7 +18,7 @@
     </div>
   </div>
 
-  <!-- Flash messages -->
+  <!-- Flash messages (always visible, above tabs) -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}
       <div class="{{ 'flash-success' if cat=='success' else 'flash-error' }}">
@@ -27,242 +27,259 @@
     {% endfor %}
   {% endwith %}
 
-  <!-- Restore summary -->
-  {% if summary %}
-  <div class="summary-box">
-    <h3>✅ Restore Complete — {{ 'Merge' if mode == 'merge' else 'Full Replace' }} Mode</h3>
-    <div class="summary-grid">
-      <div class="summary-stat">
-        <div class="num">{{ summary.documents }}</div>
-        <div class="lbl">Documents</div>
+  <!-- Tab bar -->
+  <div class="backup-tabs" role="tablist">
+    <button type="button" id="tab-full" class="backup-tab active"
+            onclick="switchTab('full'); return false;">
+      💾 Full Backup
+    </button>
+    <button type="button" id="tab-selective" class="backup-tab"
+            onclick="switchTab('selective'); return false;">
+      📥 Selective Export
+    </button>
+    <button type="button" id="tab-restore" class="backup-tab danger"
+            onclick="switchTab('restore'); return false;">
+      📤 Restore
+    </button>
+  </div>
+
+  <!-- ══════════════════════════ TAB 1 — FULL BACKUP ══════════════════════════ -->
+  <div id="panel-full" class="backup-panel active">
+    <div class="backup-card">
+      <div class="backup-card-title">
+        💾 Download Backup
+        <span class="badge badge-green">Recommended Weekly</span>
       </div>
-      <div class="summary-stat">
-        <div class="num">{{ summary.users }}</div>
-        <div class="lbl">Users</div>
+      <p class="backup-card-desc">
+        Downloads a <strong>complete snapshot</strong> of all documents, users, routing slips,
+        and offices. Save it to your PC, USB drive, or Google Drive.
+        No data is altered — this is read-only.
+      </p>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+        <a href="{{ url_for('backup.backup_download_excel') }}" class="backup-btn backup-btn-green">
+          📊 Download as Excel (.xlsx)
+        </a>
+        <a href="{{ url_for('backup.backup_download') }}" class="backup-btn backup-btn-ghost">
+          📄 Download as JSON (.json)
+        </a>
       </div>
-      <div class="summary-stat">
-        <div class="num">{{ summary.routing_slips }}</div>
-        <div class="lbl">Routing Slips</div>
-      </div>
-      <div class="summary-stat">
-        <div class="num">{{ summary.saved_offices }}</div>
-        <div class="lbl">Offices</div>
-      </div>
-      <div class="summary-stat">
-        <div class="num">{{ summary.office_traffic }}</div>
-        <div class="lbl">Office Traffic</div>
-      </div>
-      <div class="summary-stat warn">
-        <div class="num">{{ summary.skipped }}</div>
-        <div class="lbl">Skipped (already exist)</div>
+
+      <div class="backup-tip-box">
+        💡 A full backup exports <strong>everything</strong> in one file — documents (including
+        trash), users, routing slips, and offices.<br>
+        <strong>Excel</strong> gives you 6 formatted sheets (Summary, Documents, Routing Slips,
+        Users, Offices, Trash) — great for printing or sharing with management.
+        <strong>JSON</strong> is the file you upload under <em>Restore</em> to reload data into LAKAD.<br>
+        📅 <strong>Download weekly</strong> (and before any major change) and store dated copies
+        safely — PC, USB drive, or Google Drive. If the database ever resets, a JSON backup
+        restores everything in seconds.
       </div>
     </div>
-    {% if summary.errors %}
-    <div class="error-list">
-      <p>⚠️ {{ summary.errors|length }} item(s) had errors:</p>
-      <ul>
-        {% for err in summary.errors[:10] %}
-          <li>{{ err }}</li>
-        {% endfor %}
-        {% if summary.errors|length > 10 %}
-          <li>... and {{ summary.errors|length - 10 }} more</li>
-        {% endif %}
-      </ul>
+  </div>
+
+  <!-- ══════════════════════════ TAB 2 — SELECTIVE EXPORT ══════════════════════════ -->
+  <div id="panel-selective" class="backup-panel">
+    <div class="backup-card">
+      <div class="backup-card-title">
+        📥 Custom Export
+        <span class="badge badge-blue">Choose What to Export</span>
+      </div>
+      <p class="backup-card-desc">
+        Select specific data to export and choose your preferred file format.
+      </p>
+
+      <form method="POST" action="{{ url_for('backup.backup_export') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="backup-section-label">Select data to export:</div>
+        <div class="export-options-grid">
+          <label class="export-option-label">
+            <input type="checkbox" name="export_docs" checked>
+            📄 Documents
+          </label>
+          <label class="export-option-label">
+            <input type="checkbox" name="export_users" checked>
+            👥 Users
+          </label>
+          <label class="export-option-label">
+            <input type="checkbox" name="export_slips" checked>
+            📋 Routing Slips
+          </label>
+          <label class="export-option-label">
+            <input type="checkbox" name="export_offices" checked>
+            🏢 Saved Offices
+          </label>
+          <label class="export-option-label">
+            <input type="checkbox" name="export_traffic">
+            🚶 Office Traffic
+          </label>
+        </div>
+
+        <div class="backup-section-label">Filter documents by office (optional):</div>
+        <select name="filter_office" style="margin-bottom:16px;padding:8px 12px;border-radius:8px;border:1px solid #CBD5E1;font-size:.9rem;width:100%;max-width:400px;">
+          <option value="">— All offices —</option>
+          {% for office in offices %}
+          <option value="{{ office.office_name }}">{{ office.office_name }}</option>
+          {% endfor %}
+        </select>
+
+        <div class="backup-section-label">Filter documents by date (optional):</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px;">
+          <div>
+            <label style="font-size:.85rem;color:#64748B;display:block;margin-bottom:4px;">From date:</label>
+            <input type="date" name="date_from" style="padding:8px 12px;border-radius:8px;border:1px solid #CBD5E1;font-size:.9rem;">
+          </div>
+          <div>
+            <label style="font-size:.85rem;color:#64748B;display:block;margin-bottom:4px;">To date:</label>
+            <input type="date" name="date_to" style="padding:8px 12px;border-radius:8px;border:1px solid #CBD5E1;font-size:.9rem;">
+          </div>
+        </div>
+
+        <div class="backup-section-label">File format:</div>
+        <div class="format-row">
+          <label class="format-label">
+            <input type="radio" name="file_type" value="excel" checked>
+            📊 Excel (.xlsx)
+          </label>
+          <label class="format-label">
+            <input type="radio" name="file_type" value="json">
+            📄 JSON (.json)
+          </label>
+        </div>
+
+        <button type="submit" class="backup-btn backup-btn-blue">
+          📥 Export Selected Data
+        </button>
+      </form>
+
+      <div class="backup-tip-box">
+        💡 A selective export is for sharing or reporting on a <strong>slice</strong> of the data —
+        pick only what you need, filter documents by office and/or date range, and choose Excel
+        for readable records or JSON for a restorable file. For a complete safety copy, use the
+        <strong>Full Backup</strong> tab instead.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ TAB 3 — RESTORE (DANGER ZONE) ══════════════════════════ -->
+  <div id="panel-restore" class="backup-panel">
+
+    <!-- Restore summary (shown after a restore just ran) -->
+    {% if summary %}
+    <div class="summary-box">
+      <h3>✅ Restore Complete — {{ 'Merge' if mode == 'merge' else 'Full Replace' }} Mode</h3>
+      <div class="summary-grid">
+        <div class="summary-stat">
+          <div class="num">{{ summary.documents }}</div>
+          <div class="lbl">Documents</div>
+        </div>
+        <div class="summary-stat">
+          <div class="num">{{ summary.users }}</div>
+          <div class="lbl">Users</div>
+        </div>
+        <div class="summary-stat">
+          <div class="num">{{ summary.routing_slips }}</div>
+          <div class="lbl">Routing Slips</div>
+        </div>
+        <div class="summary-stat">
+          <div class="num">{{ summary.saved_offices }}</div>
+          <div class="lbl">Offices</div>
+        </div>
+        <div class="summary-stat">
+          <div class="num">{{ summary.office_traffic }}</div>
+          <div class="lbl">Office Traffic</div>
+        </div>
+        <div class="summary-stat warn">
+          <div class="num">{{ summary.skipped }}</div>
+          <div class="lbl">Skipped (already exist)</div>
+        </div>
+      </div>
+      {% if summary.errors %}
+      <div class="error-list">
+        <p>⚠️ {{ summary.errors|length }} item(s) had errors:</p>
+        <ul>
+          {% for err in summary.errors[:10] %}
+            <li>{{ err }}</li>
+          {% endfor %}
+          {% if summary.errors|length > 10 %}
+            <li>... and {{ summary.errors|length - 10 }} more</li>
+          {% endif %}
+        </ul>
+      </div>
+      {% endif %}
+      <a href="{{ url_for('dashboard.index') }}" class="backup-btn backup-btn-green" style="margin-top:8px;">
+        📋 View Documents
+      </a>
     </div>
     {% endif %}
-    <a href="{{ url_for('dashboard.index') }}" class="backup-btn backup-btn-green" style="margin-top:8px;">
-      📋 View Documents
-    </a>
-  </div>
-  {% endif %}
 
-  <!-- DOWNLOAD -->
-  <div class="backup-card">
-    <div class="backup-card-title">
-      💾 Download Backup
-      <span class="badge badge-green">Recommended Weekly</span>
-    </div>
-    <p class="backup-card-desc">
-      Downloads a <strong>complete snapshot</strong> of all documents, users, routing slips,
-      and offices. Save it to your PC, USB drive, or Google Drive.
-      No data is altered — this is read-only.
-    </p>
+    <div class="backup-card danger-zone">
+      <div class="backup-card-title">
+        📤 Restore from Backup
+        <span class="badge badge-red">Danger Zone · Admin Only</span>
+      </div>
+      <p class="backup-card-desc">
+        Upload a previously downloaded backup file to restore data.
+        Supports both <strong>JSON</strong> and <strong>Excel (.xlsx)</strong> backup files.
+        Choose <strong>Merge</strong> to add missing records without touching existing ones,
+        or <strong>Full Replace</strong> to wipe documents and reload everything fresh.
+      </p>
 
-    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-      <a href="{{ url_for('backup.backup_download_excel') }}" class="backup-btn backup-btn-green">
-        📊 Download as Excel (.xlsx)
-      </a>
-      <a href="{{ url_for('backup.backup_download') }}" class="backup-btn backup-btn-ghost">
-        📄 Download as JSON (.json)
-      </a>
-    </div>
-
-    <div class="backup-tip-box">
-      💡 <strong>Excel</strong> gives you 6 formatted sheets (Summary, Documents, Routing Slips,
-      Users, Offices, Trash) — great for printing or sharing with management.<br>
-      <strong>JSON</strong> is for restoring data back into LAKAD.
-    </div>
-  </div>
-
-  <!-- CUSTOM EXPORT -->
-  <div class="backup-card">
-    <div class="backup-card-title">
-      📥 Custom Export
-      <span class="badge badge-blue">Choose What to Export</span>
-    </div>
-    <p class="backup-card-desc">
-      Select specific data to export and choose your preferred file format.
-    </p>
-
-    <form method="POST" action="{{ url_for('backup.backup_export') }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <div class="backup-section-label">Select data to export:</div>
-      <div class="export-options-grid">
-        <label class="export-option-label">
-          <input type="checkbox" name="export_docs" checked>
-          📄 Documents
-        </label>
-        <label class="export-option-label">
-          <input type="checkbox" name="export_users" checked>
-          👥 Users
-        </label>
-        <label class="export-option-label">
-          <input type="checkbox" name="export_slips" checked>
-          📋 Routing Slips
-        </label>
-        <label class="export-option-label">
-          <input type="checkbox" name="export_offices" checked>
-          🏢 Saved Offices
-        </label>
-        <label class="export-option-label">
-          <input type="checkbox" name="export_traffic">
-          🚶 Office Traffic
-        </label>
+      <div class="backup-warning-box">
+        <span class="wi">⚠️</span>
+        <p><strong>Full Replace</strong> permanently deletes all current documents and routing
+           slips before restoring. Users are never deleted for safety. Always download a fresh
+           backup before doing a Full Replace.</p>
       </div>
 
-      <div class="backup-section-label">Filter documents by office (optional):</div>
-      <select name="filter_office" style="margin-bottom:16px;padding:8px 12px;border-radius:8px;border:1px solid #CBD5E1;font-size:.9rem;width:100%;max-width:400px;">
-        <option value="">— All offices —</option>
-        {% for office in offices %}
-        <option value="{{ office.office_name }}">{{ office.office_name }}</option>
-        {% endfor %}
-      </select>
+      <form method="POST" action="{{ url_for('backup.backup_restore') }}"
+            enctype="multipart/form-data" id="restore-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-      <div class="backup-section-label">Filter documents by date (optional):</div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px;">
-        <div>
-          <label style="font-size:.85rem;color:#64748B;display:block;margin-bottom:4px;">From date:</label>
-          <input type="date" name="date_from" style="padding:8px 12px;border-radius:8px;border:1px solid #CBD5E1;font-size:.9rem;">
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('backup-file-input').click()">
+          <div class="dz-icon">📂</div>
+          <div class="dz-label">Click to choose backup file</div>
+          <div class="dz-hint">or drag &amp; drop a <code>.json</code> or <code>.xlsx</code> backup here</div>
+          <div class="dz-file" id="dz-file-name"></div>
         </div>
-        <div>
-          <label style="font-size:.85rem;color:#64748B;display:block;margin-bottom:4px;">To date:</label>
-          <input type="date" name="date_to" style="padding:8px 12px;border-radius:8px;border:1px solid #CBD5E1;font-size:.9rem;">
+        <input type="file" id="backup-file-input" name="backup_file"
+               accept=".json,.xlsx,.xls" onchange="handleFileSelect(this)">
+
+        <div class="mode-grid" id="mode-grid">
+          <label class="mode-card selected" onclick="selectMode(this,'merge')">
+            <input type="radio" name="mode" value="merge" checked>
+            <div>
+              <div class="mode-title">🔀 Merge (Safe)</div>
+              <div class="mode-desc">Adds records from backup that don't already exist. Existing data is untouched.</div>
+            </div>
+          </label>
+          <label class="mode-card" onclick="selectMode(this,'replace')">
+            <input type="radio" name="mode" value="replace">
+            <div>
+              <div class="mode-title">🔄 Full Replace</div>
+              <div class="mode-desc">Wipes all documents &amp; slips first, then restores everything from the backup file.</div>
+            </div>
+          </label>
         </div>
+
+        <button type="submit" class="backup-btn backup-btn-blue" id="restore-btn" disabled>
+          📤 Restore Backup
+        </button>
+      </form>
+
+      <div class="backup-warning-box" style="margin-top:20px;margin-bottom:0;">
+        <span class="wi">🛑</span>
+        <p>
+          <strong>Read before restoring.</strong>
+          <strong>Merge mode</strong> is safe — it only adds records that don't already exist and
+          never overwrites what's there. Use it for most restores.
+          <strong>Full Replace</strong> is destructive — it <strong>wipes and overwrites</strong>
+          all current documents and routing slips before reloading from the file, and cannot be
+          undone. Only use it to roll the whole database back to a known-good state, and
+          <strong>always download a fresh backup first</strong>.
+        </p>
       </div>
-
-      <div class="backup-section-label">File format:</div>
-      <div class="format-row">
-        <label class="format-label">
-          <input type="radio" name="file_type" value="excel" checked>
-          📊 Excel (.xlsx)
-        </label>
-        <label class="format-label">
-          <input type="radio" name="file_type" value="json">
-          📄 JSON (.json)
-        </label>
-      </div>
-
-      <button type="submit" class="backup-btn backup-btn-blue">
-        📥 Export Selected Data
-      </button>
-    </form>
-  </div>
-
-  <!-- RESTORE -->
-  <div class="backup-card">
-    <div class="backup-card-title">
-      📤 Restore from Backup
-      <span class="badge badge-blue">Admin Only</span>
     </div>
-    <p class="backup-card-desc">
-      Upload a previously downloaded backup file to restore data.
-      Supports both <strong>JSON</strong> and <strong>Excel (.xlsx)</strong> backup files.
-      Choose <strong>Merge</strong> to add missing records without touching existing ones,
-      or <strong>Full Replace</strong> to wipe documents and reload everything fresh.
-    </p>
-
-    <div class="backup-warning-box">
-      <span class="wi">⚠️</span>
-      <p><strong>Full Replace</strong> permanently deletes all current documents and routing
-         slips before restoring. Users are never deleted for safety. Always download a fresh
-         backup before doing a Full Replace.</p>
-    </div>
-
-    <form method="POST" action="{{ url_for('backup.backup_restore') }}"
-          enctype="multipart/form-data" id="restore-form">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-
-      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('backup-file-input').click()">
-        <div class="dz-icon">📂</div>
-        <div class="dz-label">Click to choose backup file</div>
-        <div class="dz-hint">or drag &amp; drop a <code>.json</code> or <code>.xlsx</code> backup here</div>
-        <div class="dz-file" id="dz-file-name"></div>
-      </div>
-      <input type="file" id="backup-file-input" name="backup_file"
-             accept=".json,.xlsx,.xls" onchange="handleFileSelect(this)">
-
-      <div class="mode-grid" id="mode-grid">
-        <label class="mode-card selected" onclick="selectMode(this,'merge')">
-          <input type="radio" name="mode" value="merge" checked>
-          <div>
-            <div class="mode-title">🔀 Merge (Safe)</div>
-            <div class="mode-desc">Adds records from backup that don't already exist. Existing data is untouched.</div>
-          </div>
-        </label>
-        <label class="mode-card" onclick="selectMode(this,'replace')">
-          <input type="radio" name="mode" value="replace">
-          <div>
-            <div class="mode-title">🔄 Full Replace</div>
-            <div class="mode-desc">Wipes all documents &amp; slips first, then restores everything from the backup file.</div>
-          </div>
-        </label>
-      </div>
-
-      <button type="submit" class="backup-btn backup-btn-blue" id="restore-btn" disabled>
-        📤 Restore Backup
-      </button>
-    </form>
-  </div>
-
-  <!-- HOW IT WORKS -->
-  <div class="backup-card">
-    <div class="backup-card-title">ℹ️ How to Use Backup &amp; Restore</div>
-    <ul class="info-steps">
-      <li>
-        <div class="step-num">1</div>
-        <div class="step-text"><strong>Download regularly</strong> — click "Download as Excel" weekly or before any major changes. The Excel file is great for records and printing. Save with a date in the filename.</div>
-      </li>
-      <li>
-        <div class="step-num">2</div>
-        <div class="step-text"><strong>Also keep a JSON backup</strong> — the <code>.json</code> file is what you upload to <em>restore</em> data back into LAKAD. Keep both formats.</div>
-      </li>
-      <li>
-        <div class="step-num">3</div>
-        <div class="step-text"><strong>Store safely</strong> — save to your PC, a USB drive, or Google Drive. Keep multiple dated copies.</div>
-      </li>
-      <li>
-        <div class="step-num">4</div>
-        <div class="step-text"><strong>After data loss</strong> — if the database resets (Railway free tier restarts, new deploy, etc.), use Restore with your <code>.json</code> backup file to reload everything in seconds.</div>
-      </li>
-      <li>
-        <div class="step-num">5</div>
-        <div class="step-text"><strong>Use Merge mode</strong> for most restores — it only adds missing records and never overwrites what's already there.</div>
-      </li>
-      <li>
-        <div class="step-num">6</div>
-        <div class="step-text"><strong>Use Full Replace</strong> only when you want to roll back the entire database to a known good state. Download a fresh JSON backup first.</div>
-      </li>
-    </ul>
   </div>
 
 </div>

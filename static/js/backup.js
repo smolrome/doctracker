@@ -2,6 +2,18 @@
    BACKUP & RESTORE PAGE SCRIPTS
    ═══════════════════════════════════════════════════════ */
 
+/* ── Tab switcher ──
+   Buttons id="tab-<name>", panels id="panel-<name>". Active state is a
+   .active CSS class toggled via classList (no inline styles). */
+function switchTab(name) {
+  document.querySelectorAll('.backup-panel').forEach(function (p) { p.classList.remove('active'); });
+  document.querySelectorAll('.backup-tab').forEach(function (b) { b.classList.remove('active'); });
+  var panel = document.getElementById('panel-' + name);
+  var tab = document.getElementById('tab-' + name);
+  if (panel) panel.classList.add('active');
+  if (tab) tab.classList.add('active');
+}
+
 function handleFileSelect(input) {
   const file = input.files[0];
   if (!file) return;
@@ -26,6 +38,14 @@ function selectMode(card, mode) {
 
 // Drag & drop
 document.addEventListener('DOMContentLoaded', function () {
+  // Auto-open the Restore tab when a restore just completed (server passed
+  // `summary`, so the .summary-box is rendered). Mirrors send_invite.js
+  // auto-opening its batch tab when batch_results is set. Otherwise the
+  // restore confirmation would be hidden in an inactive tab.
+  if (document.querySelector('.summary-box')) {
+    switchTab('restore');
+  }
+
   const zone = document.getElementById('drop-zone');
   if (!zone) return;
 
