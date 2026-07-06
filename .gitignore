@@ -25,3 +25,7 @@ so_output/
 # document data. NEVER version-control them. The dir is kept via .gitkeep.
 backups/pre-wipe/*.json
 backups/**/*.json
+
+# Backup round-trip test harness artifacts (captured backup JSON). Regenerated
+# on every run; may contain seeded/real data — never version-control.
+tests/_roundtrip_backup.json

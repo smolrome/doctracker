@@ -360,26 +360,130 @@ def create_excel_backup() -> bytes:
 
 # ── Export ────────────────────────────────────────────────────────────────────
 
+# Authoritative live table set: every base table in the app schema. Querying
+# information_schema (not a hardcoded list) means a table added in the future is
+# captured automatically — the backup can never silently omit a table again.
+_LIVE_TABLES_SQL = """
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_type   = 'BASE TABLE'
+    ORDER BY table_name
+"""
+
+
+def _live_base_tables(cur) -> list[str]:
+    """All base-table names in the app schema, via an open cursor."""
+    cur.execute(_LIVE_TABLES_SQL)
+    return [r["table_name"] for r in cur.fetchall()]
+
+
+def live_base_tables() -> list[str]:
+    """Public helper: the live base-table set (for drift checks / tests).
+
+    Returns [] in JSON-fallback mode (no information_schema to introspect).
+    """
+    if not USE_DB:
+        return []
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            return _live_base_tables(cur)
+
+
+def _jsonsafe(value):
+    """Coerce a DB value into something json.dumps can serialize losslessly.
+
+    JSONB / array columns arrive already parsed (list / dict) and are kept
+    as-is. Only scalar types JSON can't represent natively — datetime, Decimal,
+    UUID, bytes — are coerced.
+    """
+    from datetime import datetime, date, time
+    from decimal import Decimal
+    import uuid
+    if value is None or isinstance(value, (str, int, float, bool, list, dict)):
+        return value
+    if isinstance(value, (datetime, date, time)):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, uuid.UUID):
+        return str(value)
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return bytes(value).decode("utf-8", "replace")
+    return str(value)
+
+
+def _export_table_generic(cur, table: str) -> list[dict]:
+    """Export EVERY row and EVERY column of `table` (SELECT *) as JSON-safe dicts.
+
+    The identifier originates only from information_schema (never user input);
+    it is still quoted defensively.
+    """
+    cur.execute(f'SELECT * FROM "{table}"')
+    return [{k: _jsonsafe(v) for k, v in dict(row).items()} for row in cur.fetchall()]
+
+
 def create_backup() -> dict:
-    """Collect all data from the database into a single dict."""
-    backup = {
-        "meta": {
-            "version":    BACKUP_VERSION,
-            "created_at": datetime.now().isoformat(),
-            "app":        "LAKAD - DepEd Leyte Division",
-        },
-        "documents":     _export_documents(),
-        "users":         _export_users(),
-        "routing_slips": _export_routing_slips(),
-        "saved_offices": _export_saved_offices(),
-        "office_traffic": _export_office_traffic(),
+    """Collect ALL data from EVERY table into a single dict.
+
+    Coverage is DYNAMIC: it enumerates the live schema (information_schema) and
+    exports every base table with all columns (SELECT *), so tables added later
+    are captured automatically. A drift guard fails loudly if the captured set
+    ever diverges from the live set.
+
+    One deliberate exception: `documents` is exported via _export_documents()
+    (its JSONB payload list) to preserve the exact shape the UNCHANGED restore
+    path expects. Restore fidelity/atomicity are out of scope for this stage.
+    """
+    meta = {
+        "version":    BACKUP_VERSION,
+        "created_at": datetime.now().isoformat(),
+        "app":        "LAKAD - DepEd Leyte Division",
     }
-    backup["meta"]["counts"] = {
-        "documents":     len(backup["documents"]),
-        "users":         len(backup["users"]),
-        "routing_slips": len(backup["routing_slips"]),
-        "saved_offices": len(backup["saved_offices"]),
-    }
+
+    # JSON-file fallback (no database): keep the original 5-key behavior — there
+    # is no information_schema to introspect in this mode.
+    if not USE_DB:
+        backup = {
+            "meta":          meta,
+            "documents":     _export_documents(),
+            "users":         _export_users(),
+            "routing_slips": _export_routing_slips(),
+            "saved_offices": _export_saved_offices(),
+            "office_traffic": _export_office_traffic(),
+        }
+        meta["tables"]   = sorted(k for k in backup if k != "meta")
+        meta["counts"]   = {k: len(v) for k, v in backup.items() if k != "meta"}
+        meta["coverage"] = "json-fallback (5 keys)"
+        return backup
+
+    # Database mode: dynamic, full-schema capture.
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            live = _live_base_tables(cur)
+            captured: dict[str, list] = {}
+            for table in live:
+                if table == "documents":
+                    # Restore-compatible payload shape (see docstring).
+                    captured[table] = _export_documents()
+                else:
+                    captured[table] = _export_table_generic(cur, table)
+
+    # DRIFT GUARD — the captured set MUST equal the live set. `captured` is built
+    # by looping `live`, so the only way they differ is an export that failed to
+    # produce a key: fail loudly rather than ship a silently-incomplete backup.
+    missing = set(live) - set(captured)
+    if missing:
+        raise RuntimeError(
+            "Backup coverage drift — live tables not captured: "
+            f"{sorted(missing)}. Refusing to produce an incomplete backup."
+        )
+
+    backup = {"meta": meta}
+    backup.update(captured)
+    meta["tables"]   = sorted(captured.keys())
+    meta["counts"]   = {t: len(rows) for t, rows in captured.items()}
+    meta["coverage"] = f"dynamic full-schema ({len(captured)} tables)"
     return backup
 
 
