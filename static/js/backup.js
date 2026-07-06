@@ -17,7 +17,7 @@ function switchTab(name) {
 function handleFileSelect(input) {
   const file = input.files[0];
   if (!file) return;
-  document.getElementById('dz-file-name').textContent = '📄 ' + file.name;
+  document.getElementById('dz-file-name').textContent = file.name;
   document.getElementById('dz-file-name').style.display = 'block';
   document.getElementById('restore-btn').disabled = false;
 }
@@ -28,10 +28,10 @@ function selectMode(card, mode) {
   card.querySelector('input[type=radio]').checked = true;
   const btn = document.getElementById('restore-btn');
   if (mode === 'replace') {
-    btn.textContent = '⚠️ Wipe & Restore';
+    btn.textContent = 'Wipe & Restore';
     btn.className = 'backup-btn backup-btn-red';
   } else {
-    btn.textContent = '📤 Restore Backup';
+    btn.textContent = 'Restore Backup';
     btn.className = 'backup-btn backup-btn-blue';
   }
 }
@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
     form.addEventListener('submit', function (e) {
       const mode = document.querySelector('input[name=mode]:checked').value;
       if (mode === 'replace') {
-        if (!confirm('⚠️ FULL REPLACE: This will permanently delete ALL current documents and routing slips before restoring.\n\nAre you sure you want to continue?')) {
+        if (!confirm('FULL REPLACE: This will permanently delete ALL current documents and routing slips before restoring.\n\nAre you sure you want to continue?')) {
           e.preventDefault();
         }
       }

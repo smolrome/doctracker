@@ -11,7 +11,7 @@
 
   <!-- Header -->
   <div class="backup-page-header">
-    <div class="emoji-badge">🗄️</div>
+    <svg class="icon icon-header" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
     <div>
       <h1>Backup &amp; Restore</h1>
       <p>Download a full copy of all documents, users, and offices — restore anytime.</p>
@@ -22,7 +22,7 @@
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}
       <div class="{{ 'flash-success' if cat=='success' else 'flash-error' }}">
-        {{ '✅' if cat=='success' else '❌' }} {{ msg }}
+        {% if cat=='success' %}<svg class="icon icon-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>{% else %}<svg class="icon icon-danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>{% endif %} {{ msg }}
       </div>
     {% endfor %}
   {% endwith %}
@@ -31,15 +31,15 @@
   <div class="backup-tabs" role="tablist">
     <button type="button" id="tab-full" class="backup-tab active"
             onclick="switchTab('full'); return false;">
-      💾 Full Backup
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Full Backup
     </button>
     <button type="button" id="tab-selective" class="backup-tab"
             onclick="switchTab('selective'); return false;">
-      📥 Selective Export
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> Selective Export
     </button>
     <button type="button" id="tab-restore" class="backup-tab danger"
             onclick="switchTab('restore'); return false;">
-      📤 Restore
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg> Restore
     </button>
   </div>
 
@@ -47,7 +47,7 @@
   <div id="panel-full" class="backup-panel active">
     <div class="backup-card">
       <div class="backup-card-title">
-        💾 Download Backup
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Download Backup
         <span class="badge badge-green">Recommended Weekly</span>
       </div>
       <p class="backup-card-desc">
@@ -58,20 +58,20 @@
 
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
         <a href="{{ url_for('backup.backup_download_excel') }}" class="backup-btn backup-btn-green">
-          📊 Download as Excel (.xlsx)
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg> Download as Excel (.xlsx)
         </a>
         <a href="{{ url_for('backup.backup_download') }}" class="backup-btn backup-btn-ghost">
-          📄 Download as JSON (.json)
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> Download as JSON (.json)
         </a>
       </div>
 
       <div class="backup-tip-box">
-        💡 A full backup exports <strong>everything</strong> in one file — documents (including
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg> A full backup exports <strong>everything</strong> in one file — documents (including
         trash), users, routing slips, and offices.<br>
         <strong>Excel</strong> gives you 6 formatted sheets (Summary, Documents, Routing Slips,
         Users, Offices, Trash) — great for printing or sharing with management.
         <strong>JSON</strong> is the file you upload under <em>Restore</em> to reload data into LAKAD.<br>
-        📅 <strong>Download weekly</strong> (and before any major change) and store dated copies
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg> <strong>Download weekly</strong> (and before any major change) and store dated copies
         safely — PC, USB drive, or Google Drive. If the database ever resets, a JSON backup
         restores everything in seconds.
       </div>
@@ -82,7 +82,7 @@
   <div id="panel-selective" class="backup-panel">
     <div class="backup-card">
       <div class="backup-card-title">
-        📥 Custom Export
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> Custom Export
         <span class="badge badge-blue">Choose What to Export</span>
       </div>
       <p class="backup-card-desc">
@@ -95,23 +95,23 @@
         <div class="export-options-grid">
           <label class="export-option-label">
             <input type="checkbox" name="export_docs" checked>
-            📄 Documents
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> Documents
           </label>
           <label class="export-option-label">
             <input type="checkbox" name="export_users" checked>
-            👥 Users
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Users
           </label>
           <label class="export-option-label">
             <input type="checkbox" name="export_slips" checked>
-            📋 Routing Slips
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg> Routing Slips
           </label>
           <label class="export-option-label">
             <input type="checkbox" name="export_offices" checked>
-            🏢 Saved Offices
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg> Saved Offices
           </label>
           <label class="export-option-label">
             <input type="checkbox" name="export_traffic">
-            🚶 Office Traffic
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z"/><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z"/><path d="M16 17h4"/><path d="M4 13h4"/></svg> Office Traffic
           </label>
         </div>
 
@@ -139,21 +139,21 @@
         <div class="format-row">
           <label class="format-label">
             <input type="radio" name="file_type" value="excel" checked>
-            📊 Excel (.xlsx)
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg> Excel (.xlsx)
           </label>
           <label class="format-label">
             <input type="radio" name="file_type" value="json">
-            📄 JSON (.json)
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> JSON (.json)
           </label>
         </div>
 
         <button type="submit" class="backup-btn backup-btn-blue">
-          📥 Export Selected Data
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> Export Selected Data
         </button>
       </form>
 
       <div class="backup-tip-box">
-        💡 A selective export is for sharing or reporting on a <strong>slice</strong> of the data —
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg> A selective export is for sharing or reporting on a <strong>slice</strong> of the data —
         pick only what you need, filter documents by office and/or date range, and choose Excel
         for readable records or JSON for a restorable file. For a complete safety copy, use the
         <strong>Full Backup</strong> tab instead.
@@ -167,7 +167,7 @@
     <!-- Restore summary (shown after a restore just ran) -->
     {% if summary %}
     <div class="summary-box">
-      <h3>✅ Restore Complete — {{ 'Merge' if mode == 'merge' else 'Full Replace' }} Mode</h3>
+      <h3><svg class="icon icon-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> Restore Complete — {{ 'Merge' if mode == 'merge' else 'Full Replace' }} Mode</h3>
       <div class="summary-grid">
         <div class="summary-stat">
           <div class="num">{{ summary.documents }}</div>
@@ -196,7 +196,7 @@
       </div>
       {% if summary.errors %}
       <div class="error-list">
-        <p>⚠️ {{ summary.errors|length }} item(s) had errors:</p>
+        <p><svg class="icon icon-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> {{ summary.errors|length }} item(s) had errors:</p>
         <ul>
           {% for err in summary.errors[:10] %}
             <li>{{ err }}</li>
@@ -208,14 +208,14 @@
       </div>
       {% endif %}
       <a href="{{ url_for('dashboard.index') }}" class="backup-btn backup-btn-green" style="margin-top:8px;">
-        📋 View Documents
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg> View Documents
       </a>
     </div>
     {% endif %}
 
     <div class="backup-card danger-zone">
       <div class="backup-card-title">
-        📤 Restore from Backup
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg> Restore from Backup
         <span class="badge badge-red">Danger Zone · Admin Only</span>
       </div>
       <p class="backup-card-desc">
@@ -226,7 +226,7 @@
       </p>
 
       <div class="backup-warning-box">
-        <span class="wi">⚠️</span>
+        <span class="wi"><svg class="icon icon-danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
         <p><strong>Full Replace</strong> permanently deletes all current documents and routing
            slips before restoring. Users are never deleted for safety. Always download a fresh
            backup before doing a Full Replace.</p>
@@ -237,7 +237,7 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
         <div class="drop-zone" id="drop-zone" onclick="document.getElementById('backup-file-input').click()">
-          <div class="dz-icon">📂</div>
+          <div class="dz-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg></div>
           <div class="dz-label">Click to choose backup file</div>
           <div class="dz-hint">or drag &amp; drop a <code>.json</code> or <code>.xlsx</code> backup here</div>
           <div class="dz-file" id="dz-file-name"></div>
@@ -249,26 +249,26 @@
           <label class="mode-card selected" onclick="selectMode(this,'merge')">
             <input type="radio" name="mode" value="merge" checked>
             <div>
-              <div class="mode-title">🔀 Merge (Safe)</div>
+              <div class="mode-title"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/></svg> Merge (Safe)</div>
               <div class="mode-desc">Adds records from backup that don't already exist. Existing data is untouched.</div>
             </div>
           </label>
           <label class="mode-card" onclick="selectMode(this,'replace')">
             <input type="radio" name="mode" value="replace">
             <div>
-              <div class="mode-title">🔄 Full Replace</div>
+              <div class="mode-title"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg> Full Replace</div>
               <div class="mode-desc">Wipes all documents &amp; slips first, then restores everything from the backup file.</div>
             </div>
           </label>
         </div>
 
         <button type="submit" class="backup-btn backup-btn-blue" id="restore-btn" disabled>
-          📤 Restore Backup
+          Restore Backup
         </button>
       </form>
 
       <div class="backup-warning-box" style="margin-top:20px;margin-bottom:0;">
-        <span class="wi">🛑</span>
+        <span class="wi"><svg class="icon icon-danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"/></svg></span>
         <p>
           <strong>Read before restoring.</strong>
           <strong>Merge mode</strong> is safe — it only adds records that don't already exist and
