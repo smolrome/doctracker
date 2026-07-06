@@ -1114,10 +1114,16 @@ def restore_backup(backup: dict, mode: str = "merge") -> dict:
     """
     Restore from a backup dict.
     mode='merge'   — keep existing records, only add missing ones (safe)
-    mode='replace' — wipe tables and reload everything (full restore)
+    mode='replace' — wipe ALL tables and reload everything (full clean-slate restore)
     Returns a summary dict with counts of what was restored.
+
+    Stage 2: in DB mode this restores EVERY table present in the backup, with
+    ALL columns (fixing the column-drop bug), in FK-safe dependency order, and
+    resets serial sequences so restored ids don't collide with future inserts.
+    The documents carve-out (payload-shaped rows) is preserved. Transaction
+    structure is intentionally unchanged (per-table commits) — atomicity is
+    Stage 3.
     """
-    version = backup.get("meta", {}).get("version", "1")
     summary = {
         "mode":          mode,
         "documents":     0,
@@ -1127,30 +1133,206 @@ def restore_backup(backup: dict, mode: str = "merge") -> dict:
         "office_traffic": 0,
         "skipped":       0,
         "errors":        [],
+        "tables":        {},   # per-table restored counts (all tables)
     }
 
-    if mode == "replace" and USE_DB:
-        _wipe_tables()
+    # JSON-file fallback (no database): keep the original 5-helper behavior —
+    # there is no information_schema to introspect in this mode.
+    if not USE_DB:
+        summary["documents"]     = _restore_documents(backup.get("documents", []), mode, summary)
+        summary["users"]         = _restore_users(backup.get("users", []), mode, summary)
+        summary["routing_slips"] = _restore_routing_slips(backup.get("routing_slips", []), mode, summary)
+        summary["saved_offices"] = _restore_saved_offices(backup.get("saved_offices", []), mode, summary)
+        summary["office_traffic"] = _restore_office_traffic(backup.get("office_traffic", []), mode, summary)
+        for k in ("documents", "users", "routing_slips", "saved_offices", "office_traffic"):
+            summary["tables"][k] = summary[k]
+        return summary
 
-    summary["documents"]     = _restore_documents(backup.get("documents", []), mode, summary)
-    summary["users"]         = _restore_users(backup.get("users", []), mode, summary)
-    summary["routing_slips"] = _restore_routing_slips(backup.get("routing_slips", []), mode, summary)
-    summary["saved_offices"] = _restore_saved_offices(backup.get("saved_offices", []), mode, summary)
-    summary["office_traffic"] = _restore_office_traffic(backup.get("office_traffic", []), mode, summary)
+    # ── DB mode: dynamic, full-coverage restore ──
+    data_tables = [t for t in backup.keys() if t != "meta"]
+
+    # FK-safe order: parents before children (topological over live FK edges).
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            deps = _fk_dependencies(cur)
+    order = _topo_sort_tables(data_tables, deps)
+
+    # Replace mode: clear ALL restorable tables first, children before parents
+    # (reverse dependency order) so no FK is violated mid-wipe. This now includes
+    # users — a replace restore is a true clean-slate reload.
+    if mode == "replace":
+        _wipe_tables(list(reversed(order)))
+
+    for table in order:
+        rows = backup.get(table) or []
+        if table == "documents":
+            # Payload-shaped rows go through the app's document writer.
+            n = _restore_documents(rows, mode, summary)
+        else:
+            n = _restore_table_generic(table, rows, mode, summary)
+        summary["tables"][table] = n
+        if table in ("users", "routing_slips", "saved_offices", "office_traffic"):
+            summary[table] = n
+    summary["documents"] = summary["tables"].get("documents", 0)
 
     return summary
 
 
-def _wipe_tables():
-    """Delete all rows from restorable tables — only used in replace mode."""
+def _fk_dependencies(cur) -> dict:
+    """Map child table -> set(parent tables) from live FK constraints.
+
+    Self-referential edges are dropped (they can't affect table ordering).
+    Dynamic (information_schema) so a future FK is honored automatically.
+    """
+    cur.execute("""
+        SELECT tc.table_name AS child, ccu.table_name AS parent
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.constraint_column_usage ccu
+          ON ccu.constraint_name = tc.constraint_name
+         AND ccu.table_schema    = tc.table_schema
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND tc.table_schema    = 'public'
+    """)
+    deps: dict = {}
+    for r in cur.fetchall():
+        child, parent = r["child"], r["parent"]
+        if child == parent:
+            continue
+        deps.setdefault(child, set()).add(parent)
+    return deps
+
+
+def _topo_sort_tables(tables: list, deps: dict) -> list:
+    """Order `tables` so every table comes after its FK parents. Deterministic.
+
+    Parents outside the given set are ignored. Any unresolved remainder (a cycle,
+    which this schema has none of) is appended in sorted order so the restore
+    still proceeds deterministically.
+    """
+    tset = set(tables)
+    ordered: list = []
+    placed: set = set()
+    remaining = sorted(tables)
+    progress = True
+    while remaining and progress:
+        progress = False
+        for t in list(remaining):
+            parents = {p for p in deps.get(t, set()) if p in tset}
+            if parents <= placed:
+                ordered.append(t)
+                placed.add(t)
+                remaining.remove(t)
+                progress = True
+    if remaining:
+        ordered.extend(sorted(remaining))
+    return ordered
+
+
+def _table_columns(cur, table: str) -> list:
+    """Ordered (column_name, data_type) for a live table."""
+    cur.execute("""
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = %s
+        ORDER BY ordinal_position
+    """, (table,))
+    return [(r["column_name"], r["data_type"]) for r in cur.fetchall()]
+
+
+def _reset_serial(cur, table: str):
+    """If `table`.id is backed by a sequence, advance it past the current MAX(id).
+
+    Uses is_called=(rows exist) so the next nextval is MAX(id)+1 when populated,
+    or 1 when the table is empty. No-op for tables whose id isn't a serial.
+    """
+    cur.execute("SELECT pg_get_serial_sequence(%s, 'id') AS seq", (f'public."{table}"',))
+    row = cur.fetchone()
+    seq = row["seq"] if row else None
+    if not seq:
+        return
+    cur.execute(
+        f'SELECT setval(%s, COALESCE((SELECT MAX(id) FROM "{table}"), 1), '
+        f'(SELECT MAX(id) IS NOT NULL FROM "{table}"))',
+        (seq,),
+    )
+
+
+def _restore_table_generic(table: str, rows: list, mode: str, summary: dict) -> int:
+    """Insert every backup row of `table` using ALL columns present (∩ live schema).
+
+    Fixes the column-drop bug: whatever the backup captured (SELECT *) is written
+    back. json/jsonb columns are adapted via psycopg2 Json. Serial sequences are
+    reset to MAX(id) afterward so restored ids don't collide with future inserts.
+    ON CONFLICT DO NOTHING keeps merge-mode idempotent and is a no-op after the
+    replace-mode wipe. Per-table connection/commit — transaction structure
+    unchanged (Stage 3).
+    """
+    if not rows:
+        return 0
+    from psycopg2.extras import Json
+    count = 0
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM documents")
-                cur.execute("DELETE FROM routing_slips")
-                cur.execute("DELETE FROM saved_offices")
-                cur.execute("DELETE FROM office_traffic")
-                # Note: we do NOT wipe users in replace mode for safety
+                cols_types = _table_columns(cur, table)
+                live_cols  = [c for c, _ in cols_types]
+                jsonb_cols = {c for c, dt in cols_types if dt in ("json", "jsonb")}
+
+                present: set = set()
+                for r in rows:
+                    if isinstance(r, dict):
+                        present.update(r.keys())
+                insert_cols = [c for c in live_cols if c in present]
+                if not insert_cols:
+                    summary["errors"].append(f"{table}: no matching columns to restore")
+                    return 0
+
+                col_sql = ", ".join(f'"{c}"' for c in insert_cols)
+                ph      = ", ".join(["%s"] * len(insert_cols))
+                stmt    = f'INSERT INTO "{table}" ({col_sql}) VALUES ({ph}) ON CONFLICT DO NOTHING'
+
+                valid = 0
+                for r in rows:
+                    if not isinstance(r, dict):
+                        summary["skipped"] += 1
+                        continue
+                    valid += 1
+                    vals = []
+                    for c in insert_cols:
+                        v = r.get(c)
+                        if v is not None and c in jsonb_cols:
+                            v = Json(v)
+                        vals.append(v)
+                    cur.execute(stmt, vals)
+                    count += cur.rowcount
+
+                # Rows present in the backup but not inserted (merge-mode conflicts).
+                summary["skipped"] += max(0, valid - count)
+
+                # Reset serial sequence if this table has a serial id column.
+                if "id" in live_cols:
+                    _reset_serial(cur, table)
+            conn.commit()
+    except Exception as e:
+        summary["errors"].append(f"{table} restore error: {e}")
+        return 0
+    return count
+
+
+def _wipe_tables(tables: list):
+    """Delete all rows from the given tables — replace mode only.
+
+    Broadened in Stage 2 to cover EVERY restorable table (previously only 4),
+    so a replace restore is a true clean slate. Callers pass tables in reverse
+    dependency order (children before parents) so FK checks never trip. NOTE:
+    this now includes users. Transaction structure unchanged: still a single
+    connection/commit here (Stage 3 will unify wipe + load into one txn).
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                for t in tables:
+                    cur.execute(f'DELETE FROM "{t}"')
             conn.commit()
     except Exception as e:
         raise RuntimeError(f"Failed to clear tables before replace — restore aborted: {e}") from e
