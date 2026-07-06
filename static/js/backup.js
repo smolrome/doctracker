@@ -14,6 +14,19 @@ function switchTab(name) {
   if (tab) tab.classList.add('active');
 }
 
+/* ── Clear Database typed-confirmation gates ──
+   Mirror the app's typed-DELETE modal guard. Each keeps its submit button
+   disabled until the exact word is typed. */
+function onClearArmType(value) {
+  var btn = document.getElementById('clear-arm-btn');
+  if (btn) btn.disabled = (value.trim() !== 'DELETE');
+}
+
+function onClearFireType(value) {
+  var btn = document.getElementById('clear-fire-btn');
+  if (btn) btn.disabled = (value.trim() !== 'WIPE');
+}
+
 function handleFileSelect(input) {
   const file = input.files[0];
   if (!file) return;
@@ -38,11 +51,13 @@ function selectMode(card, mode) {
 
 // Drag & drop
 document.addEventListener('DOMContentLoaded', function () {
-  // Auto-open the Restore tab when a restore just completed (server passed
-  // `summary`, so the .summary-box is rendered). Mirrors send_invite.js
-  // auto-opening its batch tab when batch_results is set. Otherwise the
-  // restore confirmation would be hidden in an inactive tab.
-  if (document.querySelector('.summary-box')) {
+  // Auto-open the most urgent tab. Clear-armed wins (most destructive, time-
+  // limited); otherwise the Restore tab when a restore just completed (the
+  // .summary-box is rendered). Mirrors send_invite.js auto-opening its batch
+  // tab so the relevant confirmation is never hidden in an inactive tab.
+  if (document.getElementById('clear-armed-flag')) {
+    switchTab('clear');
+  } else if (document.querySelector('.summary-box')) {
     switchTab('restore');
   }
 

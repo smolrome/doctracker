@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Backup & Restore — LAKAD{% endblock %}
+{% block title %}Database Management — LAKAD{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/backup.css') }}"/>
@@ -13,8 +13,8 @@
   <div class="backup-page-header">
     <svg class="icon icon-header" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
     <div>
-      <h1>Backup &amp; Restore</h1>
-      <p>Download a full copy of all documents, users, and offices — restore anytime.</p>
+      <h1>Database Management</h1>
+      <p>Back up, restore, or clear all documents, users, and offices.</p>
     </div>
   </div>
 
@@ -40,6 +40,10 @@
     <button type="button" id="tab-restore" class="backup-tab danger"
             onclick="switchTab('restore'); return false;">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg> Restore
+    </button>
+    <button type="button" id="tab-clear" class="backup-tab danger-max"
+            onclick="switchTab('clear'); return false;">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg> Clear Database
     </button>
   </div>
 
@@ -279,6 +283,86 @@
           <strong>always download a fresh backup first</strong>.
         </p>
       </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ TAB 4 — CLEAR DATABASE (MAX DANGER) ══════════════════════════ -->
+  <div id="panel-clear" class="backup-panel">
+    {% if clear_db_armed %}<span id="clear-armed-flag" hidden></span>{% endif %}
+    <div class="backup-card danger-zone danger-zone-max">
+      <div class="backup-card-title">
+        <svg class="icon icon-danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        Clear Database
+        <span class="badge badge-red">Irreversible · Admin Only</span>
+      </div>
+
+      {% if not clear_db_armed %}
+      {# ── UNARMED: step 1 — arm (takes a mandatory verified backup, deletes nothing) ── #}
+      <p class="backup-card-desc">
+        Permanently deletes <strong>every document and routing slip</strong> in the system.
+        Users and offices are kept. This cannot be undone.
+      </p>
+
+      <div class="backup-warning-box" style="border-color:#DC2626;background:#FEF2F2;">
+        <span class="wi"><svg class="icon icon-danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"/></svg></span>
+        <p>
+          Clearing is a <strong>two-step</strong> action. Arming first takes a mandatory,
+          verified safety backup — <strong>no backup, no wipe</strong>. Nothing is deleted until
+          you confirm the second step, and the armed state expires after 5 minutes.
+        </p>
+      </div>
+
+      <form method="POST" action="{{ url_for('admin.clear_database') }}" id="clear-arm-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="backup-section-label">Type <code>DELETE</code> to arm:</div>
+        <input type="text" class="form-input" id="clear-arm-input" autocomplete="off"
+               spellcheck="false" placeholder="Type DELETE here"
+               oninput="onClearArmType(this.value)"
+               style="max-width:320px;margin-bottom:16px;">
+        <button type="submit" id="clear-arm-btn" class="backup-btn backup-btn-red" disabled>
+          Create Safety Backup &amp; Arm Wipe
+        </button>
+      </form>
+
+      {% else %}
+      {# ── ARMED: step 2 — confirm final wipe (backup already secured) ── #}
+      <div class="clear-armed-banner">
+        <svg class="icon icon-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+        Safety backup secured. Armed — expires 5 minutes after arming.
+      </div>
+
+      <p class="backup-card-desc">
+        A verified pre-wipe backup was created and saved. <strong>Download it now</strong> and keep
+        it safe before confirming — this is your only way back.
+      </p>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:20px;">
+        <a href="{{ url_for('backup.prewipe_backup_download') }}" class="backup-btn backup-btn-green">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> Download Safety Backup
+        </a>
+      </div>
+
+      <div class="backup-warning-box" style="border-color:#DC2626;background:#FEF2F2;">
+        <span class="wi"><svg class="icon icon-danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+        <p>
+          This is the point of no return. Confirming will <strong>permanently delete every
+          document and routing slip</strong>. It cannot be undone.
+        </p>
+      </div>
+
+      <form method="POST" action="{{ url_for('admin.clear_database_confirm') }}" id="clear-fire-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="arm_token" value="{{ clear_db_arm_token }}">
+        <div class="backup-section-label">Type <code>WIPE</code> to confirm the final delete:</div>
+        <input type="text" class="form-input" id="clear-fire-input" autocomplete="off"
+               spellcheck="false" placeholder="Type WIPE here"
+               oninput="onClearFireType(this.value)"
+               style="max-width:320px;margin-bottom:16px;">
+        <button type="submit" id="clear-fire-btn" class="backup-btn backup-btn-red" disabled>
+          Permanently Wipe Database
+        </button>
+      </form>
+      {% endif %}
     </div>
   </div>
 

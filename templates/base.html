@@ -178,17 +178,17 @@
             </a>
             <a href="/backup" class="dd-item">
               <span class="dd-icon">🗄️</span>
-              <span class="dd-text">Backup &amp; Restore<span class="dd-desc">Download or restore data</span></span>
+              <span class="dd-text">Database Management<span class="dd-desc">Back up, restore, or clear data</span></span>
             </a>
           </div>
           <div class="dd-divider"></div>
           <div class="dd-section">
             <span class="dd-label">Danger Zone</span>
-            <!-- CHANGED: onclick now opens the modal, not a bare POST -->
-            <button class="dd-item danger" onclick="confirmClearDB()">
+            <!-- Clear Database now lives on the guarded Database Management page -->
+            <a href="/backup" class="dd-item danger">
               <span class="dd-icon">⚠️</span>
-              <span class="dd-text">Clear Database<span class="dd-desc">Wipe all documents permanently</span></span>
-            </button>
+              <span class="dd-text">Clear Database<span class="dd-desc">Guarded two-step wipe (Database Management)</span></span>
+            </a>
           </div>
         </div>
       </div>
@@ -303,7 +303,7 @@
       <a href="/dropdown-options" class="nav-btn" onclick="closeMenu()">⚙️ Dropdown Options</a>
       <a href="/trash"            class="nav-btn" onclick="closeMenu()">🗑️ Trash</a>
       <a href="/import-excel"     class="nav-btn" onclick="closeMenu()">📥 Import Excel</a>
-      <a href="/backup"           class="nav-btn" onclick="closeMenu()">🗄️ Backup &amp; Restore</a>
+      <a href="/backup"           class="nav-btn" onclick="closeMenu()">🗄️ Database Management</a>
       <div class="nav-divider"></div>
       <div class="nav-drawer-section">Offices</div>
       <a href="/office-staff"     class="nav-btn" onclick="closeMenu()">🏢 Office Staff</a>
@@ -311,7 +311,7 @@
       <!-- CHANGED: visually separated, clearly labelled danger -->
       <div class="nav-divider"></div>
       <div class="nav-drawer-section nav-drawer-section-danger">⚠️ Danger Zone</div>
-      <button class="nav-btn nav-btn-danger-drawer" onclick="closeMenu(); confirmClearDB();">⚠️ Clear Database</button>
+      <a href="/backup" class="nav-btn nav-btn-danger-drawer" onclick="closeMenu()">⚠️ Clear Database</a>
     {% endif %}
     <div class="nav-divider"></div>
     <a href="/"       class="nav-btn" onclick="closeMenu()">🏠 Dashboard</a>

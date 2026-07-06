@@ -35,6 +35,34 @@ PREWIPE_BACKUP_DIR = os.path.join(_APP_ROOT, "backups", "pre-wipe")
 # — a husk must never green-light a destructive wipe.
 PREWIPE_MIN_BYTES = 200
 
+# An armed clear-database state expires 5 minutes after it is armed. Both the
+# GET (to decide whether to show the armed UI) and the FIRE route (defense in
+# depth against a replayed stale token) check this independently.
+CLEAR_DB_ARM_TTL_SECONDS = 300
+
+
+def clear_db_arm_is_valid(armed) -> bool:
+    """True iff `armed` is a well-formed, non-expired clear-database arm dict.
+
+    Expects the session value written by the arm route:
+        {"token": <hex>, "filepath": <path>, "armed_at": <ISO-8601 UTC>}
+    Returns False for anything missing, malformed, or older than
+    CLEAR_DB_ARM_TTL_SECONDS. Never raises.
+    """
+    if not isinstance(armed, dict):
+        return False
+    if not armed.get("token") or not armed.get("armed_at"):
+        return False
+    try:
+        from datetime import datetime, timezone
+        armed_at = datetime.fromisoformat(armed["armed_at"])
+        if armed_at.tzinfo is None:
+            armed_at = armed_at.replace(tzinfo=timezone.utc)
+        age = (datetime.now(timezone.utc) - armed_at).total_seconds()
+        return 0 <= age <= CLEAR_DB_ARM_TTL_SECONDS
+    except Exception:
+        return False
+
 
 # ── Excel export ──────────────────────────────────────────────────────────────
 

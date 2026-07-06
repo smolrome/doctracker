@@ -46,6 +46,26 @@
 }
 .backup-card.danger-zone .backup-card-title { color:#991B1B; }
 
+/* ── Max-danger tab + card (Clear Database) — stronger than Restore ── */
+.backup-tab.danger-max { color:#991B1B; }
+.backup-tab.danger-max:hover { color:#7F1D1D; background:#FEE2E2; }
+.backup-tab.danger-max.active {
+  color:#fff; background:#DC2626;
+  border-color:#DC2626; border-bottom:2px solid #DC2626;
+}
+.backup-card.danger-zone-max {
+  border:2px solid #DC2626;
+  box-shadow:0 4px 18px rgba(220,38,38,.16);
+}
+.backup-card.danger-zone-max .backup-card-title { color:#991B1B; }
+
+/* Armed "backup secured" banner */
+.clear-armed-banner {
+  display:flex; align-items:center; gap:10px;
+  background:#ECFDF5; border:1.5px solid #6EE7B7; color:#065F46;
+  border-radius:10px; padding:12px 16px; margin-bottom:16px; font-weight:700;
+}
+
 /* ── Page header ── */
 .backup-page-header {
   display:flex; align-items:center; gap:16px;

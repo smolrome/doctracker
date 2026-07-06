@@ -1204,12 +1204,13 @@ def clear_database():
     """ARM step of the two-step wipe. Deletes NOTHING.
 
     Takes a mandatory, VERIFIED pre-wipe backup first — no backup, no wipe.
-    On success it arms a single-use token in the session and streams the
-    just-written backup to the admin as a download. The actual, atomic wipe
+    On success it arms a single-use token (with a 5-minute expiry) in the
+    session and redirects to the Database Management page, where the admin can
+    download the backup and confirm the final wipe. The actual, atomic wipe
     happens only at POST /clear-database/confirm once armed.
     """
     from services.backup import write_backup_to_disk
-    from flask import send_file
+    from datetime import datetime, timezone
     import os
 
     username = session.get("username", "admin")
@@ -1219,30 +1220,29 @@ def clear_database():
     if not ok:
         # Never leave a stale armed state behind on failure.
         session.pop("clear_db_armed", None)
-        session.pop("clear_db_backup", None)
         current_app.logger.error("clear_database arm aborted — backup failed: %s", err)
         flash(f"Clear aborted — mandatory safety backup failed: {err} "
               "No data was deleted.", "error")
         return redirect(url_for("admin.staff_document_stats"))
 
-    # Arm: single-use token (secrets, like the app's CSRF token) + backup path,
-    # both held server-side in the session.
-    token = secrets.token_hex(32)
-    session["clear_db_armed"]  = token
-    session["clear_db_backup"] = filepath
+    # Arm: single-use token (secrets, like the app's CSRF token) + backup path +
+    # UTC arm timestamp for the 5-minute expiry — all held server-side.
+    session["clear_db_armed"] = {
+        "token":    secrets.token_hex(32),
+        "filepath": filepath,
+        "armed_at": datetime.now(timezone.utc).isoformat(),
+    }
 
     audit_log("database_clear_armed",
               f"backup={os.path.basename(filepath)} size={os.path.getsize(filepath)}",
               username=username, ip=get_client_ip())
 
-    # The response IS the backup download. The armed state lives in the session,
-    # so when the admin returns to the page the final-wipe button is available.
+    # Redirect to Database Management (NOT a file download). The armed state
+    # lives in the session, so the page renders the "Confirm Final Wipe" step.
     # NOTHING is deleted here.
-    flash("Safety backup created and downloaded. Confirm again to permanently "
-          "wipe the database.", "success")
-    return send_file(filepath, mimetype="application/json",
-                     as_attachment=True,
-                     download_name=os.path.basename(filepath))
+    flash("Safety backup created and secured. Review it below, then confirm the "
+          "final wipe within 5 minutes. Nothing has been deleted yet.", "success")
+    return redirect(url_for("backup.backup_page"))
 
 
 @admin_bp.route("/clear-database/confirm", methods=["POST"])
@@ -1255,18 +1255,28 @@ def clear_database_confirm():
     non-atomic wipe). Permanent and irreversible.
     """
     from services.database import USE_DB, get_conn
+    from services.backup import clear_db_arm_is_valid
     import os, json as _json
 
     username = session.get("username", "admin")
 
     # Consume the armed state (single-use). Absent → not armed / session expired.
-    armed_token  = session.pop("clear_db_armed", None)
-    backup_path  = session.pop("clear_db_backup", None)
-    submitted    = request.form.get("arm_token", "")
+    armed     = session.pop("clear_db_armed", None)
+    submitted = request.form.get("arm_token", "")
 
-    if not armed_token:
+    if not isinstance(armed, dict) or not armed.get("token"):
         flash("Clear not armed or session expired — please start again.", "error")
         return redirect(url_for("admin.staff_document_stats"))
+
+    # Defense in depth: independently re-check the 5-minute expiry so a stale
+    # token can never be replayed even if the GET didn't disarm it.
+    if not clear_db_arm_is_valid(armed):
+        current_app.logger.warning("clear_database_confirm expired arm by %s", username)
+        flash("Clear-database arming expired (5-minute window) — please re-arm.", "error")
+        return redirect(url_for("admin.staff_document_stats"))
+
+    armed_token = armed.get("token", "")
+    backup_path = armed.get("filepath")
 
     # Constant-time token comparison (mirrors app.py CSRF validation).
     if not submitted or not secrets.compare_digest(armed_token, submitted):

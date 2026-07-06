@@ -20,9 +20,57 @@ backup_bp = Blueprint("backup", __name__)
 @backup_bp.route("/backup")
 @admin_required
 def backup_page():
-    """Backup & Restore admin page."""
+    """Database Management admin page (backup / restore / clear)."""
+    from services.backup import clear_db_arm_is_valid
+
+    # Armed clear-database state: valid only if present AND within its 5-min
+    # window. Expired arm state is disarmed here so the UI never offers a stale
+    # wipe. (The fire route re-checks expiry independently.)
+    armed = session.get("clear_db_armed")
+    clear_db_armed = False
+    clear_db_arm_token = ""
+    if armed:
+        if clear_db_arm_is_valid(armed):
+            clear_db_armed = True
+            clear_db_arm_token = armed.get("token", "")
+        else:
+            session.pop("clear_db_armed", None)
+
     return render_template("backup.html", csrf_token=session.get("csrf_token", ""),
-                           offices=load_saved_offices())
+                           offices=load_saved_offices(),
+                           clear_db_armed=clear_db_armed,
+                           clear_db_arm_token=clear_db_arm_token)
+
+
+@backup_bp.route("/backup/prewipe-download")
+@admin_required
+def prewipe_backup_download():
+    """Download the armed pre-wipe backup file.
+
+    Only serves the file currently referenced by the armed session state, and
+    only if it resolves to a path INSIDE PREWIPE_BACKUP_DIR — never an arbitrary
+    path from the request.
+    """
+    import os
+    from services.backup import PREWIPE_BACKUP_DIR
+
+    armed = session.get("clear_db_armed")
+    if not isinstance(armed, dict) or not armed.get("filepath"):
+        flash("No pre-wipe backup is armed to download.", "error")
+        return redirect(url_for("backup.backup_page"))
+
+    filepath = os.path.abspath(armed["filepath"])
+    base     = os.path.abspath(PREWIPE_BACKUP_DIR)
+    try:
+        inside = os.path.commonpath([filepath, base]) == base
+    except ValueError:
+        inside = False  # different drives on Windows → not inside
+    if not inside or not os.path.isfile(filepath):
+        flash("Backup file not found or path is invalid.", "error")
+        return redirect(url_for("backup.backup_page"))
+
+    return send_file(filepath, mimetype="application/json",
+                     as_attachment=True, download_name=os.path.basename(filepath))
 
 
 @backup_bp.route("/backup/download")
