@@ -249,6 +249,16 @@ def create_app() -> Flask:
 
     # ── Before-request hooks ───────────────────────────────────────────────────
 
+    # Route-scoped upload cap: the Restore endpoint accepts a larger body than the
+    # modest app-wide MAX_CONTENT_LENGTH. Registered FIRST so it runs before any
+    # hook that parses the body (log_write_requests / csrf_check read request.form)
+    # — otherwise the app-wide cap would already have fired. Every OTHER route
+    # stays bound to the modest app-wide limit.
+    @app.before_request
+    def raise_restore_upload_limit():
+        if request.method == "POST" and request.path == "/backup/restore":
+            request.max_content_length = config.RESTORE_MAX_CONTENT_LENGTH
+
     @app.before_request
     def ensurecsrf_token():
         """Ensure every session has a CSRF token before any handler runs."""
@@ -376,6 +386,32 @@ def create_app() -> Flask:
             traceback.print_exc()
 
     # ── Error handler ──────────────────────────────────────────────────────────
+    @app.errorhandler(413)
+    def handle_upload_too_large(e):
+        """Friendly message for oversized uploads — no traceback, no path leak.
+
+        More specific than the catch-all Exception handler below, so Flask routes
+        413 (RequestEntityTooLarge) here instead of rendering the raw traceback.
+        The stated cap reflects the effective limit for THIS request (100 MB on
+        the Restore endpoint, the modest app-wide limit elsewhere).
+        """
+        limit = request.max_content_length or config.MAX_CONTENT_LENGTH or 0
+        cap = f"{limit // (1024 * 1024)} MB" if limit else "the allowed size"
+        if request.path == "/backup/restore":
+            msg = (f"The backup file is too large to upload (max {cap}). "
+                   "If your backup exceeds this, contact your administrator.")
+        else:
+            msg = f"The uploaded file is too large (max {cap}). Please upload a smaller file."
+        wants_json = (
+            request.path.startswith("/api")
+            or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+            or "application/json" in (request.headers.get("Accept", ""))
+        )
+        if wants_json:
+            return jsonify({"success": False, "message": msg}), 413
+        flash(msg, "error")
+        return redirect(request.referrer or url_for("backup.backup_page"))
+
     @app.errorhandler(Exception)
     def handle_uncaught_exception(e):
         """Return JSON for fetch/AJAX requests; log full traceback for all."""
