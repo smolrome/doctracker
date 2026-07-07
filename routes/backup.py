@@ -215,35 +215,56 @@ def backup_restore():
         return redirect(url_for("backup.backup_page"))
 
     filename = uploaded.filename.lower()
-    is_json = filename.endswith(".json")
+    is_json  = filename.endswith(".json")
     is_excel = filename.endswith(".xlsx") or filename.endswith(".xls")
-    
-    if not is_json and not is_excel:
-        flash("Only .json and .xlsx backup files are supported.", "error")
+
+    # LAYER 1 GUARD (a): reject the Excel export outright. It is a flattened,
+    # printable REPORT — it drops travel_log/routing and renumbers doc ids, so it
+    # can never faithfully restore. (restore_from_excel() remains defined in
+    # services/backup.py but is no longer called from anywhere — dead-code
+    # cleanup candidate for a later pass.)
+    if is_excel:
+        flash("That file is the Excel export — a printable report, not a restorable "
+              "backup. It can't rebuild document timelines or routing and it renumbers "
+              "records. Please upload the .json backup file you downloaded from the "
+              "Backup page.", "error")
+        return redirect(url_for("backup.backup_page"))
+
+    if not is_json:
+        flash("Unsupported file type. Please upload the .json backup file you "
+              "downloaded from the Backup page.", "error")
         return redirect(url_for("backup.backup_page"))
 
     try:
-        if is_excel:
-            # Import from Excel
-            from services.backup import restore_from_excel
-            summary = restore_from_excel(uploaded.read(), mode=mode)
-        else:
-            # Import from JSON
-            raw    = uploaded.read()
+        # LAYER 1 GUARD (b): CONTENT-BASED validation — a file may be named .json
+        # yet not be a LAKAD backup. Every failure below RETURNS before
+        # restore_backup() is called, so the destructive wipe (which lives inside
+        # restore_backup) can never run on a rejected file.
+        raw = uploaded.read()
+        try:
             backup = json.loads(raw)
+        except json.JSONDecodeError:
+            flash("This isn't a valid backup file. Upload the .json backup you "
+                  "downloaded from the Backup page (not the Excel export).", "error")
+            return redirect(url_for("backup.backup_page"))
 
-            # Basic validation
-            if "meta" not in backup:
-                flash("Invalid backup file — missing required sections.", "error")
-                return redirect(url_for("backup.backup_page"))
-            
-            # Check if at least one data section exists
-            has_data = any(key in backup for key in ["documents", "users", "routing_slips", "saved_offices", "office_traffic"])
-            if not has_data:
-                flash("Invalid backup file — no data sections found.", "error")
-                return redirect(url_for("backup.backup_page"))
+        meta = backup.get("meta") if isinstance(backup, dict) else None
+        recognizable = isinstance(meta, dict) and (
+            str(meta.get("app", "")).startswith("LAKAD")
+            or "version" in meta
+            or "tables" in meta
+        )
+        known_keys = ("documents", "users", "routing_slips", "saved_offices", "office_traffic")
+        has_data = isinstance(backup, dict) and (
+            any(k in backup for k in known_keys)
+            or bool(isinstance(meta, dict) and meta.get("tables"))
+        )
+        if not recognizable or not has_data:
+            flash("This file isn't a LAKAD backup. Upload the .json backup downloaded "
+                  "from the Backup page (not the Excel export).", "error")
+            return redirect(url_for("backup.backup_page"))
 
-            summary = restore_backup(backup, mode=mode)
+        summary = restore_backup(backup, mode=mode)
 
         audit_log("backup_restored",
                   f"mode={mode} docs={summary['documents']} "
