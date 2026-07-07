@@ -222,13 +222,13 @@
       <input type="text" id="pending-search-input" class="pending-filter-search pending-filter-date"
              role="search" placeholder="Search by ref, sender, document…"
              aria-label="Search pending documents" oninput="onPendingSearchInput()" />
-      <select id="pending-cat-select" class="pending-filter-select" onchange="reloadPendingDocs()" aria-label="Filter by category">
+      <select id="pending-cat-select" class="pending-filter-select" onchange="onPendingFilterChange()" aria-label="Filter by category">
         <option value="">All Categories</option>
         {% for cat in category_options %}
         <option value="{{ cat }}">{{ cat }}</option>
         {% endfor %}
       </select>
-      <input type="date" id="pending-date-input" class="pending-filter-date" onchange="reloadPendingDocs()" aria-label="Filter by date" />
+      <input type="date" id="pending-date-input" class="pending-filter-date" onchange="onPendingFilterChange()" aria-label="Filter by date" />
       <button id="pending-clear-btn" class="pending-filter-clear" onclick="clearPendingFilters()" style="display:none" aria-label="Clear filters">✕ Clear</button>
     </div>
     <div id="pending-filter-count" class="pending-filter-count" style="display:none"></div>

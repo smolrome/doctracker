@@ -1681,7 +1681,34 @@ def get_pending_documents():
             return q in haystack
         pending = [d for d in pending if _pending_matches(d, filter_search)]
 
-    return jsonify(pending)
+    # ── Pagination of the FILTERED result ─────────────────────────────────────
+    # total is the FILTERED count (so search/category/date drive the page count),
+    # computed BEFORE slicing. Only the requested page is returned.
+    import math
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        per_page = int(request.args.get("per_page", 20))
+    except (TypeError, ValueError):
+        per_page = 20
+    per_page = max(1, min(per_page, 100))   # clamp to a sane bound
+
+    total       = len(pending)
+    total_pages = max(1, math.ceil(total / per_page))
+    if page > total_pages:
+        page = total_pages                   # clamp so an out-of-range page returns the last page
+    start     = (page - 1) * per_page
+    page_docs = pending[start:start + per_page]
+
+    return jsonify({
+        "docs":        page_docs,
+        "page":        page,
+        "per_page":    per_page,
+        "total":       total,
+        "total_pages": total_pages,
+    })
 
 
 @dashboard_bp.route("/pending-count")

@@ -426,7 +426,10 @@ function checkPendingDocuments() {
     .catch(function (err) { console.error('Error checking pending documents:', err); });
 }
 
-var _pendingTotalCount = 0;
+var _pendingTotalCount = 0;   // filtered total from the route (for pagination)
+var _pendingPage       = 1;   // current page (1-based)
+var _pendingPerPage    = 20;  // page size
+var _pendingMaxPage    = 1;   // last-known total_pages (for Next bounds)
 
 function _getPendingFilterParams() {
   var cat    = ((document.getElementById('pending-cat-select')  || {}).value || '');
@@ -435,7 +438,7 @@ function _getPendingFilterParams() {
   return { cat: cat, date: date, search: search };
 }
 
-function _updatePendingFilterUI(filteredCount) {
+function _updatePendingFilterUI() {
   var params     = _getPendingFilterParams();
   var isFiltered = params.cat || params.date || params.search;
 
@@ -445,15 +448,38 @@ function _updatePendingFilterUI(filteredCount) {
 
   if (dot)      dot.style.display      = isFiltered ? 'inline-block' : 'none';
   if (clearBtn) clearBtn.style.display = isFiltered ? 'inline-block' : 'none';
+  // The result count now lives in the pagination bar (Page X of Y (N results)),
+  // so the separate count line is hidden to avoid a duplicate.
+  if (countEl)  countEl.style.display  = 'none';
+}
 
-  if (countEl) {
-    if (isFiltered) {
-      countEl.textContent = 'Showing ' + filteredCount + ' of ' + _pendingTotalCount + ' document' + (_pendingTotalCount !== 1 ? 's' : '');
-    } else {
-      countEl.textContent = _pendingTotalCount + ' document' + (_pendingTotalCount !== 1 ? 's' : '') + ' pending';
-    }
-    countEl.style.display = 'block';
-  }
+// Prev/Next bar rendered at the TOP of the list. "N results" is the FILTERED
+// total from the route, so searching updates it correctly.
+function _pendingPaginationBar(page, totalPages, total) {
+  var prevDis = page <= 1 ? 'disabled ' : '';
+  var nextDis = page >= totalPages ? 'disabled ' : '';
+  return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 0 12px;">' +
+      '<button class="btn btn-ghost btn-sm" ' + prevDis + 'onclick="gotoPendingPage(-1)">‹ Prev</button>' +
+      '<span style="font-size:13px;color:#5B7FA8;font-weight:600;">Page ' + page + ' of ' + totalPages +
+        ' (' + total + ' result' + (total !== 1 ? 's' : '') + ')</span>' +
+      '<button class="btn btn-ghost btn-sm" ' + nextDis + 'onclick="gotoPendingPage(1)">Next ›</button>' +
+    '</div>';
+}
+
+function gotoPendingPage(delta) {
+  var next = _pendingPage + delta;
+  if (next < 1) next = 1;
+  if (next > _pendingMaxPage) next = _pendingMaxPage;
+  if (next === _pendingPage) return;
+  _pendingPage = next;
+  reloadPendingDocs();
+}
+
+// Any filter change (search/category/date/clear) must reset to page 1 so the
+// user never lands on a now-nonexistent page.
+function onPendingFilterChange() {
+  _pendingPage = 1;
+  reloadPendingDocs();
 }
 
 function reloadPendingDocs() {
@@ -465,14 +491,21 @@ function reloadPendingDocs() {
   if (params.cat)    qs.push('cat='    + encodeURIComponent(params.cat));
   if (params.date)   qs.push('date='   + encodeURIComponent(params.date));
   if (params.search) qs.push('search=' + encodeURIComponent(params.search));
-  var url = '/pending-documents' + (qs.length ? '?' + qs.join('&') : '');
+  qs.push('page='     + _pendingPage);
+  qs.push('per_page=' + _pendingPerPage);
+  var url = '/pending-documents?' + qs.join('&');
 
   listContainer.innerHTML = '<div class="modal-loading-state"><span>📭</span><p>Loading…</p></div>';
 
   fetch(url)
     .then(function (r) { return r.json(); })
-    .then(function (docs) {
-      _updatePendingFilterUI(docs.length);
+    .then(function (resp) {
+      var docs        = (resp && resp.docs) || [];
+      _pendingTotalCount = (resp && resp.total)       || 0;
+      _pendingMaxPage    = (resp && resp.total_pages) || 1;
+      _pendingPage       = (resp && resp.page)        || 1;   // sync if server clamped
+      _updatePendingFilterUI();
+
       if (!docs.length) {
         var isFiltered = params.cat || params.date || params.search;
         listContainer.innerHTML = '<div class="modal-loading-state"><span>' + (isFiltered ? '🔍' : '✅') + '</span><p>' + (isFiltered ? 'No documents match these filters.' : 'No pending documents') + '</p></div>';
@@ -516,9 +549,10 @@ function reloadPendingDocs() {
         '</div>';
       }).join('');
       listContainer.innerHTML =
+        _pendingPaginationBar(_pendingPage, _pendingMaxPage, _pendingTotalCount) +
         '<div style="padding:0 0 12px;display:flex;justify-content:flex-end;">' +
           '<button class="btn btn-success" id="accept-all-btn" onclick="acceptAllDocuments()" style="font-weight:700;">' +
-          '✓ Accept All (' + docs.length + ')</button>' +
+          '✓ Accept All on This Page (' + docs.length + ')</button>' +
         '</div>' +
         listContainer.innerHTML;
     })
@@ -534,25 +568,18 @@ function showPendingDocumentsModal() {
 
   openModal('pending-documents-modal');
 
-  // Fetch unfiltered total first so count display is always accurate
-  fetch('/pending-documents')
-    .then(function (r) { return r.json(); })
-    .then(function (all) {
-      _pendingTotalCount = all.length;
-      reloadPendingDocs();
-    })
-    .catch(function () {
-      _pendingTotalCount = 0;
-      reloadPendingDocs();
-    });
+  // Open on page 1. The route's `total` now drives the count, so no separate
+  // unfiltered count-fetch is needed (the old double-fetch-on-open is removed).
+  _pendingPage = 1;
+  reloadPendingDocs();
 }
 
 // Debounced search: avoid refiring the (large) /pending-documents query on
-// every keystroke. ~250ms after the user stops typing.
+// every keystroke. ~250ms after the user stops typing. Resets to page 1.
 var _pendingSearchTimer = null;
 function onPendingSearchInput() {
   if (_pendingSearchTimer) clearTimeout(_pendingSearchTimer);
-  _pendingSearchTimer = setTimeout(reloadPendingDocs, 250);
+  _pendingSearchTimer = setTimeout(onPendingFilterChange, 250);
 }
 
 function clearPendingFilters() {
@@ -563,6 +590,7 @@ function clearPendingFilters() {
   if (input)  input.value  = '';
   if (search) search.value = '';
   if (_pendingSearchTimer) { clearTimeout(_pendingSearchTimer); _pendingSearchTimer = null; }
+  _pendingPage = 1;   // reset to page 1 on clear
   reloadPendingDocs();
 }
 
