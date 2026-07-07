@@ -30,9 +30,22 @@ function onClearFireType(value) {
 function handleFileSelect(input) {
   const file = input.files[0];
   if (!file) return;
-  document.getElementById('dz-file-name').textContent = file.name;
-  document.getElementById('dz-file-name').style.display = 'block';
-  document.getElementById('restore-btn').disabled = false;
+  const nameEl = document.getElementById('dz-file-name');
+  const btn = document.getElementById('restore-btn');
+  nameEl.style.display = 'block';
+  // UX nudge only — the server (Layer 1 restore guard) remains authoritative.
+  // Steer users to the .json backup; the Excel export is a report, not restorable.
+  const isJson = /\.json$/i.test(file.name);
+  if (!isJson) {
+    nameEl.textContent = '⚠ ' + file.name + ' is not a .json backup. The Excel '
+      + 'export is a report and can’t be restored — choose the .json backup file.';
+    nameEl.style.color = '#B91C1C';
+    if (btn) btn.disabled = true;
+    return;
+  }
+  nameEl.textContent = file.name;
+  nameEl.style.color = '';
+  if (btn) btn.disabled = false;
 }
 
 function selectMode(card, mode) {
