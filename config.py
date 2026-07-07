@@ -19,7 +19,8 @@ Security fixes applied:
       with a stacktrace and can be filtered/escalated by log aggregators.
   8.  IS_PRODUCTION helper derived in one place and reused throughout to avoid
       repeated inline environment checks.
-  9.  MAX_CONTENT_LENGTH kept at 10 MB but documented and made env-configurable.
+  9.  MAX_CONTENT_LENGTH is a modest 25 MB app-wide (env-configurable); the
+      Restore upload endpoint alone is scoped to 100 MB in app.py.
  10.  Weak-secret guard: if SECRET_KEY is shorter than 32 chars in production,
       startup is aborted with a clear error message.
 """
@@ -80,8 +81,17 @@ PERMANENT_SESSION_LIFETIME = timedelta(
     seconds=int(os.environ.get("SESSION_LIFETIME_SECONDS", str(2 * 3600)))
 )
 
-# FIX 9: configurable via env var, documented, default 10 MB
-MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
+# FIX 9: configurable via env var, documented. Modest app-wide default (25 MB)
+# covers normal uploads (profile photos, Excel imports) while keeping every route
+# tight. The Restore endpoint alone is scoped to a larger limit — see
+# RESTORE_MAX_CONTENT_LENGTH below and the route-scoped hook in app.py.
+MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_BYTES", str(25 * 1024 * 1024)))
+
+# Higher cap applied ONLY to the Restore upload endpoint (/backup/restore), via a
+# route-scoped before_request in app.py. Full-coverage JSON backups (all 21
+# tables, every column) run ~7-10 MB+; 100 MB gives generous headroom. Bounded
+# (NOT unlimited) so a public endpoint can't be flooded with huge bodies.
+RESTORE_MAX_CONTENT_LENGTH = int(os.environ.get("RESTORE_MAX_UPLOAD_BYTES", str(100 * 1024 * 1024)))
 
 # ── Database ───────────────────────────────────────────────────────────────────
 
