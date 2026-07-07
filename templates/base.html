@@ -219,6 +219,9 @@
     </div>
     <!-- Filter bar -->
     <div class="pending-filter-bar" id="pending-filter-bar">
+      <input type="text" id="pending-search-input" class="pending-filter-search pending-filter-date"
+             role="search" placeholder="Search by ref, sender, document…"
+             aria-label="Search pending documents" oninput="onPendingSearchInput()" />
       <select id="pending-cat-select" class="pending-filter-select" onchange="reloadPendingDocs()" aria-label="Filter by category">
         <option value="">All Categories</option>
         {% for cat in category_options %}

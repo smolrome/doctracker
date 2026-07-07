@@ -429,14 +429,15 @@ function checkPendingDocuments() {
 var _pendingTotalCount = 0;
 
 function _getPendingFilterParams() {
-  var cat  = ((document.getElementById('pending-cat-select')  || {}).value  || '');
-  var date = ((document.getElementById('pending-date-input')  || {}).value  || '');
-  return { cat: cat, date: date };
+  var cat    = ((document.getElementById('pending-cat-select')  || {}).value || '');
+  var date   = ((document.getElementById('pending-date-input')  || {}).value || '');
+  var search = ((document.getElementById('pending-search-input')|| {}).value || '').trim();
+  return { cat: cat, date: date, search: search };
 }
 
 function _updatePendingFilterUI(filteredCount) {
   var params     = _getPendingFilterParams();
-  var isFiltered = params.cat || params.date;
+  var isFiltered = params.cat || params.date || params.search;
 
   var dot      = document.getElementById('pending-filter-dot');
   var clearBtn = document.getElementById('pending-clear-btn');
@@ -461,8 +462,9 @@ function reloadPendingDocs() {
 
   var params = _getPendingFilterParams();
   var qs = [];
-  if (params.cat)  qs.push('cat='  + encodeURIComponent(params.cat));
-  if (params.date) qs.push('date=' + encodeURIComponent(params.date));
+  if (params.cat)    qs.push('cat='    + encodeURIComponent(params.cat));
+  if (params.date)   qs.push('date='   + encodeURIComponent(params.date));
+  if (params.search) qs.push('search=' + encodeURIComponent(params.search));
   var url = '/pending-documents' + (qs.length ? '?' + qs.join('&') : '');
 
   listContainer.innerHTML = '<div class="modal-loading-state"><span>📭</span><p>Loading…</p></div>';
@@ -472,7 +474,7 @@ function reloadPendingDocs() {
     .then(function (docs) {
       _updatePendingFilterUI(docs.length);
       if (!docs.length) {
-        var isFiltered = params.cat || params.date;
+        var isFiltered = params.cat || params.date || params.search;
         listContainer.innerHTML = '<div class="modal-loading-state"><span>' + (isFiltered ? '🔍' : '✅') + '</span><p>' + (isFiltered ? 'No documents match these filters.' : 'No pending documents') + '</p></div>';
         return;
       }
@@ -545,11 +547,22 @@ function showPendingDocumentsModal() {
     });
 }
 
+// Debounced search: avoid refiring the (large) /pending-documents query on
+// every keystroke. ~250ms after the user stops typing.
+var _pendingSearchTimer = null;
+function onPendingSearchInput() {
+  if (_pendingSearchTimer) clearTimeout(_pendingSearchTimer);
+  _pendingSearchTimer = setTimeout(reloadPendingDocs, 250);
+}
+
 function clearPendingFilters() {
-  var sel   = document.getElementById('pending-cat-select');
-  var input = document.getElementById('pending-date-input');
-  if (sel)   sel.value   = '';
-  if (input) input.value = '';
+  var sel    = document.getElementById('pending-cat-select');
+  var input  = document.getElementById('pending-date-input');
+  var search = document.getElementById('pending-search-input');
+  if (sel)    sel.value    = '';
+  if (input)  input.value  = '';
+  if (search) search.value = '';
+  if (_pendingSearchTimer) { clearTimeout(_pendingSearchTimer); _pendingSearchTimer = null; }
   reloadPendingDocs();
 }
 

@@ -1662,6 +1662,25 @@ def get_pending_documents():
         if ifu and not d.get('intended_for_name'):
             ifu_user = _gub(ifu)
             d['intended_for_name'] = (ifu_user.get('full_name') or ifu) if ifu_user else ifu
+
+    # Search filter (search ∩ category ∩ date). Applied AFTER name resolution so
+    # intended_for_name is searchable. Mirrors the dashboard _matches() style:
+    # a lowercased substring match over the fields the modal surfaces.
+    filter_search = request.args.get("search", "").strip().lower()
+    if filter_search:
+        def _pending_matches(d, q):
+            haystack = " ".join([
+                d.get("doc_name",          "") or "",
+                d.get("doc_id",            "") or "",
+                d.get("sender_name",       "") or "",
+                d.get("sender_org",        "") or "",
+                d.get("category",          "") or "",
+                d.get("transferred_by",    "") or "",
+                d.get("intended_for_name", "") or "",
+            ]).lower()
+            return q in haystack
+        pending = [d for d in pending if _pending_matches(d, filter_search)]
+
     return jsonify(pending)
 
 
