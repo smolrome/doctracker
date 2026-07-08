@@ -362,6 +362,9 @@ def _run_migrations(cur):
     migrations.append("CREATE TABLE IF NOT EXISTS transfer_batches (id TEXT PRIMARY KEY, transferred_by TEXT NOT NULL, transferred_to TEXT NOT NULL, transferred_to_office TEXT, transferred_to_name TEXT, transfer_type TEXT, doc_ids JSONB NOT NULL, created_at TIMESTAMP DEFAULT NOW())")
     migrations.append("CREATE TABLE IF NOT EXISTS import_batches (id TEXT PRIMARY KEY, imported_by TEXT, filename TEXT, doc_ids JSONB NOT NULL, row_count INTEGER, created_at TIMESTAMP DEFAULT NOW())")
     migrations.append("ALTER TABLE so_records ADD COLUMN IF NOT EXISTS doc_id TEXT REFERENCES documents(id) ON DELETE SET NULL")
+    # documents.seq — monotonic insertion-order tiebreaker so batch/cart docs
+    # (which share second-precision created_at) get a durable, stable order.
+    migrations.append("ALTER TABLE documents ADD COLUMN IF NOT EXISTS seq BIGSERIAL")
     # Password reset — indexes for token lookups and rate-limit window scans
     migrations.append("CREATE INDEX IF NOT EXISTS idx_prt_username ON password_reset_tokens(username)")
     migrations.append("CREATE INDEX IF NOT EXISTS idx_prrl_lookup ON password_reset_rate_limits(scope, identifier, created_at)")

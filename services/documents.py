@@ -69,8 +69,12 @@ def load_docs(include_deleted: bool = False) -> list[dict]:
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT data FROM documents ORDER BY created_at DESC")
-                    docs = [row["data"] for row in cur.fetchall()]
+                    cur.execute("SELECT data, seq FROM documents ORDER BY created_at DESC, seq DESC")
+                    docs = []
+                    for row in cur.fetchall():
+                        d = row["data"]
+                        d["seq"] = row["seq"]
+                        docs.append(d)
         except Exception as e:
             print(f"[services.documents] load_docs DB error: {e}")
             docs = []
