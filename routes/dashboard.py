@@ -394,7 +394,11 @@ def index():
         # pending_print_count=pending_print_count, # QR Print Queue disabled
         # unprinted_docs=unprinted_docs,           # QR Print Queue disabled
         staff_appointments=staff_appointments_list,
-        staff_pending_appointments=staff_pending_appointments)
+        staff_pending_appointments=staff_pending_appointments,
+        # LOG cart (session["staff_cart"]) count — same source the /add page reads
+        # via {{ cart|length }} (cart = session.get("staff_cart", [])). Server-rendered
+        # only; NOT wired to the transfer/selection cart badge (updateCartBadge/localStorage).
+        staff_cart_count=len(session.get("staff_cart", [])))
 
 
 @dashboard_bp.route("/dashboard")
