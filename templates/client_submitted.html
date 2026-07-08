@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Submission Confirmed — LAKAD</title>
+  <title>Submission Confirmed — {{ APP_NAME }}</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/client_submitted.css') }}"/>
 </head>
@@ -11,9 +11,9 @@
 
 <nav class="topbar">
   <div class="topbar-brand">
-    <img src="/static/logo.png" alt="LAKAD Logo" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.3);background:#fff;"/>
+    <img src="/static/logo.png" alt="{{ APP_NAME }} Logo" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.3);background:#fff;"/>
     <div>
-      <div class="brand-name">LAKAD</div>
+      <div class="brand-name">{{ APP_NAME }}</div>
       <span class="topbar-sub">Client Services System</span>
     </div>
   </div>

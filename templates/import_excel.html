@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Import from Excel — LAKAD{% endblock %}
+{% block title %}Import from Excel — {{ APP_NAME }}{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/import_excel.css') }}">
@@ -13,7 +13,7 @@
     <div class="emoji-badge">📥</div>
     <div>
       <h1>Import from Excel</h1>
-      <p>Upload your DepEd tracking spreadsheet — all rows become documents in LAKAD automatically.</p>
+      <p>Upload your DepEd tracking spreadsheet — all rows become documents in {{ APP_NAME }} automatically.</p>
     </div>
   </div>
 
@@ -287,7 +287,7 @@
   <div class="card">
     <div class="card-title">📋 Supported Column Names</div>
     <p style="font-size:.88rem;color:var(--muted);margin:0 0 8px;">
-      LAKAD automatically recognises these column headers from your spreadsheet.
+      {{ APP_NAME }} automatically recognises these column headers from your spreadsheet.
       Column names are case-insensitive and extra spaces are ignored.
     </p>
     <div class="col-grid">

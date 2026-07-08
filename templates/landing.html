@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Personnel Unit — LAKAD · DepEd Leyte Division</title>
+<title>Personnel Unit — {{ APP_NAME }} · DepEd Leyte Division</title>
 <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}"/>
 </head>
@@ -111,7 +111,7 @@
       <!-- LAKAD wordmark -->
       <h1 style="margin:0;font-family:'Libre Baskerville',Georgia,serif;
                  font-size:clamp(52px,7.5vw,86px);font-weight:700;
-                 color:#ffffff;letter-spacing:-2.5px;line-height:0.95;">LAKAD</h1>
+                 color:#ffffff;letter-spacing:-2.5px;line-height:0.95;">{{ APP_NAME }}</h1>
 
       <!-- Gold rule -->
       <div style="width:44px;height:2px;background:#c9a227;margin:18px 0 20px;border-radius:1px;"></div>
@@ -463,7 +463,7 @@
 
 <!-- ═══ FOOTER ═══ -->
 <footer class="footer">
-  <div class="footer-logo">LAKAD</div>
+  <div class="footer-logo">{{ APP_NAME }}</div>
   <div style="font-size:16px;color:rgba(255,255,255,.55);margin-top:8px;position:relative;z-index:1">Personnel Unit · DepEd SDO Leyte Division</div>
 </footer>
 

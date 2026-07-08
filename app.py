@@ -207,6 +207,12 @@ def create_app() -> Flask:
         except Exception:
             return str(ts)
 
+    # ── Branding ───────────────────────────────────────────────────────────────
+    # Registered as a Jinja env global (not a context_processor) so {{ APP_NAME }}
+    # is available in EVERY render — including any template rendered outside a
+    # request context — rather than only during request-scoped renders.
+    app.jinja_env.globals["APP_NAME"] = config.APP_NAME
+
     # ── Context processors ─────────────────────────────────────────────────────
 
     @app.context_processor

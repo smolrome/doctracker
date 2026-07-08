@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>QR Code Sheet — LAKAD</title>
+  <title>QR Code Sheet — {{ APP_NAME }}</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -140,7 +140,7 @@
 <div class="print-bar">
   <div>
     <div class="print-bar-title">QR Code Sheet — {{ docs|length }} document{{ 's' if docs|length != 1 else '' }}</div>
-    <div class="print-bar-sub">LAKAD · DepEd Leyte Division — Personnel Unit</div>
+    <div class="print-bar-sub">{{ APP_NAME }} · DepEd Leyte Division — Personnel Unit</div>
   </div>
   <div class="print-bar-actions">
     <button class="pb-btn pb-btn-close" onclick="window.close()">✕ Close</button>

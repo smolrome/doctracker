@@ -102,6 +102,12 @@ if DATABASE_URL.startswith("postgres://"):
 
 DATA_FILE = os.environ.get("DATA_FILE", "documents.json")  # JSON fallback
 
+# ── Branding ────────────────────────────────────────────────────────────────────
+# Single source of truth for the user-facing app display name. Exposed to all
+# templates as the Jinja global {{ APP_NAME }} (wired in app.create_app).
+# NOTE: value intentionally still "LAKAD" — the rebrand flips this in a later step.
+APP_NAME = "LAKAD"
+
 # ── Admin credentials ──────────────────────────────────────────────────────────
 
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
