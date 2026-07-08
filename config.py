@@ -105,8 +105,8 @@ DATA_FILE = os.environ.get("DATA_FILE", "documents.json")  # JSON fallback
 # ── Branding ────────────────────────────────────────────────────────────────────
 # Single source of truth for the user-facing app display name. Exposed to all
 # templates as the Jinja global {{ APP_NAME }} (wired in app.create_app).
-# NOTE: value intentionally still "LAKAD" — the rebrand flips this in a later step.
-APP_NAME = "LAKAD"
+# User-facing app display name — single source of truth for web templates.
+APP_NAME = "DOCKET"
 
 # ── Admin credentials ──────────────────────────────────────────────────────────
 
