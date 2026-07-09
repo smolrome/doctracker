@@ -70,3 +70,4 @@ doctracker/
 GET /api/docs    → All documents as JSON
 ```
  work
+<!-- auto-deploy test 2026-07-09 (NEXUS refspec/unshallow fix) -->
