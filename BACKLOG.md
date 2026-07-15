@@ -113,6 +113,14 @@ Wanted, not broken.
   archiving a remote branch can't be done from a PR; someone with repo admin has to do it (and should
   decide whether to archive-tag it first rather than hard-delete).
 
+- [ ] **Password authentication is enabled for SSH on the production server.** Observed during the key
+  rotation above: removing the old key caused a **fallthrough to password auth, which succeeded** — so
+  the server accepts passwords for SSH login, a brute-forceable surface exposed to anyone who can reach
+  the port. Consider setting `PasswordAuthentication no` in `sshd_config`. **Do this only AFTER
+  confirming key-only access works for every account that needs it** — disabling password auth while an
+  account still depends on it (no working key installed) locks that account out of the box, and if
+  it's the only admin path, locks everyone out. Operator action on the server; not a code change.
+
 ## Closed
 
 - [x] **~~`origin/main` is dead but still wired to the deploy workflow.~~** Closed 2026-07-14 by
@@ -140,8 +148,32 @@ Wanted, not broken.
   `origin/main` itself is strictly an ancestor of `DOCTRACKER_PROD` (363 behind, 0 ahead) and holds
   nothing unique. Deploy path now documented accurately in [CLAUDE.md](CLAUDE.md) "Commands".
 
-  **Follow-up, still open:** deleting the workflow **does not delete the GitHub Actions secrets.**
-  `SSH_PRIVATE_KEY`, `SSH_HOST`, and `SSH_USERNAME` were referenced by the workflow
-  (lines 21, 23, 30) and may still be populated in repo settings. If `SSH_PRIVATE_KEY` is still live,
-  **it is a deploy key for a host that no longer has a legitimate consumer and should be rotated and
-  removed.** This is an operator action in GitHub settings — it cannot be done from this repo.
+  **Follow-up:** the GitHub Actions secrets outlived the workflow — now closed, see the next item.
+
+- [x] **~~GitHub Actions SSH secrets survive the workflow deletion and may need rotating.~~** Closed
+  2026-07-15 (branch `close-ssh-secret-rotation`). Resolved by deleting the secrets and rotating the
+  server login key.
+
+  **What was actually found was worse and larger than this entry predicted.** The prediction was
+  "three secrets, rotate the deploy key if it's still live." Reality:
+
+  - The secret set was **FOUR, not three**: `SSH_HOST`, `SSH_PORT`, `SSH_PRIVATE_KEY`, `SSH_USERNAME`.
+    `SSH_PORT` was **never referenced by the workflow** at all — so reading the workflow (which is all
+    the previous entry did) would never have surfaced it. They had been present **~4 months**.
+  - `SSH_PRIVATE_KEY` was **not a dedicated deploy key** as assumed. The sole inbound key installed on
+    the production server (fingerprint `3BnEmhD5`, label `depedleyte-server`) turned out to be the
+    **operator's personal, passphrase-protected login key** — the only inbound key on the box.
+  - Whether that key's private half was ever copied into `SSH_PRIVATE_KEY` **could not be verified from
+    outside GitHub** (secret values are write-only). Per the credential-rotation-on-exposure rule, it
+    was therefore **rotated rather than assumed safe** — an unverifiable exposure of a personal login
+    key to the whole server is treated as an exposure, not waved through.
+
+  **Resolution:**
+  - All **four** GitHub secrets deleted.
+  - Server login key **rotated**: new key `depedleyte-server-2026-07` installed and verified; old key
+    `3BnEmhD5` removed and confirmed dead (login with it now fails).
+  - NEXUS's **outbound** `github_panel` key correctly **left untouched** — it is how NEXUS pulls from
+    GitHub and is unrelated to the inbound login key that was exposed.
+
+  Surfaced a new issue in the process — see "Password authentication is enabled on the production
+  server" under Features / polish.
