@@ -47,16 +47,23 @@ Run everything from the repo root, using the checked-in venv (`.venv/Scripts/pyt
 > **Run this and quote the real output. Do not report a remembered number, and do not claim the
 > check is unavailable.**
 
-**Baseline as of 2026-07-14 (Python 3.14.3, pytest 9.0.3):**
+**Baseline as of 2026-07-20 (Python 3.14.3, pytest 9.0.3). It differs between a dev machine and
+the server — check which one you are on before comparing.**
+
+On a dev machine (no mail credentials in `.env`):
 
 ```
-14 failed, 313 passed, 1 skipped, 9 warnings in 55.22s
+14 failed, 328 passed, 1 skipped, 9 warnings in 51.99s
 ```
 
-The 14 failures are **pre-existing and are stale tests, not live product bugs** — see
-[BACKLOG.md](BACKLOG.md) "Known bounds". They are 9 in `tests/test_client_routes.py` and 5 in
-`tests/test_scanning_routes.py::TestOfficeAction`. **A green run is not the bar; matching this
-baseline is.** If you see a different count, something changed — investigate before proceeding.
+On the server (real `GMAIL_APP_PASSWORD` + `MAIL_SENDER` in `.env`): **16 failed** — the same 14,
+plus 2 in `tests/test_email_service.py` that only fail when mail is actually enabled.
+
+All failures are **pre-existing and are stale tests, not live product bugs** — see
+[BACKLOG.md](BACKLOG.md) "Known bounds". They are 9 in `tests/test_client_routes.py`, 5 in
+`tests/test_scanning_routes.py::TestOfficeAction`, and (server only) 2 in
+`tests/test_email_service.py`. **A green run is not the bar; matching this baseline is.** If you see
+a different count, something changed — investigate before proceeding.
 
 **Typecheck / lint (backend):** there is **none**. No ruff, mypy, flake8, black, or pylint is
 installed in `.venv` and no config for any exists. Don't invent a command; say there isn't one.

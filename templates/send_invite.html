@@ -11,7 +11,7 @@
 {% if not mail_enabled %}
 <div class="warn-box">
   <span style="font-size:20px;">⚠️</span>
-  <div><strong>Email not set up.</strong> You can still generate invite links and share them manually. To enable auto-email, add <code>MAIL_SENDER</code>, <code>MAIL_PASSWORD</code>, and <code>APP_URL</code> in Railway → Variables.</div>
+  <div><strong>Email not set up.</strong> You can still generate invite links and share them manually. To enable auto-email, add <code>MAIL_SENDER</code>, <code>MAIL_PASSWORD</code>, and <code>APP_URL</code> to the app's .env file on the server, then restart the service.</div>
 </div>
 {% endif %}
 
@@ -150,11 +150,11 @@
       <li><p>Search <strong>"App Passwords"</strong> in Google account settings</p></li>
       <li><p>Click <strong>Create</strong>, name it "LAKAD" → copy the <strong>16-character password</strong></p></li>
       <li>
-        <p>Add to Railway → Variables:</p>
+        <p>Add to the app's .env file on the server, then restart the service:</p>
         <div style="margin-top:6px;background:var(--surface);border-radius:6px;padding:10px;font-size:12px;font-family:monospace;line-height:2.2;">
           MAIL_SENDER = your@gmail.com<br/>
           MAIL_PASSWORD = xxxx xxxx xxxx xxxx<br/>
-          APP_URL = https://docktracker.up.railway.app
+          APP_URL = https://your-public-hostname
         </div>
       </li>
     </ol>

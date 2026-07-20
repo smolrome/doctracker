@@ -220,11 +220,19 @@ def get_token_doc(token: str) -> tuple[dict | None, str | None]:
 # ── Labeled QR image builders ─────────────────────────────────────────────────
 
 def make_doc_status_qr_png(token: str, token_type: str,
-                            doc_name: str, box_size: int = 10) -> bytes:
-    """Labeled QR PNG for RECEIVE or RELEASE tokens given to clients."""
+                            doc_name: str, box_size: int = 10,
+                            host_url: str = "") -> bytes:
+    """Labeled QR PNG for RECEIVE or RELEASE tokens given to clients.
+
+    Routed through get_base_url() rather than reading APP_URL directly: the
+    old `APP_URL or ""` emitted a RELATIVE "/doc-scan/<token>" whenever APP_URL
+    was unset, producing a client-facing QR that was silently unscannable.
+    get_base_url() degrades to a LAN address instead, which is at least
+    scannable on-site. host_url is optional and mirrors make_slip_qr_png().
+    """
     from PIL import Image, ImageDraw, ImageFont
 
-    base = APP_URL or ""
+    base = get_base_url(host_url)
     url  = f"{base}/doc-scan/{token}"
 
     if token_type == "RECEIVE":

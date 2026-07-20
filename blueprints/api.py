@@ -103,9 +103,15 @@ def api_app_version():
 
     Edit  static/apk/version.json  to change version numbers; no
     code change or server restart required.
+
+    download_url may be stored RELATIVE (e.g. "/download") so the hostname
+    lives in exactly one place — APP_URL — and a rename needs no edit here.
     """
     import json
     from flask import current_app
+    from urllib.parse import urljoin
+    from config import APP_URL
+
     version_file = os.path.join(current_app.static_folder, 'apk', 'version.json')
     try:
         with open(version_file, 'r') as f:
@@ -118,6 +124,14 @@ def api_app_version():
             'release_notes':  '',
             'force_update':   False,
         }
+
+    # APP_URL takes precedence over request.host_url: ProxyFix is NOT applied,
+    # so behind the Cloudflare tunnel request.host_url is the internal origin,
+    # not the public name. urljoin() leaves an already-absolute download_url
+    # untouched, so this is backward-compatible with the current version.json.
+    base = APP_URL or request.host_url
+    data['download_url'] = urljoin(base, data.get('download_url') or '/download')
+
     return jsonify(data)
 
 

@@ -48,9 +48,14 @@ Things broken for users right now.
 
 Real but narrow limitations. Things that are wrong but contained, or design decisions that keep producing bugs.
 
-- **14 pre-existing test failures — all stale tests, not product bugs.** Baseline is
-  `14 failed, 313 passed, 1 skipped`. Two independent root causes, both "the code moved on and the
-  tests didn't":
+- **Pre-existing test failures — all stale tests, not product bugs. The baseline differs between
+  a dev machine and the server, so state which you ran.**
+  - **Local (no mail credentials in `.env`):** `14 failed, 328 passed, 1 skipped`.
+  - **Server (real `GMAIL_APP_PASSWORD` + `MAIL_SENDER` in `.env`):** 2 additional failures in
+    `tests/test_email_service.py`, so `16 failed`.
+
+  (Passed count rose from 313 to 328 on 2026-07-20 when the `APP_URL_CONFIG` branch added 15 tests.)
+  Three independent root causes, all "the code moved on and the tests didn't":
 
   1. **9 failures in `tests/test_client_routes.py`** — `_login_as_client`
      ([tests/test_client_routes.py:56](tests/test_client_routes.py:56)) POSTs credentials to
@@ -69,9 +74,21 @@ Real but narrow limitations. Things that are wrong but contained, or design deci
      login rather than returning 403. Net result: the tests assert `200` and get `302`. Both the
      signing and the redirect are intentional; the tests predate them and need to sign their URLs.
 
-  **Until these are fixed, `pytest` is not a clean pass/fail signal** — you must compare against the
-  14/313/1 baseline, which is exactly the kind of thing that hides a real regression. Worth fixing for
-  that reason alone.
+  3. **2 failures in `tests/test_email_service.py`, on the server only** — these tests predate the
+     **Brevo → Gmail migration**. They drive `BREVO_API_KEY`
+     ([tests/test_email_service.py:104](tests/test_email_service.py:104), [:115](tests/test_email_service.py:115)),
+     but `MAIL_ENABLED` is now derived from `GMAIL_APP_PASSWORD and MAIL_SENDER`
+     ([config.py:135-138](config.py:135)). On a dev machine those are unset, so `MAIL_ENABLED` is
+     `False`: `test_send_invite_email_disabled_by_default` gets the `ok is False` it asserts, and
+     `test_send_invite_email_mocked_brevo` hits its own `pytest.skip`
+     ([:124](tests/test_email_service.py:124)) — that skip *is* the "1 skipped" in the baseline. On
+     the server both credentials are set, `MAIL_ENABLED` is `True`, and both tests fail.
+     Fix direction: drive `GMAIL_APP_PASSWORD`/`MAIL_SENDER`, not `BREVO_API_KEY`, and monkeypatch
+     `MAIL_ENABLED` explicitly instead of depending on ambient `.env` state.
+
+  **Until these are fixed, `pytest` is not a clean pass/fail signal** — you must compare against a
+  baseline that itself depends on where you ran it, which is exactly the kind of thing that hides a
+  real regression. Worth fixing for that reason alone.
 
 - **Rebrand to `DOCKET` is half-applied, and the rest of it must NOT be finished blindly.**
   `APP_NAME = "DOCKET"` ([config.py:109](config.py:109)) covers web templates, but `LAKAD` remains in:
@@ -80,6 +97,40 @@ Real but narrow limitations. Things that are wrong but contained, or design deci
   ([routes/auth.py:281-298](routes/auth.py:281)), and an API notification string
   ([blueprints/api.py:3003](blueprints/api.py:3003)). The email/banner ones are safe to update; the
   backup ones are not. Anyone doing a blanket find-and-replace will break backup recognition.
+
+- **`get_base_url()` can still return `""`, which yields a relative URL in a QR.**
+  [services/qr.py:34-44](services/qr.py:34). If `APP_URL` is empty AND `request_host_url` is empty
+  AND `socket.gethostbyname` raises, the final `except` returns `""` — and every caller does
+  `f"{base}/doc-scan/…"`, producing a relative path that encodes into an unscannable QR. This is the
+  same failure `make_doc_status_qr_png` was just fixed for (see Closed), one level down. Narrow: it
+  needs a DNS failure on a machine with no `APP_URL`, so production is not exposed. Not fixed with
+  that change because `get_base_url` has seven callers and changing its contract deserves its own
+  branch. Fix direction: return a sentinel or raise rather than `""`; a QR that can't be built should
+  fail loudly, never silently emit a relative path.
+
+- **Three `make_doc_status_qr_png` call sites don't pass `request.host_url`.**
+  [routes/client.py:769](routes/client.py:769), [routes/scanning.py:158](routes/scanning.py:158),
+  [routes/scanning.py:379](routes/scanning.py:379). The `host_url` parameter added on 2026-07-20
+  defaults to `""`, so these three fall through `get_base_url` to `APP_URL` or the LAN-IP guess
+  rather than the actual request host. With `APP_URL` set — i.e. production — this is invisible and
+  correct. It only matters on a dev/LAN deployment with `APP_URL` empty, where the QR would get the
+  `gethostbyname` guess instead of the host the client actually reached the app on. All three are in
+  request context, so the fix is mechanical: pass `request.host_url`. Left out of the original change
+  to keep the behaviour delta to one function.
+
+- **`templates/doctracker-processflow.html` is dead and factually wrong — delete it.**
+  Nothing renders it: the only matches for its name are its own `url_for('static', …)` links to
+  [static/css/doctracker-processflow.css](static/css/doctracker-processflow.css) and
+  [static/js/doctracker-processflow.js](static/js/doctracker-processflow.js). No route in `routes/`,
+  `blueprints/` or `app.py` calls `render_template` on it. It also describes an architecture that no
+  longer exists — 6 Railway references across the page (the `☁️ Cloud-Based (Railway)` chip at L26,
+  a "Deploy to Railway / Railway auto-deploys" step and "APP_URL in Railway Variables panel" at L68,
+  "admin credentials from Railway Variables" at L112, `PostgreSQL — Persistent Database (Railway)`
+  at L137, a `Railway — Cloud Hosting & Auto-Deploy` tech entry at L138, and the footer stack at
+  L154) — whereas production is gunicorn under systemd behind a Cloudflare tunnel, deployed by the
+  NEXUS webhook. Correcting it means rewriting the deployment narrative, and the page is unreachable,
+  so **deleting it (with its CSS and JS) is the better move.** Deliberately excluded from the
+  `APP_URL_CONFIG` branch, which corrected only the equivalent live text in `send_invite.html`.
 
 - **In-memory rate limiting is per-process and leaks under multi-worker gunicorn.**
   `RATE_LIMITS` ([config.py](config.py)) is in-memory, and production runs `--workers 4`, so the
@@ -122,6 +173,31 @@ Wanted, not broken.
   it's the only admin path, locks everyone out. Operator action on the server; not a code change.
 
 ## Closed
+
+- [x] **~~`routes/so.py` hardcoded the app's own hostname while everything else read `APP_URL`.~~**
+  Closed 2026-07-20 on branch `APP_URL_CONFIG`. `_VERIFY_BASE` at `routes/so.py:519` was a literal
+  `https://doctracker.depedleytepersonnelunit.com`, the **sole** backend hostname literal — every
+  other QR path and email link already resolved through `APP_URL`/`get_base_url`. Replaced with
+  `_verify_base()`, which reads `APP_URL` at call time and refuses when it is unset or not absolute.
+
+  **Two things turned out to be different from the initial diagnosis.**
+
+  First, the filed plan was to raise at the point of use (the old `:929`). Tracing the handler showed
+  that would be actively harmful: the route's `try` opens at `:876` and by `:929` it has already
+  saved the `.docx`, created a documents row, fired an auto-transfer notification, and INSERTed into
+  `so_records`. Raising there returns 500 having left **a QR-less file on disk, an orphaned document
+  row, a notification already sent, and an `so_records` row no QR points at** — and a retry makes a
+  second set. The check now runs in the validate block *before* any side effect.
+
+  Second, the concern that a `RuntimeError` would be swallowed into a generic 500 was **unfounded**:
+  the blanket handler returns `str(e)` as `message` and the frontend displays it
+  ([templates/so_request.html:648](templates/so_request.html:648)). The message was always going to
+  reach the operator. The ordering was the real defect; the error surfacing was fine.
+
+  Also closed in the same commit: `make_doc_status_qr_png` emitted a **relative** `/doc-scan/<token>`
+  whenever `APP_URL` was empty (`base = APP_URL or ""`) — a client-facing QR that was silently
+  unscannable. Now routed through `get_base_url`. Two narrower follow-ups were surfaced rather than
+  swept in; both are filed under Known bounds above.
 
 - [x] **~~`origin/main` is dead but still wired to the deploy workflow.~~** Closed 2026-07-14 by
   deleting `.github/workflows/deploy.yml` (branch `remove-dead-deploy-workflow`).

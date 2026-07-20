@@ -516,7 +516,33 @@ def _save_so_record(filename, so_type, employee_full_name, employee_position,
         return None
 
 
-_VERIFY_BASE = "https://doctracker.depedleytepersonnelunit.com"
+def _verify_base() -> str:
+    """Absolute public base URL for the SO verification QR.
+
+    APP_URL is read at call time rather than bound at module import, so a
+    config change takes effect without reloading this module (services/qr.py
+    does bind at import, which is why its tests must importlib.reload).
+
+    There is deliberately NO fallback here. Unlike the office/slip QRs in
+    services/qr.py — which are reprintable in seconds and may fall back to a
+    LAN address — this URL is rasterised into a .docx that gets signed,
+    printed and handed out. A wrong base cannot be recalled, so refusing to
+    generate beats generating something permanently wrong.
+    """
+    # Function-local import: `config` is a LOCAL VARIABLE inside so_generate()
+    # (config = SO_TYPES[so_type]), and this module does not import the config
+    # module at top level.
+    from config import APP_URL
+
+    base = (APP_URL or "").strip().rstrip("/")
+    if not base.startswith(("http://", "https://")):
+        raise RuntimeError(
+            "APP_URL is not set to an absolute http(s) URL. It must be "
+            "configured before an SO can be generated — the verification QR "
+            "is embedded permanently in the .docx and cannot be corrected "
+            "after the document is printed."
+        )
+    return base
 
 
 def _embed_qr_in_docx(file_path, verify_url):
@@ -814,6 +840,16 @@ def so_generate():
     if not date_issued:
         return jsonify({"success": False, "message": "Date issued is required"}), 400
 
+    # Resolve the verification base BEFORE anything is written. _verify_base()
+    # raises when APP_URL is unset; checking here rather than at the point of
+    # use means a misconfigured server fails cleanly, instead of leaving behind
+    # a saved .docx, a documents row, an auto-transfer notification and an
+    # so_records row that no QR will ever point at.
+    try:
+        verify_base = _verify_base()
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+
     config = SO_TYPES[so_type]
 
     # Format any date-type dynamic fields
@@ -926,7 +962,7 @@ def so_generate():
 
         # Build verification URL and embed QR into the saved docx
         verify_identifier = str(record_id) if record_id else filename
-        verify_url = f"{_VERIFY_BASE}/so/verify/{verify_identifier}"
+        verify_url = f"{verify_base}/so/verify/{verify_identifier}"
         _embed_qr_in_docx(file_path, verify_url)
 
         try:

@@ -240,3 +240,61 @@ class TestGetBaseUrl:
         importlib.reload(qrmod)
         result = qrmod.get_base_url("http://localhost:5000/")
         assert result == "https://myapp.example.com"
+
+
+# ── make_doc_status_qr_png base URL ───────────────────────────────────────────
+
+class TestDocStatusQrBase:
+    """The QR encodes a URL we cannot read back without cv2, so capture the
+    string handed to _render_qr_image instead."""
+
+    @staticmethod
+    def _capture(monkeypatch):
+        import services.qr as qrmod
+        captured = {}
+        real = qrmod._render_qr_image
+
+        def fake(url, box_size, fill_color):
+            captured["url"] = url
+            return real(url, box_size, fill_color)
+
+        monkeypatch.setattr(qrmod, "_render_qr_image", fake)
+        return captured
+
+    def test_empty_app_url_no_longer_emits_relative_url(self, monkeypatch):
+        """Regression: `base = APP_URL or ""` produced "/doc-scan/<token>",
+        a silently unscannable client-facing QR."""
+        import services.qr as qrmod
+        # get_base_url() reads the MODULE-level APP_URL in services.qr
+        # (bound at import), so patch it there, not on config.
+        monkeypatch.setattr(qrmod, "APP_URL", "")
+        captured = self._capture(monkeypatch)
+
+        from services.qr import create_doc_token, make_doc_status_qr_png
+        token = create_doc_token("DOCBASE01", "RECEIVE")
+        make_doc_status_qr_png(token, "RECEIVE", "Test Doc",
+                               host_url="http://192.168.1.50:5000/")
+
+        assert not captured["url"].startswith("/doc-scan/")
+        assert captured["url"] == f"http://192.168.1.50:5000/doc-scan/{token}"
+
+    def test_app_url_takes_precedence_over_host_url(self, monkeypatch):
+        import services.qr as qrmod
+        monkeypatch.setattr(qrmod, "APP_URL", "https://configured.test")
+        captured = self._capture(monkeypatch)
+
+        from services.qr import create_doc_token, make_doc_status_qr_png
+        token = create_doc_token("DOCBASE02", "RELEASE")
+        make_doc_status_qr_png(token, "RELEASE", "Test Doc",
+                               host_url="http://192.168.1.50:5000/")
+
+        assert captured["url"] == f"https://configured.test/doc-scan/{token}"
+
+    def test_default_host_url_still_returns_png(self, monkeypatch):
+        """Existing 3-positional-arg callers keep working."""
+        import services.qr as qrmod
+        monkeypatch.setattr(qrmod, "APP_URL", "https://configured.test")
+        from services.qr import create_doc_token, make_doc_status_qr_png
+        token = create_doc_token("DOCBASE03", "RECEIVE")
+        result = make_doc_status_qr_png(token, "RECEIVE", "Test Doc")
+        assert result[:4] == b"\x89PNG"

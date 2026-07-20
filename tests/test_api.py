@@ -343,3 +343,35 @@ class TestApiMisc:
         access, _ = admin_tokens
         rv = api_client.get("/api/dropdown-options", headers=_auth(access))
         assert rv.status_code == 200
+
+
+# ── /api/app-version download_url ─────────────────────────────────────────────
+
+class TestAppVersionDownloadUrl:
+    def test_relative_download_url_is_absolutized(self, api_client, monkeypatch):
+        """No version.json on disk → code fallback's relative '/download'."""
+        import config
+        monkeypatch.setattr(config, "APP_URL", "https://configured.test")
+        rv = api_client.get("/api/app-version")
+        assert rv.status_code == 200
+        assert rv.get_json()["download_url"] == "https://configured.test/download"
+
+    def test_absolute_download_url_left_untouched(self, api_app, api_client,
+                                                  tmp_path, monkeypatch):
+        static_root = tmp_path / "static_root"
+        (static_root / "apk").mkdir(parents=True)
+        (static_root / "apk" / "version.json").write_text(json.dumps({
+            "latest_version": "2.0.0",
+            "min_version":    "1.0.0",
+            "download_url":   "https://cdn.example.test/app.apk",
+            "release_notes":  "",
+            "force_update":   False,
+        }))
+        # Point the app at a temp static folder — never write into the repo.
+        monkeypatch.setattr(api_app, "static_folder", str(static_root))
+        import config
+        monkeypatch.setattr(config, "APP_URL", "https://configured.test")
+
+        rv = api_client.get("/api/app-version")
+        assert rv.status_code == 200
+        assert rv.get_json()["download_url"] == "https://cdn.example.test/app.apk"
