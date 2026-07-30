@@ -159,21 +159,51 @@ Real but narrow limitations. Things that are wrong but contained, or design deci
   `can_generate_so` check, so the leak severity was overstated: it was reachable only by a staff user
   lacking SO access, never by a client.
 
-  **Still open (deferred, NOT in commit 1a):**
+  **Also closed (commit 1c): mobile JWT gate.** `jwt_staff_required` + `_is_env_admin` added to
+  [blueprints/api.py:98](blueprints/api.py:98) — single-fetch, `g`-cached (`g.current_api_user`),
+  admits the env-var admin (no `users` row) via the inline env check, includes `superadmin`. Applied to
+  `api_create_document` ([blueprints/api.py:485](blueprints/api.py:485)), `api_quick_note`
+  ([blueprints/api.py:1660](blueprints/api.py:1660)), and `api_check_duplicate`
+  ([blueprints/api.py:1684](blueprints/api.py:1684)) — all three had no ownership branch and no
+  legitimate client use, yet were reachable **and functional from a client token** before this. New
+  `staff_tokens`/`client_tokens` fixtures + `TestJwtStaffGate` (6 tests, client→403 / staff→success)
+  raise the baseline 328→334 passed; the 14 failures are unchanged.
+
+  **`api_release_document` ([blueprints/api.py:1511](blueprints/api.py:1511)) deliberately NOT gated.**
+  Its owner is `original_logged_by or logged_by` ([:1524](blueprints/api.py:1524)) and it admits
+  `user_id == original_logger`. `api_client_submit` stamps `logged_by = client_id` (see the new item
+  below), so a client is the legitimate release-owner of their own submission — gating it would 403 a
+  real flow. Left on `@jwt_required()`. `api_update_status` also left as-is: it has a genuine
+  client-owner branch ([:535](blueprints/api.py:535)).
+
+  **Still open (deferred):**
   - *1b — remaining ~39 web staff routes*: add/edit/transfer/release/status/routing/scanning etc. still
     `login_required`-only. See the full inventory in the staff_required investigation.
-  - *1c — `jwt_staff_required` for mobile (higher priority than 1b)*: `api_create_document`
-    ([blueprints/api.py:447](blueprints/api.py:447)), `api_quick_note`
-    ([blueprints/api.py:1622](blueprints/api.py:1622)), `api_release_document`
-    ([blueprints/api.py:1511](blueprints/api.py:1511)), and `api_check_duplicate`
-    ([blueprints/api.py:1646](blueprints/api.py:1646)) are `@jwt_required()`-only — reachable **and
-    functional from a client token today**. Build it `g`-cached so the per-request
-    `get_user_by_username` fetch doesn't fire twice (or per keystroke on `api_check_duplicate`).
+  - *Cleanup — handler-body single-fetch refactor*: the gated mobile handlers still call
+    `get_user_by_username` in their bodies. Now that `jwt_staff_required` caches `g.current_api_user`,
+    read from it instead — collapses `api_update_status`'s three fetches
+    ([:532](blueprints/api.py:532)/[:533](blueprints/api.py:533)/[:538](blueprints/api.py:538)) and
+    `api_edit_document`'s two ([:2193](blueprints/api.py:2193)/[:2194](blueprints/api.py:2194)) to one.
+    Separate commit.
   - *Cleanup*: the inline `role not in ("staff","admin")` 403 in `so_download` is now shadowed by
     `_require_staff()` and is dead — remove it in a follow-up (left in 1a to avoid refactoring).
+  - *Divergence to reconcile*: web `staff_required` ([utils.py:49](utils.py:49)) omits `'superadmin'`;
+    mobile `jwt_staff_required` includes it. Widen the web one to match — separate commit.
   - *Decide deliberately (not a `staff_required` question)*: the dropdown-options editors, `db_status`,
     `app_qr`, and `client_reg_qr` may want `admin_required` rather than `staff_required` — needs an
     intent call, not a mechanical gate.
+
+- **Client-submit endpoints disagree on ownership shape — one stamps `logged_by` on a client submit.**
+  `api_client_submit` ([blueprints/api.py:3158-3159](blueprints/api.py:3158)) stamps **both**
+  `logged_by` **and** `submitted_by` with the client's id; `api_client_submit_mobile`
+  ([blueprints/api.py:3389](blueprints/api.py:3389)) stamps **only** `submitted_by`. Same user action,
+  two ownership shapes — this is the source of the `both_stamped=2` documents seen in prod. `logged_by`
+  on a client submission is almost certainly wrong: `logged_by` means "staff logged this from inside the
+  office," and it's what `api_release_document` keys ownership on ([:1524](blueprints/api.py:1524)) —
+  which is exactly why that endpoint couldn't be staff-gated in 1c. Needs its own investigation: what
+  breaks if `api_client_submit` stops writing `logged_by`, whether the 2 existing docs need a data fix,
+  and how this interacts with the staff-submission ownership model. **HIGH** — directly feeds the
+  submission-ownership work.
 
 ## Features / polish
 

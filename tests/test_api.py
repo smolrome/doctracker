@@ -72,6 +72,41 @@ def admin_tokens(api_client):
     return data["access_token"], data["refresh_token"]
 
 
+@pytest.fixture(scope="module")
+def staff_tokens(api_client):
+    """Create a role='staff' user and return its access + refresh tokens."""
+    from services.auth import create_user
+    create_user("apistaff", "ApiStaff123!", full_name="API Staff",
+                role="staff", office="IT Unit")
+    rv = api_client.post(
+        "/api/auth/login",
+        json={"username": "apistaff", "password": "ApiStaff123!"},
+    )
+    assert rv.status_code == 200, rv.data
+    data = rv.get_json()
+    return data["access_token"], data["refresh_token"]
+
+
+@pytest.fixture(scope="module")
+def client_tokens(api_client):
+    """Create + approve a role='client' user and return its access + refresh tokens.
+
+    Clients are created unapproved (create_user sets approved = role != 'client'),
+    and verify_user rejects unapproved accounts, so approve_user is required before
+    the client can obtain a token.
+    """
+    from services.auth import create_user, approve_user
+    create_user("apiclient", "ApiClient123!", full_name="API Client", role="client")
+    approve_user("apiclient")
+    rv = api_client.post(
+        "/api/auth/login",
+        json={"username": "apiclient", "password": "ApiClient123!"},
+    )
+    assert rv.status_code == 200, rv.data
+    data = rv.get_json()
+    return data["access_token"], data["refresh_token"]
+
+
 def _auth(token):
     """Return Authorization header dict."""
     return {"Authorization": f"Bearer {token}"}
@@ -375,3 +410,72 @@ class TestAppVersionDownloadUrl:
         rv = api_client.get("/api/app-version")
         assert rv.status_code == 200
         assert rv.get_json()["download_url"] == "https://cdn.example.test/app.apk"
+
+
+# ── jwt_staff_required gate ─────────────────────────────────────────────────────
+
+class TestJwtStaffGate:
+    """jwt_staff_required: staff/admin allowed, clients get 403.
+
+    Covers the three ungated endpoints closed in 1c —
+    api_create_document, api_quick_note, api_check_duplicate.
+    api_release_document is deliberately excluded: api_client_submit sets
+    logged_by to the client, so a client is the legitimate owner and may
+    release their own document.
+    """
+
+    # ── api_create_document (POST /documents) ──
+    def test_create_document_client_forbidden(self, api_client, client_tokens):
+        access, _ = client_tokens
+        rv = api_client.post(
+            "/api/documents",
+            json={"doc_name": "Client-Origin Doc"},
+            headers=_auth(access),
+        )
+        assert rv.status_code == 403
+
+    def test_create_document_staff_allowed(self, api_client, staff_tokens):
+        access, _ = staff_tokens
+        rv = api_client.post(
+            "/api/documents",
+            json={"doc_name": "Staff-Origin Doc"},
+            headers=_auth(access),
+        )
+        assert rv.status_code == 201
+
+    # ── api_quick_note (POST /documents/<id>/quick-note) ──
+    def test_quick_note_client_forbidden(self, api_client, client_tokens):
+        # Gate runs before the body, so doc existence is irrelevant to the 403.
+        access, _ = client_tokens
+        rv = api_client.post(
+            "/api/documents/any-id/quick-note",
+            json={"note": "should not be allowed"},
+            headers=_auth(access),
+        )
+        assert rv.status_code == 403
+
+    def test_quick_note_staff_allowed(self, api_client, staff_tokens):
+        access, _ = staff_tokens
+        create_rv = api_client.post(
+            "/api/documents",
+            json={"doc_name": "Quick-Note Target"},
+            headers=_auth(access),
+        )
+        doc_id = create_rv.get_json()["id"]
+        rv = api_client.post(
+            f"/api/documents/{doc_id}/quick-note",
+            json={"note": "a staff note"},
+            headers=_auth(access),
+        )
+        assert rv.status_code == 200
+
+    # ── api_check_duplicate (GET /check-duplicate) ──
+    def test_check_duplicate_client_forbidden(self, api_client, client_tokens):
+        access, _ = client_tokens
+        rv = api_client.get("/api/check-duplicate?q=test", headers=_auth(access))
+        assert rv.status_code == 403
+
+    def test_check_duplicate_staff_allowed(self, api_client, staff_tokens):
+        access, _ = staff_tokens
+        rv = api_client.get("/api/check-duplicate?q=test", headers=_auth(access))
+        assert rv.status_code == 200

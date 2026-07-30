@@ -6,8 +6,9 @@ Provides JWT-based authentication and document operations.
 import os
 import secrets
 import threading
+from functools import wraps
 from datetime import datetime
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -92,6 +93,43 @@ def _is_admin_user(username: str) -> bool:
         return True
     user = get_user_by_username(username)
     return bool(user and user.get('role') in ('admin', 'superadmin'))
+
+
+def _is_env_admin(identity: str) -> bool:
+    """Env-var admin check ONLY (no DB fetch) — the first branch of _is_admin_user.
+
+    Split out so jwt_staff_required can admit the env-var admin (which has no
+    users row) without triggering a get_user_by_username lookup on top of the
+    one the decorator already caches.
+    """
+    admin_env = os.environ.get('ADMIN_USERNAME', '')
+    return bool(admin_env and secrets.compare_digest(identity.lower(), admin_env.lower()))
+
+
+def jwt_staff_required(fn):
+    """Gate a mobile endpoint to staff/admin (and the env-var admin).
+
+    Fetches the caller ONCE per request and caches it on flask.g, so the handler
+    body can reuse g.current_api_user instead of re-fetching. The cached value is
+    legitimately None for the env-var admin (no users row) — admission for that
+    account comes from the inline _is_env_admin() check, not the DB role, which is
+    why this must stay session/identity-based and never require a row to exist.
+
+    @jwt_required() is innermost so JWT verification runs before get_jwt_identity().
+    """
+    @wraps(fn)
+    @jwt_required()
+    def wrapper(*args, **kwargs):
+        identity = get_jwt_identity()
+        g.current_api_username = identity
+        if 'current_api_user' not in g:
+            g.current_api_user = get_user_by_username(identity)
+        user = g.current_api_user
+        if not (_is_env_admin(identity) or
+                (user and user.get('role') in ('staff', 'admin', 'superadmin'))):
+            return jsonify(error='Staff access required'), 403
+        return fn(*args, **kwargs)
+    return wrapper
 
 
 @api_bp.route('/app-version', methods=['GET'])
@@ -445,7 +483,7 @@ def api_get_document(doc_id):
 
 
 @api_bp.route('/documents', methods=['POST'])
-@jwt_required()
+@jwt_staff_required
 def api_create_document():
     data = request.get_json()
     user_id = get_jwt_identity()
@@ -1620,7 +1658,7 @@ def receive_from_client(doc_id):
 
 
 @api_bp.route('/documents/<doc_id>/quick-note', methods=['POST'])
-@jwt_required()
+@jwt_staff_required
 def api_quick_note(doc_id):
     user_id = get_jwt_identity()
 
@@ -1644,7 +1682,7 @@ def api_quick_note(doc_id):
 
 
 @api_bp.route('/check-duplicate', methods=['GET'])
-@jwt_required()
+@jwt_staff_required
 def api_check_duplicate():
     q = request.args.get('q', '').strip().lower()
     if len(q) < 4:
