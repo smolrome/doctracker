@@ -23,7 +23,7 @@ from services.misc import audit_log, load_saved_offices
 from services.cart_store import clear_cart
 from services.qr import generate_qr_b64, make_qr_png
 from services.dropdown_options import get_dropdown_options
-from utils import admin_required, get_client_ip, is_logged_in, login_required
+from utils import admin_required, get_client_ip, is_logged_in, login_required, staff_required
 from config import STATUS_OPTIONS
 
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -694,6 +694,7 @@ def print_logging_slip():
 
 @dashboard_bp.route("/view/<doc_id>")
 @login_required
+@staff_required
 def view_doc(doc_id):
     doc = get_doc(doc_id)
     if not doc:
@@ -2178,6 +2179,7 @@ def quick_note(doc_id):
 
 @dashboard_bp.route("/travel-log/<doc_id>")
 @login_required
+@staff_required
 def travel_log_json(doc_id):
     doc = get_doc(doc_id)
     if not doc:

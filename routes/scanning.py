@@ -24,7 +24,7 @@ from services.qr import (
     generate_qr_b64, make_doc_status_qr_png, make_office_qr_png, use_doc_token,
     get_token_doc, verify_office_action,
 )
-from utils import get_client_ip, is_logged_in, login_required
+from utils import get_client_ip, is_logged_in, login_required, staff_required
 
 scanning_bp = Blueprint("scanning", __name__)
 
@@ -292,6 +292,7 @@ def upload_qr():
 
 @scanning_bp.route("/api/doc-lookup/<doc_id>", methods=["GET"])
 @login_required
+@staff_required
 def web_doc_lookup(doc_id):
     """Session-authenticated doc lookup for the staff scanner overlay."""
     doc = get_doc(doc_id)

@@ -138,6 +138,43 @@ Real but narrow limitations. Things that are wrong but contained, or design deci
   (which uses a DB-backed limiter — see `PASSWORD_RESET_RATE_LIMITS`), but **login, register,
   status_update, doc_create, and api limits are still in-memory** and therefore still 4×-able.
 
+- **Role enforcement on web routes is incomplete — most staff routes are `login_required`-only.**
+  `login_required` ([utils.py:26](utils.py:26)) checks only `session["logged_in"]`, not role, so until
+  now any logged-in session — **including a `client`** — could reach staff routes by typing the URL.
+  The UI hides the links (nav is gated by `current_role` in `templates/base.html`), so it was an
+  exposure by direct request, not a visible one. A `staff_required` decorator now exists
+  ([utils.py:49](utils.py:49)) — session-based (admits the env-var admin, which has no `users` row),
+  redirect-on-fail like `admin_required`.
+
+  **Partially closed (branch `feature/staff-required-decorator`, commit 1a of 3):** applied to the four
+  confidentiality-sensitive routes that render internal `officer`/`remarks` fields the `client_view.py`
+  sanitizer would otherwise strip — `view_doc` ([routes/dashboard.py:695](routes/dashboard.py:695)),
+  `travel_log_json` ([routes/dashboard.py:2179](routes/dashboard.py:2179)), `web_doc_lookup`
+  ([routes/scanning.py:293](routes/scanning.py:293)) — plus `so_download`
+  ([routes/so.py:989](routes/so.py:989)), which also got the `_require_staff()` (`can_generate_so`)
+  gate its SO siblings have.
+
+  *Correction to the original framing of `so_download`:* it was **not** `login_required`-only — it
+  already had an inline `role not in ("staff","admin")` 403. The real gap was the missing
+  `can_generate_so` check, so the leak severity was overstated: it was reachable only by a staff user
+  lacking SO access, never by a client.
+
+  **Still open (deferred, NOT in commit 1a):**
+  - *1b — remaining ~39 web staff routes*: add/edit/transfer/release/status/routing/scanning etc. still
+    `login_required`-only. See the full inventory in the staff_required investigation.
+  - *1c — `jwt_staff_required` for mobile (higher priority than 1b)*: `api_create_document`
+    ([blueprints/api.py:447](blueprints/api.py:447)), `api_quick_note`
+    ([blueprints/api.py:1622](blueprints/api.py:1622)), `api_release_document`
+    ([blueprints/api.py:1511](blueprints/api.py:1511)), and `api_check_duplicate`
+    ([blueprints/api.py:1646](blueprints/api.py:1646)) are `@jwt_required()`-only — reachable **and
+    functional from a client token today**. Build it `g`-cached so the per-request
+    `get_user_by_username` fetch doesn't fire twice (or per keystroke on `api_check_duplicate`).
+  - *Cleanup*: the inline `role not in ("staff","admin")` 403 in `so_download` is now shadowed by
+    `_require_staff()` and is dead — remove it in a follow-up (left in 1a to avoid refactoring).
+  - *Decide deliberately (not a `staff_required` question)*: the dropdown-options editors, `db_status`,
+    `app_qr`, and `client_reg_qr` may want `admin_required` rather than `staff_required` — needs an
+    intent call, not a mechanical gate.
+
 ## Features / polish
 
 Wanted, not broken.
