@@ -233,6 +233,57 @@ Real but narrow limitations. Things that are wrong but contained, or design deci
 
 Wanted, not broken.
 
+- [ ] **Username rename with full-history rewrite** (multi-step; Steps 1+2 built, service-only, on
+  `feature/username-rename-service` — not yet wired to any route). Usernames are stored as bare strings inside `documents` JSONB
+  (`logged_by`, `original_logged_by`, …) and across ~15 other tables/columns with **no FK**. The
+  current admin edit-user flow ([routes/admin.py:827](routes/admin.py:827) →
+  [services/auth.py:518](services/auth.py:518) `update_user`) changes **only the `users` row** and
+  **orphans every referencing document** — yet the UI already promises "Changing the username will
+  also update the login name" ([manage_users.html:253](templates/manage_users.html:253)). The
+  feature adds a server-side rename that atomically rewrites every reference. Full rewrite surface
+  and design are in the scoping report; plan:
+  - **Step 1 — validator + `rename_user` service (no route). DONE.** `_validate_username`
+    ([services/auth.py](services/auth.py), `[a-z0-9._-]`, 3–32, wired into `create_user` and into
+    `update_user` *only on a genuine rename*) + `rename_user(old, new, old_full_name, new_full_name)`
+    doing the set-based SQL rewrites of the `_RENAME_DOC_KEYS` document keys and the §2c tables in one
+    `get_conn()` transaction (mirrors `restore_backup`; no `batch_save_docs`/`audit_log` inside), with
+    a JSON-fallback parity path. Returns a per-surface summary. Unreachable from HTTP.
+  - **Step 2 — the ambiguous fields (DONE, service-only on the branch).**
+    `documents.received_by`, `accepted_by`, and nested `travel_log[].officer` are written as
+    `full_name OR username` (and `accepted_by`/`officer` can even be a composite proxy label
+    `"{full_name} (Admin, proxy for {target})"`, [api.py:1269](blueprints/api.py:1269)). Because a
+    rename supplies BOTH the old/new username AND old/new full_name, `rename_user` now rewrites these
+    by EXACT match on the old username always, and on the old full_name **only when that full_name is
+    unique among users** (a shared full_name sets `summary["full_name_ambiguous"]` and skips the
+    full_name pass so a different person's history is never touched). Exact matching leaves composite
+    proxy labels intact. `travel_log[].officer` is a Python round-trip on the SAME cursor (containment
+    `@>` scoped SELECT → edit → UPDATE back), never `batch_save_docs`. Still no route wiring.
+  - **Step 2.5 — structured companion display-name fields (NOT yet covered).** A follow-up audit
+    found `documents.data` also stores parallel `*_name`/`*_username` companions that Steps 1+2 do
+    NOT touch, so a rename still leaves the old name visible — worst on the client portal, which
+    reads the stored name BEFORE resolving the username ([client_view.py:192](services/client_view.py:192),
+    [:211](services/client_view.py:211)). Client-facing: `accepted_by_name`, `pending_at_staff_name`,
+    `intended_for_name` (also [client_submitted.html:82-83](templates/client_submitted.html:82)),
+    plus `submitted_by_name` and mobile `accepted_by_username` ([api.py:1287](blueprints/api.py:1287),
+    filter [api.py:338](blueprints/api.py:338)). Also `transfer_batches.transferred_to_name` (§2c
+    gap). Plan: `accepted_by_username` → exact-username pass; the four `*_name` fields → ambiguous
+    pass. Open decision on the free-text fields `referred_to` (can hold a staff full_name,
+    [api.py:1510](blueprints/api.py:1510)) and `sender_name` (mostly external) — default: rewrite
+    `referred_to` on a unique full_name, leave `sender_name`. Do NOT rewrite `travel_log[].remarks`
+    (free text) or `recipient_name` (external/legacy).
+  - **Step 3 — route wiring + guards.** Detect a username change in the edit route, call
+    `rename_user`, emit ONE post-commit `audit_log("username_renamed", …)` summary line, forbid
+    renaming your own logged-in account, and warn that the renamed user must re-login (Flask
+    cookie sessions can't be force-invalidated server-side).
+  - **Step 4 — tests + `testdoc` run.** `tests/test_rename_user.py` exists (JSON backend); add
+    route-level coverage in Step 3, then stage on `testdoc`.
+  - **Blast-radius notes:** no server-side username format validation existed before (client-side
+    `pattern` only). One **existing real account, `bella bernales`, has a space** and fails the new
+    charset — enforcement is wired to validate NEW/CHANGED names only, so it keeps working for
+    login and non-rename edits; it just cannot be a rename target without cleanup first. JSON mode
+    has a **smaller surface** (staff_*/transfer_batches/import_batches/so_records/push_tokens are
+    DB-only, no JSON file).
+
 - **No linter or typechecker on the Python side at all.** No ruff/mypy/flake8/black/pylint installed
   in `.venv`, no config file for any of them. For a ~27k-line Flask app with security-sensitive auth,
   CSRF, and backup/restore paths, that's a real gap — but adding one now would produce a large

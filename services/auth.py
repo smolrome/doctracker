@@ -29,6 +29,7 @@ Security fixes applied:
 import hashlib
 import json
 import os
+import re
 import secrets
 import tempfile
 import threading
@@ -48,6 +49,45 @@ from config import ADMIN_USERNAME, ADMIN_PASSWORD, RATE_LIMITS
 
 # Allowlist of valid role values — FIX 6
 _VALID_ROLES = frozenset({"admin", "staff", "client"})
+
+# Server-side username format rules. Until now there was NO server-side
+# username validation — only a client-side `pattern` attribute in
+# manage_users.html, trivially bypassed by a direct POST. This is the server
+# equivalent, analogous to _VALID_ROLES for roles. Charset matches that
+# client-side pattern ([a-z0-9._-]) after lower()+strip(); length is 3–32.
+_USERNAME_RE  = re.compile(r"[a-z0-9._-]+")
+_USERNAME_MIN = 3
+_USERNAME_MAX = 32
+
+
+def _validate_username(name: str) -> tuple[bool, str | None]:
+    """Validate a username's FORMAT. Returns (ok, error_message).
+
+    Rules (after lower()+strip()): 3–32 chars drawn only from [a-z0-9._-];
+    empty / whitespace-only is rejected. Mirrors the (ok, err) return style of
+    create_user/update_user so callers can surface ``err`` directly. Does NOT
+    check uniqueness — that is the caller's job (the DB UNIQUE constraint on
+    users.username, or an explicit SELECT in rename_user).
+
+    IMPORTANT: only NEW or CHANGED usernames are ever validated (this is wired
+    into create_user, and into update_user ONLY when a rename is requested).
+    Existing rows are never re-validated, so legacy accounts whose names predate
+    this rule (e.g. a name containing a space) keep working for login and for
+    non-rename edits — enforcing here does not retroactively break them.
+    """
+    if name is None:
+        return False, "Username is required."
+    uname = name.lower().strip()
+    if not uname:
+        return False, "Username cannot be empty."
+    if len(uname) < _USERNAME_MIN:
+        return False, f"Username must be at least {_USERNAME_MIN} characters."
+    if len(uname) > _USERNAME_MAX:
+        return False, f"Username must be at most {_USERNAME_MAX} characters."
+    if not _USERNAME_RE.fullmatch(uname):
+        return False, ("Username may contain only lowercase letters, numbers, "
+                       "dots, dashes and underscores.")
+    return True, None
 
 # A single pre-computed dummy hash used for constant-time comparisons — FIX 2
 _DUMMY_HASH = bcrypt.hashpw(b"__dummy__", bcrypt.gensalt(rounds=12)).decode()
@@ -152,6 +192,11 @@ def create_user(username: str, password: str, full_name: str = "",
     """
     import json as _json
     uname = username.lower().strip()
+
+    # Validate username FORMAT server-side (new account → always a new name).
+    ok, verr = _validate_username(uname)
+    if not ok:
+        return False, verr
 
     # FIX 6: validate role against allowlist
     if role not in _VALID_ROLES:
@@ -532,6 +577,16 @@ def update_user(username: str, full_name: str = None,
 
     new_uname = new_username.lower().strip() if new_username else None
 
+    # Validate FORMAT only when a genuine rename is requested. A non-rename edit
+    # (new_username is None, or unchanged) never re-validates the existing name,
+    # so legacy accounts stay editable. NOTE: this only rewrites the users row —
+    # it still orphans documents/other tables that reference the old name. A
+    # full-history rewrite is rename_user(); update_user is unchanged otherwise.
+    if new_uname and new_uname != uname:
+        ok, verr = _validate_username(new_uname)
+        if not ok:
+            return False, verr
+
     if USE_DB:
         try:
             updates, params = [], []
@@ -585,6 +640,506 @@ def update_user(username: str, full_name: str = None,
                 _save_users_json(users)
                 return True, None
         return False, "User not found."
+
+
+# ── Username rename with full-history rewrite ───────────────────────────────────
+
+# Document JSONB keys that hold a bare username string (scoping report §2a).
+# These are UNAMBIGUOUS username fields, rewritten by exact match on the old
+# username alone. The ambiguous full_name-or-username fields (received_by,
+# accepted_by, travel_log[].officer) are handled separately in Step 2 by
+# _RENAME_AMBIGUOUS_KEYS + the travel_log round-trip, because they need matching
+# on BOTH the old username AND the old full_name.
+_RENAME_DOC_KEYS = (
+    "logged_by",
+    "original_logged_by",
+    "submitted_by",
+    "pending_at_staff",
+    "intended_for_username",
+    "transferred_by",
+    "transferred_to",
+    "released_by",
+    "rejected_by",
+    "assigned_to",
+    "updated_by",
+)
+
+# Step 2: top-level document fields that store "full_name OR username" — you
+# cannot tell which by inspection (scoping report; confirmed in code):
+#   - received_by  : full_name on web/scan/excel, username-fallback on mobile
+#   - accepted_by  : username on web (dashboard.py:1811), full_name on mobile
+#                    (api.py:1276/1286), OR a composite proxy label
+#                    "{full_name} (Admin, proxy for {target})" (api.py:1269).
+# We rewrite these by EXACT match on the old username and (only when the old
+# full_name is unique among users) the old full_name. Exact match is
+# corruption-safe: a composite proxy label never equals the plain old full_name,
+# so it is left intact rather than mangled — see the report note.
+_RENAME_AMBIGUOUS_KEYS = (
+    "received_by",
+    "accepted_by",
+)
+
+
+def _rename_summary(old: str, new: str) -> dict:
+    """Zeroed per-surface counter dict; both backends fill the same shape."""
+    return {
+        "old_username": old,
+        "new_username": new,
+        # documents_updated counts FIELD-level rewrites (one document that holds
+        # the old name under two keys contributes 2). Honest "rows affected",
+        # not distinct-doc count.
+        "documents_updated":           0,
+        # Step 2 — the ambiguous display fields (field-level rowcounts, summing
+        # both the username-match and the full_name-match rewrites).
+        "received_by_updated":         0,
+        "accepted_by_updated":         0,
+        "travel_log_hops_updated":     0,   # individual travel_log hops rewritten
+        "travel_log_docs_updated":     0,   # distinct docs whose travel_log changed
+        # full_name rewrite decision (set in the pre-flight):
+        #   full_name_matched   → old full_name was unique, so full_name-based
+        #                         rewrite of the ambiguous fields WAS applied.
+        #   full_name_ambiguous → old full_name is SHARED by >1 user, so the
+        #                         full_name-based rewrite was SKIPPED; some
+        #                         historical display names still show the old
+        #                         name and the UI should warn.
+        "full_name_matched":           False,
+        "full_name_ambiguous":         False,
+        "activity_log_updated":        0,
+        "saved_offices_updated":       0,
+        "routing_slips_updated":       0,
+        "office_traffic_updated":      0,
+        "appointments_updated":        0,
+        "so_records_updated":          0,
+        "staff_pairings_updated":      0,
+        "staff_groups_updated":        0,
+        "staff_group_members_updated": 0,
+        "transfer_batches_updated":    0,
+        "import_batches_updated":      0,
+        "push_tokens_updated":         0,
+        "user_carts_updated":          0,
+        "users_updated":               0,
+    }
+
+
+def rename_user(old_username: str, new_username: str,
+                old_full_name: str = "", new_full_name: str = "") -> tuple[bool, str | None, dict]:
+    """Rename a user AND rewrite every reference to the old username, atomically.
+
+    Returns (ok, error_message, summary). ``summary`` is always the per-surface
+    counter dict (zeroed on failure) so the caller can log/verify.
+
+    A rename changes BOTH the username AND (usually) the full_name, so all four
+    strings are known. That is what lets Step 2 rewrite the ambiguous display
+    fields — received_by / accepted_by / travel_log[].officer store
+    "full_name OR username" and cannot be disambiguated by inspection.
+
+    SCOPE:
+      - Step 1: the unambiguous username keys in _RENAME_DOC_KEYS and the
+        non-document tables (report §2c).
+      - Step 2: the ambiguous display fields _RENAME_AMBIGUOUS_KEYS
+        (received_by, accepted_by) and the nested travel_log[].officer hops,
+        rewritten by EXACT match on the old username AND — only when the old
+        full_name is UNIQUE among users — the old full_name.
+
+    full_name safety: if the old full_name is shared by more than one user,
+    matching on it would rewrite a DIFFERENT person's history, so the
+    full_name-based rewrite is SKIPPED and summary["full_name_ambiguous"] is set
+    True (the username-based rewrite still runs). Composite proxy labels like
+    "{full_name} (Admin, proxy for {target})" never equal the plain old
+    full_name, so exact matching leaves them intact rather than corrupting them.
+
+    Atomicity mirrors restore_backup (services/backup.py): in DB mode the entire
+    rewrite runs inside ONE get_conn() transaction on ONE cursor and commits
+    once; any failure rolls the whole thing back (never a half-renamed DB). It
+    deliberately uses raw cur.execute only — NOT batch_save_docs or audit_log,
+    which open their own connections / commit independently and would break
+    atomicity (and audit_log is the ROUTE's job post-commit, Step 3). The nested
+    travel_log rewrite is a Python round-trip on that SAME cursor (SELECT the
+    affected docs, edit in memory, UPDATE back), never batch_save_docs.
+
+    This is a SERVICE-ONLY function: nothing calls it yet — it is unreachable
+    from any HTTP path until the Step 3 route wiring.
+    """
+    old = (old_username or "").lower().strip()
+    new = (new_username or "").lower().strip()
+    # full_names are DISPLAY strings — do NOT lowercase; only strip.
+    old_fn = (old_full_name or "").strip()
+    new_fn = (new_full_name or "").strip()
+    summary = _rename_summary(old, new)
+
+    # ── Pre-flight (format only; existence/uniqueness checked per-backend) ──
+    ok, verr = _validate_username(new)
+    if not ok:
+        return False, verr, summary
+    if not old:
+        return False, "Current username is required.", summary
+    if old == new:
+        return False, "New username is the same as the current one.", summary
+
+    # Is the full_name actually changing? Only then is a full_name-based rewrite
+    # of the ambiguous fields meaningful (if the name is unchanged, occurrences
+    # holding the full_name are already correct and the username-based rewrite
+    # covers the rest). fn_change gates whether we even consult uniqueness.
+    fn_change = bool(old_fn and new_fn and old_fn != new_fn)
+
+    if USE_DB:
+        try:
+            # ONE connection, ONE transaction. _ConnCtx commits on clean exit and
+            # rolls the WHOLE thing back on any exception (database.py:_ConnCtx).
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    # Pre-flight inside the txn. An early return here exits the
+                    # `with` cleanly → commits an EMPTY transaction (no writes yet
+                    # = harmless), which is why these checks precede every UPDATE.
+                    cur.execute("SELECT 1 FROM users WHERE username = %s", (old,))
+                    if not cur.fetchone():
+                        return False, f"User '{old}' not found.", summary
+                    cur.execute("SELECT 1 FROM users WHERE username = %s", (new,))
+                    if cur.fetchone():
+                        return False, f"Username '{new}' is already taken.", summary
+
+                    # full_name uniqueness gate (Step 2a). Only consulted when the
+                    # full_name is actually changing. COUNT includes the renamed
+                    # user's own row, so exactly 1 == unique to this person == safe
+                    # to match on. >1 == shared == matching would rewrite someone
+                    # else's history, so skip full_name matching and flag it.
+                    fn_safe = False
+                    if fn_change:
+                        cur.execute("SELECT COUNT(*) AS c FROM users WHERE full_name = %s", (old_fn,))
+                        if cur.fetchone()["c"] == 1:
+                            fn_safe = True
+                            summary["full_name_matched"] = True
+                        else:
+                            summary["full_name_ambiguous"] = True
+
+                    # 1) documents.data top-level keys — set-based, one per key.
+                    #    jsonb_set(data, '{KEY}', to_jsonb(new)) WHERE data->>'KEY' = old.
+                    doc_total = 0
+                    for key in _RENAME_DOC_KEYS:
+                        cur.execute(
+                            "UPDATE documents "
+                            "SET data = jsonb_set(data, %s, to_jsonb(%s::text)) "
+                            "WHERE data->>%s = %s",
+                            ([key], new, key, old),
+                        )
+                        doc_total += cur.rowcount
+                    summary["documents_updated"] = doc_total
+
+                    # 1b) Step 2 — ambiguous display fields (received_by,
+                    #     accepted_by). Match the old username always, and the old
+                    #     full_name only when fn_safe. Per-field rowcount (username
+                    #     + full_name matches summed). Exact match, so a composite
+                    #     proxy label is never touched.
+                    for key in _RENAME_AMBIGUOUS_KEYS:
+                        field_total = 0
+                        cur.execute(
+                            "UPDATE documents "
+                            "SET data = jsonb_set(data, %s, to_jsonb(%s::text)) "
+                            "WHERE data->>%s = %s",
+                            ([key], new, key, old),
+                        )
+                        field_total += cur.rowcount
+                        if fn_safe:
+                            cur.execute(
+                                "UPDATE documents "
+                                "SET data = jsonb_set(data, %s, to_jsonb(%s::text)) "
+                                "WHERE data->>%s = %s",
+                                ([key], new_fn, key, old_fn),
+                            )
+                            field_total += cur.rowcount
+                        summary[f"{key}_updated"] = field_total
+
+                    # 1c) Step 2 — travel_log[].officer. Nested JSONB array, so no
+                    #     pure set-based rewrite: scope the load with a containment
+                    #     filter (@> tests array-element containment of a partial
+                    #     object) so we touch only affected docs, not all ~17k;
+                    #     edit officer hops in Python; write each changed doc back
+                    #     on THIS SAME cursor (never batch_save_docs). Every other
+                    #     field in each hop is preserved — only officer changes.
+                    officer_sql = ("SELECT id, data FROM documents "
+                                   "WHERE data->'travel_log' @> %s::jsonb")
+                    officer_params = [json.dumps([{"officer": old}])]
+                    if fn_safe:
+                        officer_sql = ("SELECT id, data FROM documents "
+                                       "WHERE data->'travel_log' @> %s::jsonb "
+                                       "   OR data->'travel_log' @> %s::jsonb")
+                        officer_params = [json.dumps([{"officer": old}]),
+                                          json.dumps([{"officer": old_fn}])]
+                    cur.execute(officer_sql, officer_params)
+                    tl_rows = cur.fetchall()
+                    tl_hops = tl_docs = 0
+                    for row in tl_rows:
+                        data = row["data"]
+                        if isinstance(data, str):        # defensive: normally a dict
+                            data = json.loads(data)
+                        doc_changed = False
+                        for hop in data.get("travel_log", []) or []:
+                            if not isinstance(hop, dict):
+                                continue
+                            off = hop.get("officer")
+                            if off == old:
+                                hop["officer"] = new
+                                tl_hops += 1
+                                doc_changed = True
+                            elif fn_safe and off == old_fn:
+                                hop["officer"] = new_fn
+                                tl_hops += 1
+                                doc_changed = True
+                        if doc_changed:
+                            cur.execute(
+                                "UPDATE documents SET data = %s::jsonb WHERE id = %s",
+                                (json.dumps(data), row["id"]),
+                            )
+                            tl_docs += 1
+                    summary["travel_log_hops_updated"] = tl_hops
+                    summary["travel_log_docs_updated"] = tl_docs
+
+                    # 2) Non-document tables (report §2c) — one UPDATE per column.
+                    cur.execute("UPDATE activity_log SET username = %s WHERE username = %s", (new, old))
+                    summary["activity_log_updated"] = cur.rowcount
+
+                    cur.execute("UPDATE saved_offices SET created_by = %s WHERE created_by = %s", (new, old))
+                    summary["saved_offices_updated"] = cur.rowcount
+
+                    slips = 0
+                    cur.execute("UPDATE routing_slips SET prepared_by = %s WHERE prepared_by = %s", (new, old))
+                    slips += cur.rowcount
+                    cur.execute("UPDATE routing_slips SET archived_by = %s WHERE archived_by = %s", (new, old))
+                    slips += cur.rowcount
+                    summary["routing_slips_updated"] = slips
+
+                    cur.execute("UPDATE office_traffic SET client_username = %s WHERE client_username = %s", (new, old))
+                    summary["office_traffic_updated"] = cur.rowcount
+
+                    cur.execute("UPDATE appointments SET client_username = %s WHERE client_username = %s", (new, old))
+                    summary["appointments_updated"] = cur.rowcount
+
+                    cur.execute("UPDATE so_records SET generated_by = %s WHERE generated_by = %s", (new, old))
+                    summary["so_records_updated"] = cur.rowcount
+
+                    pairings = 0
+                    # staff_pairings has UNIQUE(user_a, user_b); a rename that would
+                    # duplicate an existing pair raises inside the txn and rolls the
+                    # WHOLE rename back cleanly (no partial write). Same for
+                    # staff_group_members' UNIQUE(group_id, username). Acceptable in
+                    # Step 1 — a clean abort, not corruption.
+                    cur.execute("UPDATE staff_pairings SET user_a = %s WHERE user_a = %s", (new, old))
+                    pairings += cur.rowcount
+                    cur.execute("UPDATE staff_pairings SET user_b = %s WHERE user_b = %s", (new, old))
+                    pairings += cur.rowcount
+                    cur.execute("UPDATE staff_pairings SET created_by = %s WHERE created_by = %s", (new, old))
+                    pairings += cur.rowcount
+                    summary["staff_pairings_updated"] = pairings
+
+                    cur.execute("UPDATE staff_groups SET created_by = %s WHERE created_by = %s", (new, old))
+                    summary["staff_groups_updated"] = cur.rowcount
+
+                    members = 0
+                    cur.execute("UPDATE staff_group_members SET username = %s WHERE username = %s", (new, old))
+                    members += cur.rowcount
+                    cur.execute("UPDATE staff_group_members SET added_by = %s WHERE added_by = %s", (new, old))
+                    members += cur.rowcount
+                    summary["staff_group_members_updated"] = members
+
+                    batches = 0
+                    cur.execute("UPDATE transfer_batches SET transferred_by = %s WHERE transferred_by = %s", (new, old))
+                    batches += cur.rowcount
+                    cur.execute("UPDATE transfer_batches SET transferred_to = %s WHERE transferred_to = %s", (new, old))
+                    batches += cur.rowcount
+                    summary["transfer_batches_updated"] = batches
+
+                    cur.execute("UPDATE import_batches SET imported_by = %s WHERE imported_by = %s", (new, old))
+                    summary["import_batches_updated"] = cur.rowcount
+
+                    # 3) PRIMARY-KEY tables: push_tokens.username and
+                    #    user_carts.username. A plain UPDATE old→new would violate
+                    #    the PK if a STALE row already sits under `new`. We confirmed
+                    #    above that `new` is free in `users`, so any push-token/cart
+                    #    row under `new` is orphaned data safe to discard first; the
+                    #    DELETE is a no-op when none exists. Both statements are in
+                    #    this same txn, so a failure still rolls everything back.
+                    cur.execute("DELETE FROM push_tokens WHERE username = %s", (new,))
+                    cur.execute("UPDATE push_tokens SET username = %s WHERE username = %s", (new, old))
+                    summary["push_tokens_updated"] = cur.rowcount
+
+                    cur.execute("DELETE FROM user_carts WHERE username = %s", (new,))
+                    cur.execute("UPDATE user_carts SET username = %s WHERE username = %s", (new, old))
+                    summary["user_carts_updated"] = cur.rowcount
+
+                    # 4) users.username LAST.
+                    cur.execute("UPDATE users SET username = %s WHERE username = %s", (new, old))
+                    summary["users_updated"] = cur.rowcount
+            # Committed here on clean exit of the `with`.
+            return True, None, summary
+        except Exception as e:
+            # _ConnCtx already rolled back as the exception passed through __exit__.
+            if "unique" in str(e).lower():
+                return False, f"Rename failed: a uniqueness constraint blocked it ({e}).", summary
+            return False, f"Rename failed: {e}", summary
+
+    # ── JSON-file fallback ──────────────────────────────────────────────────
+    # The test suite runs JSON-only, so parity matters. BUT the JSON surface is
+    # genuinely SMALLER than the DB surface: staff_pairings, staff_groups,
+    # staff_group_members, transfer_batches, import_batches, so_records and
+    # push_tokens are DB-ONLY features (no JSON file exists for them), so their
+    # counters stay 0 in this mode — there is nothing to rewrite, not a miss.
+    # Same surface where a file exists, same order, same summary shape.
+    return _rename_user_json(old, new, old_fn, new_fn, fn_change, summary)
+
+
+def _json_rewrite_list(path: str, fields: tuple, old: str, new: str) -> int:
+    """Rewrite each top-level string field in `fields` equal to `old` → `new`
+    across a JSON file holding a list[dict]. Returns FIELD-level change count.
+    Atomic write (temp + os.replace), mirroring _save_users_json. No-op (and no
+    write) if the file is absent or nothing changed."""
+    if not os.path.exists(path):
+        return 0
+    try:
+        with open(path) as f:
+            rows = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return 0
+    if not isinstance(rows, list):
+        return 0
+    changed = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        for fld in fields:
+            if row.get(fld) == old:
+                row[fld] = new
+                changed += 1
+    if changed:
+        _atomic_write_json(path, rows)
+    return changed
+
+
+def _atomic_write_json(path: str, data) -> None:
+    """Temp-file + os.replace write, matching the _save_users_json pattern."""
+    dir_name = os.path.dirname(os.path.abspath(path)) or "."
+    fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=2, default=str)
+        os.replace(tmp_path, path)
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
+def _rename_user_json(old: str, new: str, old_fn: str, new_fn: str,
+                      fn_change: bool, summary: dict) -> tuple[bool, str | None, dict]:
+    """JSON-backend rename. Not atomic across files (an inherent JSON-mode limit,
+    same as restore_backup's JSON path) — best-effort per file, users.json last.
+    Mirrors the DB path's Step-2 rewrites (ambiguous fields + travel_log officer)
+    with the same full_name-uniqueness gate."""
+    from services.cart_store import _CART_FILE   # dict keyed by username
+    from services.appointments import _APT_FILE  # __file__-relative, not cwd
+
+    # Existence / uniqueness against users.json.
+    users = _load_users_json()
+    if not any(u.get("username") == old for u in users):
+        return False, f"User '{old}' not found.", summary
+    if any(u.get("username") == new for u in users):
+        return False, f"Username '{new}' is already taken.", summary
+
+    # full_name uniqueness gate — same rule as the DB path (count includes the
+    # renamed user's own row; exactly 1 == unique == safe to match on).
+    fn_safe = False
+    if fn_change:
+        if sum(1 for u in users if u.get("full_name") == old_fn) == 1:
+            fn_safe = True
+            summary["full_name_matched"] = True
+        else:
+            summary["full_name_ambiguous"] = True
+
+    try:
+        # 1) documents.json — one pass rewrites the unambiguous _RENAME_DOC_KEYS,
+        #    the ambiguous _RENAME_AMBIGUOUS_KEYS (username always, full_name when
+        #    fn_safe), and the nested travel_log[].officer hops.
+        from services.documents import load_docs, _save_docs_json
+        docs = load_docs(include_deleted=True)
+        doc_total = 0
+        recv_total = acc_total = 0
+        tl_hops = tl_docs = 0
+        for d in docs:
+            for key in _RENAME_DOC_KEYS:
+                if d.get(key) == old:
+                    d[key] = new
+                    doc_total += 1
+            # Ambiguous fields: username always, full_name only when fn_safe.
+            for key in _RENAME_AMBIGUOUS_KEYS:
+                val = d.get(key)
+                if val == old:
+                    d[key] = new
+                elif fn_safe and val == old_fn:
+                    d[key] = new_fn
+                else:
+                    continue
+                if key == "received_by":
+                    recv_total += 1
+                else:
+                    acc_total += 1
+            # travel_log[].officer — preserve every other hop field.
+            doc_changed = False
+            for hop in d.get("travel_log", []) or []:
+                if not isinstance(hop, dict):
+                    continue
+                off = hop.get("officer")
+                if off == old:
+                    hop["officer"] = new
+                    tl_hops += 1
+                    doc_changed = True
+                elif fn_safe and off == old_fn:
+                    hop["officer"] = new_fn
+                    tl_hops += 1
+                    doc_changed = True
+            if doc_changed:
+                tl_docs += 1
+        if doc_total or recv_total or acc_total or tl_hops:
+            _save_docs_json(docs)
+        summary["documents_updated"]       = doc_total
+        summary["received_by_updated"]     = recv_total
+        summary["accepted_by_updated"]     = acc_total
+        summary["travel_log_hops_updated"] = tl_hops
+        summary["travel_log_docs_updated"] = tl_docs
+
+        # 2) Other list-shaped JSON files that exist in JSON mode.
+        summary["activity_log_updated"]   = _json_rewrite_list("activity_log.json",   ("username",),         old, new)
+        summary["saved_offices_updated"]  = _json_rewrite_list("saved_offices.json",  ("created_by",),       old, new)
+        summary["routing_slips_updated"]  = _json_rewrite_list("routing_slips.json",  ("prepared_by", "archived_by"), old, new)
+        summary["office_traffic_updated"] = _json_rewrite_list("office_traffic.json", ("client_username",),  old, new)
+        summary["appointments_updated"]   = _json_rewrite_list(_APT_FILE,             ("client_username",),  old, new)
+        # staff_*/transfer_batches/import_batches/so_records/push_tokens: DB-only,
+        # no JSON file — counters intentionally remain 0 here.
+
+        # 3) pending_carts.json is a DICT keyed by username (user_carts twin).
+        #    Move the key; drop any stale destination first (new confirmed free).
+        if os.path.exists(_CART_FILE):
+            try:
+                with open(_CART_FILE, encoding="utf-8") as f:
+                    carts = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                carts = None
+            if isinstance(carts, dict) and old in carts:
+                carts.pop(new, None)
+                carts[new] = carts.pop(old)
+                _atomic_write_json(_CART_FILE, carts)
+                summary["user_carts_updated"] = 1
+
+        # 4) users.json LAST.
+        for u in users:
+            if u.get("username") == old:
+                u["username"] = new
+                summary["users_updated"] += 1
+        _save_users_json(users)
+
+        return True, None, summary
+    except Exception as e:
+        return False, f"Rename failed: {e}", summary
 
 
 def update_user_documents_handled(username: str, documents_handled: list) -> tuple[bool, str | None]:
