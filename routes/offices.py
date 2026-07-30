@@ -16,7 +16,7 @@ from services.misc import (
     save_office, save_routing_slip,
 )
 from services.qr import make_office_qr_png, get_base_url
-from utils import admin_required, get_client_ip, is_logged_in, login_required
+from utils import admin_required, get_client_ip, is_logged_in, login_required, staff_required, staff_required_json
 from config import APP_URL, CLIENT_REG_CODE
 
 offices_bp = Blueprint("offices", __name__)
@@ -215,6 +215,7 @@ def client_reg_qr():
 
 @offices_bp.route("/routing-slip/<slip_id>")
 @login_required
+@staff_required
 def view_routing_slip(slip_id):
     slip = get_routing_slip(slip_id)
     if not slip:
@@ -264,6 +265,7 @@ def view_routing_slip(slip_id):
 
 @offices_bp.route("/routed-documents")
 @login_required
+@staff_required
 def routed_documents():
     """Staff view — all routing slips with their documents and batch status update."""
     from services.misc import get_all_routing_slips
@@ -339,6 +341,7 @@ def routed_documents():
 
 @offices_bp.route("/routing-slip/<slip_id>/batch-status", methods=["POST"])
 @login_required
+@staff_required_json
 def batch_update_slip_status(slip_id):
     """Batch update status for all documents in a routing slip."""
     from services.misc import get_routing_slip
@@ -402,6 +405,7 @@ def batch_update_slip_status(slip_id):
 
 @offices_bp.route("/routing-slip/reroute", methods=["POST"])
 @login_required
+@staff_required
 def reroute_slip():
     """Re-route documents to a new destination office - archives original slip and creates new one."""
     from services.misc import get_routing_slip, save_routing_slip, generate_slip_no
@@ -562,6 +566,7 @@ def delete_routing_slip(slip_id):
 
 @offices_bp.route("/routing-slip/<slip_id>/archive", methods=["POST"])
 @login_required
+@staff_required_json
 def archive_routing_slip(slip_id):
     """Archive a routing slip by ID."""
     from flask import jsonify
@@ -718,6 +723,7 @@ def delete_document(doc_id):
 
 @offices_bp.route("/document/<doc_id>/archive", methods=["POST"])
 @login_required
+@staff_required_json
 def archive_document(doc_id):
     """Archive a single document."""
     from flask import jsonify
@@ -746,6 +752,7 @@ def archive_document(doc_id):
 
 @offices_bp.route("/routing-slip/archive-all", methods=["POST"])
 @login_required
+@staff_required_json
 def archive_all_routing_slips():
     """Archive all routing slips."""
     from flask import jsonify

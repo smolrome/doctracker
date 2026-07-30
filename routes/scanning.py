@@ -24,7 +24,7 @@ from services.qr import (
     generate_qr_b64, make_doc_status_qr_png, make_office_qr_png, use_doc_token,
     get_token_doc, verify_office_action,
 )
-from utils import get_client_ip, is_logged_in, login_required, staff_required
+from utils import get_client_ip, is_logged_in, login_required, staff_required, staff_required_json
 
 scanning_bp = Blueprint("scanning", __name__)
 
@@ -237,6 +237,7 @@ def receive(doc_id):
 
 @scanning_bp.route("/upload-qr", methods=["GET", "POST"])
 @login_required
+@staff_required
 def upload_qr():
     result = error = success_entry = None
     doc = None
@@ -320,6 +321,7 @@ def web_doc_lookup(doc_id):
 
 @scanning_bp.route("/web/receive-from-client/<doc_id>", methods=["POST"])
 @login_required
+@staff_required_json
 def web_receive_from_client(doc_id):
     """Session-authenticated receive-from-client for the staff scanner overlay."""
     current_user   = session.get("username", "")
@@ -357,6 +359,7 @@ def web_receive_from_client(doc_id):
 
 @scanning_bp.route("/staff-scan", methods=["GET"])
 @login_required
+@staff_required
 def staff_scan():
     return render_template("staff_scan.html")
 
@@ -373,6 +376,7 @@ def office_qr_png(action):
 
 @scanning_bp.route("/doc-qr-download/<token>")
 @login_required
+@staff_required
 def doc_qr_download(token):
     doc, token_type = get_token_doc(token)
     if not doc:

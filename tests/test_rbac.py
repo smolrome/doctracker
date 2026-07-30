@@ -93,9 +93,9 @@ class TestClientAccess:
     def test_client_blocked_from_add_doc(self, client_user_client):
         """Client should not be able to add staff documents (/add requires staff/admin)."""
         rv = client_user_client.get("/add", follow_redirects=False)
-        # Client is logged in so login_required passes, but the route may redirect
-        # or show a restricted view — should not crash (2xx/3xx acceptable)
-        assert rv.status_code in (200, 302, 403)
+        # /add is now @staff_required — a client is logged in (login_required
+        # passes) but must be blocked by the role gate: redirect, never a 200.
+        assert rv.status_code in (302, 403)
 
     @pytest.mark.parametrize("path", ADMIN_ONLY_ROUTES)
     def test_client_blocked_from_admin(self, client_user_client, path):
@@ -121,6 +121,86 @@ class TestAdminAccess:
     def test_admin_can_access_add_doc(self, admin_client):
         rv = admin_client.get("/add", follow_redirects=True)
         assert rv.status_code == 200
+
+
+class TestStaffSurfaceGate:
+    """1b — the remaining staff web surface is gated by staff_required
+    (HTML → 302 redirect) and staff_required_json (AJAX → 403 JSON).
+
+    Clients are logged in, so login_required passes; the role gate is what
+    must block them. Staff/admin must still get through.
+    """
+
+    # ── Clients are blocked ──────────────────────────────────────────────
+    def test_client_blocked_from_html_route_redirects(self, client_user_client):
+        """An HTML staff route (@staff_required) redirects a client (302)."""
+        rv = client_user_client.get("/dashboard", follow_redirects=False)
+        assert rv.status_code == 302, f"Expected redirect, got {rv.status_code}"
+
+    def test_client_blocked_from_json_get_route(self, client_user_client):
+        """A JSON GET route (@staff_required_json) returns 403 JSON, not a redirect."""
+        rv = client_user_client.get("/pending-count", follow_redirects=False)
+        assert rv.status_code == 403, f"Expected 403, got {rv.status_code}"
+        assert rv.is_json, f"Expected JSON body, got {rv.content_type}"
+        assert "error" in rv.get_json()
+
+    def test_client_blocked_from_json_post_route(self, client_user_client):
+        """A JSON POST route (@staff_required_json) returns 403 JSON for a client.
+
+        A valid CSRF token is supplied so the app's csrf_check before_request
+        (which 302-redirects token-less POSTs) is passed and the request reaches
+        the RBAC gate. The gate fires before the handler, so a non-existent doc
+        id is fine.
+        """
+        # Login clears the session; the CSRF token is only re-seeded by the
+        # ensurecsrf_token before_request on the next request, so hit a GET
+        # first, then read the freshly seeded token.
+        client_user_client.get("/client")
+        with client_user_client.session_transaction() as s:
+            csrf = s.get("csrf_token", "")
+        rv = client_user_client.post(
+            "/accept-document/nonexistent",
+            headers={"X-CSRF-Token": csrf},
+            follow_redirects=False,
+        )
+        assert rv.status_code == 403, f"Expected 403, got {rv.status_code}"
+        assert rv.is_json, f"Expected JSON body, got {rv.content_type}"
+        assert "error" in rv.get_json()
+
+    # ── transfer_doc — the content-negotiating inline gate ───────────────
+    def test_client_blocked_from_transfer_ajax_gets_json_403(self, client_user_client):
+        """transfer_doc: an AJAX client request gets 403 JSON with ok=False."""
+        rv = client_user_client.get(
+            "/transfer/nonexistent",
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            follow_redirects=False,
+        )
+        assert rv.status_code == 403, f"Expected 403, got {rv.status_code}"
+        assert rv.is_json, f"Expected JSON body, got {rv.content_type}"
+        assert rv.get_json().get("ok") is False
+
+    def test_client_blocked_from_transfer_non_ajax_redirects(self, client_user_client):
+        """transfer_doc: a non-AJAX client request redirects (302), not JSON."""
+        rv = client_user_client.get("/transfer/nonexistent", follow_redirects=False)
+        assert rv.status_code == 302, f"Expected redirect, got {rv.status_code}"
+
+    # ── Staff / admin still succeed ──────────────────────────────────────
+    def test_staff_allowed_on_html_route(self, staff_client):
+        """Staff still reach an HTML staff route (200)."""
+        rv = staff_client.get("/dashboard", follow_redirects=True)
+        assert rv.status_code == 200
+
+    def test_staff_allowed_on_json_route(self, staff_client):
+        """Staff still reach a JSON staff route (200 JSON)."""
+        rv = staff_client.get("/pending-count", follow_redirects=False)
+        assert rv.status_code == 200
+        assert rv.is_json
+
+    def test_admin_allowed_on_json_route(self, admin_client):
+        """The env-var admin (no users row) still reaches a JSON staff route (200)."""
+        rv = admin_client.get("/pending-count", follow_redirects=False)
+        assert rv.status_code == 200
+        assert rv.is_json
 
 
 class TestOpenRedirectProtection:

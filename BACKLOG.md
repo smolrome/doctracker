@@ -138,13 +138,14 @@ Real but narrow limitations. Things that are wrong but contained, or design deci
   (which uses a DB-backed limiter — see `PASSWORD_RESET_RATE_LIMITS`), but **login, register,
   status_update, doc_create, and api limits are still in-memory** and therefore still 4×-able.
 
-- **Role enforcement on web routes is incomplete — most staff routes are `login_required`-only.**
-  `login_required` ([utils.py:26](utils.py:26)) checks only `session["logged_in"]`, not role, so until
-  now any logged-in session — **including a `client`** — could reach staff routes by typing the URL.
-  The UI hides the links (nav is gated by `current_role` in `templates/base.html`), so it was an
-  exposure by direct request, not a visible one. A `staff_required` decorator now exists
-  ([utils.py:49](utils.py:49)) — session-based (admits the env-var admin, which has no `users` row),
-  redirect-on-fail like `admin_required`.
+- **Role enforcement on web+mobile routes — the core gap is now CLOSED (1a+1b+1c); only cleanups remain.**
+  `login_required` ([utils.py:26](utils.py:26)) checks only `session["logged_in"]`, not role, so any
+  logged-in session — **including a `client`** — used to reach staff routes by typing the URL. The UI
+  hid the links (nav is gated by `current_role` in `templates/base.html`), so it was an exposure by
+  direct request, not a visible one. Two session-based decorators now close it: `staff_required`
+  ([utils.py:49](utils.py:49)) — redirect-on-fail like `admin_required` — and its JSON twin
+  `staff_required_json` ([utils.py:70](utils.py:70)) — 401/403 JSON, never a redirect. Both admit the
+  env-var admin (which has no `users` row).
 
   **Partially closed (branch `feature/staff-required-decorator`, commit 1a of 3):** applied to the four
   confidentiality-sensitive routes that render internal `officer`/`remarks` fields the `client_view.py`
@@ -176,19 +177,42 @@ Real but narrow limitations. Things that are wrong but contained, or design deci
   real flow. Left on `@jwt_required()`. `api_update_status` also left as-is: it has a genuine
   client-owner branch ([:535](blueprints/api.py:535)).
 
+  **Also closed (commit 1b): the remaining web staff surface.** `staff_required` (redirect, HTML) on
+  15 routes and `staff_required_json` (JSON 403) on 18 AJAX routes, across
+  `dashboard.py`/`offices.py`/`scanning.py`. `transfer_doc`
+  ([routes/dashboard.py:1048](routes/dashboard.py:1048)) got an **inline** `is_ajax`-negotiating gate
+  rather than a decorator: the route owns a `{"ok": False, ...}` failure contract that the decorator's
+  `{"error": ...}` shape would not match. `so_types_list`/`so_fields` left as-is (already had correct
+  inline JSON 403). Tightened `test_client_blocked_from_add_doc` — it accepted `200`, so it passed
+  *with the leak open*; now `(302, 403)`. New `TestStaffSurfaceGate` (8 tests) raises the baseline
+  334→342 passed; the 14 failures are unchanged.
+
+  *Finding (defense-in-depth, not a bug):* on POST routes, `csrf_check` ([app.py:332](app.py:332))
+  runs as a `before_request` **ahead of** the RBAC decorators, so a token-less client POST is 302'd by
+  CSRF before it ever reaches the 403. Both paths are closed — no token → CSRF stops it, valid token →
+  RBAC stops it. The POST test seeds a token via a GET first (login clears the session; the token is
+  only re-seeded on the next request) to exercise the RBAC path specifically.
+
   **Still open (deferred):**
-  - *1b — remaining ~39 web staff routes*: add/edit/transfer/release/status/routing/scanning etc. still
-    `login_required`-only. See the full inventory in the staff_required investigation.
-  - *Cleanup — handler-body single-fetch refactor*: the gated mobile handlers still call
-    `get_user_by_username` in their bodies. Now that `jwt_staff_required` caches `g.current_api_user`,
-    read from it instead — collapses `api_update_status`'s three fetches
+  - *Cleanup (own commits)*: handler-body single-fetch refactor — the gated mobile handlers still call
+    `get_user_by_username` in-body though `jwt_staff_required` caches `g.current_api_user`; collapses
+    `api_update_status`'s three fetches
     ([:532](blueprints/api.py:532)/[:533](blueprints/api.py:533)/[:538](blueprints/api.py:538)) and
     `api_edit_document`'s two ([:2193](blueprints/api.py:2193)/[:2194](blueprints/api.py:2194)) to one.
-    Separate commit.
-  - *Cleanup*: the inline `role not in ("staff","admin")` 403 in `so_download` is now shadowed by
-    `_require_staff()` and is dead — remove it in a follow-up (left in 1a to avoid refactoring).
-  - *Divergence to reconcile*: web `staff_required` ([utils.py:49](utils.py:49)) omits `'superadmin'`;
-    mobile `jwt_staff_required` includes it. Widen the web one to match — separate commit.
+    Plus three now-dead guards left in place to avoid refactoring: the inline `role not in (...)` 403 in
+    `so_download` (shadowed by `_require_staff()`), and the inline *redirects* in
+    `staff_confirm_appointment`/`staff_reject_appointment` (shadowed by `staff_required_json` — and a
+    redirect was the wrong failure mode for a JSON route anyway). And widen web `staff_required`
+    ([utils.py:49](utils.py:49)) to include `'superadmin'`, matching mobile `jwt_staff_required`.
+  - *NEW — same defect class as 1b, admin scope*: `admin_required` ([utils.py:36](utils.py:36))
+    redirects-to-HTML on failure but gates two **JSON** routes — `delete_routing_slip`
+    ([routes/offices.py:540](routes/offices.py:540)) and `bulk_create_offices`
+    ([routes/offices.py:147](routes/offices.py:147)) — so an auth failure there 302s-to-HTML a `fetch`
+    caller. Works today only because an admin is always the caller. Wants an `admin_required_json` twin.
+  - *Confirm dead-or-alive (non-urgent)*: `get_transferred_documents`
+    ([routes/dashboard.py:1926](routes/dashboard.py:1926)) and `get_dropdown_options_api`
+    ([routes/dashboard.py:1943](routes/dashboard.py:1943)) were gated for safety in 1b, but no
+    client-side caller turned up in templates or static JS — verify they're live before assuming so.
   - *Decide deliberately (not a `staff_required` question)*: the dropdown-options editors, `db_status`,
     `app_qr`, and `client_reg_qr` may want `admin_required` rather than `staff_required` — needs an
     intent call, not a mechanical gate.
