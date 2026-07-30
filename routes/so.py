@@ -10,7 +10,7 @@ from datetime import datetime
 from flask import (Blueprint, flash, jsonify, redirect,
                    render_template, request, send_file, session, url_for)
 
-from utils import get_client_ip, login_required
+from utils import get_client_ip, login_required, staff_required
 
 so_bp = Blueprint("so", __name__)
 
@@ -988,8 +988,12 @@ def so_generate():
 
 @so_bp.route("/api/so/download/<filename>")
 @login_required
+@staff_required
 def so_download(filename):
     """Serve the generated .docx file for download."""
+    guard = _require_staff()
+    if guard:
+        return guard
     if session.get("role") not in ("staff", "admin"):
         return jsonify({"error": "Unauthorized"}), 403
 

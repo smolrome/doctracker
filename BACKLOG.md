@@ -138,6 +138,97 @@ Real but narrow limitations. Things that are wrong but contained, or design deci
   (which uses a DB-backed limiter — see `PASSWORD_RESET_RATE_LIMITS`), but **login, register,
   status_update, doc_create, and api limits are still in-memory** and therefore still 4×-able.
 
+- **Role enforcement on web+mobile routes — the core gap is now CLOSED (1a+1b+1c); only cleanups remain.**
+  `login_required` ([utils.py:26](utils.py:26)) checks only `session["logged_in"]`, not role, so any
+  logged-in session — **including a `client`** — used to reach staff routes by typing the URL. The UI
+  hid the links (nav is gated by `current_role` in `templates/base.html`), so it was an exposure by
+  direct request, not a visible one. Two session-based decorators now close it: `staff_required`
+  ([utils.py:49](utils.py:49)) — redirect-on-fail like `admin_required` — and its JSON twin
+  `staff_required_json` ([utils.py:70](utils.py:70)) — 401/403 JSON, never a redirect. Both admit the
+  env-var admin (which has no `users` row).
+
+  **Partially closed (branch `feature/staff-required-decorator`, commit 1a of 3):** applied to the four
+  confidentiality-sensitive routes that render internal `officer`/`remarks` fields the `client_view.py`
+  sanitizer would otherwise strip — `view_doc` ([routes/dashboard.py:695](routes/dashboard.py:695)),
+  `travel_log_json` ([routes/dashboard.py:2179](routes/dashboard.py:2179)), `web_doc_lookup`
+  ([routes/scanning.py:293](routes/scanning.py:293)) — plus `so_download`
+  ([routes/so.py:989](routes/so.py:989)), which also got the `_require_staff()` (`can_generate_so`)
+  gate its SO siblings have.
+
+  *Correction to the original framing of `so_download`:* it was **not** `login_required`-only — it
+  already had an inline `role not in ("staff","admin")` 403. The real gap was the missing
+  `can_generate_so` check, so the leak severity was overstated: it was reachable only by a staff user
+  lacking SO access, never by a client.
+
+  **Also closed (commit 1c): mobile JWT gate.** `jwt_staff_required` + `_is_env_admin` added to
+  [blueprints/api.py:98](blueprints/api.py:98) — single-fetch, `g`-cached (`g.current_api_user`),
+  admits the env-var admin (no `users` row) via the inline env check, includes `superadmin`. Applied to
+  `api_create_document` ([blueprints/api.py:485](blueprints/api.py:485)), `api_quick_note`
+  ([blueprints/api.py:1660](blueprints/api.py:1660)), and `api_check_duplicate`
+  ([blueprints/api.py:1684](blueprints/api.py:1684)) — all three had no ownership branch and no
+  legitimate client use, yet were reachable **and functional from a client token** before this. New
+  `staff_tokens`/`client_tokens` fixtures + `TestJwtStaffGate` (6 tests, client→403 / staff→success)
+  raise the baseline 328→334 passed; the 14 failures are unchanged.
+
+  **`api_release_document` ([blueprints/api.py:1511](blueprints/api.py:1511)) deliberately NOT gated.**
+  Its owner is `original_logged_by or logged_by` ([:1524](blueprints/api.py:1524)) and it admits
+  `user_id == original_logger`. `api_client_submit` stamps `logged_by = client_id` (see the new item
+  below), so a client is the legitimate release-owner of their own submission — gating it would 403 a
+  real flow. Left on `@jwt_required()`. `api_update_status` also left as-is: it has a genuine
+  client-owner branch ([:535](blueprints/api.py:535)).
+
+  **Also closed (commit 1b): the remaining web staff surface.** `staff_required` (redirect, HTML) on
+  15 routes and `staff_required_json` (JSON 403) on 18 AJAX routes, across
+  `dashboard.py`/`offices.py`/`scanning.py`. `transfer_doc`
+  ([routes/dashboard.py:1048](routes/dashboard.py:1048)) got an **inline** `is_ajax`-negotiating gate
+  rather than a decorator: the route owns a `{"ok": False, ...}` failure contract that the decorator's
+  `{"error": ...}` shape would not match. `so_types_list`/`so_fields` left as-is (already had correct
+  inline JSON 403). Tightened `test_client_blocked_from_add_doc` — it accepted `200`, so it passed
+  *with the leak open*; now `(302, 403)`. New `TestStaffSurfaceGate` (8 tests) raises the baseline
+  334→342 passed; the 14 failures are unchanged.
+
+  *Finding (defense-in-depth, not a bug):* on POST routes, `csrf_check` ([app.py:332](app.py:332))
+  runs as a `before_request` **ahead of** the RBAC decorators, so a token-less client POST is 302'd by
+  CSRF before it ever reaches the 403. Both paths are closed — no token → CSRF stops it, valid token →
+  RBAC stops it. The POST test seeds a token via a GET first (login clears the session; the token is
+  only re-seeded on the next request) to exercise the RBAC path specifically.
+
+  **Still open (deferred):**
+  - *Cleanup (own commits)*: handler-body single-fetch refactor — the gated mobile handlers still call
+    `get_user_by_username` in-body though `jwt_staff_required` caches `g.current_api_user`; collapses
+    `api_update_status`'s three fetches
+    ([:532](blueprints/api.py:532)/[:533](blueprints/api.py:533)/[:538](blueprints/api.py:538)) and
+    `api_edit_document`'s two ([:2193](blueprints/api.py:2193)/[:2194](blueprints/api.py:2194)) to one.
+    Plus three now-dead guards left in place to avoid refactoring: the inline `role not in (...)` 403 in
+    `so_download` (shadowed by `_require_staff()`), and the inline *redirects* in
+    `staff_confirm_appointment`/`staff_reject_appointment` (shadowed by `staff_required_json` — and a
+    redirect was the wrong failure mode for a JSON route anyway). And widen web `staff_required`
+    ([utils.py:49](utils.py:49)) to include `'superadmin'`, matching mobile `jwt_staff_required`.
+  - *NEW — same defect class as 1b, admin scope*: `admin_required` ([utils.py:36](utils.py:36))
+    redirects-to-HTML on failure but gates two **JSON** routes — `delete_routing_slip`
+    ([routes/offices.py:540](routes/offices.py:540)) and `bulk_create_offices`
+    ([routes/offices.py:147](routes/offices.py:147)) — so an auth failure there 302s-to-HTML a `fetch`
+    caller. Works today only because an admin is always the caller. Wants an `admin_required_json` twin.
+  - *Confirm dead-or-alive (non-urgent)*: `get_transferred_documents`
+    ([routes/dashboard.py:1926](routes/dashboard.py:1926)) and `get_dropdown_options_api`
+    ([routes/dashboard.py:1943](routes/dashboard.py:1943)) were gated for safety in 1b, but no
+    client-side caller turned up in templates or static JS — verify they're live before assuming so.
+  - *Decide deliberately (not a `staff_required` question)*: the dropdown-options editors, `db_status`,
+    `app_qr`, and `client_reg_qr` may want `admin_required` rather than `staff_required` — needs an
+    intent call, not a mechanical gate.
+
+- **Client-submit endpoints disagree on ownership shape — one stamps `logged_by` on a client submit.**
+  `api_client_submit` ([blueprints/api.py:3158-3159](blueprints/api.py:3158)) stamps **both**
+  `logged_by` **and** `submitted_by` with the client's id; `api_client_submit_mobile`
+  ([blueprints/api.py:3389](blueprints/api.py:3389)) stamps **only** `submitted_by`. Same user action,
+  two ownership shapes — this is the source of the `both_stamped=2` documents seen in prod. `logged_by`
+  on a client submission is almost certainly wrong: `logged_by` means "staff logged this from inside the
+  office," and it's what `api_release_document` keys ownership on ([:1524](blueprints/api.py:1524)) —
+  which is exactly why that endpoint couldn't be staff-gated in 1c. Needs its own investigation: what
+  breaks if `api_client_submit` stops writing `logged_by`, whether the 2 existing docs need a data fix,
+  and how this interacts with the staff-submission ownership model. **HIGH** — directly feeds the
+  submission-ownership work.
+
 ## Features / polish
 
 Wanted, not broken.

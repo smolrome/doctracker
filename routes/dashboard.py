@@ -23,7 +23,7 @@ from services.misc import audit_log, load_saved_offices
 from services.cart_store import clear_cart
 from services.qr import generate_qr_b64, make_qr_png
 from services.dropdown_options import get_dropdown_options
-from utils import admin_required, get_client_ip, is_logged_in, login_required
+from utils import admin_required, get_client_ip, is_logged_in, login_required, staff_required, staff_required_json
 from config import STATUS_OPTIONS
 
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -403,6 +403,7 @@ def index():
 
 @dashboard_bp.route("/dashboard")
 @login_required
+@staff_required
 def dashboard():
     if session.get("role") not in ("staff", "admin"):
         return redirect(url_for("dashboard.index"))
@@ -413,6 +414,7 @@ def dashboard():
 
 @dashboard_bp.route("/add", methods=["GET", "POST"])
 @login_required
+@staff_required
 def add():
     cart  = session.get("staff_cart", [])
     error = None
@@ -640,6 +642,7 @@ def add():
 
 @dashboard_bp.route("/logging-slip/<slip_id>")
 @login_required
+@staff_required
 def view_logging_slip(slip_id):
     from services.misc import get_all_routing_slips
     all_slips = get_all_routing_slips()
@@ -661,6 +664,7 @@ def view_logging_slip(slip_id):
 
 @dashboard_bp.route("/logging-slip/print", methods=["POST"])
 @login_required
+@staff_required
 def print_logging_slip():
     from services.misc import save_routing_slip
     from services.documents import get_docs_by_ids
@@ -694,6 +698,7 @@ def print_logging_slip():
 
 @dashboard_bp.route("/view/<doc_id>")
 @login_required
+@staff_required
 def view_doc(doc_id):
     doc = get_doc(doc_id)
     if not doc:
@@ -734,6 +739,7 @@ def view_doc(doc_id):
 
 @dashboard_bp.route("/edit/<doc_id>", methods=["GET", "POST"])
 @login_required
+@staff_required
 def edit(doc_id):
     doc = get_doc(doc_id)
     if not doc:
@@ -921,6 +927,7 @@ def permanent_delete_all():
 
 @dashboard_bp.route("/update-status/<doc_id>", methods=["POST"])
 @login_required
+@staff_required_json
 def update_status(doc_id):
     doc = get_doc(doc_id)
     if not doc:
@@ -966,6 +973,7 @@ def update_status(doc_id):
 
 @dashboard_bp.route("/bulk-update-status", methods=["POST"])
 @login_required
+@staff_required_json
 def bulk_update_status():
     doc_ids_str = request.form.get("doc_ids", "").strip()
     new_status = request.form.get("new_status", "").strip()
@@ -1039,6 +1047,11 @@ def bulk_update_status():
 @login_required
 def transfer_doc(doc_id):
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    if session.get("role") not in ("staff", "admin"):
+        if is_ajax:
+            return jsonify({"ok": False, "error": "Staff access required"}), 403
+        flash("Staff access required.", "error")
+        return redirect(url_for("dashboard.index"))
     doc = get_doc(doc_id)
     if not doc:
         if is_ajax: return jsonify({"ok": False, "error": "Document not found"}), 404
@@ -1256,6 +1269,7 @@ def transfer_doc(doc_id):
     
 @dashboard_bp.route("/release/<doc_id>", methods=["POST"])
 @login_required
+@staff_required
 def release_doc(doc_id):
     """
     Final release — only callable by the original logging staff,
@@ -1317,6 +1331,7 @@ def release_doc(doc_id):
 
 @dashboard_bp.route("/transfer-batch", methods=["POST"])
 @login_required
+@staff_required
 def transfer_batch():
     doc_ids       = request.form.get("doc_ids", "").strip()
     transfer_type = request.form.get("transfer_type", "").strip()
@@ -1618,6 +1633,7 @@ def _is_pending_for(doc: dict, username: str, office: str) -> bool:
 
 @dashboard_bp.route("/pending-documents")
 @login_required
+@staff_required_json
 def get_pending_documents():
     """Get all documents pending acceptance for the current user."""
     current_user = session.get("username", "")
@@ -1717,6 +1733,7 @@ def get_pending_documents():
 
 @dashboard_bp.route("/pending-count")
 @login_required
+@staff_required_json
 def get_pending_count():
     """Get count of documents pending acceptance for the current user."""
     current_user = session.get("username", "")
@@ -1738,6 +1755,7 @@ def get_pending_count():
 
 @dashboard_bp.route("/api/office-staff")
 @login_required
+@staff_required_json
 def api_office_staff_list():
     """Return staff/admin users for a given office (session-protected).
     Used by the post-accept forward dialog in base.js."""
@@ -1756,6 +1774,7 @@ def api_office_staff_list():
 
 @dashboard_bp.route("/accept-document/<doc_id>", methods=["POST"])
 @login_required
+@staff_required_json
 def accept_document(doc_id):
     """Accept a transferred document."""
     current_user = session.get("username", "")
@@ -1824,6 +1843,7 @@ def accept_document(doc_id):
 
 @dashboard_bp.route("/reject-document/<doc_id>", methods=["POST"])
 @login_required
+@staff_required_json
 def reject_document(doc_id):
     """Reject a transferred document with a reason."""
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
@@ -1915,6 +1935,7 @@ def reject_document(doc_id):
 
 @dashboard_bp.route("/api/transferred-documents")
 @login_required
+@staff_required_json
 def get_transferred_documents():
     """Get documents transferred by current user (to see accept/reject status)."""
     current_user = session.get("username", "")
@@ -1932,6 +1953,7 @@ def get_transferred_documents():
 
 @dashboard_bp.route("/api/dropdown-options")
 @login_required
+@staff_required_json
 def get_dropdown_options_api():
     """
     API endpoint to get dropdown options for a specific field.
@@ -2096,6 +2118,7 @@ def backfill_logged_office():
 
 @dashboard_bp.route("/export-csv")
 @login_required
+@staff_required
 def export_csv():
     """Export the current filtered document list as a CSV download."""
     current_username = session.get("username", "")
@@ -2160,6 +2183,7 @@ def export_csv():
 
 @dashboard_bp.route("/quick-note/<doc_id>", methods=["POST"])
 @login_required
+@staff_required_json
 def quick_note(doc_id):
     doc = get_doc(doc_id)
     if not doc:
@@ -2178,6 +2202,7 @@ def quick_note(doc_id):
 
 @dashboard_bp.route("/travel-log/<doc_id>")
 @login_required
+@staff_required
 def travel_log_json(doc_id):
     doc = get_doc(doc_id)
     if not doc:
@@ -2189,6 +2214,7 @@ def travel_log_json(doc_id):
 
 @dashboard_bp.route("/check-duplicate")
 @login_required
+@staff_required_json
 def check_duplicate():
     q = request.args.get("q", "").strip().lower()
     if len(q) < 5:
@@ -2258,6 +2284,7 @@ def check_duplicate():
 
 @dashboard_bp.route("/staff/appointments")
 @login_required
+@staff_required
 def staff_appointments():
     if session.get("role") not in ("staff", "admin"):
         return redirect(url_for("dashboard.index"))
@@ -2298,6 +2325,7 @@ def staff_appointments():
 
 @dashboard_bp.route("/staff/appointments/<apt_id>/confirm", methods=["POST"])
 @login_required
+@staff_required_json
 def staff_confirm_appointment(apt_id):
     if session.get("role") not in ("staff", "admin"):
         return redirect(url_for("dashboard.index"))
@@ -2320,6 +2348,7 @@ def staff_confirm_appointment(apt_id):
 
 @dashboard_bp.route("/staff/appointments/<apt_id>/reject", methods=["POST"])
 @login_required
+@staff_required_json
 def staff_reject_appointment(apt_id):
     if session.get("role") not in ("staff", "admin"):
         return redirect(url_for("dashboard.index"))
