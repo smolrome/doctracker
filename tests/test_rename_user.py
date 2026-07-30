@@ -99,9 +99,10 @@ class TestRenameUser:
         # composite proxy label that must survive exact-match rewrites intact.
         docs = [
             # D1 — ambiguous fields hold the USERNAME; officer hop holds username.
+            # accepted_by_username (Step 2.5 A1) is ALWAYS a bare username.
             {"id": "D1", "logged_by": "oldname", "original_logged_by": "oldname",
              "updated_by": "oldname", "received_by": "oldname",
-             "accepted_by": "oldname",
+             "accepted_by": "oldname", "accepted_by_username": "oldname",
              "travel_log": [{"officer": "oldname", "action": "Received"},
                             {"officer": "someoneelse", "action": "Routed"}]},
             # D2 — every unambiguous Step-1 key.
@@ -112,8 +113,13 @@ class TestRenameUser:
             {"id": "D3", "logged_by": "someoneelse"},
             # D4 — ambiguous fields hold the FULL_NAME; accepted_by is a composite
             # proxy label; officer hops mix a full_name hit and a composite miss.
+            # Step 2.5 A2 display-name companions also hold the FULL_NAME here.
             {"id": "D4", "received_by": "Old Full Name",
              "accepted_by": "Old Full Name (Admin, proxy for Someone)",
+             "accepted_by_name": "Old Full Name",
+             "pending_at_staff_name": "Old Full Name",
+             "submitted_by_name": "Old Full Name",
+             "intended_for_name": "Old Full Name",
              "travel_log": [{"officer": "Old Full Name", "action": "Accepted"},
                             {"officer": "Old Full Name (Admin, proxy for Someone)",
                              "action": "Proxy"}]},
@@ -157,12 +163,21 @@ class TestRenameUser:
         # ...and the unrelated hop is left alone
         assert docs["D1"]["travel_log"][1]["officer"] == "someoneelse"
 
+        # Step 2.5 A1: accepted_by_username is a bare username → new username
+        assert docs["D1"]["accepted_by_username"] == "newname"
+
         # Step-2: full_name-valued ambiguous fields → new full_name (fn unique)
         assert docs["D4"]["received_by"] == "New Full Name"
         assert docs["D4"]["travel_log"][0]["officer"] == "New Full Name"
         # Composite proxy label is NOT equal to the plain old full_name → intact
         assert docs["D4"]["accepted_by"] == "Old Full Name (Admin, proxy for Someone)"
         assert docs["D4"]["travel_log"][1]["officer"] == "Old Full Name (Admin, proxy for Someone)"
+
+        # Step 2.5 A2: client-facing display-name companions → new full_name
+        assert docs["D4"]["accepted_by_name"] == "New Full Name"
+        assert docs["D4"]["pending_at_staff_name"] == "New Full Name"
+        assert docs["D4"]["submitted_by_name"] == "New Full Name"
+        assert docs["D4"]["intended_for_name"] == "New Full Name"
 
         # full_name was unique → matched, not ambiguous
         assert summary["full_name_matched"] is True
@@ -173,6 +188,11 @@ class TestRenameUser:
         assert summary["accepted_by_updated"] == 1
         assert summary["travel_log_hops_updated"] == 2
         assert summary["travel_log_docs_updated"] == 2
+        # Step 2.5 A2 per-field rowcounts (each hit once on D4's full_name).
+        assert summary["accepted_by_name_updated"] == 1
+        assert summary["pending_at_staff_name_updated"] == 1
+        assert summary["submitted_by_name_updated"] == 1
+        assert summary["intended_for_name_updated"] == 1
 
         # Other surfaces
         assert json.loads((tmp_path / "activity_log.json").read_text())[0]["username"] == "newname"
@@ -189,8 +209,9 @@ class TestRenameUser:
         assert any(u["username"] == "newname" for u in _load_users_json())
         assert not any(u["username"] == "oldname" for u in _load_users_json())
 
-        # Summary counts (field-level for documents: D1 has 3 Step-1 keys, D2 has 8)
-        assert summary["documents_updated"] == 11
+        # Summary counts (field-level for documents: D1 has 4 Step-1 keys —
+        # logged_by, original_logged_by, updated_by, accepted_by_username — D2 has 8)
+        assert summary["documents_updated"] == 12
         assert summary["activity_log_updated"] == 1
         assert summary["routing_slips_updated"] == 2
         assert summary["appointments_updated"] == 1
@@ -228,11 +249,15 @@ class TestRenameUser:
     def test_shared_full_name_skips_full_name_rewrite(self, tmp_path, monkeypatch):
         """When the old full_name is shared by >1 user, full_name matching is
         UNSAFE: the username-based rewrite still runs, but full_name-valued
-        occurrences are left untouched and summary['full_name_ambiguous'] is set."""
+        occurrences are left untouched and summary['full_name_ambiguous'] is set.
+
+        The twin's full_name differs ONLY IN CASING ("OLD FULL NAME") — proving
+        the Step 2.5 case-insensitive uniqueness gate treats it as a collision."""
         self._seed(tmp_path, monkeypatch)
         from services.auth import create_user, rename_user
-        # A SECOND user with the SAME full_name as 'oldname' → shared/ambiguous.
-        create_user("othertwin", "GoodPass1!", full_name="Old Full Name", role="staff")
+        # A SECOND user whose full_name case-folds to the SAME string → the
+        # case-insensitive gate must flag this as shared/ambiguous.
+        create_user("othertwin", "GoodPass1!", full_name="OLD FULL NAME", role="staff")
 
         ok, err, summary = rename_user("oldname", "newname", "Old Full Name", "New Full Name")
         assert ok is True, err
@@ -243,12 +268,17 @@ class TestRenameUser:
         # Username-valued occurrences STILL rewritten...
         assert docs["D1"]["received_by"] == "newname"
         assert docs["D1"]["accepted_by"] == "newname"
+        assert docs["D1"]["accepted_by_username"] == "newname"  # A1: username, not gated
         assert docs["D1"]["travel_log"][0]["officer"] == "newname"
         # ...but full_name-valued ones are LEFT as the old full_name (unsafe).
         assert docs["D4"]["received_by"] == "Old Full Name"
+        assert docs["D4"]["accepted_by_name"] == "Old Full Name"
+        assert docs["D4"]["pending_at_staff_name"] == "Old Full Name"
         assert docs["D4"]["travel_log"][0]["officer"] == "Old Full Name"
         assert summary["received_by_updated"] == 1     # only D1's username hit
         assert summary["accepted_by_updated"] == 1
+        assert summary["accepted_by_name_updated"] == 0     # full_name-only, skipped
+        assert summary["pending_at_staff_name_updated"] == 0
         assert summary["travel_log_hops_updated"] == 1
 
     def test_other_persons_history_not_touched(self, tmp_path, monkeypatch):
@@ -274,3 +304,73 @@ class TestRenameUser:
         assert d5["accepted_by"] == "bystander"
         assert d5["travel_log"][0]["officer"] == "By Stander"
         assert d5["travel_log"][1]["officer"] == "bystander"
+
+    def test_casing_drift_full_name_still_rewritten(self, tmp_path, monkeypatch):
+        """THE Step 2.5 Change B proof — mirrors the real Kim data. users.full_name
+        is UPPER ("KIM WENDELL DAVOCOL") but documents hold a TITLE-CASE variant
+        ("Kim Wendell Davocol"). Exact matching (pre-Change-B) would MISS these;
+        case-insensitive matching rewrites them to the new canonical full_name."""
+        monkeypatch.chdir(tmp_path)
+        from services.auth import create_user, rename_user
+        import services.cart_store as cart_store
+        import services.appointments as appts
+        monkeypatch.setattr(cart_store, "_CART_FILE", str(tmp_path / "pending_carts.json"))
+        monkeypatch.setattr(appts, "_APT_FILE", str(tmp_path / "appointments.json"))
+        # Stored user full_name is UPPER-CASE, unique.
+        create_user("kimd", "GoodPass1!", full_name="KIM WENDELL DAVOCOL", role="staff")
+        # Documents hold the TITLE-CASE variant — a casing mismatch vs old_full_name.
+        docs = [{
+            "id": "K1",
+            "received_by": "Kim Wendell Davocol",
+            "accepted_by_name": "Kim Wendell Davocol",
+            "pending_at_staff_name": "Kim Wendell Davocol",
+            "intended_for_name": "Kim Wendell Davocol",
+            "travel_log": [{"officer": "Kim Wendell Davocol", "action": "Accepted"}],
+        }]
+        (tmp_path / "documents.json").write_text(json.dumps(docs))
+
+        # old_full_name passed in is the UPPER users.full_name; new is canonical.
+        ok, err, summary = rename_user("kimd", "kimw",
+                                       "KIM WENDELL DAVOCOL", "Kim W. Davocol")
+        assert ok is True, err
+        assert summary["full_name_matched"] is True      # unique despite casing
+        assert summary["full_name_ambiguous"] is False
+
+        k1 = json.loads((tmp_path / "documents.json").read_text())[0]
+        # Despite the UPPER-vs-title casing mismatch, all were rewritten to the
+        # new CANONICAL full_name (casing normalized) — the Change-B payoff.
+        assert k1["received_by"] == "Kim W. Davocol"
+        assert k1["accepted_by_name"] == "Kim W. Davocol"
+        assert k1["pending_at_staff_name"] == "Kim W. Davocol"
+        assert k1["intended_for_name"] == "Kim W. Davocol"
+        assert k1["travel_log"][0]["officer"] == "Kim W. Davocol"
+
+    def test_free_text_fields_not_touched(self, tmp_path, monkeypatch):
+        """Boundary pin: free-text fields (referred_to, sender_name,
+        recipient_name, travel_log[].remarks) are NOT rewritten even when they
+        coincidentally equal the old full_name. Only structured identity fields
+        are rewritten — see the FREE-TEXT BOUNDARY comment in services/auth.py."""
+        self._seed(tmp_path, monkeypatch)
+        from services.auth import rename_user
+        docs = json.loads((tmp_path / "documents.json").read_text())
+        docs.append({
+            "id": "FT1",
+            "referred_to": "Old Full Name",
+            "sender_name": "Old Full Name",
+            "recipient_name": "Old Full Name",
+            "travel_log": [{"officer": "Old Full Name", "action": "Accepted",
+                            "remarks": "Old Full Name handed this over"}],
+        })
+        (tmp_path / "documents.json").write_text(json.dumps(docs))
+
+        ok, err, _ = rename_user("oldname", "newname", "Old Full Name", "New Full Name")
+        assert ok is True, err
+
+        ft1 = {d["id"]: d for d in json.loads((tmp_path / "documents.json").read_text())}["FT1"]
+        # Free-text fields untouched...
+        assert ft1["referred_to"] == "Old Full Name"
+        assert ft1["sender_name"] == "Old Full Name"
+        assert ft1["recipient_name"] == "Old Full Name"
+        assert ft1["travel_log"][0]["remarks"] == "Old Full Name handed this over"
+        # ...but the STRUCTURED officer field in the same hop IS rewritten.
+        assert ft1["travel_log"][0]["officer"] == "New Full Name"

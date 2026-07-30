@@ -258,19 +258,26 @@ Wanted, not broken.
     full_name pass so a different person's history is never touched). Exact matching leaves composite
     proxy labels intact. `travel_log[].officer` is a Python round-trip on the SAME cursor (containment
     `@>` scoped SELECT → edit → UPDATE back), never `batch_save_docs`. Still no route wiring.
-  - **Step 2.5 — structured companion display-name fields (NOT yet covered).** A follow-up audit
-    found `documents.data` also stores parallel `*_name`/`*_username` companions that Steps 1+2 do
-    NOT touch, so a rename still leaves the old name visible — worst on the client portal, which
-    reads the stored name BEFORE resolving the username ([client_view.py:192](services/client_view.py:192),
-    [:211](services/client_view.py:211)). Client-facing: `accepted_by_name`, `pending_at_staff_name`,
-    `intended_for_name` (also [client_submitted.html:82-83](templates/client_submitted.html:82)),
-    plus `submitted_by_name` and mobile `accepted_by_username` ([api.py:1287](blueprints/api.py:1287),
-    filter [api.py:338](blueprints/api.py:338)). Also `transfer_batches.transferred_to_name` (§2c
-    gap). Plan: `accepted_by_username` → exact-username pass; the four `*_name` fields → ambiguous
-    pass. Open decision on the free-text fields `referred_to` (can hold a staff full_name,
-    [api.py:1510](blueprints/api.py:1510)) and `sender_name` (mostly external) — default: rewrite
-    `referred_to` on a unique full_name, leave `sender_name`. Do NOT rewrite `travel_log[].remarks`
-    (free text) or `recipient_name` (external/legacy).
+  - **Step 2.5 — structured companion display-name fields + case-insensitive full_name (DONE,
+    service-only on the branch).** A follow-up audit found `documents.data` also stores parallel
+    `*_name`/`*_username` companions that Steps 1+2 did NOT touch, so a rename still left the old name
+    visible — worst on the client portal, which reads the stored name BEFORE resolving the username
+    ([client_view.py:192](services/client_view.py:192), [:211](services/client_view.py:211)). Added:
+    `accepted_by_username` → exact-username pass (`_RENAME_DOC_KEYS`); `accepted_by_name`,
+    `pending_at_staff_name`, `submitted_by_name`, `intended_for_name` → ambiguous pass
+    (`_RENAME_AMBIGUOUS_KEYS`); `transfer_batches.transferred_to_name` → §2c (`fn_safe`-gated).
+    **Change B:** all full_name matching is now CASE-INSENSITIVE (uniqueness gate, ambiguous UPDATEs,
+    travel_log officer compare, JSON path) — prod stores full_name with casing drift (canonical
+    `"KIM WENDELL DAVOCOL"` vs stored `"Kim Wendell Davocol"`) that exact match missed; the written-back
+    value is the new canonical full_name, normalizing casing. **Decision changed from the filed plan:**
+    `referred_to` is NOT rewritten after all — the boundary is "structured identity fields only, never
+    free-text that may coincidentally contain a name." Excluded and documented in code:
+    `referred_to`, `sender_name`, `recipient_name`, `travel_log[].remarks`. Tests: casing-drift proof
+    + free-text-boundary pin added. **The travel_log full_name SELECT (fn_safe branch) is necessarily
+    a seq scan** (`jsonb_array_elements` + `lower()` is not sargable, and the `OR` defeats the GIN-
+    eligible `@>` term); fine at ~17k rows / once per rename within the 120s txn, revisit only at
+    100k+ rows. **DB-only §2c tables (incl. `transferred_to_name`) stay UNVERIFIED until the testdoc
+    run** — the JSON test backend has no such tables.
   - **Step 3 — route wiring + guards.** Detect a username change in the edit route, call
     `rename_user`, emit ONE post-commit `audit_log("username_renamed", …)` summary line, forbid
     renaming your own logged-in account, and warn that the renamed user must re-login (Flask

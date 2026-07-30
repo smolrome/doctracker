@@ -662,6 +662,10 @@ _RENAME_DOC_KEYS = (
     "rejected_by",
     "assigned_to",
     "updated_by",
+    # Step 2.5 — a PARALLEL username companion to accepted_by. Always a bare
+    # username (api.py:1287 writes accepted_by_username = user_id), so it belongs
+    # with the unambiguous exact-username keys, not the ambiguous full_name set.
+    "accepted_by_username",
 )
 
 # Step 2: top-level document fields that store "full_name OR username" — you
@@ -670,14 +674,44 @@ _RENAME_DOC_KEYS = (
 #   - accepted_by  : username on web (dashboard.py:1811), full_name on mobile
 #                    (api.py:1276/1286), OR a composite proxy label
 #                    "{full_name} (Admin, proxy for {target})" (api.py:1269).
-# We rewrite these by EXACT match on the old username and (only when the old
-# full_name is unique among users) the old full_name. Exact match is
-# corruption-safe: a composite proxy label never equals the plain old full_name,
-# so it is left intact rather than mangled — see the report note.
+# Step 2.5 adds the client-facing display-name companions. These store a
+# full_name for portal display but are read BEFORE live username resolution in
+# services/client_view.py (accepted_by_name @192, pending_at_staff_name @211),
+# so a stale stored name would win over the renamed username — the highest-
+# visibility miss. They go in the ambiguous set (not a full_name-only list)
+# because the username-match pass is a harmless safe superset if any ever holds
+# a username instead of a display name:
+#   - accepted_by_name       (full_name, client-facing)
+#   - pending_at_staff_name  (full_name, client-facing)
+#   - submitted_by_name      (full_name)
+#   - intended_for_name      (full_name, client-facing)
+# We rewrite all of these by EXACT match on the old username and — only when the
+# old full_name is unique among users — a CASE-INSENSITIVE match on the old
+# full_name (Step 2.5 Change B: prod stores full_name with inconsistent casing,
+# e.g. users.full_name "KIM WENDELL DAVOCOL" vs documents "Kim Wendell Davocol").
+# The full_name match is still corruption-safe: a composite proxy label never
+# equals the plain old full_name even case-folded, so it is left intact.
 _RENAME_AMBIGUOUS_KEYS = (
     "received_by",
     "accepted_by",
+    "accepted_by_name",
+    "pending_at_staff_name",
+    "submitted_by_name",
+    "intended_for_name",
 )
+
+# FREE-TEXT BOUNDARY (Step 2.5 — deliberate, not an omission). These fields also
+# can contain a person's name, but they are NOT rewritten by rename_user:
+#   - referred_to          : free-text recipient string (routes/client.py) — may
+#                            coincidentally contain a full_name but is not a
+#                            structured identity field.
+#   - sender_name          : free-text sender label (api.py:3168/3191/3394).
+#   - recipient_name       : free-text recipient label.
+#   - travel_log[].remarks : free-text remarks that may mention a name in prose.
+# The rename rewrites STRUCTURED identity fields (a field whose whole value IS an
+# actor's username or display name), never free-text that merely may contain a
+# name — rewriting prose would corrupt it and match by coincidence. If a future
+# reader wonders why these are skipped: it was a decision.
 
 
 def _rename_summary(old: str, new: str) -> dict:
@@ -689,10 +723,14 @@ def _rename_summary(old: str, new: str) -> dict:
         # the old name under two keys contributes 2). Honest "rows affected",
         # not distinct-doc count.
         "documents_updated":           0,
-        # Step 2 — the ambiguous display fields (field-level rowcounts, summing
-        # both the username-match and the full_name-match rewrites).
-        "received_by_updated":         0,
-        "accepted_by_updated":         0,
+        # Step 2 / 2.5 — the ambiguous display fields (field-level rowcounts,
+        # summing both the username-match and the full_name-match rewrites).
+        "received_by_updated":            0,
+        "accepted_by_updated":            0,
+        "accepted_by_name_updated":       0,   # Step 2.5 (client-facing)
+        "pending_at_staff_name_updated":  0,   # Step 2.5 (client-facing)
+        "submitted_by_name_updated":      0,   # Step 2.5
+        "intended_for_name_updated":      0,   # Step 2.5 (client-facing)
         "travel_log_hops_updated":     0,   # individual travel_log hops rewritten
         "travel_log_docs_updated":     0,   # distinct docs whose travel_log changed
         # full_name rewrite decision (set in the pre-flight):
@@ -803,9 +841,16 @@ def rename_user(old_username: str, new_username: str,
                     # user's own row, so exactly 1 == unique to this person == safe
                     # to match on. >1 == shared == matching would rewrite someone
                     # else's history, so skip full_name matching and flag it.
+                    #
+                    # Step 2.5 Change B: the gate is CASE-INSENSITIVE too. Two
+                    # rows "Jane Doe" and "JANE DOE" are the same collision risk,
+                    # so they must count as a shared name. lower()=lower() also
+                    # keeps this consistent with the case-insensitive rewrites
+                    # below. (Kim stays unique: only one row case-folds to
+                    # "kim wendell davocol", so count == 1 and fn_safe holds.)
                     fn_safe = False
                     if fn_change:
-                        cur.execute("SELECT COUNT(*) AS c FROM users WHERE full_name = %s", (old_fn,))
+                        cur.execute("SELECT COUNT(*) AS c FROM users WHERE lower(full_name) = lower(%s)", (old_fn,))
                         if cur.fetchone()["c"] == 1:
                             fn_safe = True
                             summary["full_name_matched"] = True
@@ -830,6 +875,12 @@ def rename_user(old_username: str, new_username: str,
                     #     full_name only when fn_safe. Per-field rowcount (username
                     #     + full_name matches summed). Exact match, so a composite
                     #     proxy label is never touched.
+                    #     Step 2.5 Change B: the full_name pass matches
+                    #     CASE-INSENSITIVELY (lower(data->>KEY) = lower(old_fn))
+                    #     so title-case variants are caught; the value written
+                    #     back is the new canonical full_name, normalizing casing.
+                    #     The username pass stays EXACT (usernames are already
+                    #     lower()+strip()'d). Both values remain bound params.
                     for key in _RENAME_AMBIGUOUS_KEYS:
                         field_total = 0
                         cur.execute(
@@ -843,7 +894,7 @@ def rename_user(old_username: str, new_username: str,
                             cur.execute(
                                 "UPDATE documents "
                                 "SET data = jsonb_set(data, %s, to_jsonb(%s::text)) "
-                                "WHERE data->>%s = %s",
+                                "WHERE lower(data->>%s) = lower(%s)",
                                 ([key], new_fn, key, old_fn),
                             )
                             field_total += cur.rowcount
@@ -856,18 +907,30 @@ def rename_user(old_username: str, new_username: str,
                     #     edit officer hops in Python; write each changed doc back
                     #     on THIS SAME cursor (never batch_save_docs). Every other
                     #     field in each hop is preserved — only officer changes.
+                    #     Step 2.5 Change B: the username filter stays EXACT
+                    #     containment (@>), but the full_name filter must be
+                    #     CASE-INSENSITIVE — @> is case-sensitive, so it would
+                    #     MISS a title-case officer. Scope it with a guarded
+                    #     jsonb_array_elements EXISTS on lower(e->>'officer') so
+                    #     we still touch only affected docs, not all ~17k. The
+                    #     jsonb_typeof guard skips docs whose travel_log is null
+                    #     or a non-array scalar (jsonb_array_elements would raise).
                     officer_sql = ("SELECT id, data FROM documents "
                                    "WHERE data->'travel_log' @> %s::jsonb")
                     officer_params = [json.dumps([{"officer": old}])]
                     if fn_safe:
-                        officer_sql = ("SELECT id, data FROM documents "
-                                       "WHERE data->'travel_log' @> %s::jsonb "
-                                       "   OR data->'travel_log' @> %s::jsonb")
-                        officer_params = [json.dumps([{"officer": old}]),
-                                          json.dumps([{"officer": old_fn}])]
+                        officer_sql = (
+                            "SELECT id, data FROM documents "
+                            "WHERE data->'travel_log' @> %s::jsonb "
+                            "   OR (jsonb_typeof(data->'travel_log') = 'array' "
+                            "       AND EXISTS ("
+                            "         SELECT 1 FROM jsonb_array_elements(data->'travel_log') AS e "
+                            "         WHERE lower(e->>'officer') = lower(%s)))")
+                        officer_params = [json.dumps([{"officer": old}]), old_fn]
                     cur.execute(officer_sql, officer_params)
                     tl_rows = cur.fetchall()
                     tl_hops = tl_docs = 0
+                    old_fn_lower = old_fn.lower()
                     for row in tl_rows:
                         data = row["data"]
                         if isinstance(data, str):        # defensive: normally a dict
@@ -881,7 +944,7 @@ def rename_user(old_username: str, new_username: str,
                                 hop["officer"] = new
                                 tl_hops += 1
                                 doc_changed = True
-                            elif fn_safe and off == old_fn:
+                            elif fn_safe and isinstance(off, str) and off.lower() == old_fn_lower:
                                 hop["officer"] = new_fn
                                 tl_hops += 1
                                 doc_changed = True
@@ -946,6 +1009,16 @@ def rename_user(old_username: str, new_username: str,
                     batches += cur.rowcount
                     cur.execute("UPDATE transfer_batches SET transferred_to = %s WHERE transferred_to = %s", (new, old))
                     batches += cur.rowcount
+                    # Step 2.5 A3: transferred_to_name is a full_name column, so it
+                    # is subject to the SAME uniqueness gate + case-insensitive
+                    # rule as the ambiguous full_name fields above.
+                    if fn_safe:
+                        cur.execute(
+                            "UPDATE transfer_batches SET transferred_to_name = %s "
+                            "WHERE lower(transferred_to_name) = lower(%s)",
+                            (new_fn, old_fn),
+                        )
+                        batches += cur.rowcount
                     summary["transfer_batches_updated"] = batches
 
                     cur.execute("UPDATE import_batches SET imported_by = %s WHERE imported_by = %s", (new, old))
@@ -1048,9 +1121,11 @@ def _rename_user_json(old: str, new: str, old_fn: str, new_fn: str,
 
     # full_name uniqueness gate — same rule as the DB path (count includes the
     # renamed user's own row; exactly 1 == unique == safe to match on).
+    # Step 2.5 Change B: case-insensitive, matching the DB lower()=lower() gate.
     fn_safe = False
+    old_fn_lower = old_fn.lower()
     if fn_change:
-        if sum(1 for u in users if u.get("full_name") == old_fn) == 1:
+        if sum(1 for u in users if (u.get("full_name") or "").lower() == old_fn_lower) == 1:
             fn_safe = True
             summary["full_name_matched"] = True
         else:
@@ -1063,26 +1138,26 @@ def _rename_user_json(old: str, new: str, old_fn: str, new_fn: str,
         from services.documents import load_docs, _save_docs_json
         docs = load_docs(include_deleted=True)
         doc_total = 0
-        recv_total = acc_total = 0
+        # Per-key ambiguous counters (Step 2.5 — was a hardcoded recv/acc pair).
+        amb_counts = {key: 0 for key in _RENAME_AMBIGUOUS_KEYS}
         tl_hops = tl_docs = 0
         for d in docs:
             for key in _RENAME_DOC_KEYS:
                 if d.get(key) == old:
                     d[key] = new
                     doc_total += 1
-            # Ambiguous fields: username always, full_name only when fn_safe.
+            # Ambiguous fields: username exact always, full_name only when
+            # fn_safe and CASE-INSENSITIVELY (Step 2.5 Change B) — write back the
+            # new canonical full_name, normalizing casing.
             for key in _RENAME_AMBIGUOUS_KEYS:
                 val = d.get(key)
                 if val == old:
                     d[key] = new
-                elif fn_safe and val == old_fn:
+                elif fn_safe and isinstance(val, str) and val.lower() == old_fn_lower:
                     d[key] = new_fn
                 else:
                     continue
-                if key == "received_by":
-                    recv_total += 1
-                else:
-                    acc_total += 1
+                amb_counts[key] += 1
             # travel_log[].officer — preserve every other hop field.
             doc_changed = False
             for hop in d.get("travel_log", []) or []:
@@ -1093,17 +1168,17 @@ def _rename_user_json(old: str, new: str, old_fn: str, new_fn: str,
                     hop["officer"] = new
                     tl_hops += 1
                     doc_changed = True
-                elif fn_safe and off == old_fn:
+                elif fn_safe and isinstance(off, str) and off.lower() == old_fn_lower:
                     hop["officer"] = new_fn
                     tl_hops += 1
                     doc_changed = True
             if doc_changed:
                 tl_docs += 1
-        if doc_total or recv_total or acc_total or tl_hops:
+        if doc_total or any(amb_counts.values()) or tl_hops:
             _save_docs_json(docs)
         summary["documents_updated"]       = doc_total
-        summary["received_by_updated"]     = recv_total
-        summary["accepted_by_updated"]     = acc_total
+        for key, cnt in amb_counts.items():
+            summary[f"{key}_updated"] = cnt
         summary["travel_log_hops_updated"] = tl_hops
         summary["travel_log_docs_updated"] = tl_docs
 
