@@ -8,7 +8,7 @@ from flask import Blueprint, current_app, flash, jsonify, redirect, render_templ
 from services.auth import (
     create_user, delete_user, get_all_users, set_user_active,
     update_user_password, update_user, approve_user, get_pending_clients,
-    update_user_documents_handled, set_user_can_generate_so,
+    update_user_documents_handled, set_user_can_generate_so, rename_user,
 )
 from services.database import set_user_can_route_documents, user_has_so_access
 from services.email import (
@@ -840,30 +840,116 @@ def edit_user_route(username):
     if new_username == "":
         new_username = username  # keep original if field was cleared
 
-    # Get original user data for audit
+    is_rename = new_username != username
+
+    # Self-rename guard (SERVER-SIDE — a crafted POST must not bypass it). An
+    # admin renaming their OWN currently-logged-in account is blocked: Flask
+    # cookie sessions can't be invalidated server-side, so the admin's cookie
+    # would keep the OLD username and any subsequent action would re-orphan
+    # records under it — the exact bug this feature fixes. Model: delete/disable
+    # self-guards (admin.py delete_user_route). Blocks before ANY write.
+    if is_rename and username == session.get("username"):
+        flash("You cannot rename your own account while logged in. "
+              "Ask another admin to perform the rename.", "error")
+        return redirect(url_for("admin.manage_users"))
+
+    # Get original user data for audit AND for the old full_name that rename_user
+    # needs (its uniqueness gate reads the CURRENT users.full_name).
     all_users     = get_all_users()
     original_user = next((u for u in all_users if u.get("username") == username), None)
 
+    if is_rename:
+        # ── Genuine rename → full-history rewrite path ──────────────────────
+        # ORDER IS LOAD-BEARING. rename_user MUST run BEFORE we touch
+        # users.full_name: its full_name-uniqueness gate does
+        #   SELECT COUNT(*) FROM users WHERE lower(full_name) = lower(old_fn)
+        # and only rewrites the ambiguous display fields when that count is 1.
+        # That read must see the OLD full_name still in the users row. If we set
+        # users.full_name = new_fn first (e.g. via update_user), the gate would
+        # count the NEW name, miscount, and skip/mis-scope the history rewrite.
+        # So: rename_user first (owns username + document/table history AND reads
+        # the old full_name), THEN update_user for the remaining users-row
+        # columns (full_name/role/office/email) with new_username=None.
+        old_fn = (original_user or {}).get("full_name") or ""
+        new_fn = full_name  # form value (may be "")
+
+        ok, err, summary = rename_user(username, new_username, old_fn, new_fn)
+        if not ok:
+            # rename_user rolled the whole transaction back — do NOT run the
+            # follow-up update_user / documents_handled / audit. Nothing changed.
+            flash(f"Rename failed: {err}", "error")
+            return redirect(url_for("admin.manage_users"))
+
+        # Rename committed. Now set the remaining users-row columns on the NEW
+        # username. new_username=None here — the row is already renamed; this
+        # call must NOT attempt another rename. This is also what actually writes
+        # users.full_name = new_fn (rename_user never touches that column).
+        update_user(
+            new_username,
+            full_name    = new_fn if new_fn else None,
+            role         = role if role else None,
+            office       = office if office else None,
+            email        = email,                       # always pass (blank = clear)
+            new_username = None,
+        )
+        update_user_documents_handled(new_username, doc_types)
+
+        # ONE post-commit audit row built from the summary (audit_log opens its
+        # own connection/commit, so it runs OUTSIDE the rename transaction).
+        audit_log(
+            "username_renamed",
+            (f"{username} -> {new_username}; "
+             f"documents={summary['documents_updated']}, "
+             f"received_by={summary['received_by_updated']}, "
+             f"accepted_by={summary['accepted_by_updated']}, "
+             f"travel_log_hops={summary['travel_log_hops_updated']}, "
+             f"activity_log={summary['activity_log_updated']}, "
+             f"routing_slips={summary['routing_slips_updated']}, "
+             f"transfer_batches={summary['transfer_batches_updated']}, "
+             f"full_name_matched={summary['full_name_matched']}, "
+             f"full_name_ambiguous={summary['full_name_ambiguous']}"),
+            username=session.get("username", "admin"),
+            ip=get_client_ip(),
+        )
+
+        flash(f"✅ User renamed: '{username}' → '{new_username}'. "
+              f"History rewritten ({summary['documents_updated']} document fields).",
+              "success")
+        # Operationally important — NOT a footnote. The renamed user's live
+        # session still carries the OLD username; until they re-login, any action
+        # they take writes NEW orphaned records under the old name.
+        flash(f"⚠️ IMPORTANT: '{new_username}' must LOG OUT and log back in "
+              f"immediately. Their current session still uses the old username — "
+              f"any action they take before re-login will create orphaned records "
+              f"under '{username}'.", "warning")
+        if summary.get("full_name_ambiguous"):
+            # full_name was shared by >1 user → the full_name-based history
+            # rewrite was SKIPPED (would corrupt someone else's records). The
+            # users.full_name column WAS still updated above (the edited user's
+            # own row), but historical display names remain and need manual work.
+            flash("⚠️ Another user shares this full name, so historical "
+                  "display-name occurrences were left unchanged to avoid "
+                  "rewriting the other person's records — handle those manually.",
+                  "warning")
+
+        return redirect(url_for("admin.manage_users"))
+
+    # ── No username change → original update_user path (unchanged behavior) ──
     ok, err = update_user(
         username,
         full_name    = full_name if full_name else None,
         role         = role if role else None,
         office       = office if office else None,
         email        = email,                               # always pass (blank = clear)
-        new_username = new_username if new_username != username else None,
+        new_username = None,
     )
 
     if ok:
-        # After a rename the canonical username has changed — use new_username for follow-up calls
-        effective_username = new_username if new_username != username else username
-
         # Always update documents_handled (blank form field → empty list = clear)
-        update_user_documents_handled(effective_username, doc_types)
+        update_user_documents_handled(username, doc_types)
 
         changes = []
         if original_user:
-            if new_username != username:
-                changes.append(f"username: {username} -> {new_username}")
             if original_user.get("email", "") != email:
                 changes.append(f"email: {original_user.get('email')} -> {email}")
             if original_user.get("full_name") != full_name:
@@ -880,7 +966,7 @@ def edit_user_route(username):
                   f"admin edited user={username}: {'; '.join(changes) if changes else 'no changes'}",
                   username=session.get("username", "admin"),
                   ip=get_client_ip())
-        flash(f"✅ User '{effective_username}' updated successfully.", "success")
+        flash(f"✅ User '{username}' updated successfully.", "success")
     else:
         flash(f"Failed to update user: {err}", "error")
 
