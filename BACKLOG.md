@@ -233,8 +233,9 @@ Real but narrow limitations. Things that are wrong but contained, or design deci
 
 Wanted, not broken.
 
-- [ ] **Username rename with full-history rewrite** (multi-step; Steps 1+2 built, service-only, on
-  `feature/username-rename-service` — not yet wired to any route). Usernames are stored as bare strings inside `documents` JSONB
+- [ ] **Username rename with full-history rewrite** (multi-step; Steps 1–3 built on
+  `feature/username-rename-service` — service + route wiring done, not yet staged on `testdoc` or
+  merged). Usernames are stored as bare strings inside `documents` JSONB
   (`logged_by`, `original_logged_by`, …) and across ~15 other tables/columns with **no FK**. The
   current admin edit-user flow ([routes/admin.py:827](routes/admin.py:827) →
   [services/auth.py:518](services/auth.py:518) `update_user`) changes **only the `users` row** and
@@ -278,12 +279,35 @@ Wanted, not broken.
     eligible `@>` term); fine at ~17k rows / once per rename within the 120s txn, revisit only at
     100k+ rows. **DB-only §2c tables (incl. `transferred_to_name`) stay UNVERIFIED until the testdoc
     run** — the JSON test backend has no such tables.
-  - **Step 3 — route wiring + guards.** Detect a username change in the edit route, call
-    `rename_user`, emit ONE post-commit `audit_log("username_renamed", …)` summary line, forbid
-    renaming your own logged-in account, and warn that the renamed user must re-login (Flask
-    cookie sessions can't be force-invalidated server-side).
-  - **Step 4 — tests + `testdoc` run.** `tests/test_rename_user.py` exists (JSON backend); add
-    route-level coverage in Step 3, then stage on `testdoc`.
+  - **Step 3 — route wiring + guards. DONE (on the branch; not yet staged/merged).**
+    `edit_user_route` ([routes/admin.py:827](routes/admin.py:827)) now detects a genuine username
+    change (`new_username != username`) and diverts to `rename_user` **before** `update_user`
+    (ordering is load-bearing — the uniqueness gate reads the OLD `users.full_name`, which
+    `rename_user` never writes; `update_user` runs second with `new_username=None` to set the
+    remaining columns). Guards, all server-side (a crafted POST can't bypass): self-rename blocked
+    (`is_rename and username == session["username"]`) before ANY write; on `rename_user` not-ok the
+    error is flashed verbatim and the request returns immediately (no follow-up `update_user` /
+    `documents_handled` / audit — the txn already rolled back). ONE post-commit
+    `audit_log("username_renamed", …)` line built from the summary dict. Two operational flashes on
+    success: a PROMINENT re-login warning (the renamed user's cookie still carries the old username;
+    any action before re-login re-orphans records) and, when `full_name_ambiguous`, a warning that
+    shared-name history was left untouched (the user's own `users.full_name` IS still updated).
+    Route-level coverage in [tests/test_admin_rename_route.py](tests/test_admin_rename_route.py)
+    (history-rewrite divert, non-username edit stays on `update_user`, self-rename blocked, taken /
+    invalid name, re-login warning present).
+  - **Follow-up gap — a full_name-only change (username unchanged) still orphans history.** If an
+    admin edits only `full_name` and leaves the username the same, `is_rename` is false, so the route
+    takes the plain `update_user` path and `rename_user` never runs — historical `full_name`
+    occurrences (and the ambiguous `*_name` companions) are NOT rewritten, orphaning them the same way
+    the username case did before Step 1. `rename_user` also currently rejects `old == new` username,
+    so it can't be reused as-is for this. OUT of scope for Step 3 (its contract was deliberately not
+    expanded). Fix later: either a `rename_display_name(username, old_fn, new_fn)` service or relax
+    `rename_user` to accept an unchanged username with a changed full_name, then wire the
+    full_name-changed branch in `edit_user_route`.
+  - **Step 4 — tests + `testdoc` run.** `tests/test_rename_user.py` (service) + Step 3's
+    `tests/test_admin_rename_route.py` (route) both exist and pass on the JSON backend; DB-only §2c
+    surfaces (`transfer_batches.transferred_to_name`, staff_*, routing_slips) stay UNVERIFIED until a
+    `testdoc` run exercises them against Postgres.
   - **Blast-radius notes:** no server-side username format validation existed before (client-side
     `pattern` only). One **existing real account, `bella bernales`, has a space** and fails the new
     charset — enforcement is wired to validate NEW/CHANGED names only, so it keeps working for
