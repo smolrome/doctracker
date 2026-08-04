@@ -209,6 +209,9 @@ Real but narrow limitations. Things that are wrong but contained, or design deci
     ([routes/offices.py:540](routes/offices.py:540)) and `bulk_create_offices`
     ([routes/offices.py:147](routes/offices.py:147)) — so an auth failure there 302s-to-HTML a `fetch`
     caller. Works today only because an admin is always the caller. Wants an `admin_required_json` twin.
+  - *Test coverage*: no test asserts an **unauthenticated** (no-token) request to the JWT-gated mobile
+    endpoints gets **401** — `TestJwtStaffGate` only exercises client-token→403 and staff→success. Add
+    a no-token→401 case so the unauthenticated path is pinned alongside the authorization path.
   - *Confirm dead-or-alive (non-urgent)*: `get_transferred_documents`
     ([routes/dashboard.py:1926](routes/dashboard.py:1926)) and `get_dropdown_options_api`
     ([routes/dashboard.py:1943](routes/dashboard.py:1943)) were gated for safety in 1b, but no
@@ -229,91 +232,39 @@ Real but narrow limitations. Things that are wrong but contained, or design deci
   and how this interacts with the staff-submission ownership model. **HIGH** — directly feeds the
   submission-ownership work.
 
+- **The username rename deliberately does NOT rewrite free-text fields.** `rename_user`
+  ([services/auth.py:762](services/auth.py:762)) rewrites structured identity fields only.
+  `referred_to`, `sender_name`, `recipient_name`, and `travel_log[].remarks` are intentionally
+  excluded and documented in code — they are free text that may coincidentally contain a name, and
+  rewriting them risks corrupting prose. This is a boundary, not a gap: a renamed user's name can
+  still appear verbatim inside those fields by design.
+
+- **The rename's `travel_log` full_name pass is a sequential scan.** In the `fn_safe` branch the
+  SELECT uses `jsonb_array_elements` + `lower(officer)`, which is not sargable and whose `OR` defeats
+  the GIN-eligible `@>` containment term, so it necessarily scans. Fine under ~100k documents, and it
+  runs once per rename inside the 120s transaction (the Kim → Paul rename over ~13k docs was clean).
+  Revisit with an expression index on `lower(officer)` (or a restructured query) only if `documents`
+  grows large.
+
 ## Features / polish
 
 Wanted, not broken.
 
-- [ ] **Username rename with full-history rewrite** (multi-step; Steps 1–3 built on
-  `feature/username-rename-service` — service + route wiring done, not yet staged on `testdoc` or
-  merged). Usernames are stored as bare strings inside `documents` JSONB
-  (`logged_by`, `original_logged_by`, …) and across ~15 other tables/columns with **no FK**. The
-  current admin edit-user flow ([routes/admin.py:827](routes/admin.py:827) →
-  [services/auth.py:518](services/auth.py:518) `update_user`) changes **only the `users` row** and
-  **orphans every referencing document** — yet the UI already promises "Changing the username will
-  also update the login name" ([manage_users.html:253](templates/manage_users.html:253)). The
-  feature adds a server-side rename that atomically rewrites every reference. Full rewrite surface
-  and design are in the scoping report; plan:
-  - **Step 1 — validator + `rename_user` service (no route). DONE.** `_validate_username`
-    ([services/auth.py](services/auth.py), `[a-z0-9._-]`, 3–32, wired into `create_user` and into
-    `update_user` *only on a genuine rename*) + `rename_user(old, new, old_full_name, new_full_name)`
-    doing the set-based SQL rewrites of the `_RENAME_DOC_KEYS` document keys and the §2c tables in one
-    `get_conn()` transaction (mirrors `restore_backup`; no `batch_save_docs`/`audit_log` inside), with
-    a JSON-fallback parity path. Returns a per-surface summary. Unreachable from HTTP.
-  - **Step 2 — the ambiguous fields (DONE, service-only on the branch).**
-    `documents.received_by`, `accepted_by`, and nested `travel_log[].officer` are written as
-    `full_name OR username` (and `accepted_by`/`officer` can even be a composite proxy label
-    `"{full_name} (Admin, proxy for {target})"`, [api.py:1269](blueprints/api.py:1269)). Because a
-    rename supplies BOTH the old/new username AND old/new full_name, `rename_user` now rewrites these
-    by EXACT match on the old username always, and on the old full_name **only when that full_name is
-    unique among users** (a shared full_name sets `summary["full_name_ambiguous"]` and skips the
-    full_name pass so a different person's history is never touched). Exact matching leaves composite
-    proxy labels intact. `travel_log[].officer` is a Python round-trip on the SAME cursor (containment
-    `@>` scoped SELECT → edit → UPDATE back), never `batch_save_docs`. Still no route wiring.
-  - **Step 2.5 — structured companion display-name fields + case-insensitive full_name (DONE,
-    service-only on the branch).** A follow-up audit found `documents.data` also stores parallel
-    `*_name`/`*_username` companions that Steps 1+2 did NOT touch, so a rename still left the old name
-    visible — worst on the client portal, which reads the stored name BEFORE resolving the username
-    ([client_view.py:192](services/client_view.py:192), [:211](services/client_view.py:211)). Added:
-    `accepted_by_username` → exact-username pass (`_RENAME_DOC_KEYS`); `accepted_by_name`,
-    `pending_at_staff_name`, `submitted_by_name`, `intended_for_name` → ambiguous pass
-    (`_RENAME_AMBIGUOUS_KEYS`); `transfer_batches.transferred_to_name` → §2c (`fn_safe`-gated).
-    **Change B:** all full_name matching is now CASE-INSENSITIVE (uniqueness gate, ambiguous UPDATEs,
-    travel_log officer compare, JSON path) — prod stores full_name with casing drift (canonical
-    `"KIM WENDELL DAVOCOL"` vs stored `"Kim Wendell Davocol"`) that exact match missed; the written-back
-    value is the new canonical full_name, normalizing casing. **Decision changed from the filed plan:**
-    `referred_to` is NOT rewritten after all — the boundary is "structured identity fields only, never
-    free-text that may coincidentally contain a name." Excluded and documented in code:
-    `referred_to`, `sender_name`, `recipient_name`, `travel_log[].remarks`. Tests: casing-drift proof
-    + free-text-boundary pin added. **The travel_log full_name SELECT (fn_safe branch) is necessarily
-    a seq scan** (`jsonb_array_elements` + `lower()` is not sargable, and the `OR` defeats the GIN-
-    eligible `@>` term); fine at ~17k rows / once per rename within the 120s txn, revisit only at
-    100k+ rows. **DB-only §2c tables (incl. `transferred_to_name`) stay UNVERIFIED until the testdoc
-    run** — the JSON test backend has no such tables.
-  - **Step 3 — route wiring + guards. DONE (on the branch; not yet staged/merged).**
-    `edit_user_route` ([routes/admin.py:827](routes/admin.py:827)) now detects a genuine username
-    change (`new_username != username`) and diverts to `rename_user` **before** `update_user`
-    (ordering is load-bearing — the uniqueness gate reads the OLD `users.full_name`, which
-    `rename_user` never writes; `update_user` runs second with `new_username=None` to set the
-    remaining columns). Guards, all server-side (a crafted POST can't bypass): self-rename blocked
-    (`is_rename and username == session["username"]`) before ANY write; on `rename_user` not-ok the
-    error is flashed verbatim and the request returns immediately (no follow-up `update_user` /
-    `documents_handled` / audit — the txn already rolled back). ONE post-commit
-    `audit_log("username_renamed", …)` line built from the summary dict. Two operational flashes on
-    success: a PROMINENT re-login warning (the renamed user's cookie still carries the old username;
-    any action before re-login re-orphans records) and, when `full_name_ambiguous`, a warning that
-    shared-name history was left untouched (the user's own `users.full_name` IS still updated).
-    Route-level coverage in [tests/test_admin_rename_route.py](tests/test_admin_rename_route.py)
-    (history-rewrite divert, non-username edit stays on `update_user`, self-rename blocked, taken /
-    invalid name, re-login warning present).
-  - **Follow-up gap — a full_name-only change (username unchanged) still orphans history.** If an
-    admin edits only `full_name` and leaves the username the same, `is_rename` is false, so the route
-    takes the plain `update_user` path and `rename_user` never runs — historical `full_name`
-    occurrences (and the ambiguous `*_name` companions) are NOT rewritten, orphaning them the same way
-    the username case did before Step 1. `rename_user` also currently rejects `old == new` username,
-    so it can't be reused as-is for this. OUT of scope for Step 3 (its contract was deliberately not
-    expanded). Fix later: either a `rename_display_name(username, old_fn, new_fn)` service or relax
-    `rename_user` to accept an unchanged username with a changed full_name, then wire the
-    full_name-changed branch in `edit_user_route`.
-  - **Step 4 — tests + `testdoc` run.** `tests/test_rename_user.py` (service) + Step 3's
-    `tests/test_admin_rename_route.py` (route) both exist and pass on the JSON backend; DB-only §2c
-    surfaces (`transfer_batches.transferred_to_name`, staff_*, routing_slips) stay UNVERIFIED until a
-    `testdoc` run exercises them against Postgres.
-  - **Blast-radius notes:** no server-side username format validation existed before (client-side
-    `pattern` only). One **existing real account, `bella bernales`, has a space** and fails the new
-    charset — enforcement is wired to validate NEW/CHANGED names only, so it keeps working for
-    login and non-rename edits; it just cannot be a rename target without cleanup first. JSON mode
-    has a **smaller surface** (staff_*/transfer_batches/import_batches/so_records/push_tokens are
-    DB-only, no JSON file).
+- [ ] **Display-name-only rename still orphans history** (follow-up to the shipped username-rename,
+  now under Closed). The rename only fires when the username actually changes — `rename_user` rejects
+  `old == new` username. Editing ONLY a user's `full_name` (username unchanged) takes the plain
+  `update_user` path in `edit_user_route`, so historical `full_name` occurrences and the ambiguous
+  `*_name` companions are NOT rewritten and orphan exactly as usernames did before the feature. Needs
+  a same-username display-name-rewrite path: either a `rename_display_name(username, old_fn, new_fn)`
+  service or relaxing `rename_user` to accept an unchanged username with a changed full_name, then
+  wiring the full_name-changed branch in `edit_user_route`. Real follow-up feature, deferred out of
+  Step 3 (its contract was deliberately not expanded).
+
+- [ ] **`documents_updated == N` in `test_rename_user.py` is a magic number.** The happy-path
+  assertion cross-checks the rewrite count against a hand-computed constant explained only by a
+  comment, not derived from the seeded fixture — if the fixture changes, the number drifts silently
+  and the check stops meaning anything. Consider deriving the expected count from the seeded documents.
+  Test hygiene, not a product bug.
 
 - **No linter or typechecker on the Python side at all.** No ruff/mypy/flake8/black/pylint installed
   in `.venv`, no config file for any of them. For a ~27k-line Flask app with security-sensitive auth,
@@ -345,7 +296,75 @@ Wanted, not broken.
   account still depends on it (no working key installed) locks that account out of the box, and if
   it's the only admin path, locks everyone out. Operator action on the server; not a code change.
 
+## Operational / cleanup
+
+Non-code operator actions and housekeeping surfaced during recent work.
+
+- [ ] **Rotate the prod `doctracker_app` DB password — it appeared in terminal scrollback during the
+  rename work.** Rotate-on-exposure: the production `doctracker_app` Postgres password was visible in
+  the terminal during the rename/verification session, so treat it as exposed and rotate it. Also
+  rotate the `testdoc2_app` DB password and the `testdoc` `ADMIN_PASSWORD` (lower stakes, same
+  session). Operator action on the server / secrets store; not a code change.
+
+- [ ] **Branch cleanup.** `feature/username-rename-service` and `feature/staff-required-decorator`
+  are both merged into `DOCTRACKER_PROD` and can be deleted. `testdoc` currently holds mangled
+  rename-test data (it was reset to the feature tip for staging) and should be reset to track
+  `DOCTRACKER_PROD` again once this merge is pushed.
+
+- [ ] **`testdoc` deploy: empty Manage Users list + 500 on direct `/edit-user/<username>`.** On the
+  `testdoc` deployment the Manage Users list renders empty and hitting `/edit-user/<username>`
+  directly returns a 500 — the **prod** frontend is fine. It made staging the rename harder than it
+  needed to be. Not blocking (prod unaffected) but worth diagnosing eventually; likely a testdoc
+  data/env difference rather than a code bug.
+
+- [ ] **Pre-rename backup retained — clean up in a few days.**
+  `~/rename_backups/doctrack_pre_rename_20260731_214203.dump` was taken before the prod rename and is
+  kept as a rollback safety net. Delete it once the rename has been confirmed stable for a few days
+  (early August 2026).
+
 ## Closed
+
+- [x] **~~Username rename with full-history rewrite.~~** Shipped and **deployed to prod** (merge
+  `d86b0d0`, onto rollback target `7e05976`; no schema changes). Usernames are stored as bare strings
+  across `documents` JSONB (`logged_by`, `original_logged_by`, …) and ~15 other tables/columns with
+  **no FK**, so the old edit-user flow renamed only the `users` row and **orphaned every referencing
+  document** — while the UI already promised "Changing the username will also update the login name."
+  `rename_user` ([services/auth.py:762](services/auth.py:762)) now rewrites every reference in ONE
+  `get_conn()` transaction (mirrors `restore_backup`; no `batch_save_docs`/`audit_log` inside), wired
+  into `edit_user_route`.
+
+  **All four build steps landed:**
+  - `f580645` — validator (`_validate_username`, `[a-z0-9._-]`, 3–32) + `rename_user` service:
+    set-based rewrite of `_RENAME_DOC_KEYS` and the §2c tables, plus the ambiguous
+    `received_by`/`accepted_by`/`travel_log[].officer` fields matched on exact username always and on
+    old full_name **only when unique among users** (shared name → `full_name_ambiguous`, full_name
+    pass skipped so a different person's history is never touched). (Steps 1+2)
+  - `92a6584` — structured companion fields (`accepted_by_username`, `*_name`,
+    `transfer_batches.transferred_to_name`) + **case-insensitive** full_name matching everywhere
+    (prod had casing drift, canonical `KIM WENDELL DAVOCOL` vs stored `Kim Wendell Davocol`, that
+    exact match missed); the written-back value is the new canonical full_name. Free-text fields left
+    out on purpose (now filed under Known bounds). (Step 2.5)
+  - `18562b1` — route wiring + guards: a genuine username change diverts to `rename_user` **FIRST**,
+    then `update_user` with `new_username=None`; server-side self-rename guard; post-commit
+    `audit_log("username_renamed", …)`; prominent re-login warning; `full_name_ambiguous` warning.
+    Route tests in [tests/test_admin_rename_route.py](tests/test_admin_rename_route.py). (Step 3)
+  - `d86b0d0` — merged to `DOCTRACKER_PROD`.
+
+  **Verified on `testdoc` against a full production data copy**, then the **real
+  `Kim Wendell Davocol` → `Paul Opiniano` rename was executed on prod and verified clean**: zero
+  remaining old-username traces across `documents`, `travel_log`, and `activity_log`; the `users` row
+  and `full_name` are correct; **~13,192 documents** carried forward.
+
+  **Closing reality (learned during testdoc verification — the entry that would otherwise lie):** the
+  rename MUST go through `edit_user_route`, which runs `rename_user` **THEN** `update_user`. Calling
+  `rename_user` directly leaves `users.full_name` UNSET — `rename_user` never writes that column (its
+  uniqueness gate READS the old value while it is still the old name); `update_user` is what sets the
+  new full_name afterward. The ordering in the route is load-bearing, not incidental.
+
+  Deferred follow-ups from this work are filed above: the display-name-only rename gap and the
+  `documents_updated` test magic number (Features / polish); the free-text boundary and the
+  `travel_log` seq-scan (Known bounds); branch cleanup, the retained pre-rename backup, and the
+  `testdoc` frontend bug (Operational / cleanup).
 
 - [x] **~~`routes/so.py` hardcoded the app's own hostname while everything else read `APP_URL`.~~**
   Closed 2026-07-20 on branch `APP_URL_CONFIG`. `_VERIFY_BASE` at `routes/so.py:519` was a literal
