@@ -56,6 +56,28 @@ interface ScannedDoc {
   submitted_by_name?: string;
 }
 
+// A single doc in a client-QR batch. Same server shape as /pending-documents.
+interface ClientBatchDoc {
+  id: string;
+  doc_id?: string;
+  doc_name?: string;
+  category?: string;
+  from_office?: string;
+  sender_name?: string;
+  status?: string;
+  pending_at_staff?: string;
+  pending_at_staff_name?: string;
+  pending_at_office?: string;
+  intended_for_username?: string;
+  intended_for_name?: string;
+}
+
+interface ClientBatchResult {
+  client_username: string;
+  client_name: string;
+  documents: ClientBatchDoc[];
+}
+
 export default function Scanner() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -84,6 +106,13 @@ export default function Scanner() {
   const [slipResult, setSlipResult]       = useState<SlipScanResult | null>(null);
   const [slipActioning, setSlipActioning] = useState(false);
   const [slipPreview, setSlipPreview]         = useState<SlipPreview | null>(null);
+
+  // Client-QR batch-receive state
+  const [clientResult, setClientResult]     = useState<ClientBatchResult | null>(null);
+  const [clientLoading, setClientLoading]   = useState(false);
+  const [acceptingId, setAcceptingId]       = useState<string | null>(null);
+  const [acceptAllBusy, setAcceptAllBusy]   = useState(false);
+
   const [adminOfficeOverride, setAdminOfficeOverride]       = useState('');
   const [adminRecipientOverride, setAdminRecipientOverride] = useState('');
   const [officePickerOpen, setOfficePickerOpen]             = useState(false);
@@ -131,6 +160,16 @@ export default function Scanner() {
       slipErr.isSlipToken = true;
       slipErr.token = docId;
       throw slipErr;
+    }
+
+    // Client-identity QR tokens start with 'CLI-'. Detect before the doc-id GET
+    // and /qr/scan fallback — a CLI- token is not a doc id, so those would just
+    // waste two failing network calls before landing on the generic not-found.
+    if (docId.startsWith('CLI-')) {
+      const cliErr: any = new Error('Client QR detected');
+      cliErr.isClientToken = true;
+      cliErr.token = docId;
+      throw cliErr;
     }
 
     // Try direct doc ID lookup first
@@ -221,6 +260,102 @@ export default function Scanner() {
     }
   };
 
+  // ── Client-QR batch receive ───────────────────────────────────────────────
+
+  const invalidateReceiveCaches = () => {
+    queryClient.invalidateQueries({ queryKey: ['documents'] });
+    queryClient.invalidateQueries({ queryKey: ['pending-documents'] });
+    queryClient.invalidateQueries({ queryKey: ['pending-count'] });
+    queryClient.invalidateQueries({ queryKey: ['stats'] });
+  };
+
+  const handleClientTokenScan = async (token: string) => {
+    setClientLoading(true);
+    try {
+      const res = await api.post('/staff/resolve-client-qr', { token });
+      setClientResult(res.data as ClientBatchResult);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const msg = status === 404
+        ? 'Unknown or invalid code.'
+        : (err?.response?.data?.error || 'Could not read this client QR. Please try again.');
+      Alert.alert('Client QR', msg, [
+        { text: 'OK', onPress: () => resetScanner(0) },
+      ]);
+    } finally {
+      setClientLoading(false);
+    }
+  };
+
+  // Per-doc accept (secondary action) — honors forward-to-intended, mirroring
+  // handleQuickAccept. Removes the doc from the open batch on success.
+  const handleClientDocAccept = async (doc: ClientBatchDoc) => {
+    if (acceptingId || acceptAllBusy) return;
+    setAcceptingId(doc.id);
+    try {
+      const response = await api.post(`/documents/${doc.id}/accept`);
+      const accepted = response.data;
+      Vibration.vibrate([0, 60, 40, 60]);
+      invalidateReceiveCaches();
+
+      // Drop the accepted doc from the batch list.
+      setClientResult((prev) =>
+        prev ? { ...prev, documents: prev.documents.filter((d) => d.id !== doc.id) } : prev
+      );
+
+      const intendedUsername = accepted?.intended_for_username || '';
+      if (intendedUsername && intendedUsername !== user?.username) {
+        setForwardDoc({
+          id: accepted.id,
+          intendedUsername,
+          intendedName: accepted?.intended_for_name || intendedUsername,
+        });
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'Could not accept this document.';
+      Alert.alert('Accept Failed', msg);
+    } finally {
+      setAcceptingId(null);
+    }
+  };
+
+  // Accept All (primary) — the fast path. Loops accept over the batch and
+  // SKIPS the per-doc forward-to-intended dialog (firing N dialogs would be
+  // chaos), mirroring receive-docs.tsx handleAcceptAll.
+  const handleClientAcceptAll = async () => {
+    if (!clientResult || !clientResult.documents.length) return;
+    if (acceptAllBusy || acceptingId) return;
+    const batch = clientResult.documents;
+    const total = batch.length;
+    const clientName = clientResult.client_name;
+    setAcceptAllBusy(true);
+    let success = 0;
+    let failed = 0;
+    for (const doc of batch) {
+      try {
+        await api.post(`/documents/${doc.id}/accept`);
+        success++;
+      } catch {
+        failed++;
+      }
+    }
+    setAcceptAllBusy(false);
+    invalidateReceiveCaches();
+    Vibration.vibrate([0, 80, 60, 80]);
+    setClientResult(null);
+    setAcceptedDocTitle(
+      failed === 0
+        ? `Received ${success} document${success !== 1 ? 's' : ''} for ${clientName}`
+        : `Received ${success} of ${total}, ${failed} failed`
+    );
+    resetScanner(2500);
+  };
+
+  const handleClientDismiss = () => {
+    setClientResult(null);
+    resetScanner(0);
+  };
+
   // ── Reset scanner to ready state ──────────────────────────────────────────
 
   const resetScanner = (delay = 0) => {
@@ -235,6 +370,7 @@ export default function Scanner() {
       setAdminRecipientOverride('');
       setOfficePickerOpen(false);
       setSlipResult(null);
+      setClientResult(null);
     }, delay);
   };
 
@@ -278,6 +414,11 @@ export default function Scanner() {
       if (err?.isSlipToken) {
         setScanState('scanning');
         handleSlipPreview(err.token);
+        return;
+      }
+      if (err?.isClientToken) {
+        setScanState('scanning');
+        handleClientTokenScan(err.token);
         return;
       }
       setScanState('error');
@@ -340,6 +481,10 @@ export default function Scanner() {
     } catch (err: any) {
       if (err?.isSlipToken) {
         handleSlipPreview(err.token);
+        return;
+      }
+      if (err?.isClientToken) {
+        handleClientTokenScan(err.token);
         return;
       }
       const msg = err?.response?.data?.error || err?.message || 'Could not read QR code from image.';
@@ -514,7 +659,7 @@ export default function Scanner() {
         style={StyleSheet.absoluteFillObject}
         facing="back"
         enableTorch={torchOn}
-        onBarcodeScanned={scanState === 'scanning' && !scannedDoc && !slipPreview ? handleScan : undefined}
+        onBarcodeScanned={scanState === 'scanning' && !scannedDoc && !slipPreview && !clientResult && !clientLoading ? handleScan : undefined}
         barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
       />
 
@@ -532,11 +677,12 @@ export default function Scanner() {
           <View style={[styles.corner, styles.bottomLeft]} />
           <View style={[styles.corner, styles.bottomRight]} />
 
-          {(scanState === 'loading' || uploading || slipActioning) && (
+          {(scanState === 'loading' || uploading || slipActioning || clientLoading) && (
             <View style={styles.loadingOverlay}>
               <ActivityIndicator size="large" color="#fff" />
               <Text style={{ color: '#fff', marginTop: 8, fontWeight: '600' }}>
                 {uploading ? 'Reading QR from image…'
+                  : clientLoading ? 'Looking up client…'
                   : slipActioning ? (slipPreview ? 'Processing routing slip…' : 'Checking routing slip…')
                   : 'Looking up document…'}
               </Text>
@@ -729,6 +875,147 @@ export default function Scanner() {
                 <Text style={styles.cancelBtnText}>Cancel — Scan Again</Text>
               </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Client-QR batch receive modal ─────────────────────────────────── */}
+      <Modal
+        visible={!!clientResult}
+        transparent
+        animationType="slide"
+        onRequestClose={handleClientDismiss}
+      >
+        <View style={styles.overlayBackdrop}>
+          <View style={styles.overlaySheet}>
+            <View style={styles.overlayHandle} />
+
+            {/* Header */}
+            <View style={styles.overlayHeader}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={styles.overlayTitle} numberOfLines={1}>
+                  👤 Receiving for {clientResult?.client_name || 'Client'}
+                </Text>
+                <Text style={{ color: '#64748B', fontSize: 12.5, marginTop: 2 }}>
+                  @{clientResult?.client_username}
+                  {clientResult && clientResult.documents.length > 0
+                    ? ` · ${clientResult.documents.length} document${clientResult.documents.length !== 1 ? 's' : ''} to receive`
+                    : ''}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={handleClientDismiss} style={styles.overlayClose}>
+                <Text style={{ color: '#6B7280', fontSize: 16 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {clientResult && clientResult.documents.length === 0 ? (
+              // Empty state — a REAL case (docs pending with other staff), not an error.
+              <View style={{ alignItems: 'center', paddingVertical: 36, paddingHorizontal: 12 }}>
+                <View style={{
+                  width: 64, height: 64, borderRadius: 32,
+                  backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 16,
+                }}>
+                  <Text style={{ fontSize: 30 }}>📭</Text>
+                </View>
+                <Text style={{ color: '#1E293B', fontSize: 15.5, fontWeight: '700', marginBottom: 6 }}>
+                  Nothing here for you to receive
+                </Text>
+                <Text style={{ color: '#64748B', fontSize: 13, textAlign: 'center', lineHeight: 19, maxWidth: 280 }}>
+                  {clientResult.client_name}'s documents may be pending with other staff.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.cancelBtn, { marginTop: 24, alignSelf: 'stretch' }]}
+                  onPress={handleClientDismiss}
+                >
+                  <Text style={styles.cancelBtnText}>Close — Scan Again</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                {/* Primary action — Accept All */}
+                <TouchableOpacity
+                  style={[styles.acceptBtn, (acceptAllBusy || !!acceptingId) && { opacity: 0.7 }]}
+                  onPress={handleClientAcceptAll}
+                  disabled={acceptAllBusy || !!acceptingId}
+                >
+                  {acceptAllBusy
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={styles.acceptBtnText}>
+                        ✓  Accept All ({clientResult?.documents.length ?? 0})
+                      </Text>
+                  }
+                </TouchableOpacity>
+
+                <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 4 }}>
+                  {clientResult?.documents.map((doc) => (
+                    <View key={doc.id} style={styles.docCard}>
+                      <Text style={styles.docTitle} numberOfLines={2}>
+                        {doc.doc_name || 'Untitled Document'}
+                      </Text>
+
+                      {doc.doc_id ? (
+                        <View style={styles.docMetaRow}>
+                          <Text style={styles.docMetaLabel}>Reference</Text>
+                          <Text style={styles.docMetaValue}>{doc.doc_id}</Text>
+                        </View>
+                      ) : null}
+
+                      {doc.category ? (
+                        <View style={styles.docMetaRow}>
+                          <Text style={styles.docMetaLabel}>Category</Text>
+                          <Text style={styles.docMetaValue}>{doc.category}</Text>
+                        </View>
+                      ) : null}
+
+                      {doc.from_office ? (
+                        <View style={styles.docMetaRow}>
+                          <Text style={styles.docMetaLabel}>From Office</Text>
+                          <Text style={styles.docMetaValue}>{doc.from_office}</Text>
+                        </View>
+                      ) : null}
+
+                      {doc.sender_name ? (
+                        <View style={styles.docMetaRow}>
+                          <Text style={styles.docMetaLabel}>Sender</Text>
+                          <Text style={styles.docMetaValue}>{doc.sender_name}</Text>
+                        </View>
+                      ) : null}
+
+                      {doc.intended_for_name ? (
+                        <View style={styles.docMetaRow}>
+                          <Text style={styles.docMetaLabel}>Intended For</Text>
+                          <Text style={[styles.docMetaValue, { color: '#0038A8' }]}>
+                            {doc.intended_for_name}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      <TouchableOpacity
+                        style={[
+                          styles.perDocAcceptBtn,
+                          (acceptingId === doc.id || acceptAllBusy) && { opacity: 0.6 },
+                        ]}
+                        onPress={() => handleClientDocAccept(doc)}
+                        disabled={!!acceptingId || acceptAllBusy}
+                      >
+                        {acceptingId === doc.id
+                          ? <ActivityIndicator color="#fff" size="small" />
+                          : <Text style={styles.perDocAcceptText}>✓  Accept</Text>
+                        }
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+
+                  <TouchableOpacity
+                    style={[styles.cancelBtn, { marginTop: 4 }]}
+                    onPress={handleClientDismiss}
+                  >
+                    <Text style={styles.cancelBtnText}>Cancel — Scan Again</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -1178,6 +1465,16 @@ const styles = StyleSheet.create({
   },
   acceptBtnText: {
     color: '#fff', fontSize: 16, fontWeight: '700',
+  },
+  perDocAcceptBtn: {
+    backgroundColor: '#16A34A',
+    borderRadius: 10,
+    paddingVertical: 11,
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  perDocAcceptText: {
+    color: '#fff', fontSize: 14, fontWeight: '700',
   },
   rejectBtn: {
     backgroundColor: '#DC2626',
