@@ -764,6 +764,8 @@ def _rename_summary(old: str, new: str) -> dict:
         "staff_group_members_updated": 0,
         "transfer_batches_updated":    0,
         "import_batches_updated":      0,
+        "client_qr_tokens_updated":    0,
+        "password_reset_tokens_updated": 0,
         "push_tokens_updated":         0,
         "user_carts_updated":          0,
         "users_updated":               0,
@@ -972,8 +974,15 @@ def rename_user(old_username: str, new_username: str,
                     cur.execute("UPDATE activity_log SET username = %s WHERE username = %s", (new, old))
                     summary["activity_log_updated"] = cur.rowcount
 
+                    so_updated = 0
                     cur.execute("UPDATE saved_offices SET created_by = %s WHERE created_by = %s", (new, old))
-                    summary["saved_offices_updated"] = cur.rowcount
+                    so_updated += cur.rowcount
+                    # primary_recipient is the office's default receiving-staff
+                    # username. A missed rewrite here is the cosmetic "stale
+                    # kimwendell" default seen on the mobile submit screen.
+                    cur.execute("UPDATE saved_offices SET primary_recipient = %s WHERE primary_recipient = %s", (new, old))
+                    so_updated += cur.rowcount
+                    summary["saved_offices_updated"] = so_updated
 
                     slips = 0
                     cur.execute("UPDATE routing_slips SET prepared_by = %s WHERE prepared_by = %s", (new, old))
@@ -1034,6 +1043,14 @@ def rename_user(old_username: str, new_username: str,
 
                     cur.execute("UPDATE import_batches SET imported_by = %s WHERE imported_by = %s", (new, old))
                     summary["import_batches_updated"] = cur.rowcount
+
+                    # Token tables keyed on their token (client_qr_tokens.token,
+                    # password_reset_tokens.token_hash), with username as a plain
+                    # non-PK column — so a straight UPDATE old→new can't collide.
+                    cur.execute("UPDATE client_qr_tokens SET username = %s WHERE username = %s", (new, old))
+                    summary["client_qr_tokens_updated"] = cur.rowcount
+                    cur.execute("UPDATE password_reset_tokens SET username = %s WHERE username = %s", (new, old))
+                    summary["password_reset_tokens_updated"] = cur.rowcount
 
                     # 3) PRIMARY-KEY tables: push_tokens.username and
                     #    user_carts.username. A plain UPDATE old→new would violate
@@ -1195,12 +1212,18 @@ def _rename_user_json(old: str, new: str, old_fn: str, new_fn: str,
 
         # 2) Other list-shaped JSON files that exist in JSON mode.
         summary["activity_log_updated"]   = _json_rewrite_list("activity_log.json",   ("username",),         old, new)
-        summary["saved_offices_updated"]  = _json_rewrite_list("saved_offices.json",  ("created_by",),       old, new)
+        summary["saved_offices_updated"]  = _json_rewrite_list("saved_offices.json",  ("created_by", "primary_recipient"), old, new)
         summary["routing_slips_updated"]  = _json_rewrite_list("routing_slips.json",  ("prepared_by", "archived_by"), old, new)
         summary["office_traffic_updated"] = _json_rewrite_list("office_traffic.json", ("client_username",),  old, new)
         summary["appointments_updated"]   = _json_rewrite_list(_APT_FILE,             ("client_username",),  old, new)
         # staff_*/transfer_batches/import_batches/so_records/push_tokens: DB-only,
         # no JSON file — counters intentionally remain 0 here.
+        # client_qr_tokens.json and password_reset_tokens.json DO exist in JSON
+        # mode, but each is a dict keyed by the TOKEN with `username` as a
+        # sub-value — a shape neither _json_rewrite_list (list[dict]) nor the
+        # pending_carts block (dict keyed BY username) handles. Covering them
+        # would need a bespoke handler; left as a known JSON-mode gap rather
+        # than invent a new pattern. The DB path (production) covers both.
 
         # 3) pending_carts.json is a DICT keyed by username (user_carts twin).
         #    Move the key; drop any stale destination first (new confirmed free).
