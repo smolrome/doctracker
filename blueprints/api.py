@@ -1612,6 +1612,146 @@ def api_release_document(doc_id):
     return jsonify(serialize(doc))
 
 
+def _office_primary_recipient_for_doc(doc: dict) -> tuple[str, str]:
+    """Resolve a document's owning office → (office_name, primary_recipient username).
+
+    Prefers the stored target_office_slug (an exact saved_offices key), falling
+    back to a case-insensitive office-NAME match. Returns ('', '') / a blank
+    recipient when the office isn't found or has no primary_recipient configured.
+    """
+    from services.misc import load_saved_offices
+    slug = (doc.get('target_office_slug') or '').strip()
+    name = (doc.get('target_office_name') or doc.get('pending_at_office')
+            or doc.get('from_office') or '').strip()
+    offices = load_saved_offices()
+    off = None
+    if slug:
+        off = next((o for o in offices if o.get('office_slug') == slug), None)
+    if not off and name:
+        nl = name.lower()
+        off = next((o for o in offices
+                    if (o.get('office_name') or '').strip().lower() == nl), None)
+    if not off:
+        return name, ''
+    return (off.get('office_name') or name), (off.get('primary_recipient') or '').strip()
+
+
+def _staff_in_office_primary_group(caller_id: str, doc: dict) -> bool:
+    """Release gate: is this staff a member of the document's office primary group?
+
+    There is NO office-scoped group table — staff_groups are free-form and not
+    tied to an office (see get_group_usernames). So "office Y's primary group" is
+    reconstructed from the pieces that DO exist: the office's single
+    primary_recipient username (saved_offices) anchors the group, and
+    get_group_usernames(primary_recipient) is that recipient's shared-dashboard
+    groupmates. Authorized if the caller is admin, IS the primary_recipient, or
+    shares a shared-dashboard group with them.
+
+    Fallback: when the office has no primary_recipient configured, degrade to
+    office-NAME membership (mirrors the accept-side match at api.py:1253) so a
+    legitimate same-office staffer isn't locked out — while still denying
+    cross-office staff. get_group_usernames returns [] on the JSON backend, so on
+    that backend only the primary_recipient (or admin) passes the group branch.
+    """
+    if _is_admin_user(caller_id):
+        return True
+    office_name, primary_recipient = _office_primary_recipient_for_doc(doc)
+    if primary_recipient:
+        if caller_id == primary_recipient:
+            return True
+        from services.database import get_group_usernames
+        return caller_id in get_group_usernames(primary_recipient)
+    caller = get_user_by_username(caller_id)
+    caller_office = (caller.get('office') or '').strip().lower() if caller else ''
+    return bool(office_name and caller_office
+                and caller_office == office_name.strip().lower())
+
+
+@api_bp.route('/documents/<doc_id>/release-to-client', methods=['POST'])
+@jwt_staff_required
+def api_release_to_client(doc_id):
+    """Release a finished document into a collector's hands (staff action).
+
+    Separate from the internal /release close-out: this captures WHO collected
+    the document and is gated on the document's office primary group — never
+    client-triggered. collector_name is the only required collector field.
+    """
+    caller_id = g.current_api_username
+    data = request.get_json(force=True, silent=True) or {}
+
+    collector_name = (data.get('collector_name') or '').strip()
+    if not collector_name:
+        return jsonify(error='collector_name is required'), 400
+
+    doc = get_doc(doc_id)
+    if not doc:
+        return jsonify(error='Document not found'), 404
+
+    # Security spine — only the owning office's primary group may release.
+    # @jwt_staff_required already excludes clients; this narrows to the office.
+    if not _staff_in_office_primary_group(caller_id, doc):
+        return jsonify(error='Not authorized to release for this office'), 403
+
+    # Soft releasability warning — the doc is still awaiting acceptance by a
+    # handler. Return WITHOUT releasing so the UI can prompt "release anyway?"
+    # and re-call with confirm_override=true. Release still proceeds on confirm.
+    confirm_override = bool(data.get('confirm_override', False))
+    if not confirm_override and doc.get('transfer_status') == 'pending':
+        handler = (doc.get('pending_at_staff_name') or doc.get('pending_at_staff')
+                   or doc.get('pending_at_office') or 'a handler')
+        return jsonify(warning=f'Document still pending with {handler}',
+                       requires_confirm=True), 409
+
+    collector_username = (data.get('collector_username') or '').strip() or None
+    collector_origin   = (data.get('collector_origin') or '').strip() or None
+    collector_office   = (data.get('collector_office') or '').strip() or None
+    collector_position = (data.get('collector_position') or '').strip() or None
+    collector_contact  = (data.get('collector_contact') or '').strip() or None
+
+    caller = g.current_api_user
+    staff_name = (caller.get('full_name') or caller_id) if caller else caller_id
+    staff_office = (caller.get('office') or '') if caller else ''
+
+    from services.database import create_document_release
+    record = create_document_release(
+        document_id=doc_id, released_by=caller_id, collector_name=collector_name,
+        collector_username=collector_username, collector_origin=collector_origin,
+        collector_office=collector_office, collector_position=collector_position,
+        collector_contact=collector_contact,
+    )
+
+    doc['status']          = 'Released'
+    doc['transfer_status'] = 'released'
+    doc['date_released']   = now_str()[:16].replace('T', ' ')
+    doc['released_by']     = caller_id
+    doc['updated_at']      = now_str()
+    doc['updated_by']      = caller_id
+
+    origin_phrase = f' of {collector_origin}' if collector_origin else ''
+    doc.setdefault('travel_log', []).append({
+        'office':    staff_office or doc.get('pending_at_office', ''),
+        'action':    f'Released to {collector_name}{origin_phrase} by {staff_name}',
+        'officer':   staff_name,
+        'timestamp': now_str(),
+        'remarks': (
+            f'Document physically released to collector {collector_name}{origin_phrase}'
+            + (f' (contact: {collector_contact})' if collector_contact else '')
+            + f'. Released by {staff_name}.'
+        ),
+    })
+    save_doc(doc)
+
+    from services.misc import audit_log
+    from utils import get_client_ip
+    audit_log(
+        'doc_released_to_client',
+        f"doc_id={doc_id} collector={collector_name} released_by={caller_id}",
+        username=caller_id, ip=get_client_ip(),
+    )
+
+    return jsonify(serialize({'release': record, 'document': doc})), 201
+
+
 @api_bp.route('/documents/<doc_id>/receive-from-client', methods=['POST'])
 @jwt_required()
 def receive_from_client(doc_id):
