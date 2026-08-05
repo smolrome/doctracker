@@ -393,6 +393,19 @@ Wanted, not broken.
       resolve-client-qr, so this was pure mobile-side — pre-validation against the office staff list
       (prefetched on sheet render), self-transfer guard (falls back to picker), stale-handler fallback
       (⚠️ note), and a "Choose someone else" override. Server self-transfer guard unchanged.
+    - [x] DONE: pending_at_staff_name staleness on the API transfer/accept path. Pre-existing (April–May
+      2026, not from af44af5); surfaced by the release 409 naming the wrong person (showed Paul when doc
+      was pending with Loralyn). Fixed forward: api_transfer_document now writes
+      `pending_at_staff_name=recipient_full_name` (matching web path); api_accept_document now clears
+      `pending_at_staff`/`pending_at_staff_name`/`pending_at_office` (doc is Received, no pending target).
+      Verified: no display site reads pending_at_* on a Received doc (all gate on status=='Pending').
+    - [ ] TODO: web accept path (dashboard.py:1808-1819) clears pending_at_staff/office but LEAVES
+      pending_at_staff_name — same latent staleness the API path just fixed. Clear it there too for
+      symmetry. Low priority (nothing reads it post-accept).
+    - [ ] TODO (NEXT — separate careful step): backfill existing docs whose stored pending_at_staff_name
+      drifted from pending_at_staff before this fix. Forward fixes freeze the stale set but don't clean
+      existing drifted docs. Requires: fresh backup, dry-run SELECT of what would change, resolution rule
+      for unresolvable usernames (leave untouched), then UPDATE + verify.
     - [ ] Mobile release flow: happy path + 409-override device-tested; NOT re-tested since cache-fix
       and receipt-settle landed. Full re-test outstanding.
     - [ ] ExpoSQLite native-module crash seen in dev logs (dev-client/build mismatch) — blocks
