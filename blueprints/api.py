@@ -1511,6 +1511,43 @@ def api_transfer_document(doc_id):
         if target_user:
             recipient_full_name = target_user.get('full_name') or to_staff
 
+    # ── Settle the caller's incoming receipt BEFORE writing the outgoing leg ──
+    # When the doc is pending TO the caller and not yet accepted (the
+    # client→intake case routed via mobile "Receive & Route"), record the
+    # caller's receipt first so custody isn't lost. Mirrors the receipt block
+    # in api_accept_document. The gate is safe: an already-accepted doc has
+    # transfer_status=='accepted', so this never fires on a doc being routed
+    # onward after acceptance — no phantom second receipt. Both the receipt and
+    # the outgoing transfer below ride the SAME doc dict and the single
+    # save_doc() at the end — one atomic commit. status='Received' here is
+    # immediately overwritten to 'Transferred'/'Routed' by the outgoing leg;
+    # that's fine — the durable receipt is the travel_log entry, not the field.
+    if doc.get('transfer_status') == 'pending' and doc.get('pending_at_staff') == user_id:
+        receipt_cycle = doc.get('routing_cycle', 0) + 1
+        doc['status']               = 'Received'
+        doc['date_received']        = now_str()[:16].replace('T', ' ')
+        doc['accepted_by']          = user_full_name
+        doc['accepted_by_username'] = user_id
+        doc['accepted_at']          = now_str()
+        doc['routing_cycle']        = receipt_cycle
+        # Take ownership on receipt, exactly as api_accept_document's non-proxy
+        # branch does — so the receiving/releasing staff (e.g. intake) retains
+        # dashboard visibility and search over the doc through release, even
+        # after routing it onward. The outgoing leg below deliberately does NOT
+        # touch logged_by (mirrors dashboard.py:1172/1459), so this survives.
+        doc['logged_by']            = user_id
+        doc['logged_by_office']     = user_office
+        doc.setdefault('travel_log', []).append({
+            'office':    user_office or doc.get('pending_at_office', ''),
+            'action':    'Document Accepted',
+            'officer':   user_full_name,
+            'timestamp': now_str(),
+            'remarks':   (
+                f'Document received and accepted by {user_full_name}. '
+                f'Routing cycle {receipt_cycle} in progress.'
+            ),
+        })
+
     doc['transfer_status'] = 'pending'
     doc['pending_at_staff'] = to_staff
     doc['pending_at_office'] = to_office

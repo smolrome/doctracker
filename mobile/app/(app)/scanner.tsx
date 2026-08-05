@@ -114,6 +114,22 @@ export default function Scanner() {
   const [acceptedDocTitle, setAcceptedDocTitle] = useState<string | null>(null);
   const [forwardDoc, setForwardDoc] = useState<{ id: string; intendedUsername: string; intendedName: string } | null>(null);
   const [forwardLoading, setForwardLoading] = useState(false);
+  const [flashHeading, setFlashHeading] = useState('Received!');
+
+  // Release-to-collector state. releaseDoc holds the doc being released; the
+  // collector form captures who physically collected it. collectorScanning
+  // temporarily hides the form and re-arms the camera to read the collector's
+  // CLI- QR (reusing the same CameraView, not a second scanner).
+  const [releaseDoc, setReleaseDoc] = useState<ScannedDoc | null>(null);
+  const [releasing, setReleasing] = useState(false);
+  const [collectorScanning, setCollectorScanning] = useState(false);
+  const [collectorResolving, setCollectorResolving] = useState(false);
+  const [collectorName, setCollectorName]         = useState('');
+  const [collectorUsername, setCollectorUsername] = useState(''); // only set when resolved from a QR
+  const [collectorOrigin, setCollectorOrigin]     = useState('');
+  const [collectorOffice, setCollectorOffice]     = useState('');
+  const [collectorPosition, setCollectorPosition] = useState('');
+  const [collectorContact, setCollectorContact]   = useState('');
   const [slipResult, setSlipResult]       = useState<SlipScanResult | null>(null);
   const [slipActioning, setSlipActioning] = useState(false);
   const [slipPreview, setSlipPreview]         = useState<SlipPreview | null>(null);
@@ -280,6 +296,7 @@ export default function Scanner() {
       Vibration.vibrate([0, 80, 60, 80]);
       queryClient.invalidateQueries({ queryKey: ['routing-slips'] });
       queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['document'] });
       setSlipPreview(null);
       setSlipResult(result);
     } catch (err: any) {
@@ -300,6 +317,9 @@ export default function Scanner() {
     queryClient.invalidateQueries({ queryKey: ['pending-documents'] });
     queryClient.invalidateQueries({ queryKey: ['pending-count'] });
     queryClient.invalidateQueries({ queryKey: ['stats'] });
+    // Prefix-match every ['document', <id>] detail entry so a just-mutated
+    // doc's detail screen refetches instead of serving the 5-min stale cache.
+    queryClient.invalidateQueries({ queryKey: ['document'] });
   };
 
   const handleClientTokenScan = async (token: string) => {
@@ -429,6 +449,10 @@ export default function Scanner() {
       setScanState('scanning');
       setScannedDoc(null);
       setAcceptedDocTitle(null);
+      setFlashHeading('Received!');
+      setReleaseDoc(null);
+      setCollectorScanning(false);
+      resetCollectorForm();
       setSlipPreview(null);
       setAdminOfficeOverride('');
       setAdminRecipientOverride('');
@@ -470,14 +494,10 @@ export default function Scanner() {
       const doc = await lookupQRData(data);
       setScanState('scanning');
 
-      if (canReceive(doc)) {
-        // Show quick-receive overlay instead of navigating
-        setScannedDoc(doc);
-      } else {
-        // Not a pending transfer for this user — go straight to detail
-        router.push(`/(app)/documents/${doc.id}`);
-        resetScanner(3000);
-      }
+      // Show the action overlay for any resolved doc. Accept/Reject appear only
+      // when this is a pending transfer for this user (canReceive); Release-to-
+      // collector is always offered (the server enforces office authorization).
+      setScannedDoc(doc);
     } catch (err: any) {
       if (err?.isSlipToken) {
         setScanState('scanning');
@@ -541,11 +561,8 @@ export default function Scanner() {
 
       const doc = await lookupQRData(data);
 
-      if (canReceive(doc)) {
-        setScannedDoc(doc);
-      } else {
-        router.push(`/(app)/documents/${doc.id}`);
-      }
+      // Same as the live-scan path — the overlay is the action hub for any doc.
+      setScannedDoc(doc);
     } catch (err: any) {
       if (err?.isSlipToken) {
         handleSlipPreview(err.token);
@@ -584,6 +601,7 @@ export default function Scanner() {
       queryClient.invalidateQueries({ queryKey: ['pending-documents'] });
       queryClient.invalidateQueries({ queryKey: ['pending-count'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
+      queryClient.invalidateQueries({ queryKey: ['document'] });
 
       const intendedUsername = doc?.intended_for_username || '';
       console.log('FORWARD DEBUG:', JSON.stringify({
@@ -628,6 +646,8 @@ export default function Scanner() {
         to_staff: toStaff,
         transfer_type: 'inside_office',
       });
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['document'] });
       setForwardDoc(null);
       setForwardLoading(false);
       setAcceptedDocTitle('Forwarded to ' + staffName);
@@ -658,6 +678,7 @@ export default function Scanner() {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['pending-count'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
+      queryClient.invalidateQueries({ queryKey: ['document'] });
       setRejectModal(false);
       setRejectReason('');
       setScannedDoc(null);
@@ -682,6 +703,152 @@ export default function Scanner() {
   const handleDismiss = () => {
     setScannedDoc(null);
     resetScanner(500);
+  };
+
+  // ── Release to collector ──────────────────────────────────────────────────
+
+  const resetCollectorForm = () => {
+    setCollectorName('');
+    setCollectorUsername('');
+    setCollectorOrigin('');
+    setCollectorOffice('');
+    setCollectorPosition('');
+    setCollectorContact('');
+  };
+
+  // Open the collector-capture form for the currently scanned doc. Closes the
+  // quick-action overlay so the two sheets never stack.
+  const openReleaseForm = () => {
+    if (!scannedDoc) return;
+    const doc = scannedDoc;
+    setScannedDoc(null);
+    resetCollectorForm();
+    setReleaseDoc(doc);
+  };
+
+  const closeReleaseForm = () => {
+    setReleaseDoc(null);
+    setCollectorScanning(false);
+    resetCollectorForm();
+    resetScanner(0);
+  };
+
+  // Re-arm the camera to read the collector's CLI- QR. The form modal hides
+  // (visible gate below), the camera routes to handleCollectorScan.
+  const enterCollectorScan = () => {
+    cooldown.current = false;
+    lastScanned.current = '';
+    setCollectorScanning(true);
+  };
+
+  // Camera handler while collectorScanning — resolves a CLI- token to identity
+  // and auto-fills the form, then returns to it. Non-CLI codes and 404s are
+  // recoverable (staff can retry or type instead).
+  const handleCollectorScan = async ({ data }: { data: string }) => {
+    if (cooldown.current || data === lastScanned.current) return;
+    cooldown.current = true;
+    lastScanned.current = data;
+
+    let token = data;
+    if (token.includes('/')) token = token.split('/').pop() || token;
+    if (!token.startsWith('CLI-')) {
+      Vibration.vibrate(200);
+      Alert.alert(
+        'Not a Collector QR',
+        "That isn't a collector's personal QR code. Scan the collector's own QR, or cancel and type their details.",
+        [{ text: 'OK', onPress: () => { cooldown.current = false; lastScanned.current = ''; } }],
+      );
+      return;
+    }
+
+    setCollectorResolving(true);
+    Vibration.vibrate(100);
+    try {
+      const res = await api.post('/staff/resolve-collector-identity', { token });
+      const d = res.data || {};
+      setCollectorName(d.full_name || '');
+      setCollectorUsername(d.username || '');
+      // Server returns email and/or phone only when present on the client record.
+      setCollectorContact(d.email || d.phone || '');
+      Vibration.vibrate([0, 60, 40, 60]);
+      setCollectorScanning(false); // back to the form, now pre-filled
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const msg = status === 404
+        ? 'Unknown or invalid code.'
+        : (err?.response?.data?.error || 'Could not read this QR. Please try again.');
+      Alert.alert('Collector QR', msg, [
+        { text: 'Type Instead', onPress: () => setCollectorScanning(false) },
+        { text: 'Try Again', onPress: () => { cooldown.current = false; lastScanned.current = ''; } },
+      ]);
+    } finally {
+      setCollectorResolving(false);
+    }
+  };
+
+  // Submit the release. On a 409 soft-warning the server withholds the release
+  // and asks for confirmation; "Release Anyway" re-sends the same payload with
+  // confirm_override:true.
+  const submitRelease = async (confirmOverride = false) => {
+    if (!releaseDoc) return;
+    if (!collectorName.trim()) {
+      Alert.alert('Required', "The collector's name is required.");
+      return;
+    }
+    setReleasing(true);
+    try {
+      const payload: any = {
+        collector_name: collectorName.trim(),
+        collector_origin: collectorOrigin.trim(),
+        collector_office: collectorOffice.trim(),
+        collector_position: collectorPosition.trim(),
+        collector_contact: collectorContact.trim(),
+        confirm_override: confirmOverride,
+      };
+      // Only send collector_username when it came from a QR resolve — an
+      // unregistered collector leaves it null.
+      if (collectorUsername.trim()) payload.collector_username = collectorUsername.trim();
+
+      await api.post(`/documents/${releaseDoc.id}/release-to-client`, payload);
+
+      Vibration.vibrate([0, 80, 60, 80]);
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-count'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      queryClient.invalidateQueries({ queryKey: ['document'] });
+
+      const name = collectorName.trim();
+      setReleaseDoc(null);
+      resetCollectorForm();
+      setFlashHeading('Released!');
+      setAcceptedDocTitle(`Released to ${name}`);
+      resetScanner(2500);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const respData = err?.response?.data || {};
+      if (status === 409 && respData.requires_confirm) {
+        // Mid-process soft warning — keep the form open, offer to override.
+        Alert.alert(
+          'Document Still In Process',
+          `${respData.warning || 'This document may still be in process.'}\n\nRelease it to the collector anyway?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Release Anyway', style: 'destructive', onPress: () => submitRelease(true) },
+          ],
+        );
+      } else if (status === 403) {
+        Alert.alert(
+          'Not Authorized',
+          "You're not authorized to release documents for this office.",
+        );
+      } else {
+        // Keep the form open so typed input isn't lost.
+        Alert.alert('Release Failed', respData.error || 'Could not release this document. Please try again.');
+      }
+    } finally {
+      setReleasing(false);
+    }
   };
 
   // ── Permission screens ────────────────────────────────────────────────────
@@ -733,6 +900,10 @@ export default function Scanner() {
   // shared ['office-staff', slug] cache stays unfiltered for submit.tsx.
   const routeStaffOptions = routeStaff.filter((s) => s.username !== user?.username);
 
+  // Is the scanned doc a pending transfer this user can Accept/Reject? Release-
+  // to-collector is offered regardless (server authorizes by office).
+  const scannedReceivable = !!scannedDoc && canReceive(scannedDoc);
+
   return (
     <View style={{ flex: 1, backgroundColor: '#000', paddingBottom: 100 }}>
 
@@ -740,7 +911,11 @@ export default function Scanner() {
         style={StyleSheet.absoluteFillObject}
         facing="back"
         enableTorch={torchOn}
-        onBarcodeScanned={scanState === 'scanning' && !scannedDoc && !slipPreview && !clientResult && !clientLoading && !routePicker ? handleScan : undefined}
+        onBarcodeScanned={
+          collectorScanning
+            ? (collectorResolving ? undefined : handleCollectorScan)
+            : (scanState === 'scanning' && !scannedDoc && !releaseDoc && !slipPreview && !clientResult && !clientLoading && !routePicker ? handleScan : undefined)
+        }
         barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
       />
 
@@ -827,7 +1002,9 @@ export default function Scanner() {
 
             {/* Header */}
             <View style={styles.overlayHeader}>
-              <Text style={styles.overlayTitle}>📦 Incoming Document</Text>
+              <Text style={styles.overlayTitle}>
+                {scannedReceivable ? '📦 Incoming Document' : '📄 Scanned Document'}
+              </Text>
               <TouchableOpacity onPress={handleDismiss} style={styles.overlayClose}>
                 <Text style={{ color: '#6B7280', fontSize: 16 }}>✕</Text>
               </TouchableOpacity>
@@ -914,20 +1091,24 @@ export default function Scanner() {
 
               {/* Prompt */}
               <Text style={styles.receivePrompt}>
-                This document is waiting to be received. Confirm receipt to mark it as accepted in the system.
+                {scannedReceivable
+                  ? 'This document is waiting to be received. Confirm receipt to mark it as accepted in the system.'
+                  : 'Choose an action for this document.'}
               </Text>
 
               {/* Action buttons */}
-              <TouchableOpacity
-                style={[styles.acceptBtn, accepting && { opacity: 0.7 }]}
-                onPress={handleQuickAccept}
-                disabled={accepting}
-              >
-                {accepting
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={styles.acceptBtnText}>✓  Accept & Receive Document</Text>
-                }
-              </TouchableOpacity>
+              {scannedReceivable && (
+                <TouchableOpacity
+                  style={[styles.acceptBtn, accepting && { opacity: 0.7 }]}
+                  onPress={handleQuickAccept}
+                  disabled={accepting}
+                >
+                  {accepting
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={styles.acceptBtnText}>✓  Accept & Receive Document</Text>
+                  }
+                </TouchableOpacity>
+              )}
 
               {scannedDoc?.transfer_status === 'pending' && (
                 <TouchableOpacity
@@ -941,6 +1122,15 @@ export default function Scanner() {
                   }
                 </TouchableOpacity>
               )}
+
+              {/* Release to collector — always offered; server authorizes by
+                  office and returns 403 if this staff isn't in the group. */}
+              <TouchableOpacity
+                style={styles.releaseActionBtn}
+                onPress={openReleaseForm}
+              >
+                <Text style={styles.releaseActionBtnText}>🤝  Release to Collector</Text>
+              </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.detailsBtn}
@@ -959,6 +1149,147 @@ export default function Scanner() {
           </View>
         </View>
       </Modal>
+
+      {/* ── Release-to-collector form ─────────────────────────────────────── */}
+      <Modal
+        visible={!!releaseDoc && !collectorScanning}
+        transparent
+        animationType="slide"
+        onRequestClose={closeReleaseForm}
+      >
+        <View style={styles.overlayBackdrop}>
+          <View style={styles.overlaySheet}>
+            <View style={styles.overlayHandle} />
+
+            <View style={styles.overlayHeader}>
+              <Text style={styles.overlayTitle}>🤝 Release Document</Text>
+              <TouchableOpacity onPress={closeReleaseForm} style={styles.overlayClose}>
+                <Text style={{ color: '#6B7280', fontSize: 16 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {/* Doc being released — confirmation context */}
+              <View style={styles.docCard}>
+                <Text style={styles.docTitle} numberOfLines={2}>
+                  {releaseDoc?.title || 'Untitled Document'}
+                </Text>
+                {(releaseDoc?.doc_id || releaseDoc?.tracking_number) ? (
+                  <View style={styles.docMetaRow}>
+                    <Text style={styles.docMetaLabel}>Reference</Text>
+                    <Text style={styles.docMetaValue}>
+                      {releaseDoc?.doc_id || releaseDoc?.tracking_number}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+
+              <Text style={styles.receivePrompt}>
+                Record who is collecting this document. Scan the collector's QR to
+                auto-fill, or type their details.
+              </Text>
+
+              {/* Scan collector QR — reuses the camera */}
+              <TouchableOpacity style={styles.scanCollectorBtn} onPress={enterCollectorScan}>
+                <Text style={styles.scanCollectorText}>📷  Scan Collector's QR</Text>
+              </TouchableOpacity>
+              {collectorUsername ? (
+                <Text style={styles.collectorLinkedNote}>
+                  ✓ Linked to registered collector @{collectorUsername}
+                </Text>
+              ) : null}
+
+              {/* Collector fields — all editable, pre-filled if scanned */}
+              <Text style={styles.fieldLabel}>Collector's Name <Text style={{ color: '#DC2626' }}>*</Text></Text>
+              <TextInput
+                value={collectorName}
+                onChangeText={setCollectorName}
+                placeholder="Full name of the person collecting"
+                placeholderTextColor="#CBD5E1"
+                style={[styles.fieldInput, !collectorName.trim() && { borderColor: '#FECACA' }]}
+              />
+
+              <Text style={styles.fieldLabel}>Origin</Text>
+              <TextInput
+                value={collectorOrigin}
+                onChangeText={setCollectorOrigin}
+                placeholder="Where they're from (e.g. school / barangay)"
+                placeholderTextColor="#CBD5E1"
+                style={styles.fieldInput}
+              />
+
+              <Text style={styles.fieldLabel}>Office / Designation</Text>
+              <TextInput
+                value={collectorOffice}
+                onChangeText={setCollectorOffice}
+                placeholder="Office or designation"
+                placeholderTextColor="#CBD5E1"
+                style={styles.fieldInput}
+              />
+
+              <Text style={styles.fieldLabel}>Position</Text>
+              <TextInput
+                value={collectorPosition}
+                onChangeText={setCollectorPosition}
+                placeholder="Position / role"
+                placeholderTextColor="#CBD5E1"
+                style={styles.fieldInput}
+              />
+
+              <Text style={styles.fieldLabel}>Contact</Text>
+              <TextInput
+                value={collectorContact}
+                onChangeText={setCollectorContact}
+                placeholder="Phone or email"
+                placeholderTextColor="#CBD5E1"
+                autoCapitalize="none"
+                style={styles.fieldInput}
+              />
+
+              <TouchableOpacity
+                style={[styles.releaseBtn, (releasing || !collectorName.trim()) && { opacity: 0.6 }]}
+                onPress={() => submitRelease(false)}
+                disabled={releasing || !collectorName.trim()}
+              >
+                {releasing
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.acceptBtnText}>🤝  Release Document</Text>
+                }
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.cancelBtn, releasing && { opacity: 0.5 }]}
+                onPress={closeReleaseForm}
+                disabled={releasing}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Collector-QR scan banner (camera re-armed under the form) ──────── */}
+      {collectorScanning && (
+        <View style={styles.collectorScanBanner}>
+          {collectorResolving ? (
+            <>
+              <ActivityIndicator color="#fff" />
+              <Text style={styles.collectorScanText}>Looking up collector…</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.collectorScanText}>Scan the collector's QR code</Text>
+              <TouchableOpacity
+                onPress={() => { setCollectorScanning(false); cooldown.current = false; lastScanned.current = ''; }}
+                style={styles.collectorScanCancel}
+              >
+                <Text style={{ color: '#fff', fontWeight: '700' }}>Cancel — Type Instead</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
 
       {/* ── Client-QR batch receive modal ─────────────────────────────────── */}
       <Modal
@@ -1257,7 +1588,7 @@ export default function Scanner() {
       {acceptedDocTitle && (
         <View style={styles.successFlash}>
           <Text style={styles.successIcon}>✓</Text>
-          <Text style={styles.successText}>Received!</Text>
+          <Text style={styles.successText}>{flashHeading}</Text>
           <Text style={styles.successSubText} numberOfLines={1}>{acceptedDocTitle}</Text>
         </View>
       )}
@@ -1678,6 +2009,78 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 10,
+  },
+
+  // Release to collector
+  releaseActionBtn: {
+    backgroundColor: '#7C3AED',
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  releaseActionBtnText: {
+    color: '#fff', fontSize: 16, fontWeight: '700',
+  },
+  releaseBtn: {
+    backgroundColor: '#7C3AED',
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 10,
+    marginTop: 16,
+  },
+  scanCollectorBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#BFDBFE',
+    paddingVertical: 13,
+    marginBottom: 6,
+  },
+  scanCollectorText: {
+    color: '#0038A8', fontSize: 14, fontWeight: '700',
+  },
+  collectorLinkedNote: {
+    color: '#16A34A', fontSize: 12, fontWeight: '600',
+    textAlign: 'center', marginBottom: 4,
+  },
+  fieldLabel: {
+    fontSize: 11, fontWeight: '700', color: '#64748B',
+    textTransform: 'uppercase', letterSpacing: 0.6,
+    marginBottom: 6, marginTop: 12,
+  },
+  fieldInput: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#1E293B',
+  },
+  collectorScanBanner: {
+    position: 'absolute',
+    top: 120, left: 20, right: 20,
+    backgroundColor: 'rgba(0,0,0,0.78)',
+    borderRadius: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    gap: 12,
+  },
+  collectorScanText: {
+    color: '#fff', fontSize: 15, fontWeight: '700', textAlign: 'center',
+  },
+  collectorScanCancel: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
   },
   detailsBtnText: {
     color: '#fff', fontSize: 15, fontWeight: '600',
