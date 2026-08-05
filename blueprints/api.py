@@ -3123,8 +3123,10 @@ def api_staff_resolve_client_qr():
     """Staff: resolve a scanned client QR token to that client's pending docs.
 
     Staff/admin only (guarded by @jwt_staff_required — a client cannot call
-    this). Returns every pending document submitted by the resolved client,
-    regardless of which staff/office it is pending at.
+    this). Returns the resolved client's pending documents, narrowed to what the
+    CALLING staff can actually receive — mirroring /pending-documents: admins see
+    all of the client's pending docs; other staff see only docs pending at them,
+    or (when no staff is assigned) pending at their office.
     """
     data = request.get_json(force=True, silent=True) or {}
     token = (data.get('token') or '').strip()
@@ -3138,12 +3140,32 @@ def api_staff_resolve_client_qr():
     client = get_user_by_username(username)
     client_name = (client.get('full_name') if client else '') or username
 
+    # Calling staff identity/office — same source/checks as /pending-documents.
+    # g.current_api_user is legitimately None for the env-var admin; _is_admin_user
+    # still resolves that account to admin, so it sees all (as /pending-documents does).
+    caller_id = g.current_api_username
+    caller = g.current_api_user
+    caller_role = 'admin' if _is_admin_user(caller_id) else (caller.get('role', '') if caller else '')
+    caller_office = (caller.get('office') or '').strip().lower() if caller else ''
+
     docs = load_docs()
-    result = [
+    base = [
         d for d in docs
         if d.get('submitted_by') == username
         and d.get('transfer_status') == 'pending'
     ]
+    if caller_role in ('admin', 'superadmin'):
+        result = base
+    else:
+        result = [
+            d for d in base
+            if d.get('pending_at_staff') == caller_id
+            or (
+                caller_office
+                and d.get('pending_at_office', '').strip().lower() == caller_office
+                and not d.get('pending_at_staff', '')
+            )
+        ]
     for d in result:
         ps = d.get('pending_at_staff')
         if ps:

@@ -257,9 +257,16 @@ Wanted, not broken.
     a query param), with a `"" -> HTTP 500` guard so an empty QR is never rendered. `POST
     /staff/resolve-client-qr` (`@jwt_staff_required`, staff/admin only) resolves a scanned token to
     that client's **pending** docs (`submitted_by == user` AND `transfer_status == 'pending'`),
-    regardless of pending office; returns `{client_username, client_name, documents[]}` in the
-    `/pending-documents` serialized shape, with `client_name` read from the users record (never client
-    input). Baseline held `14 failed / 376 passed / 1 skipped`.
+    then **scoped to what the calling staff can receive** (`pending_at_staff == caller` OR
+    unassigned-at-caller's-office), mirroring `/pending-documents` — admins/env-admin still see all;
+    returns `{client_username, client_name, documents[]}` in the `/pending-documents` serialized
+    shape, with `client_name` read from the users record (never client input). Baseline held
+    `14 failed / 376 passed / 1 skipped`.
+    - Scoping was a follow-up fix: the first cut returned every doc a client had pending *anywhere*.
+      A **live smoke test** surfaced it — scanning a client's QR at the counter showed months-old
+      in-flight docs already accepted and routed deep, pending at *other* staff, which the scanning
+      staff can't act on. Now mirrors `/pending-documents`' recipient narrowing exactly (env-admin
+      resolved via `_is_admin_user`, since `g.current_api_user` is `None` for it).
   - [ ] Client app renders its QR
   - [ ] Staff scan → pre-fill by-client pending filter → receive
 
