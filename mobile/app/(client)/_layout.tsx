@@ -60,6 +60,7 @@ export default function ClientLayout() {
         options={{ title: 'Profile', tabBarIcon: ({ color }) => <User size={22} color={color} /> }}
       />
       <Tabs.Screen name="track/[id]" options={{ href: null }} />
+      <Tabs.Screen name="my-qr" options={{ href: null }} />
     </Tabs>
   );
 }
