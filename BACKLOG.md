@@ -317,6 +317,22 @@ Wanted, not broken.
     scanner forward flow does not itself resolve a slug (it transfers to a known `intended_for_username`);
     the reusable slug→staff pattern is submit.tsx reading `office_slug` directly. Response shape
     otherwise unchanged. Baseline held: 14 failed / 377 passed / 1 skipped.
+  - [x] **Mobile intake "Receive & Route" — routing is now mandatory at intake.** The client-QR batch
+    modal no longer offers accept-without-routing: the intake/primary recipient is pure intake
+    (receives, routes, releases) and always hands each doc onward to a handling staff member. Per-doc
+    **Receive & Route** opens a staff picker built from the doc's `office_slug` →
+    `GET /offices/{slug}/staff` and fires `POST /documents/{id}/transfer` (the existing atomic
+    receive+forward). **Route all to one handler** routes a whole same-office batch in one pass,
+    **guarded against mixed-office batches** (offered only when every doc shares one office slug).
+    Routed docs leave the list; an empty list means everything was received and routed. **Self-routing
+    is blocked at BOTH layers:** the UI filters the caller out of the handler options (filtered at
+    render, not in the shared `['office-staff', slug]` queryFn, so submit.tsx's cache stays unfiltered),
+    and the mobile `/transfer` endpoint now rejects `to_staff == self` before any state change —
+    mirroring the web guard (`routes/dashboard.py:1101`) and closing a mobile/web inconsistency where a
+    self-route was a silent no-op that vanished the doc from the list as if handled. Completes the
+    tracked custody chain: client submit → intake receives+routes → handler, every hop logged in
+    `travel_log`. `tsc --noEmit` unchanged (7 pre-existing, 0 new). Baseline held: 14 failed / 377
+    passed / 1 skipped. **Not yet device-tested.**
 
 - [ ] **Display-name-only rename still orphans history** (follow-up to the shipped username-rename,
   now under Closed). The rename only fires when the username actually changes — `rename_user` rejects

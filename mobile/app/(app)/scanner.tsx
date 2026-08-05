@@ -70,12 +70,23 @@ interface ClientBatchDoc {
   pending_at_office?: string;
   intended_for_username?: string;
   intended_for_name?: string;
+  // Slug of the office the client submitted to — added per-doc by
+  // /staff/resolve-client-qr so we can populate the handler picker via
+  // GET /offices/{slug}/staff.
+  office_slug?: string;
 }
 
 interface ClientBatchResult {
   client_username: string;
   client_name: string;
   documents: ClientBatchDoc[];
+}
+
+// Handler option from GET /offices/{slug}/staff (same shape submit.tsx uses).
+interface StaffMember {
+  username: string;
+  full_name: string;
+  is_primary?: boolean;
 }
 
 export default function Scanner() {
@@ -110,12 +121,34 @@ export default function Scanner() {
   // Client-QR batch-receive state
   const [clientResult, setClientResult]     = useState<ClientBatchResult | null>(null);
   const [clientLoading, setClientLoading]   = useState(false);
-  const [acceptingId, setAcceptingId]       = useState<string | null>(null);
-  const [acceptAllBusy, setAcceptAllBusy]   = useState(false);
+  // Intake routing state (Receive & Route). Every client-submitted doc MUST be
+  // routed to a handler — there is no accept-without-routing here.
+  const [routingId, setRoutingId]             = useState<string | null>(null); // per-doc route in flight
+  const [routeAllBusy, setRouteAllBusy]       = useState(false);               // Route-all loop in flight
+  const [routeSubmitting, setRouteSubmitting] = useState(false);               // picker confirm in flight
+  const [routePicker, setRoutePicker]         = useState<{
+    mode: 'single' | 'all';
+    docIds: string[];
+    officeSlug: string;
+    officeName: string;
+  } | null>(null);
 
   const [adminOfficeOverride, setAdminOfficeOverride]       = useState('');
   const [adminRecipientOverride, setAdminRecipientOverride] = useState('');
   const [officePickerOpen, setOfficePickerOpen]             = useState(false);
+
+  // Handler options for the office of the doc(s) being routed. Same queryKey as
+  // submit.tsx (['office-staff', slug]) so the prefetched cache is reused.
+  const { data: routeStaff = [], isLoading: routeStaffLoading } = useQuery<StaffMember[]>({
+    queryKey: ['office-staff', routePicker?.officeSlug],
+    queryFn: async () => {
+      if (!routePicker?.officeSlug) return [];
+      const res = await api.get(`/offices/${routePicker.officeSlug}/staff`);
+      return (res.data ?? []) as StaffMember[];
+    },
+    enabled: !!routePicker?.officeSlug,
+    staleTime: 1000 * 60 * 5,
+  });
 
   const lastScanned = useRef<string>('');
   const cooldown = useRef<boolean>(false);
@@ -287,66 +320,97 @@ export default function Scanner() {
     }
   };
 
-  // Per-doc accept (secondary action) — honors forward-to-intended, mirroring
-  // handleQuickAccept. Removes the doc from the open batch on success.
-  const handleClientDocAccept = async (doc: ClientBatchDoc) => {
-    if (acceptingId || acceptAllBusy) return;
-    setAcceptingId(doc.id);
-    try {
-      const response = await api.post(`/documents/${doc.id}/accept`);
-      const accepted = response.data;
-      Vibration.vibrate([0, 60, 40, 60]);
-      invalidateReceiveCaches();
+  // One atomic call receives AND forwards a pending client doc to a handler.
+  // Same payload as the existing forward flow (handleForwardTransfer).
+  const transferDocTo = (docId: string, toStaff: string) =>
+    api.post(`/documents/${docId}/transfer`, { to_staff: toStaff, transfer_type: 'inside_office' });
 
-      // Drop the accepted doc from the batch list.
-      setClientResult((prev) =>
-        prev ? { ...prev, documents: prev.documents.filter((d) => d.id !== doc.id) } : prev
-      );
-
-      const intendedUsername = accepted?.intended_for_username || '';
-      if (intendedUsername && intendedUsername !== user?.username) {
-        setForwardDoc({
-          id: accepted.id,
-          intendedUsername,
-          intendedName: accepted?.intended_for_name || intendedUsername,
-        });
-      }
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || 'Could not accept this document.';
-      Alert.alert('Accept Failed', msg);
-    } finally {
-      setAcceptingId(null);
+  // Open the handler picker for a SINGLE doc, populated from that doc's office.
+  const openRouteSingle = (doc: ClientBatchDoc) => {
+    if (routingId || routeAllBusy) return;
+    const slug = doc.office_slug || '';
+    if (!slug) {
+      Alert.alert('Cannot Route', 'This document has no office on record to route within.');
+      return;
     }
+    setRoutePicker({
+      mode: 'single',
+      docIds: [doc.id],
+      officeSlug: slug,
+      officeName: doc.pending_at_office || doc.from_office || '',
+    });
   };
 
-  // Accept All (primary) — the fast path. Loops accept over the batch and
-  // SKIPS the per-doc forward-to-intended dialog (firing N dialogs would be
-  // chaos), mirroring receive-docs.tsx handleAcceptAll.
-  const handleClientAcceptAll = async () => {
+  // Open the handler picker for ALL docs at once. Only valid when every doc
+  // shares one office (guarded in the UI); "route all to one handler" is
+  // meaningless across offices.
+  const openRouteAll = () => {
     if (!clientResult || !clientResult.documents.length) return;
-    if (acceptAllBusy || acceptingId) return;
-    const batch = clientResult.documents;
-    const total = batch.length;
-    const clientName = clientResult.client_name;
-    setAcceptAllBusy(true);
+    if (routingId || routeAllBusy) return;
+    const slugs = Array.from(
+      new Set(clientResult.documents.map((d) => d.office_slug || '').filter(Boolean))
+    );
+    if (slugs.length !== 1) return; // mixed/missing offices — button is disabled anyway
+    setRoutePicker({
+      mode: 'all',
+      docIds: clientResult.documents.map((d) => d.id),
+      officeSlug: slugs[0],
+      officeName: clientResult.documents[0].pending_at_office || '',
+    });
+  };
+
+  // A handler was chosen in the picker — perform the transfer(s).
+  const handleRouteSelect = async (staff: StaffMember) => {
+    if (!routePicker || routeSubmitting) return;
+    const { mode, docIds, officeName } = routePicker;
+    const staffName = staff.full_name || staff.username;
+    setRouteSubmitting(true);
+
+    if (mode === 'single') {
+      const docId = docIds[0];
+      setRoutingId(docId);
+      try {
+        await transferDocTo(docId, staff.username);
+        Vibration.vibrate([0, 60, 40, 60]);
+        invalidateReceiveCaches();
+        // Routed doc leaves the list — what remains still needs routing.
+        setClientResult((prev) =>
+          prev ? { ...prev, documents: prev.documents.filter((d) => d.id !== docId) } : prev
+        );
+        setRoutePicker(null);
+      } catch (err: any) {
+        Alert.alert('Route Failed', err?.response?.data?.error || 'Could not route this document.');
+      } finally {
+        setRoutingId(null);
+        setRouteSubmitting(false);
+      }
+      return;
+    }
+
+    // mode === 'all' — loop the transfer over every doc to the one handler.
+    setRouteAllBusy(true);
+    const clientName = clientResult?.client_name || 'client';
+    const total = docIds.length;
     let success = 0;
     let failed = 0;
-    for (const doc of batch) {
+    for (const id of docIds) {
       try {
-        await api.post(`/documents/${doc.id}/accept`);
+        await transferDocTo(id, staff.username);
         success++;
       } catch {
         failed++;
       }
     }
-    setAcceptAllBusy(false);
+    setRouteAllBusy(false);
+    setRouteSubmitting(false);
+    setRoutePicker(null);
     invalidateReceiveCaches();
     Vibration.vibrate([0, 80, 60, 80]);
     setClientResult(null);
     setAcceptedDocTitle(
       failed === 0
-        ? `Received ${success} document${success !== 1 ? 's' : ''} for ${clientName}`
-        : `Received ${success} of ${total}, ${failed} failed`
+        ? `Routed ${success} document${success !== 1 ? 's' : ''} to ${staffName}${officeName ? ' (' + officeName + ')' : ''} for ${clientName}`
+        : `Routed ${success} of ${total} to ${staffName}, ${failed} failed`
     );
     resetScanner(2500);
   };
@@ -371,6 +435,10 @@ export default function Scanner() {
       setOfficePickerOpen(false);
       setSlipResult(null);
       setClientResult(null);
+      setRoutePicker(null);
+      setRoutingId(null);
+      setRouteAllBusy(false);
+      setRouteSubmitting(false);
     }, delay);
   };
 
@@ -652,6 +720,19 @@ export default function Scanner() {
 
   // ── Main scanner ──────────────────────────────────────────────────────────
 
+  // Mixed-office guard for "Route all": only offer it when every doc in the
+  // batch shares exactly one office slug.
+  const batchDocs = clientResult?.documents ?? [];
+  const distinctBatchSlugs = Array.from(
+    new Set(batchDocs.map((d) => d.office_slug || '').filter(Boolean))
+  );
+  const canRouteAll = distinctBatchSlugs.length === 1;
+
+  // Handler options with the logged-in user removed — routing to yourself is a
+  // no-op (also rejected server-side). Filtered here (not in the queryFn) so the
+  // shared ['office-staff', slug] cache stays unfiltered for submit.tsx.
+  const routeStaffOptions = routeStaff.filter((s) => s.username !== user?.username);
+
   return (
     <View style={{ flex: 1, backgroundColor: '#000', paddingBottom: 100 }}>
 
@@ -659,7 +740,7 @@ export default function Scanner() {
         style={StyleSheet.absoluteFillObject}
         facing="back"
         enableTorch={torchOn}
-        onBarcodeScanned={scanState === 'scanning' && !scannedDoc && !slipPreview && !clientResult && !clientLoading ? handleScan : undefined}
+        onBarcodeScanned={scanState === 'scanning' && !scannedDoc && !slipPreview && !clientResult && !clientLoading && !routePicker ? handleScan : undefined}
         barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
       />
 
@@ -933,19 +1014,27 @@ export default function Scanner() {
               </View>
             ) : (
               <>
-                {/* Primary action — Accept All */}
-                <TouchableOpacity
-                  style={[styles.acceptBtn, (acceptAllBusy || !!acceptingId) && { opacity: 0.7 }]}
-                  onPress={handleClientAcceptAll}
-                  disabled={acceptAllBusy || !!acceptingId}
-                >
-                  {acceptAllBusy
-                    ? <ActivityIndicator color="#fff" size="small" />
-                    : <Text style={styles.acceptBtnText}>
-                        ✓  Accept All ({clientResult?.documents.length ?? 0})
-                      </Text>
-                  }
-                </TouchableOpacity>
+                {/* Primary action — Route All to one handler (single-office only) */}
+                {canRouteAll ? (
+                  <TouchableOpacity
+                    style={[styles.acceptBtn, (routeAllBusy || !!routingId) && { opacity: 0.7 }]}
+                    onPress={openRouteAll}
+                    disabled={routeAllBusy || !!routingId}
+                  >
+                    {routeAllBusy
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <Text style={styles.acceptBtnText}>
+                          ➡️  Route All to…  ({batchDocs.length})
+                        </Text>
+                    }
+                  </TouchableOpacity>
+                ) : (
+                  <View style={[styles.acceptBtn, { backgroundColor: '#EEF2F7' }]}>
+                    <Text style={[styles.acceptBtnText, { color: '#64748B', fontSize: 13, fontWeight: '600' }]}>
+                      Multiple offices — route each document below
+                    </Text>
+                  </View>
+                )}
 
                 <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 4 }}>
                   {clientResult?.documents.map((doc) => (
@@ -994,14 +1083,15 @@ export default function Scanner() {
                       <TouchableOpacity
                         style={[
                           styles.perDocAcceptBtn,
-                          (acceptingId === doc.id || acceptAllBusy) && { opacity: 0.6 },
+                          { backgroundColor: '#0038A8' },
+                          (routingId === doc.id || routeAllBusy) && { opacity: 0.6 },
                         ]}
-                        onPress={() => handleClientDocAccept(doc)}
-                        disabled={!!acceptingId || acceptAllBusy}
+                        onPress={() => openRouteSingle(doc)}
+                        disabled={!!routingId || routeAllBusy}
                       >
-                        {acceptingId === doc.id
+                        {routingId === doc.id
                           ? <ActivityIndicator color="#fff" size="small" />
-                          : <Text style={styles.perDocAcceptText}>✓  Accept</Text>
+                          : <Text style={styles.perDocAcceptText}>➡️  Receive &amp; Route</Text>
                         }
                       </TouchableOpacity>
                     </View>
@@ -1015,6 +1105,102 @@ export default function Scanner() {
                   </TouchableOpacity>
                 </ScrollView>
               </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Handler picker (Receive & Route) ──────────────────────────────── */}
+      <Modal
+        visible={!!routePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { if (!routeSubmitting) setRoutePicker(null); }}
+      >
+        <View style={styles.overlayBackdrop}>
+          <View style={styles.overlaySheet}>
+            <View style={styles.overlayHandle} />
+
+            <View style={styles.overlayHeader}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={styles.overlayTitle} numberOfLines={1}>
+                  Route to handler
+                </Text>
+                <Text style={{ color: '#64748B', fontSize: 12.5, marginTop: 2 }}>
+                  {routePicker?.mode === 'all'
+                    ? `All ${routePicker?.docIds.length} document${routePicker && routePicker.docIds.length !== 1 ? 's' : ''}`
+                    : '1 document'}
+                  {routePicker?.officeName ? ` · ${routePicker.officeName}` : ''}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => { if (!routeSubmitting) setRoutePicker(null); }}
+                style={styles.overlayClose}
+              >
+                <Text style={{ color: '#6B7280', fontSize: 16 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {routeStaffLoading ? (
+              <View style={{ paddingVertical: 36, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#0038A8" />
+                <Text style={{ color: '#64748B', marginTop: 12, fontSize: 13 }}>Loading staff…</Text>
+              </View>
+            ) : routeStaffOptions.length === 0 ? (
+              <View style={{ paddingVertical: 36, alignItems: 'center', paddingHorizontal: 12 }}>
+                <Text style={{ color: '#1E293B', fontSize: 15, fontWeight: '700', marginBottom: 6 }}>
+                  No other staff to route to
+                </Text>
+                <Text style={{ color: '#64748B', fontSize: 13, textAlign: 'center', lineHeight: 19 }}>
+                  {routeStaff.length > 0
+                    ? 'You are the only registered staff in this office — there is no one else to hand this to.'
+                    : 'This office has no registered staff to route to.'}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.cancelBtn, { marginTop: 20, alignSelf: 'stretch' }]}
+                  onPress={() => setRoutePicker(null)}
+                >
+                  <Text style={styles.cancelBtnText}>Back</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {routeStaffOptions.map((s) => (
+                  <TouchableOpacity
+                    key={s.username}
+                    onPress={() => handleRouteSelect(s)}
+                    disabled={routeSubmitting}
+                    style={[
+                      styles.docCard,
+                      {
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        opacity: routeSubmitting ? 0.6 : 1,
+                      },
+                    ]}
+                  >
+                    <View style={{ flex: 1, paddingRight: 12 }}>
+                      <Text style={[styles.docTitle, { marginBottom: 2 }]} numberOfLines={1}>
+                        {s.full_name || s.username}
+                      </Text>
+                      <Text style={{ color: '#64748B', fontSize: 12 }}>@{s.username}</Text>
+                    </View>
+                    {s.is_primary ? (
+                      <View style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20 }}>
+                        <Text style={{ color: '#0038A8', fontSize: 11, fontWeight: '700' }}>Primary</Text>
+                      </View>
+                    ) : null}
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity
+                  style={[styles.cancelBtn, { marginTop: 4 }]}
+                  onPress={() => setRoutePicker(null)}
+                  disabled={routeSubmitting}
+                >
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </ScrollView>
             )}
           </View>
         </View>
