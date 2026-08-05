@@ -334,6 +334,21 @@ Wanted, not broken.
     `travel_log`. `tsc --noEmit` unchanged (7 pre-existing, 0 new). Baseline held: 14 failed / 377
     passed / 1 skipped. **Not yet device-tested.**
 
+- [ ] **Release-to-client** (digitize the logbook "pull-out": a collector — often NOT the submitter, a
+  favor-doer — collects a finished document; staff logs who took it).
+  - [x] Server: `document_releases` table + `POST /documents/{id}/release-to-client`. Group-gated
+    (staff must be in the office's primary group — release is NEVER client-triggered, closing the
+    false-custody hole). Soft warning (409 `requires_confirm`) if the doc looks mid-process; staff can
+    override; staff judgment + the release log are the accountability control (no ready-for-pickup state
+    yet — deferred). Logs collector name/username/origin/office/position/contact (name required;
+    office/position/origin TYPED for now, auto-fill from expanded profile is a later arc), `released_by`
+    staff, timestamp; appends timeline "Released to {name} of {origin} by {staff}". Baseline held:
+    14 failed / 377 passed / 1 skipped. **Not yet device-tested.**
+  - [ ] Mobile: scan doc QR → capture collector (scan collector QR or type) → release
+  - [ ] (future) Expand client registration/profile to store office/position/origin so collector QR
+    auto-fills them
+  - [ ] (future) "Ready for pickup" state so release is gated on finished-ness, not just staff judgment
+
 - [ ] **Display-name-only rename still orphans history** (follow-up to the shipped username-rename,
   now under Closed). The rename only fires when the username actually changes — `rename_user` rejects
   `old == new` username. Editing ONLY a user's `full_name` (username unchanged) takes the plain

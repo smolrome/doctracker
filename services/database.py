@@ -170,6 +170,27 @@ def _create_tables(cur):
             created_at  TIMESTAMP DEFAULT NOW()
         )
     """)
+    # Release-to-collector audit records. One row per physical hand-off of a
+    # finished document to a collector at the counter. Distinct from the internal
+    # /release close-out (which only touches the document): this captures WHO
+    # collected it. collector_username is nullable — favor-collectors have no
+    # account. The collector_office/position/origin columns exist now even though
+    # they are typed today; a later arc auto-fills them from an expanded client
+    # profile with no schema change. released_by is the accountability anchor.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS document_releases (
+            id                 BIGSERIAL PRIMARY KEY,
+            document_id        TEXT NOT NULL,
+            released_by        TEXT NOT NULL,
+            released_at        TIMESTAMP DEFAULT NOW(),
+            collector_name     TEXT NOT NULL,
+            collector_username TEXT,
+            collector_origin   TEXT,
+            collector_office   TEXT,
+            collector_position TEXT,
+            collector_contact  TEXT
+        )
+    """)
     # Self-service password reset — HASHED, single-use, time-limited tokens.
     # Mirrors invite_tokens / doc_qr_tokens storage, but stores token_hash
     # (SHA-256 of the urlsafe token) as the key — the raw token is NEVER stored.
@@ -307,6 +328,8 @@ def _create_tables(cur):
     # Client tokens are looked up by username (client fetching their own) as well
     # as by token (staff resolving a scan, which hits the PK).
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_client_qr_tokens_username ON client_qr_tokens(username)""")
+    # Release records are fetched by document to show a doc's collection history.
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_document_releases_document ON document_releases(document_id)""")
 
 
 def _run_migrations(cur):
@@ -632,6 +655,98 @@ def get_transfer_history(username, role):
                     (username,)
                 )
             return cur.fetchall()
+
+
+def create_document_release(document_id, released_by, collector_name,
+                            collector_username=None, collector_origin=None,
+                            collector_office=None, collector_position=None,
+                            collector_contact=None):
+    """Record one release-to-collector hand-off. Returns the release record dict.
+
+    Mirrors create_transfer_batch's side-table pattern, but ADDS a JSON fallback
+    (transfer_batches is DB-only) so the mobile release flow is functional — and
+    testable — on the JSON backend the test suite runs on. In JSON mode records
+    are appended to document_releases.json as a list; the id is a running length.
+    """
+    from datetime import datetime
+    released_at = datetime.now().isoformat(timespec='seconds')
+    if USE_DB:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO document_releases
+                        (document_id, released_by, collector_name, collector_username,
+                         collector_origin, collector_office, collector_position,
+                         collector_contact)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id, released_at
+                """, (document_id, released_by, collector_name, collector_username,
+                      collector_origin, collector_office, collector_position,
+                      collector_contact))
+                row = cur.fetchone()
+        rec = {
+            "id": row["id"],
+            "released_at": row["released_at"].isoformat() if hasattr(row["released_at"], "isoformat") else str(row["released_at"]),
+        }
+    else:
+        path = "document_releases.json"
+        records = []
+        if os.path.exists(path):
+            try:
+                with open(path) as f:
+                    records = json.load(f)
+            except Exception:
+                records = []
+        rec = {"id": len(records) + 1, "released_at": released_at}
+        records.append({
+            **rec,
+            "document_id": document_id,
+            "released_by": released_by,
+            "collector_name": collector_name,
+            "collector_username": collector_username,
+            "collector_origin": collector_origin,
+            "collector_office": collector_office,
+            "collector_position": collector_position,
+            "collector_contact": collector_contact,
+        })
+        with open(path, "w") as f:
+            json.dump(records, f)
+    return {
+        **rec,
+        "document_id": document_id,
+        "released_by": released_by,
+        "collector_name": collector_name,
+        "collector_username": collector_username,
+        "collector_origin": collector_origin,
+        "collector_office": collector_office,
+        "collector_position": collector_position,
+        "collector_contact": collector_contact,
+    }
+
+
+def get_document_releases(document_id):
+    """Return all release records for a document, newest first."""
+    if USE_DB:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT * FROM document_releases WHERE document_id = %s ORDER BY released_at DESC",
+                    (document_id,)
+                )
+                return [dict(r) for r in cur.fetchall()]
+    path = "document_releases.json"
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path) as f:
+            records = json.load(f)
+    except Exception:
+        return []
+    return sorted(
+        [r for r in records if r.get("document_id") == document_id],
+        key=lambda r: r.get("released_at", ""),
+        reverse=True,
+    )
 
 
 def create_import_batch(batch_id, imported_by, filename, doc_ids, row_count):
