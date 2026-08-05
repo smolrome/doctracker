@@ -298,7 +298,16 @@ Wanted, not broken.
       boilerplate; no hand-edits after prebuild). Confirmed: project upload **681MB → 96MB**, build
       emitted a single `app-debug.apk`, installs cleanly. Firebase `google-services.json` lives at the
       **mobile root** (not in `android/`), so it survives the deletion.
-  - [ ] Staff scan → pre-fill by-client pending filter → receive
+  - [x] Staff scan → resolve client QR → batch-receive. `scanner.tsx` recognizes `CLI-` tokens with
+    the same throw-and-catch dispatch as `SLIP_` (before the doc-id GET, so no wasted network calls),
+    POSTs `/staff/resolve-client-qr`, and opens a batch-receive modal — "Receiving for {client_name}"
+    over the client's receivable docs (already staff-scoped server-side). A prominent **Accept All**
+    loops `POST /documents/{id}/accept` and **skips** the per-doc forward-to-intended dialog (mirrors
+    `receive-docs.tsx` `handleAcceptAll`) so a batch never fires N forward prompts; **per-doc Accept**
+    honors forward-to-intended for the selective case. An empty result (the client's docs are pending
+    with other staff) renders a friendly "nothing here for you" state, not an error. Camera gate blocks
+    scanning while the modal is open or resolving. `tsc --noEmit` unchanged (7 pre-existing, 0 new).
+    **Not yet device-tested.** This completes the client-QR receive-side arc.
 
 - [ ] **Display-name-only rename still orphans history** (follow-up to the shipped username-rename,
   now under Closed). The rename only fires when the username actually changes — `rename_user` rejects
