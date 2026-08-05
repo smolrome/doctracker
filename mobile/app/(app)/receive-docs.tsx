@@ -167,7 +167,6 @@ export default function ReceiveDocs() {
     onSuccess: (response, acceptedDoc) => {
       const responseDoc      = response.data;
       const intendedUsername = (responseDoc?.intended_for_username || '');
-      setAcceptTarget(null);
       invalidate();
       showToast('Document received successfully');
       if (intendedUsername && intendedUsername !== user?.username) {

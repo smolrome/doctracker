@@ -19,26 +19,14 @@ Do not wait to be asked. If a merge lands and BACKLOG.md didn't change in either
 
 Things broken for users right now.
 
-- [ ] **Mobile: accepting a document crashes its success handler (`setAcceptTarget` is not defined).**
-  [mobile/app/(app)/receive-docs.tsx:170](mobile/app/(app)/receive-docs.tsx:170) calls
-  `setAcceptTarget(null)` inside `acceptMutation.onSuccess`, but **no `acceptTarget` state is declared
-  anywhere in the file** — `grep -n "acceptTarget" mobile/app/\(app\)/receive-docs.tsx` returns only
-  that one line. `tsc --noEmit` reports it as `error TS2304: Cannot find name 'setAcceptTarget'`.
-  At runtime this throws a `ReferenceError` as the *first* statement of `onSuccess`, so everything
-  after it is skipped: `invalidate()` never runs (list doesn't refresh), the "Document received
-  successfully" toast never shows, and the follow-up forward-to-intended-recipient prompt never fires.
-  The `POST /documents/<id>/accept` itself already succeeded server-side, so the document *is*
-  accepted — the UI just silently fails to reflect it. Not verified on a device; diagnosis is from
-  source + typecheck.
-
-- [ ] **Mobile: 8 TypeScript errors, and `tsc` exits 0 anyway.**
-  `cd mobile && ./node_modules/.bin/tsc --noEmit` prints 8 errors but returns exit code **0**, so any
-  CI or pre-commit hook keyed on the exit code would pass silently. Beyond the `setAcceptTarget` bug
-  above, the other 7 are: two unresolved module imports (`lib/services/auth.ts:1` → `./config`,
+- [ ] **Mobile: 7 TypeScript errors, and `tsc` exits 0 anyway.**
+  `cd mobile && ./node_modules/.bin/tsc --noEmit` prints 7 errors but returns exit code **0**, so any
+  CI or pre-commit hook keyed on the exit code would pass silently. The 7 are: two unresolved module
+  imports (`lib/services/auth.ts:1` → `./config`,
   `lib/store.ts:2` → `../types`); two `boolean` assigned to `string` in
   [lib/prefetch.ts:75](mobile/lib/prefetch.ts:75) and [:86](mobile/lib/prefetch.ts:86); a
   `string | undefined` → `SetStateAction<string>` in
-  [receive-docs.tsx:537](mobile/app/(app)/receive-docs.tsx:537); `EncodingType` missing from
+  [receive-docs.tsx:536](mobile/app/(app)/receive-docs.tsx:536); `EncodingType` missing from
   `expo-file-system` in [bulk-create-users.tsx:127](mobile/app/(app)/bulk-create-users.tsx:127)
   (likely an SDK-version drift, that export moved); and `version` missing on `EmbeddedManifest` in
   [hooks/useAppVersion.ts:48](mobile/hooks/useAppVersion.ts:48). The two unresolved imports are the
@@ -323,6 +311,22 @@ Non-code operator actions and housekeeping surfaced during recent work.
   (early August 2026).
 
 ## Closed
+
+- [x] **~~Mobile: accepting a document crashes its success handler (`setAcceptTarget` is not defined).~~**
+  [mobile/app/(app)/receive-docs.tsx:170](mobile/app/(app)/receive-docs.tsx:170) called
+  `setAcceptTarget(null)` as the *first* statement of `acceptMutation.onSuccess`, throwing a
+  `ReferenceError` that skipped everything after it — `invalidate()` (list refresh), the "Document
+  received successfully" toast, and the forward-to-intended-recipient prompt — even though the
+  `POST /documents/<id>/accept` had already succeeded server-side.
+  **Closing reality:** it was **dead code left over from a removed accept-target flow**, not a missing
+  wire-up. There was no `acceptTarget` state and no accept modal to restore — the whole file declares
+  no such pair (only `rejectTarget`/`forwardTarget`/`staffPickerDoc`), and the single-doc accept fires
+  directly from the green Accept button (`acceptMutation.mutate(doc)`) with no intermediate target or
+  confirmation UI. The fix was a **one-line deletion** of `setAcceptTarget(null);`. Verified by `tsc`:
+  `error TS2304: Cannot find name 'setAcceptTarget'` is gone and the mobile error count dropped
+  **8 → 7** (the surviving `receive-docs.tsx` line-537 `SetStateAction` error shifted to 536 and stays
+  open under the "7 TypeScript errors" item). Not yet verified on a device — device/testdoc
+  verification still pending.
 
 - [x] **~~Username rename with full-history rewrite.~~** Shipped and **deployed to prod** (merge
   `d86b0d0`, onto rollback target `7e05976`; no schema changes). Usernames are stored as bare strings
