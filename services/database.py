@@ -161,6 +161,15 @@ def _create_tables(cur):
             created_at TIMESTAMP DEFAULT NOW()
         )
     """)
+    # Opaque, long-lived per-client identity token the client app displays as a
+    # QR. Unlike doc_qr_tokens it has no `used`/expiry — it is never consumed.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS client_qr_tokens (
+            token       TEXT PRIMARY KEY,
+            username    TEXT NOT NULL,
+            created_at  TIMESTAMP DEFAULT NOW()
+        )
+    """)
     # Self-service password reset — HASHED, single-use, time-limited tokens.
     # Mirrors invite_tokens / doc_qr_tokens storage, but stores token_hash
     # (SHA-256 of the urlsafe token) as the key — the raw token is NEVER stored.
@@ -295,6 +304,9 @@ def _create_tables(cur):
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_activity_log_ts ON activity_log(ts DESC)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_documents_created ON documents(created_at DESC)""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_so_records_generated ON so_records(generated_at DESC)""")
+    # Client tokens are looked up by username (client fetching their own) as well
+    # as by token (staff resolving a scan, which hits the PK).
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_client_qr_tokens_username ON client_qr_tokens(username)""")
 
 
 def _run_migrations(cur):
@@ -405,6 +417,32 @@ def _run_migrations(cur):
         cur.execute("RELEASE SAVEPOINT mig_stx")
     except Exception:
         cur.execute("ROLLBACK TO SAVEPOINT mig_stx")  # keep transaction alive
+
+    # ── Client identity tokens: guarded one-time backfill ─────────────────────
+    # Give every EXISTING client an opaque QR token. New clients get one at
+    # creation (services.auth.create_user hook), so this only needs to catch
+    # rows that predate the feature. Guard mirrors the mig_stx precedent: run
+    # only on the FIRST boot after this ships — i.e. while the token table is
+    # still empty AND clients exist. get_or_create_client_token is itself
+    # idempotent (one token per client), so even if this loop ran twice it could
+    # not create a duplicate; the empty-table guard just avoids re-scanning every
+    # client on every boot. The backfill shares THIS cursor/transaction (cur=cur)
+    # so the INSERTs see the client_qr_tokens table created earlier in the same
+    # init_db transaction — a separate pooled connection would not.
+    try:
+        cur.execute("SAVEPOINT mig_cqt")
+        cur.execute("SELECT COUNT(*) AS n FROM client_qr_tokens")
+        _cqt_empty = (cur.fetchone()["n"] == 0)
+        if _cqt_empty:
+            cur.execute("SELECT username FROM users WHERE role = 'client'")
+            _client_rows = cur.fetchall()
+            if _client_rows:
+                from services.qr import get_or_create_client_token
+                for _r in _client_rows:
+                    get_or_create_client_token(_r["username"], cur=cur)
+        cur.execute("RELEASE SAVEPOINT mig_cqt")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT mig_cqt")  # keep transaction alive
 
 
 def get_doc_by_id(doc_id: str):

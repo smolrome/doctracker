@@ -159,6 +159,59 @@ class TestSlipTokens:
         assert slip_id2 is None
 
 
+# ── Client identity tokens ────────────────────────────────────────────────────
+
+class TestClientQrToken:
+    def test_get_or_create_is_idempotent(self):
+        """The property the whole design rests on: a client's QR token is stable
+        across app opens. Two calls for the same username return the SAME token
+        and do NOT create a second row."""
+        from services.qr import get_or_create_client_token
+        first = get_or_create_client_token("client_alice")
+        second = get_or_create_client_token("client_alice")
+        assert first == second
+
+        # And no duplicate was written to the JSON store.
+        import json, os
+        with open("client_qr_tokens.json") as f:
+            tokens = json.load(f)
+        alice_tokens = [t for t, m in tokens.items() if m.get("username") == "client_alice"]
+        assert len(alice_tokens) == 1
+
+    def test_token_format(self):
+        """CLI- prefix followed by 16 uppercase hex chars (mirrors doc-token
+        prefix assertions, but stricter on shape)."""
+        import re
+        from services.qr import get_or_create_client_token
+        token = get_or_create_client_token("client_bob")
+        assert token.startswith("CLI-")
+        assert re.fullmatch(r"CLI-[0-9A-F]{16}", token)
+
+    def test_distinct_usernames_get_distinct_tokens(self):
+        from services.qr import get_or_create_client_token
+        token_a = get_or_create_client_token("client_carol")
+        token_b = get_or_create_client_token("client_dave")
+        assert token_a != token_b
+
+    def test_resolve_round_trip(self):
+        from services.qr import get_or_create_client_token, resolve_client_token
+        token = get_or_create_client_token("client_erin")
+        assert resolve_client_token(token) == "client_erin"
+
+    def test_resolve_is_non_consuming(self):
+        """Unlike use_doc_token, this token is never burned — it must keep
+        resolving to the same owner across repeated lookups."""
+        from services.qr import get_or_create_client_token, resolve_client_token
+        token = get_or_create_client_token("client_frank")
+        assert resolve_client_token(token) == "client_frank"
+        assert resolve_client_token(token) == "client_frank"
+        assert resolve_client_token(token) == "client_frank"
+
+    def test_unknown_token_returns_none(self):
+        from services.qr import resolve_client_token
+        assert resolve_client_token("CLI-DOESNOTEXIST0000") is None
+
+
 # ── PNG generators ────────────────────────────────────────────────────────────
 
 class TestQRPng:

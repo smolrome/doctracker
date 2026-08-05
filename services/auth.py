@@ -218,6 +218,13 @@ def create_user(username: str, password: str, full_name: str = "",
                          full_name.strip(), role, office.strip(), approved, email.strip(),
                          _json.dumps(documents_handled or [])),
                     )
+            # Every client gets an opaque QR identity token at creation. This is
+            # the single choke point all client-creation paths funnel through
+            # (self-registration + admin create), so hooking here guarantees
+            # coverage. Best-effort: never fail user creation over a token.
+            if role == "client":
+                from services.qr import get_or_create_client_token
+                get_or_create_client_token(uname)
             return True, None
         except Exception as e:
             if "unique" in str(e).lower():
@@ -238,6 +245,10 @@ def create_user(username: str, password: str, full_name: str = "",
             "documents_handled": documents_handled or [],
         })
         _save_users_json(users)
+        # Mirror the DB path: clients get an identity token at creation.
+        if role == "client":
+            from services.qr import get_or_create_client_token
+            get_or_create_client_token(uname)
         return True, None
 
 
