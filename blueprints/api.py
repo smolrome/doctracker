@@ -3097,6 +3097,68 @@ def api_client_documents():
     return jsonify(serialize({'total': len(docs), 'documents': docs}))
 
 
+@api_bp.route('/client/qr-token', methods=['GET'])
+@jwt_required()
+def api_client_qr_token():
+    """Client: fetch (or lazily create) their own opaque QR token.
+
+    The username is taken ONLY from the authenticated identity — never from a
+    query param — so a client can never fetch another client's token.
+    """
+    user_id = get_jwt_identity()
+    user = get_user_by_username(user_id)
+    if not user or user.get('role') != 'client':
+        return jsonify(error='Client access required'), 403
+    from services.qr import get_or_create_client_token
+    token = get_or_create_client_token(user_id)
+    if not token:
+        # "" is the swallowed-failure sentinel — never hand it back as a token.
+        return jsonify(error='Could not issue QR token, please try again'), 500
+    return jsonify({'token': token})
+
+
+@api_bp.route('/staff/resolve-client-qr', methods=['POST'])
+@jwt_staff_required
+def api_staff_resolve_client_qr():
+    """Staff: resolve a scanned client QR token to that client's pending docs.
+
+    Staff/admin only (guarded by @jwt_staff_required — a client cannot call
+    this). Returns every pending document submitted by the resolved client,
+    regardless of which staff/office it is pending at.
+    """
+    data = request.get_json(force=True, silent=True) or {}
+    token = (data.get('token') or '').strip()
+    if not token:
+        return jsonify(error='No token provided'), 400
+    from services.qr import resolve_client_token
+    username = resolve_client_token(token)
+    if not username:
+        return jsonify(error='Unknown or invalid code'), 404
+
+    client = get_user_by_username(username)
+    client_name = (client.get('full_name') if client else '') or username
+
+    docs = load_docs()
+    result = [
+        d for d in docs
+        if d.get('submitted_by') == username
+        and d.get('transfer_status') == 'pending'
+    ]
+    for d in result:
+        ps = d.get('pending_at_staff')
+        if ps:
+            ps_user = get_user_by_username(ps)
+            d['pending_at_staff_name'] = (
+                ps_user.get('full_name') or ps
+            ) if ps_user else ps
+
+    return jsonify(serialize({
+        'client_username': username,
+        'client_name': client_name,
+        'documents': result,
+    }))
+
+
 @api_bp.route('/client/submit', methods=['POST'])
 @jwt_required()
 def api_client_submit():

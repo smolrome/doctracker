@@ -251,7 +251,15 @@ Wanted, not broken.
     transaction as the `CREATE TABLE` — a fresh pooled connection would not see the uncommitted table.
     Backfill **NOT yet run against a real DB** — verified only in JSON-mode pytest (baseline
     `14 failed / 370 passed / 1 skipped` held; `test_qr_service` all green).
-  - [ ] Client + staff token-fetch/resolve endpoints
+  - [x] **Client + staff token-fetch/resolve endpoints** in [blueprints/api.py](blueprints/api.py).
+    `GET /client/qr-token` (client-auth: `@jwt_required` + inline `role=client` check) returns the
+    caller's own token via `get_or_create_client_token`, keyed on `get_jwt_identity()` **only** (never
+    a query param), with a `"" -> HTTP 500` guard so an empty QR is never rendered. `POST
+    /staff/resolve-client-qr` (`@jwt_staff_required`, staff/admin only) resolves a scanned token to
+    that client's **pending** docs (`submitted_by == user` AND `transfer_status == 'pending'`),
+    regardless of pending office; returns `{client_username, client_name, documents[]}` in the
+    `/pending-documents` serialized shape, with `client_name` read from the users record (never client
+    input). Baseline held `14 failed / 376 passed / 1 skipped`.
   - [ ] Client app renders its QR
   - [ ] Staff scan → pre-fill by-client pending filter → receive
 
