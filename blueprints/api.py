@@ -3336,6 +3336,48 @@ def api_staff_resolve_client_qr():
     }))
 
 
+@api_bp.route('/staff/resolve-collector-identity', methods=['POST'])
+@jwt_staff_required
+def api_staff_resolve_collector_identity():
+    """Staff: resolve a scanned client QR token to that collector's IDENTITY only.
+
+    Purpose-built for the release-to-collector flow: staff scan a collector's
+    client QR (CLI- token) to auto-fill the collector-capture form. Unlike
+    /staff/resolve-client-qr (the RECEIVE flow, which returns the client's
+    pending documents), this returns WHO the collector is and nothing else —
+    no documents, no pending list.
+
+    Staff/admin only (@jwt_staff_required — a client cannot call this). Contact
+    fields are included only when the client record actually carries them: the
+    client profile stores `email` (optional) but has no phone column, so `phone`
+    appears only if a record happens to have one.
+    """
+    data = request.get_json(force=True, silent=True) or {}
+    token = (data.get('token') or '').strip()
+    if not token:
+        return jsonify(error='No token provided'), 400
+    from services.qr import resolve_client_token
+    username = resolve_client_token(token)
+    if not username:
+        return jsonify(error='Unknown or invalid code'), 404
+
+    user = get_user_by_username(username)
+    identity = {
+        'username': username,
+        'full_name': (user.get('full_name') if user else '') or username,
+    }
+    # Only surface contact fields the record actually has — don't invent keys.
+    if user:
+        email = (user.get('email') or '').strip()
+        if email:
+            identity['email'] = email
+        phone = (user.get('phone') or '').strip()
+        if phone:
+            identity['phone'] = phone
+
+    return jsonify(serialize(identity))
+
+
 @api_bp.route('/client/submit', methods=['POST'])
 @jwt_required()
 def api_client_submit():

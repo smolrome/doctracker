@@ -344,6 +344,12 @@ Wanted, not broken.
     office/position/origin TYPED for now, auto-fill from expanded profile is a later arc), `released_by`
     staff, timestamp; appends timeline "Released to {name} of {origin} by {staff}". Baseline held:
     14 failed / 377 passed / 1 skipped. **Not yet device-tested.**
+  - [x] Server: `POST /staff/resolve-collector-identity` (`@jwt_staff_required`) — resolves a
+    collector's `CLI-` QR token to identity ONLY (`username`, `full_name`, `email`/`phone` if present
+    on the client record), NOT pending docs (distinct from `/staff/resolve-client-qr`, the receive
+    flow, which is unchanged). Prerequisite for the mobile release form's collector auto-fill. Contact
+    fields may be blank (thin client profile) — the form pre-fills what exists, staff types the rest.
+    Baseline held: 14 failed / 377 passed / 1 skipped.
   - [ ] Mobile: scan doc QR → capture collector (scan collector QR or type) → release
   - [ ] (future) Expand client registration/profile to store office/position/origin so collector QR
     auto-fills them
