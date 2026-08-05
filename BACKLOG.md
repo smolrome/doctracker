@@ -379,6 +379,24 @@ Wanted, not broken.
   - [ ] (future) Expand client registration/profile to store office/position/origin so collector QR
     auto-fills them
   - [ ] (future) "Ready for pickup" state so release is gated on finished-ness, not just staff judgment
+  - **Open follow-ups (as of prod deploy 9d81de0):**
+    - [ ] VERIFY (partial): receipt-settle on prod. Case 1 VERIFIED — doc test3/REF-2026-D306 shows a
+      "Document Accepted" travel_log entry, `logged_by=paulpiniano`, and web-dashboard visibility while
+      pending onward. Case 2 (already-accepted doc routed onward → NO second receipt) STILL unverified.
+      Restore point: `doctrack-prereceipt-20260805_205325.sql.gz`.
+    - [x] Naming/consistency: inside-office moves now read "Transfer" throughout the mobile scanner
+      intake flow. What turned out true: `transfer_type` was already hardcoded `'inside_office'` (=
+      server "Transferred"), so this was a pure string rename — no payload/semantics change. Routing-slip
+      feature (distinct QR type) keeps its own "routing" wording.
+    - [x] Intended-For auto-route: per-doc button is now "Receive & Transfer → {name}" and routes
+      directly. What turned out true: `intended_for_username` already rode on each doc from
+      resolve-client-qr, so this was pure mobile-side — pre-validation against the office staff list
+      (prefetched on sheet render), self-transfer guard (falls back to picker), stale-handler fallback
+      (⚠️ note), and a "Choose someone else" override. Server self-transfer guard unchanged.
+    - [ ] Mobile release flow: happy path + 409-override device-tested; NOT re-tested since cache-fix
+      and receipt-settle landed. Full re-test outstanding.
+    - [ ] ExpoSQLite native-module crash seen in dev logs (dev-client/build mismatch) — blocks
+      dev-client launch; unrelated to scanner changes. Triage separately.
 
 - [ ] **Display-name-only rename still orphans history** (follow-up to the shipped username-rename,
   now under Closed). The rename only fires when the username actually changes — `rename_user` rejects
