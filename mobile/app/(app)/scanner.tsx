@@ -147,6 +147,7 @@ export default function Scanner() {
     docIds: string[];
     officeSlug: string;
     officeName: string;
+    note?: string; // optional banner, e.g. when an Intended-For handler is unavailable
   } | null>(null);
 
   const [adminOfficeOverride, setAdminOfficeOverride]       = useState('');
@@ -165,6 +166,28 @@ export default function Scanner() {
     enabled: !!routePicker?.officeSlug,
     staleTime: 1000 * 60 * 5,
   });
+
+  // When a client-QR batch resolves, warm the ['office-staff', slug] cache for
+  // every office in the batch. This lets the per-doc "Receive & Transfer" tap
+  // pre-validate the Intended-For handler synchronously (queryClient.getQueryData)
+  // and auto-transfer without a picker round-trip. Same key/staleTime the picker
+  // uses, so nothing is fetched twice.
+  useEffect(() => {
+    if (!clientResult?.documents?.length) return;
+    const slugs = Array.from(
+      new Set(clientResult.documents.map((d) => d.office_slug || '').filter(Boolean))
+    );
+    for (const slug of slugs) {
+      queryClient.prefetchQuery({
+        queryKey: ['office-staff', slug],
+        queryFn: async () => {
+          const res = await api.get(`/offices/${slug}/staff`);
+          return (res.data ?? []) as StaffMember[];
+        },
+        staleTime: 1000 * 60 * 5,
+      });
+    }
+  }, [clientResult, queryClient]);
 
   const lastScanned = useRef<string>('');
   const cooldown = useRef<boolean>(false);
@@ -346,11 +369,11 @@ export default function Scanner() {
     api.post(`/documents/${docId}/transfer`, { to_staff: toStaff, transfer_type: 'inside_office' });
 
   // Open the handler picker for a SINGLE doc, populated from that doc's office.
-  const openRouteSingle = (doc: ClientBatchDoc) => {
+  const openRouteSingle = (doc: ClientBatchDoc, note?: string) => {
     if (routingId || routeAllBusy) return;
     const slug = doc.office_slug || '';
     if (!slug) {
-      Alert.alert('Cannot Route', 'This document has no office on record to route within.');
+      Alert.alert('Cannot Transfer', 'This document has no office on record to transfer within.');
       return;
     }
     setRoutePicker({
@@ -358,6 +381,7 @@ export default function Scanner() {
       docIds: [doc.id],
       officeSlug: slug,
       officeName: doc.pending_at_office || doc.from_office || '',
+      note,
     });
   };
 
@@ -399,7 +423,7 @@ export default function Scanner() {
         );
         setRoutePicker(null);
       } catch (err: any) {
-        Alert.alert('Route Failed', err?.response?.data?.error || 'Could not route this document.');
+        Alert.alert('Transfer Failed', err?.response?.data?.error || 'Could not transfer this document.');
       } finally {
         setRoutingId(null);
         setRouteSubmitting(false);
@@ -429,10 +453,89 @@ export default function Scanner() {
     setClientResult(null);
     setAcceptedDocTitle(
       failed === 0
-        ? `Routed ${success} document${success !== 1 ? 's' : ''} to ${staffName}${officeName ? ' (' + officeName + ')' : ''} for ${clientName}`
-        : `Routed ${success} of ${total} to ${staffName}, ${failed} failed`
+        ? `Transferred ${success} document${success !== 1 ? 's' : ''} to ${staffName}${officeName ? ' (' + officeName + ')' : ''} for ${clientName}`
+        : `Transferred ${success} of ${total} to ${staffName}, ${failed} failed`
     );
     resetScanner(2500);
+  };
+
+  // Per-doc "Receive & Transfer" tap. When the doc carries a resolvable
+  // Intended-For handler, transfer straight to that person WITHOUT the picker;
+  // otherwise fall back to openRouteSingle. This is UI convenience layered on top
+  // of the server's own self-transfer / validity guards — never a replacement.
+  const handlePerDocReceive = async (doc: ClientBatchDoc) => {
+    if (routingId || routeAllBusy) return;
+
+    const intended = doc.intended_for_username || '';
+    const slug = doc.office_slug || '';
+
+    // No intended target, self-target (never auto self-transfer — picker excludes
+    // self), or no office to validate against → defer to the manual picker.
+    if (!intended || intended === user?.username || !slug) {
+      openRouteSingle(doc);
+      return;
+    }
+
+    setRoutingId(doc.id);
+
+    // Pre-validate: the intended handler must still be registered staff in this
+    // office. Prefer the cache the batch-sheet effect warmed; fetch on demand only
+    // if it's cold (the button already shows a spinner via routingId).
+    let staff = queryClient.getQueryData<StaffMember[]>(['office-staff', slug]);
+    if (!staff) {
+      try {
+        staff = await queryClient.fetchQuery<StaffMember[]>({
+          queryKey: ['office-staff', slug],
+          queryFn: async () => {
+            const res = await api.get(`/offices/${slug}/staff`);
+            return (res.data ?? []) as StaffMember[];
+          },
+          staleTime: 1000 * 60 * 5,
+        });
+      } catch {
+        staff = undefined;
+      }
+    }
+
+    const isValid = !!staff && staff.some((s) => s.username === intended);
+    if (!isValid) {
+      // Intended handler left / was renamed / office unreadable → manual picker
+      // with a note so the operator knows why auto-transfer didn't fire.
+      setRoutingId(null);
+      const who = doc.intended_for_name || intended;
+      openRouteSingle(doc, `${who} is no longer available in this office — choose a handler.`);
+      return;
+    }
+
+    // Valid intended handler → transfer directly, mirroring handleRouteSelect's
+    // single-mode success handling (vibrate, cache invalidation incl. ['document'],
+    // drop the doc). Success flash names the handler when the batch empties.
+    const staffName = doc.intended_for_name || intended;
+    try {
+      await transferDocTo(doc.id, intended);
+      Vibration.vibrate([0, 60, 40, 60]);
+      invalidateReceiveCaches();
+      let remaining = 0;
+      setClientResult((prev) => {
+        if (!prev) return prev;
+        const documents = prev.documents.filter((d) => d.id !== doc.id);
+        remaining = documents.length;
+        return { ...prev, documents };
+      });
+      if (remaining === 0) {
+        // Last doc in the batch — close the sheet and show the terminal flash,
+        // as the "Transfer All" completion path does. Mid-batch we keep the sheet
+        // open (matching the manual single-route UX) so remaining docs stay in view.
+        setClientResult(null);
+        setFlashHeading('Transferred!');
+        setAcceptedDocTitle(`Transferred to ${staffName}`);
+        resetScanner(2500);
+      }
+    } catch (err: any) {
+      Alert.alert('Transfer Failed', err?.response?.data?.error || 'Could not transfer this document.');
+    } finally {
+      setRoutingId(null);
+    }
   };
 
   const handleClientDismiss = () => {
@@ -1355,14 +1458,14 @@ export default function Scanner() {
                     {routeAllBusy
                       ? <ActivityIndicator color="#fff" size="small" />
                       : <Text style={styles.acceptBtnText}>
-                          ➡️  Route All to…  ({batchDocs.length})
+                          ➡️  Transfer All to…  ({batchDocs.length})
                         </Text>
                     }
                   </TouchableOpacity>
                 ) : (
                   <View style={[styles.acceptBtn, { backgroundColor: '#EEF2F7' }]}>
                     <Text style={[styles.acceptBtnText, { color: '#64748B', fontSize: 13, fontWeight: '600' }]}>
-                      Multiple offices — route each document below
+                      Multiple offices — transfer each document below
                     </Text>
                   </View>
                 )}
@@ -1417,14 +1520,32 @@ export default function Scanner() {
                           { backgroundColor: '#0038A8' },
                           (routingId === doc.id || routeAllBusy) && { opacity: 0.6 },
                         ]}
-                        onPress={() => openRouteSingle(doc)}
+                        onPress={() => handlePerDocReceive(doc)}
                         disabled={!!routingId || routeAllBusy}
                       >
                         {routingId === doc.id
                           ? <ActivityIndicator color="#fff" size="small" />
-                          : <Text style={styles.perDocAcceptText}>➡️  Receive &amp; Route</Text>
+                          : <Text style={styles.perDocAcceptText}>
+                              {doc.intended_for_username && doc.intended_for_username !== user?.username
+                                ? `➡️  Receive & Transfer → ${doc.intended_for_name || doc.intended_for_username}`
+                                : '➡️  Receive & Transfer'}
+                            </Text>
                         }
                       </TouchableOpacity>
+
+                      {/* Override: when the tap would auto-transfer to the Intended
+                          For, still let the operator pick a different handler. */}
+                      {doc.intended_for_username && doc.intended_for_username !== user?.username ? (
+                        <TouchableOpacity
+                          onPress={() => openRouteSingle(doc)}
+                          disabled={!!routingId || routeAllBusy}
+                          style={{ paddingVertical: 8, alignItems: 'center' }}
+                        >
+                          <Text style={{ color: '#0038A8', fontSize: 12.5, fontWeight: '600' }}>
+                            Choose someone else
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null}
                     </View>
                   ))}
 
@@ -1441,7 +1562,7 @@ export default function Scanner() {
         </View>
       </Modal>
 
-      {/* ── Handler picker (Receive & Route) ──────────────────────────────── */}
+      {/* ── Handler picker (Receive & Transfer) ───────────────────────────── */}
       <Modal
         visible={!!routePicker}
         transparent
@@ -1455,7 +1576,7 @@ export default function Scanner() {
             <View style={styles.overlayHeader}>
               <View style={{ flex: 1, paddingRight: 12 }}>
                 <Text style={styles.overlayTitle} numberOfLines={1}>
-                  Route to handler
+                  Transfer to handler
                 </Text>
                 <Text style={{ color: '#64748B', fontSize: 12.5, marginTop: 2 }}>
                   {routePicker?.mode === 'all'
@@ -1463,6 +1584,11 @@ export default function Scanner() {
                     : '1 document'}
                   {routePicker?.officeName ? ` · ${routePicker.officeName}` : ''}
                 </Text>
+                {routePicker?.note ? (
+                  <Text style={{ color: '#B45309', fontSize: 12, marginTop: 4 }}>
+                    ⚠️ {routePicker.note}
+                  </Text>
+                ) : null}
               </View>
               <TouchableOpacity
                 onPress={() => { if (!routeSubmitting) setRoutePicker(null); }}
@@ -1480,12 +1606,12 @@ export default function Scanner() {
             ) : routeStaffOptions.length === 0 ? (
               <View style={{ paddingVertical: 36, alignItems: 'center', paddingHorizontal: 12 }}>
                 <Text style={{ color: '#1E293B', fontSize: 15, fontWeight: '700', marginBottom: 6 }}>
-                  No other staff to route to
+                  No other staff to transfer to
                 </Text>
                 <Text style={{ color: '#64748B', fontSize: 13, textAlign: 'center', lineHeight: 19 }}>
                   {routeStaff.length > 0
-                    ? 'You are the only registered staff in this office — there is no one else to hand this to.'
-                    : 'This office has no registered staff to route to.'}
+                    ? 'You are the only registered staff in this office — there is no one else to transfer this to.'
+                    : 'This office has no registered staff to transfer to.'}
                 </Text>
                 <TouchableOpacity
                   style={[styles.cancelBtn, { marginTop: 20, alignSelf: 'stretch' }]}
