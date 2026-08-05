@@ -1484,6 +1484,15 @@ def api_transfer_document(doc_id):
     if not to_staff and not to_office:
         return jsonify(error='Specify either a staff member or office to transfer to'), 400
 
+    # Self-transfer guard — mirrors the web route (routes/dashboard.py:1101).
+    # Routing a doc to yourself is a no-op that leaves it pending at you; the
+    # mobile batch UI would then drop it from the list as if handled. Reject
+    # BEFORE any state change so a crafted POST can't bypass the UI filter.
+    # user_id (get_jwt_identity) is the caller's username — same identity the
+    # web guard compares against.
+    if to_staff and to_staff == user_id:
+        return jsonify(error='Cannot route a document to yourself'), 400
+
     doc = get_doc(doc_id)
     if not doc:
         return jsonify(error='Document not found'), 404
