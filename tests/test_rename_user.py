@@ -305,6 +305,40 @@ class TestRenameUser:
         assert d5["travel_log"][0]["officer"] == "By Stander"
         assert d5["travel_log"][1]["officer"] == "bystander"
 
+    def test_saved_office_primary_recipient_rewritten(self, tmp_path, monkeypatch):
+        """Regression lock for the silent-misrouting bug: an office's default
+        receiving-staff username (saved_offices.primary_recipient) must follow a
+        rename, or the mobile submit screen keeps defaulting to the dead old name.
+        Also asserts the SIBLING column created_by is rewritten in the SAME entry,
+        proving the neighbor-column symmetry — not just the one field we chased.
+
+        DB-only note: the other two newly-covered columns, client_qr_tokens.username
+        and password_reset_tokens.username, are rewritten by rename_user's DB path
+        (services/auth.py) but are NOT reachable here — their JSON stores are dicts
+        keyed BY TOKEN with username as a sub-value, a shape rename_user's JSON
+        branch deliberately does not touch. That is an honest JSON-mode limitation
+        documented in-code, not a hidden gap; the DB path covers them in production."""
+        self._seed(tmp_path, monkeypatch)
+        from services.auth import rename_user
+        # Overwrite the seeded office with an entry holding the OLD username under
+        # BOTH created_by AND primary_recipient (the default receiving staff).
+        (tmp_path / "saved_offices.json").write_text(json.dumps(
+            [{"office_slug": "personnel", "office_name": "Personnel Files",
+              "created_by": "oldname", "primary_recipient": "oldname"}]))
+
+        ok, err, summary = rename_user("oldname", "newname", "Old Full Name", "New Full Name")
+        assert ok is True, err
+
+        office = json.loads((tmp_path / "saved_offices.json").read_text())[0]
+        # PRIMARY: the misrouting field now points at the new username — NOT the
+        # stale old name, and NOT blanked out.
+        assert office["primary_recipient"] == "newname"
+        assert office["primary_recipient"] != "oldname" and office["primary_recipient"]
+        # SIBLING symmetry: created_by is rewritten in the same pass.
+        assert office["created_by"] == "newname"
+        # Field-level count: created_by + primary_recipient both hit → 2.
+        assert summary["saved_offices_updated"] == 2
+
     def test_casing_drift_full_name_still_rewritten(self, tmp_path, monkeypatch):
         """THE Step 2.5 Change B proof — mirrors the real Kim data. users.full_name
         is UPPER ("KIM WENDELL DAVOCOL") but documents hold a TITLE-CASE variant

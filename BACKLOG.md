@@ -383,6 +383,27 @@ Non-code operator actions and housekeeping surfaced during recent work.
 
 ## Closed
 
+- [x] **~~`rename_user` missed 3 username-bearing columns — one caused silent document misrouting.~~**
+  A column-by-column audit (prompted by live device testing of the client-QR receive feature) found
+  `rename_user` ([services/auth.py](services/auth.py)) rewrote ~15 surfaces but **missed three**:
+  `saved_offices.primary_recipient`, `client_qr_tokens.username`, and `password_reset_tokens.username`.
+  **The real bug was `saved_offices.primary_recipient`** — an office's default receiving-staff username.
+  When a primary recipient was renamed, the office kept pointing at the **dead** old username, so mobile
+  submissions matched nobody at Tier 1/2 and **silently fell through to the Tier-3 "first staff"
+  fallback → documents routed to the WRONG person, with no error**. Only masked in the field because
+  the affected office had been manually re-saved with the new name.
+  **Two audit-claimed misses were false** and were NOT touched: `push_tokens.username` was already
+  covered ([auth.py](services/auth.py), DELETE-then-UPDATE PK-safe), and `staff_pairings` has **no
+  username columns** (keys on `user_a`/`user_b`) — an `UPDATE staff_pairings SET staff_username=…`
+  would have raised "column does not exist" and aborted the whole rename transaction.
+  **Fix:** rewrite all three in the DB path; the JSON path had the **same asymmetry** (`created_by`
+  covered, `primary_recipient` missed) and is now symmetric. Added a regression test
+  ([tests/test_rename_user.py](tests/test_rename_user.py)) asserting `saved_offices` rewrites **both**
+  `created_by` and `primary_recipient` together. The two token columns are covered by the DB path but
+  are **not reachable by the JSON test harness** (their JSON stores are dict-keyed-by-token with
+  `username` as a sub-value) — documented in-code and in the test as an honest limitation, not
+  fabricated coverage. Baseline held: 14 failed / 377 passed / 1 skipped.
+
 - [x] **~~Mobile: accepting a document crashes its success handler (`setAcceptTarget` is not defined).~~**
   [mobile/app/(app)/receive-docs.tsx:170](mobile/app/(app)/receive-docs.tsx:170) called
   `setAcceptTarget(null)` as the *first* statement of `acceptMutation.onSuccess`, throwing a
