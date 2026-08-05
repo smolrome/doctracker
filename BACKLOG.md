@@ -285,6 +285,19 @@ Wanted, not broken.
       bumps to `expo`/`expo-dev-client`/`expo-linking`/`expo-notifications`/`expo-router`.
       `expo install --check` now clean; `tsc` unchanged. **Build not yet re-run** at commit time. The
       pre-existing `npm audit` advisories (28) are unrelated and left untouched.
+    - **Build fallout #2 — dev build emitted a .tar.gz of debug+release APKs, not one installable
+      .apk (fixed).** After the dep alignment, the `development` EAS build produced a `.tar.gz`
+      containing `debug/` + `release/` APK folders instead of a single installable `.apk`. Cause: a
+      stale, gitignored `mobile/android/` prebuild (a May-16 local `expo prebuild`) was being reused by
+      EAS (build log: "reusing /android"), so Gradle assembled **both** build variants and EAS tarballed
+      them. DTRacker builds a clean single APK because it has **no** local native folder — it's fully
+      managed. Fixed by deleting the stale `mobile/android/` and adding `mobile/.easignore` (`/android`,
+      `/ios`) so EAS runs `expo prebuild` fresh from `app.json` on **every** build. The `android/` folder
+      was confirmed 100% regenerable (App Links intent filter is in `app.json` `intentFilters`; Firebase
+      config sourced from root `google-services.json`; `MainActivity`/`MainApplication` are unmodified
+      boilerplate; no hand-edits after prebuild). Confirmed: project upload **681MB → 96MB**, build
+      emitted a single `app-debug.apk`, installs cleanly. Firebase `google-services.json` lives at the
+      **mobile root** (not in `android/`), so it survives the deletion.
   - [ ] Staff scan → pre-fill by-client pending filter → receive
 
 - [ ] **Display-name-only rename still orphans history** (follow-up to the shipped username-rename,
