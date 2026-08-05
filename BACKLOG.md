@@ -350,7 +350,32 @@ Wanted, not broken.
     flow, which is unchanged). Prerequisite for the mobile release form's collector auto-fill. Contact
     fields may be blank (thin client profile) — the form pre-fills what exists, staff types the rest.
     Baseline held: 14 failed / 377 passed / 1 skipped.
-  - [ ] Mobile: scan doc QR → capture collector (scan collector QR or type) → release
+  - [x] Mobile: scan doc QR → capture collector (scan collector QR or type) → release. The scanned-doc
+    overlay became the action hub for ANY resolved doc (not just pending-incoming), since a finished
+    doc being released is not pending — Release was otherwise unreachable; deliberate behavior change,
+    replaces the old auto-navigate-to-detail for non-receivable docs. "Release to Collector" opens a
+    collector-capture form with QR auto-fill via `/staff/resolve-collector-identity`; submit handles
+    201 / 409-override / 403 / error. tsc 7 pre-existing, 0 new. **Not yet device-tested.**
+  - [x] Bug closed along the way — **scanner writes left the mobile detail screen stale.** Six
+    document-mutating scanner handlers invalidated `['documents']`/`['pending-*']`/`['stats']` but never
+    the detail key `['document', <id>]`, and the detail query inherits a 5-min global staleTime +
+    offlineFirst persisted cache — so opening a just-released/accepted/routed doc showed pre-write data.
+    Fix: each handler now also invalidates the `['document']` prefix (matches every detail entry).
+    `handleForwardTransfer` additionally gained list invalidation it never had. What turned out true:
+    the release build didn't introduce the staleness — it exposed a pre-existing gap shared by
+    accept/route/reject/slip-route/forward.
+  - [x] Bug closed along the way — **Receive & Route never recorded intake's receipt (custody hole).**
+    `POST /documents/<id>/transfer` wrote only the OUTGOING leg, so a client-submitted doc routed via
+    mobile Receive & Route jumped from client→intake-pending straight to intake→handler-pending with no
+    intake receipt ever written (no `status='Received'`, no `date_received`/`accepted_by`, no timeline
+    entry), leaving it perpetually `transfer_status='pending'` and throwing a bogus 409 "still pending"
+    on later release. Fix: `api_transfer_document` now settles the caller's receipt BEFORE the outgoing
+    leg, gated on `transfer_status=='pending' AND pending_at_staff==caller`, mirroring
+    `api_accept_document` (receipt timeline entry, `date_received`, `accepted_by`,
+    `logged_by`/`logged_by_office` ownership so intake retains dashboard visibility through routing) in
+    one atomic `save_doc`. What turned out true: the gate is provably safe because Accept flips
+    `transfer_status` to `'accepted'`, so an already-accepted doc routed onward never re-settles — no
+    phantom second receipt. Baseline held: 14 failed / 377 passed / 1 skipped.
   - [ ] (future) Expand client registration/profile to store office/position/origin so collector QR
     auto-fills them
   - [ ] (future) "Ready for pickup" state so release is gated on finished-ness, not just staff judgment
