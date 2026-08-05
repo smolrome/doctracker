@@ -275,6 +275,16 @@ Wanted, not broken.
     reached by a prominent brand-blue button at the top of `my-docs`. An empty/missing token routes to
     an error state (retry + pull-to-refresh) — **never** renders a blank `<QRCode value=""/>`. `tsc
     --noEmit` unchanged: 7 pre-existing errors, 0 new.
+    - **Build fallout — SDK-54 dep drift (fixed).** The first EAS Android build of this screen failed
+      at Gradle dependency resolution with **"No variants exist"** across the native module graph. Root
+      cause: `react-native-svg` was declared with a caret (`^15.12.1`) and had floated to **15.15.4**,
+      while Expo SDK 54 requires the **exact** pin `15.12.1`. It sat latent for months because nothing
+      imported the lib — `my-qr.tsx` is the **first consumer**, so this was the first build to autolink
+      svg's native Android code. Fixed via `npx expo install --fix`: `react-native-svg → 15.12.1`
+      (exact), `babel-preset-expo → ~54.0.10` (was a wrong-**major** `55.0.19`), plus minor SDK-54 patch
+      bumps to `expo`/`expo-dev-client`/`expo-linking`/`expo-notifications`/`expo-router`.
+      `expo install --check` now clean; `tsc` unchanged. **Build not yet re-run** at commit time. The
+      pre-existing `npm audit` advisories (28) are unrelated and left untouched.
   - [ ] Staff scan → pre-fill by-client pending filter → receive
 
 - [ ] **Display-name-only rename still orphans history** (follow-up to the shipped username-rename,
