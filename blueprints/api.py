@@ -3173,6 +3173,12 @@ def api_staff_resolve_client_qr():
             d['pending_at_staff_name'] = (
                 ps_user.get('full_name') or ps
             ) if ps_user else ps
+        # Expose the office SLUG so the mobile handler-picker can call
+        # GET /offices/{slug}/staff. Client-submitted docs already store this at
+        # submit time as target_office_slug (api.py client/submit paths); we do
+        # NOT derive it from the display name. All docs here are client-submitted
+        # (filtered on submitted_by == client above), so the source always exists.
+        d['office_slug'] = d.get('target_office_slug', '')
 
     return jsonify(serialize({
         'client_username': username,
