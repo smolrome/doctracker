@@ -1302,6 +1302,19 @@ def api_accept_document(doc_id):
         'remarks': remarks_text,
     })
 
+    # The doc is now Received — there is no pending target. Clear the pending_at_*
+    # display fields, mirroring the web accept path (routes/dashboard.py:1818-1819
+    # clears pending_at_staff/pending_at_office). We also clear pending_at_staff_name
+    # (the web path leaves it, a latent staleness gap) so the display name can't
+    # linger as a stale "pending with X" on an accepted doc. Nothing reads
+    # pending_at_* on a Received doc — templates gate the display on status=='Pending'
+    # (detail.html:131, index.html:438), client_view uses its 'processing' branch,
+    # and the release-409 reads only when transfer_status=='pending' — so clearing
+    # is safe. Done AFTER the travel_log append, which reads pending_at_office inline.
+    doc['pending_at_staff']      = ''
+    doc['pending_at_staff_name'] = ''
+    doc['pending_at_office']     = ''
+
     save_doc(doc)
 
     if doc.get('logged_by') and doc['logged_by'] != user_id:
@@ -1550,6 +1563,12 @@ def api_transfer_document(doc_id):
 
     doc['transfer_status'] = 'pending'
     doc['pending_at_staff'] = to_staff
+    # Keep the display-name companion in lockstep with the username, mirroring the
+    # web transfer path (routes/dashboard.py:1170). recipient_full_name is already
+    # resolved above (same value referred_to and the travel_log line use); without
+    # this write pending_at_staff_name would retain the PRIOR handler's name and
+    # drift out of sync with pending_at_staff after every API transfer.
+    doc['pending_at_staff_name'] = recipient_full_name
     doc['pending_at_office'] = to_office
     transfer_type = (data.get('transfer_type') or '').strip()
     doc['status'] = 'Transferred' if transfer_type == 'inside_office' else 'Routed'
