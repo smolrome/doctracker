@@ -308,6 +308,15 @@ Wanted, not broken.
     with other staff) renders a friendly "nothing here for you" state, not an error. Camera gate blocks
     scanning while the modal is open or resolving. `tsc --noEmit` unchanged (7 pre-existing, 0 new).
     **Not yet device-tested.** This completes the client-QR receive-side arc.
+  - [x] **`office_slug` added to `/staff/resolve-client-qr` per-doc response** (prerequisite for the
+    mobile intake "Receive & Route" handler-picker). The resolve response returned the office display
+    name (`target_office_name` / `pending_at_office`) but not the slug the picker needs to call
+    `GET /offices/{slug}/staff`. Added `office_slug` per doc, sourced directly from the doc's stored
+    `target_office_slug` (written at submit time by both `/client/submit` paths) — **not** a new
+    slugify and **not** a name→slug lookup, so it matches stored slugs exactly. Note: the existing
+    scanner forward flow does not itself resolve a slug (it transfers to a known `intended_for_username`);
+    the reusable slug→staff pattern is submit.tsx reading `office_slug` directly. Response shape
+    otherwise unchanged. Baseline held: 14 failed / 377 passed / 1 skipped.
 
 - [ ] **Display-name-only rename still orphans history** (follow-up to the shipped username-rename,
   now under Closed). The rename only fires when the username actually changes — `rename_user` rejects
