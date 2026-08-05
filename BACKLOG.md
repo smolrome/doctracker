@@ -267,7 +267,14 @@ Wanted, not broken.
       in-flight docs already accepted and routed deep, pending at *other* staff, which the scanning
       staff can't act on. Now mirrors `/pending-documents`' recipient narrowing exactly (env-admin
       resolved via `_is_admin_user`, since `g.current_api_user` is `None` for it).
-  - [ ] Client app renders its QR
+  - [x] **Client app renders its QR** — [mobile/app/(client)/my-qr.tsx](mobile/app/(client)/my-qr.tsx)
+    renders the opaque `CLI-` token **client-side** via `react-native-qrcode-svg` (first use of the
+    already-installed lib), fetched from `GET /client/qr-token` (TanStack Query, `staleTime: Infinity`
+    since the token is stable). Shows the client's `full_name`/`@username` from the auth store so staff
+    can eyeball identity while scanning. Registered as a hidden route (`href: null`, like `track/[id]`);
+    reached by a prominent brand-blue button at the top of `my-docs`. An empty/missing token routes to
+    an error state (retry + pull-to-refresh) — **never** renders a blank `<QRCode value=""/>`. `tsc
+    --noEmit` unchanged: 7 pre-existing errors, 0 new.
   - [ ] Staff scan → pre-fill by-client pending filter → receive
 
 - [ ] **Display-name-only rename still orphans history** (follow-up to the shipped username-rename,

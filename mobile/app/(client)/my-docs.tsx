@@ -7,7 +7,7 @@ import { offlineQueue, QueuedSubmission } from '../../lib/offlineQueue';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, FileText, Clock, Trash2 } from 'lucide-react-native';
+import { Search, FileText, Clock, Trash2, QrCode } from 'lucide-react-native';
 import api from '../../lib/api';
 import { useAuthStore } from '../../lib/store';
 import { authStorage } from '../../lib/auth';
@@ -315,6 +315,23 @@ export default function MyDocs() {
             <Text style={{ color: '#0038A8', fontWeight: '700', fontSize: 13 }}>Search</Text>
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* Show My QR — prominent entry point to the counter QR screen */}
+      <View style={{ backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 14, borderBottomWidth: 0.5, borderBottomColor: '#E2E8F0' }}>
+        <TouchableOpacity
+          onPress={() => router.push('/(client)/my-qr' as any)}
+          activeOpacity={0.85}
+          style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+            backgroundColor: '#0038A8', borderRadius: 13, paddingVertical: 15,
+          }}
+        >
+          <QrCode size={20} color="#fff" />
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15.5, letterSpacing: 0.2 }}>
+            Show My QR Code
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Filter pills */}
