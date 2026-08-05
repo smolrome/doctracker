@@ -217,6 +217,97 @@ def get_token_doc(token: str) -> tuple[dict | None, str | None]:
         return get_doc(t["doc_id"]), t["token_type"]
 
 
+# ── Client identity tokens (opaque, long-lived, per-client) ──────────────────
+
+def get_or_create_client_token(username: str, cur=None) -> str:
+    """Get the client's opaque QR token, creating one on first request.
+
+    Unlike doc tokens, this is a LONG-LIVED identifier the client app displays,
+    not a one-time secret — so it is never consumed and a client only ever has
+    ONE token (get-or-create keeps it idempotent). Mirrors create_doc_token's
+    generator (CLI- prefix) and its DB / JSON-fallback storage split.
+
+    `cur` (DB mode only): run the SELECT/INSERT on this existing cursor's
+    transaction instead of borrowing a pooled connection. Used by the one-time
+    migration backfill, which creates the token rows in the SAME transaction
+    that creates the table — a fresh pooled connection would not yet see the
+    uncommitted table. When `cur` is None (the runtime path) a connection is
+    borrowed and errors are swallowed, exactly like create_doc_token.
+    """
+    def _db(c):
+        c.execute(
+            "SELECT token FROM client_qr_tokens WHERE username=%s LIMIT 1",
+            (username,)
+        )
+        row = c.fetchone()
+        if row:
+            return row["token"]
+        token = f"CLI-{uuid.uuid4().hex[:16].upper()}"
+        c.execute(
+            "INSERT INTO client_qr_tokens (token, username) VALUES (%s,%s)",
+            (token, username)
+        )
+        return token
+
+    if USE_DB:
+        # Caller-supplied cursor: stay in their transaction, let errors propagate
+        # (the migration wraps this in a SAVEPOINT, like the other backfills).
+        if cur is not None:
+            return _db(cur)
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as own_cur:
+                    return _db(own_cur)
+        except Exception as e:
+            return ""
+    else:
+        path = "client_qr_tokens.json"
+        tokens = {}
+        if os.path.exists(path):
+            with open(path) as f:
+                tokens = json.load(f)
+        for tok, meta in tokens.items():
+            if meta.get("username") == username:
+                return tok
+        token = f"CLI-{uuid.uuid4().hex[:16].upper()}"
+        tokens[token] = {"username": username}
+        with open(path, "w") as f:
+            json.dump(tokens, f)
+        return token
+
+
+def resolve_client_token(token: str) -> str | None:
+    """Non-consuming lookup of a client identity token. Returns username or None.
+
+    Like get_token_doc (peek, no state change) — NOT use_doc_token: this token is
+    never consumed. Used when staff scan a client's QR to resolve who they are.
+    """
+    if USE_DB:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT username FROM client_qr_tokens WHERE token=%s",
+                        (token,)
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        return None
+                    return row["username"]
+        except Exception as e:
+            return None
+    else:
+        path = "client_qr_tokens.json"
+        if not os.path.exists(path):
+            return None
+        with open(path) as f:
+            tokens = json.load(f)
+        t = tokens.get(token)
+        if not t:
+            return None
+        return t["username"]
+
+
 # ── Labeled QR image builders ─────────────────────────────────────────────────
 
 def make_doc_status_qr_png(token: str, token_type: str,
