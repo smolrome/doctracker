@@ -399,13 +399,22 @@ Wanted, not broken.
       `pending_at_staff_name=recipient_full_name` (matching web path); api_accept_document now clears
       `pending_at_staff`/`pending_at_staff_name`/`pending_at_office` (doc is Received, no pending target).
       Verified: no display site reads pending_at_* on a Received doc (all gate on status=='Pending').
-    - [ ] TODO: web accept path (dashboard.py:1808-1819) clears pending_at_staff/office but LEAVES
-      pending_at_staff_name — same latent staleness the API path just fixed. Clear it there too for
-      symmetry. Low priority (nothing reads it post-accept).
-    - [ ] TODO (NEXT — separate careful step): backfill existing docs whose stored pending_at_staff_name
-      drifted from pending_at_staff before this fix. Forward fixes freeze the stale set but don't clean
-      existing drifted docs. Requires: fresh backup, dry-run SELECT of what would change, resolution rule
-      for unresolvable usernames (leave untouched), then UPDATE + verify.
+    - [x] DONE: web pending-leg-ending paths now clear pending_at_staff_name, matching the API fix
+      (6a8c8fc). accept_document (dashboard.py:~1826) cleared staff/office but left the name; the same
+      pass also fixed reject_document (:~1922, same omission) and release_doc (:~1305, which didn't
+      touch pending_at_* at all — a doc CAN reach release with live pending fields since logged_by
+      only moves to the recipient on accept). Ordering verified on all three: nothing reads these to
+      build a persisted value after the clear point.
+    - [x] DONE-BY-INVESTIGATION: backfill existing docs whose stored pending_at_staff_name drifted from
+      pending_at_staff. Diagnostic run on prod (8,008 pending docs) found ZERO drifted-and-resolvable
+      still-pending docs and ZERO unresolvable usernames. The forward fix (6a8c8fc) prevents new drift;
+      no existing still-pending doc carries a stale pending_at_staff_name. No backfill needed — not
+      written, not run. Multi-transfer-while-pending drift (which bit test3) has no live instances in
+      current data.
+    - [x] DONE-BY-INVESTIGATION: accepted-doc cleanup (accepted before the clear-fix, still carrying
+      non-empty pending_at_* fields). Diagnostic found exactly 1 accepted doc with stale non-empty
+      pending fields. Count=1, nothing reads pending_at_* on a Received doc, so left as-is; the
+      accept-clear fix (6a8c8fc) prevents new ones. Not worth a cleanup pass.
     - [ ] Mobile release flow: happy path + 409-override device-tested; NOT re-tested since cache-fix
       and receipt-settle landed. Full re-test outstanding.
     - [ ] ExpoSQLite native-module crash seen in dev logs (dev-client/build mismatch) — blocks

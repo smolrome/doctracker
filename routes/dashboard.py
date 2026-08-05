@@ -1302,6 +1302,16 @@ def release_doc(doc_id):
     doc["released_by"]   = current_user
     doc["transfer_status"] = "released"
 
+    # A released doc has no pending target. A doc CAN reach here with pending_*
+    # still populated: logged_by only transfers to the recipient on ACCEPT, so an
+    # originator (or admin) can release a doc that was transferred onward but not
+    # yet accepted — leaving stale pending_at_* pointing at the un-accepting staff.
+    # Clear all three, matching the accept/reject treatment. Nothing above reads
+    # them (the travel_log uses the session office), so this is order-safe.
+    doc["pending_at_staff"]      = ""
+    doc["pending_at_staff_name"] = ""
+    doc["pending_at_office"]     = ""
+
     doc.setdefault("travel_log", []).append({
         "office":    current_office,
         "action":    "Released by Originating Staff",
@@ -1815,8 +1825,9 @@ def accept_document(doc_id):
         doc["logged_by"]         = current_user        # ← transfer ownership now
         if not doc.get("date_received"):
             doc["date_received"] = now_str()[:16].replace("T", " ")
-        doc["pending_at_staff"]  = ""
-        doc["pending_at_office"] = ""
+        doc["pending_at_staff"]      = ""
+        doc["pending_at_staff_name"] = ""
+        doc["pending_at_office"]     = ""
         # original_logged_by is intentionally NOT touched here
 
         doc.setdefault("travel_log", []).append({
@@ -1908,9 +1919,10 @@ def reject_document(doc_id):
 
     # Return document to the sender — clear pending fields so it
     # goes straight back to the sender's dashboard, not receive modal.
-    doc["logged_by"]         = original_sender
-    doc["pending_at_office"] = ""
-    doc["pending_at_staff"]  = ""
+    doc["logged_by"]             = original_sender
+    doc["pending_at_office"]     = ""
+    doc["pending_at_staff"]      = ""
+    doc["pending_at_staff_name"] = ""
 
     # Add to travel log
     doc.setdefault("travel_log", []).append({
