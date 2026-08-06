@@ -726,12 +726,31 @@ def view_doc(doc_id):
         doc.get("transferred_by", ""), doc.get("transferred_by") or ""
     )
 
+    # Release-to-collector audit trail (newest-first). Staff/admin see the FULL
+    # record incl. collector_contact. These are read-only display dicts from the
+    # DB — safe to annotate a resolved released_by name onto each without
+    # touching anything persisted.
+    from services.database import get_document_releases
+    releases = get_document_releases(doc_id)
+    for r in releases:
+        r["released_by_name"] = user_lookup.get(
+            r.get("released_by", ""), r.get("released_by") or ""
+        )
+        # released_at is a datetime in DB mode, an ISO string in JSON mode —
+        # normalise to a readable "YYYY-MM-DD HH:MM" display string either way.
+        ra = r.get("released_at")
+        if hasattr(ra, "strftime"):
+            r["released_at_display"] = ra.strftime("%Y-%m-%d %H:%M")
+        else:
+            r["released_at_display"] = str(ra or "").replace("T", " ")[:16]
+
     return render_template("detail.html", doc=doc,
                            qr_b64=generate_qr_b64(doc, request.host_url),
                            slip_type=slip_type,
                            status_options=get_dropdown_options("status"),
                            transferred_to_name=transferred_to_name,
                            transferred_by_name=transferred_by_name,
+                           releases=releases,
                            rt_changed=request.args.get("rt_changed", ""),
                            rt_name=request.args.get("rt_name", ""),
                            rt_user=request.args.get("rt_user", ""))
