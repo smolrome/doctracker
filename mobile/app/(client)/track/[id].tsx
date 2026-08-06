@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Trash2, Download, QrCode } from 'lucide-react-native';
+import { ArrowLeft, Trash2, Download, QrCode, PackageCheck } from 'lucide-react-native';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import api from '../../../lib/api';
@@ -34,6 +34,24 @@ function formatDate(ts?: string) {
   return ts.replace('T', ' ').slice(0, 16);
 }
 
+// Client-safe track shape returned by GET /client/documents/<id> (Commit A).
+// NOTE: this endpoint deliberately omits remarks/officer and collector_contact —
+// do not reintroduce reads of those fields here.
+type ClientTrackResponse = {
+  current?: any;
+  status_display?: any;
+  rejection_reason?: string | null;
+  history?: { office?: string; label?: string; date?: string }[];
+  document?: {
+    doc_name?: string; doc_id?: string; category?: string; referred_to?: string;
+    sender_org?: string; created_at?: string; updated_at?: string; status?: string;
+  };
+  release?: {
+    collector_name?: string; collector_origin?: string; collector_office?: string;
+    collector_position?: string; released_at?: string; released_by_name?: string;
+  } | null;
+};
+
 export default function TrackDocument() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -41,11 +59,11 @@ export default function TrackDocument() {
 
   const [confirmVisible, setConfirmVisible] = useState(false);
 
-  const { data: doc, isLoading, refetch, isRefetching } = useQuery({
+  const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['client-doc', id],
     queryFn: async () => {
-      const res = await api.get(`/documents/${id}`);
-      return res.data;
+      const res = await api.get(`/client/documents/${id}`);
+      return res.data as ClientTrackResponse;
     },
     staleTime: 1000 * 30,
   });
@@ -57,7 +75,12 @@ export default function TrackDocument() {
     staleTime: 1000 * 60 * 10,
   });
 
-  const docStatus = (doc?.status || '').toLowerCase();
+  // Derived, null-safe views onto the nested response.
+  const document = data?.document ?? {};
+  const release  = data?.release ?? null;
+  const history  = data?.history ?? [];
+
+  const docStatus = (document.status || '').toLowerCase();
   const isRejected = docStatus === 'rejected';
   const isPending  = docStatus === 'pending';
   const canDelete  = isRejected || isPending;
@@ -86,10 +109,10 @@ export default function TrackDocument() {
               <p style="color:#0038A8;font-size:11px;font-weight:700;text-transform:uppercase;
                         letter-spacing:1px;margin:0 0 8px;">DepEd LAKAD</p>
               <h2 style="color:#1E293B;font-size:18px;margin:0 0 6px;line-height:1.4;">
-                ${doc?.doc_name || 'Document'}
+                ${document.doc_name || 'Document'}
               </h2>
               <p style="color:#0038A8;font-size:13px;font-weight:700;
-                        letter-spacing:1px;margin:0 0 24px;">#${doc?.doc_id || id}</p>
+                        letter-spacing:1px;margin:0 0 24px;">#${document.doc_id || id}</p>
               <img src="${dataUri}" width="220" height="220"
                    style="display:block;margin:0 auto 20px;" />
               <p style="color:#64748B;font-size:12px;margin:0;">
@@ -104,7 +127,7 @@ export default function TrackDocument() {
       if (canShare) {
         await Sharing.shareAsync(uri, {
           mimeType: 'application/pdf',
-          dialogTitle: `QR Code — ${doc?.doc_id || id}`,
+          dialogTitle: `QR Code — ${document.doc_id || id}`,
           UTI: 'com.adobe.pdf',
         });
       } else {
@@ -116,8 +139,7 @@ export default function TrackDocument() {
     }
   };
 
-  const status = getStatus(doc?.status ?? '');
-  const travelLog: any[] = doc?.travel_log ?? [];
+  const status = getStatus(document.status ?? '');
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
@@ -133,8 +155,8 @@ export default function TrackDocument() {
           <Text style={{ color: 'rgba(255,255,255,0.70)', fontSize: 14, fontWeight: '600' }}>My Documents</Text>
         </TouchableOpacity>
         <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', letterSpacing: -0.3 }}>Track Document</Text>
-        {doc?.doc_id ? (
-          <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, marginTop: 4 }}>Ref: #{doc.doc_id}</Text>
+        {document.doc_id ? (
+          <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, marginTop: 4 }}>Ref: #{document.doc_id}</Text>
         ) : null}
       </View>
 
@@ -142,7 +164,7 @@ export default function TrackDocument() {
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator size="large" color="#0038A8" />
         </View>
-      ) : !doc ? (
+      ) : !data ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ color: '#94A3B8', fontSize: 15 }}>Document not found.</Text>
         </View>
@@ -158,24 +180,21 @@ export default function TrackDocument() {
           }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
               <Text style={{ fontWeight: '800', color: '#1E293B', fontSize: 16, flex: 1, marginRight: 10 }}>
-                {doc.doc_name}
+                {document.doc_name || 'Document'}
               </Text>
               <View style={{ backgroundColor: status.bg, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
-                <Text style={{ color: status.text, fontWeight: '800', fontSize: 13 }}>{doc.status}</Text>
+                <Text style={{ color: status.text, fontWeight: '800', fontSize: 13 }}>{document.status || '—'}</Text>
               </View>
             </View>
 
             <View style={{ gap: 8 }}>
               {[
-                ['Reference', `#${doc.doc_id || '—'}`],
-                ['Type', doc.category || '—'],
-                ['Referred To', doc.referred_to || '—'],
-                ['From Office', doc.sender_org || '—'],
-                ['Submitted', formatDate(doc.created_at)],
-                ['Last Updated', formatDate(doc.updated_at)],
-                ...(doc.remarks ? [['Remarks', doc.remarks]] : []),
-                ...(doc.description ? [['Description', doc.description]] : []),
-                ...(doc.notes ? [['Notes', doc.notes]] : []),
+                ['Reference', `#${document.doc_id || '—'}`],
+                ['Type', document.category || '—'],
+                ['Referred To', document.referred_to || '—'],
+                ['From Office', document.sender_org || '—'],
+                ['Submitted', formatDate(document.created_at)],
+                ['Last Updated', formatDate(document.updated_at)],
               ].map(([label, value]) => (
                 <View key={label} style={{ flexDirection: 'row' }}>
                   <Text style={{ color: '#94A3B8', fontSize: 13, width: 110 }}>{label}</Text>
@@ -184,6 +203,34 @@ export default function TrackDocument() {
               ))}
             </View>
           </View>
+
+          {/* Release / collector card — only once the doc has actually been released */}
+          {release && (
+            <View style={{
+              backgroundColor: '#fff', borderRadius: 14, padding: 20,
+              borderWidth: 0.5, borderColor: '#E2E8F0', marginBottom: 12,
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <PackageCheck size={16} color="#065F46" />
+                <Text style={{ fontWeight: '700', color: '#065F46', fontSize: 14 }}>Released</Text>
+              </View>
+              <View style={{ gap: 8 }}>
+                {[
+                  ['Collected By', release.collector_name || '—'],
+                  ['Origin', release.collector_origin || '—'],
+                  ['Office', release.collector_office || '—'],
+                  ['Position', release.collector_position || '—'],
+                  ['Released', release.released_at || '—'],
+                  ['Released By', release.released_by_name || '—'],
+                ].map(([label, value]) => (
+                  <View key={label} style={{ flexDirection: 'row' }}>
+                    <Text style={{ color: '#94A3B8', fontSize: 13, width: 110 }}>{label}</Text>
+                    <Text style={{ color: '#1E293B', fontSize: 13, fontWeight: '600', flex: 1 }}>{String(value)}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* QR Code card */}
           <View style={{
@@ -225,8 +272,8 @@ export default function TrackDocument() {
             )}
           </View>
 
-          {/* Travel log */}
-          {travelLog.length > 0 && (
+          {/* Document history — sanitized: label/office/date only, no remarks/officer */}
+          {history.length > 0 && (
             <View style={{
               backgroundColor: '#fff', borderRadius: 14, padding: 20,
               borderWidth: 0.5, borderColor: '#E2E8F0', marginBottom: 12,
@@ -234,19 +281,18 @@ export default function TrackDocument() {
               <Text style={{ fontWeight: '700', color: '#0038A8', fontSize: 14, marginBottom: 14 }}>
                 Document History
               </Text>
-              {[...travelLog].reverse().map((entry, i) => (
-                <View key={i} style={{ flexDirection: 'row', gap: 12, marginBottom: i < travelLog.length - 1 ? 16 : 0 }}>
+              {[...history].reverse().map((entry, i) => (
+                <View key={i} style={{ flexDirection: 'row', gap: 12, marginBottom: i < history.length - 1 ? 16 : 0 }}>
                   <View style={{ alignItems: 'center' }}>
                     <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: i === 0 ? '#0038A8' : '#CBD5E1', marginTop: 3 }} />
-                    {i < travelLog.length - 1 && (
+                    {i < history.length - 1 && (
                       <View style={{ width: 1, flex: 1, backgroundColor: '#E2E8F0', marginTop: 4 }} />
                     )}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '700', color: '#1E293B', fontSize: 13 }}>{entry.action}</Text>
+                    <Text style={{ fontWeight: '700', color: '#1E293B', fontSize: 13 }}>{entry.label || 'Update'}</Text>
                     {entry.office ? <Text style={{ color: '#64748B', fontSize: 12 }}>{entry.office}</Text> : null}
-                    {entry.remarks ? <Text style={{ color: '#94A3B8', fontSize: 12 }}>{entry.remarks}</Text> : null}
-                    <Text style={{ color: '#CBD5E1', fontSize: 11, marginTop: 3 }}>{formatDate(entry.timestamp)}</Text>
+                    {entry.date ? <Text style={{ color: '#CBD5E1', fontSize: 11, marginTop: 3 }}>{entry.date}</Text> : null}
                   </View>
                 </View>
               ))}
@@ -289,8 +335,8 @@ export default function TrackDocument() {
         title={isPending ? 'Cancel Submission?' : 'Move to Trash?'}
         message={
           isPending
-            ? `"${doc?.doc_name || 'This document'}" is still pending and hasn't been received by staff yet. Cancelling will permanently remove it.`
-            : `"${doc?.doc_name || 'This document'}" will be moved to your trash.`
+            ? `"${document.doc_name || 'This document'}" is still pending and hasn't been received by staff yet. Cancelling will permanently remove it.`
+            : `"${document.doc_name || 'This document'}" will be moved to your trash.`
         }
         buttons={[
           {

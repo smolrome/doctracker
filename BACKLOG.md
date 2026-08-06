@@ -429,11 +429,21 @@ Wanted, not broken.
       Regression tests added (TestClientDocEndpoint, TestQrOwnershipGate) — the contact-absence test
       asserts the value appears NOWHERE in the payload and was proven to fail on a deliberate re-leak.
       pytest 14/383/1.
-    - [ ] TODO: Commit B (mobile) — repoint mobile/app/(client)/track/[id].tsx from GET /documents/<id>
-      to GET /client/documents/<id>, reshape to the new nested response (document/release/history blocks),
-      drop the raw remarks/notes/description rows, add a release/collector card. Until this ships, the
-      mobile client still calls the raw endpoint — the DISPLAY leak on existing docs (e.g. test3) persists
-      until B deploys; Part 1 only stops NEW contact from entering remarks.
+    - [x] DONE: Commit B (mobile) — mobile client track screen now consumes GET /client/documents/<id>
+      (was the raw staff GET /documents/<id>). History renders the sanitized {office,label,date} items
+      (no raw remarks — entry.remarks is gone from the code); metadata reads the whitelisted `document`
+      block (remarks/notes/description rows dropped); a release card shows collector identity
+      (name/origin/office/position/date/releasing-staff) with NO contact field. Closes the DISPLAY leak
+      on EXISTING docs (e.g. test3) whose stored remarks still contain contact — no data scrub needed.
+      tsc: 7 pre-existing errors, 0 new (none in the touched file). Awaiting device test before deploy.
+    - [ ] TODO: staff scanner offers "Release to Collector" on an ALREADY-RELEASED doc. Scanning a doc
+      with status=Released still shows the release action in the scanned-doc overlay (mobile scanner).
+      Should suppress/disable release when the doc is already Released (status=='Released' or
+      transfer_status=='released') to prevent a duplicate document_releases row + duplicate timeline
+      entry. Investigate: where the overlay decides which actions to show (scanner.tsx scanned-doc
+      overlay), and whether the SERVER should also reject a re-release (defense in depth — the UI guard
+      is convenience, the server should refuse releasing an already-released doc). Likely both: hide the
+      button AND have api_release_to_client reject if already released.
 
 - [ ] **Maintenance mode (admin toggle).** A switch the admin flips to show an "under maintenance"
   screen to everyone accessing DocTracker, with an ON indicator in the admin UI. Scope decided: blocks
