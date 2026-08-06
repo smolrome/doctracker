@@ -107,6 +107,22 @@ def client_tokens(api_client):
     return data["access_token"], data["refresh_token"]
 
 
+@pytest.fixture(scope="module")
+def client2_tokens(api_client):
+    """A SECOND approved role='client' user — used to prove one client cannot
+    read or QR another client's document."""
+    from services.auth import create_user, approve_user
+    create_user("apiclient2", "ApiClient123!", full_name="API Client Two", role="client")
+    approve_user("apiclient2")
+    rv = api_client.post(
+        "/api/auth/login",
+        json={"username": "apiclient2", "password": "ApiClient123!"},
+    )
+    assert rv.status_code == 200, rv.data
+    data = rv.get_json()
+    return data["access_token"], data["refresh_token"]
+
+
 def _auth(token):
     """Return Authorization header dict."""
     return {"Authorization": f"Bearer {token}"}
@@ -479,3 +495,128 @@ class TestJwtStaffGate:
         access, _ = staff_tokens
         rv = api_client.get("/api/check-duplicate?q=test", headers=_auth(access))
         assert rv.status_code == 200
+
+
+# ── Client-safe document endpoint + QR ownership (privacy boundary) ─────────────
+#
+# These are the SAFETY NET for a decided privacy boundary. The client-facing view
+# GET /client/documents/<id> MUST surface release IDENTITY (collector name/origin/
+# office/position, release date, releasing staff) but MUST NEVER surface the
+# collector's contact info, nor the raw internal travel_log `remarks`/`officer`.
+# /qr/generate/<id> MUST require ownership. Each test is written to FAIL if a
+# future edit re-leaks (e.g. spreads the release row, re-embeds contact into a
+# remark, or drops the QR ownership gate).
+
+# Unique sentinel values so an "anywhere in the payload" search is unambiguous.
+_SECRET_CONTACT = "0917-000-SENTINEL-CONTACT-9999"
+_SECRET_REMARK = "INTERNAL-OFFICER-NOTE-ZZTOP-DO-NOT-LEAK"
+
+
+@pytest.fixture(scope="module")
+def released_client_doc(api_app, client_tokens, staff_tokens):
+    """A Released document OWNED by apiclient, carrying:
+      - a document_releases row WITH a collector_contact (must stay hidden), and
+      - internal travel_log remarks/officer (must stay hidden).
+    staff_tokens is requested so 'apistaff' exists and released_by resolves to a
+    real full name. Returns the document's internal id (what get_doc matches on).
+    """
+    import uuid as _uuid
+    from services.documents import insert_doc, now_str, generate_ref
+    from services.database import create_document_release
+
+    doc = {
+        "id": str(_uuid.uuid4()),
+        "doc_id": generate_ref(),
+        "doc_name": "Client Release Privacy Doc",
+        "category": "Memo",
+        "sender_org": "H3h3",
+        "referred_to": "",
+        "status": "Released",
+        "created_at": now_str(),
+        "logged_by": "apiclient",
+        "travel_log": [
+            {"office": "IT Unit", "action": "Logged", "officer": "API Staff",
+             "timestamp": now_str(), "remarks": _SECRET_REMARK},
+            {"office": "IT Unit",
+             "action": "Released to Jerome Pedrosa by API Staff",
+             "officer": "API Staff", "timestamp": now_str(),
+             "remarks": f"Physically released to Jerome Pedrosa. {_SECRET_REMARK}"},
+        ],
+    }
+    insert_doc(doc)
+    create_document_release(
+        doc["id"], released_by="apistaff",
+        collector_name="Jerome Pedrosa", collector_origin="H3h3",
+        collector_office="H3h3 Office", collector_position="Collector",
+        collector_contact=_SECRET_CONTACT,
+    )
+    return doc["id"]
+
+
+class TestClientDocEndpoint:
+    def test_owner_gets_200_and_no_collector_contact(
+            self, api_client, client_tokens, released_client_doc):
+        access, _ = client_tokens
+        rv = api_client.get(
+            f"/api/client/documents/{released_client_doc}", headers=_auth(access))
+        assert rv.status_code == 200, rv.data
+        body = rv.get_json()
+        # The release block exists (positive path exercised) ...
+        assert body["release"] is not None
+        # ... but must NOT carry the contact key ...
+        assert "collector_contact" not in body["release"]
+        # ... and the raw contact value must appear NOWHERE in the payload
+        # (belt-and-suspenders: catches a leak via any field or a row spread).
+        assert _SECRET_CONTACT not in json.dumps(body)
+
+    def test_no_raw_travel_log_remarks_or_officer(
+            self, api_client, client_tokens, released_client_doc):
+        access, _ = client_tokens
+        rv = api_client.get(
+            f"/api/client/documents/{released_client_doc}", headers=_auth(access))
+        assert rv.status_code == 200
+        body = rv.get_json()
+        # No history item may expose the internal remarks/officer fields ...
+        for item in body.get("history", []):
+            assert "remarks" not in item
+            assert "officer" not in item
+        # ... and the internal remark text must appear nowhere in the payload.
+        assert _SECRET_REMARK not in json.dumps(body)
+
+    def test_release_block_surfaces_identity(
+            self, api_client, client_tokens, released_client_doc):
+        # We DO surface release identity — this is the positive guarantee.
+        access, _ = client_tokens
+        rv = api_client.get(
+            f"/api/client/documents/{released_client_doc}", headers=_auth(access))
+        assert rv.status_code == 200
+        block = rv.get_json()["release"]
+        assert block["collector_name"] == "Jerome Pedrosa"
+        assert block["collector_origin"] == "H3h3"
+        # released_by was stored as the username 'apistaff'; the endpoint must
+        # resolve it to the full name.
+        assert block["released_by_name"] == "API Staff"
+
+    def test_other_client_forbidden(
+            self, api_client, client2_tokens, released_client_doc):
+        access, _ = client2_tokens
+        rv = api_client.get(
+            f"/api/client/documents/{released_client_doc}", headers=_auth(access))
+        assert rv.status_code == 403
+
+
+class TestQrOwnershipGate:
+    def test_qr_denied_for_non_owner_client(
+            self, api_client, client2_tokens, released_client_doc):
+        access, _ = client2_tokens
+        rv = api_client.get(
+            f"/api/qr/generate/{released_client_doc}", headers=_auth(access))
+        assert rv.status_code == 403
+
+    def test_qr_allowed_for_owning_client(
+            self, api_client, client_tokens, released_client_doc):
+        access, _ = client_tokens
+        rv = api_client.get(
+            f"/api/qr/generate/{released_client_doc}", headers=_auth(access))
+        assert rv.status_code == 200
+        assert rv.get_json()["qr_base64"].startswith("data:image/png;base64,")

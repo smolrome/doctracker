@@ -419,6 +419,40 @@ Wanted, not broken.
       and receipt-settle landed. Full re-test outstanding.
     - [ ] ExpoSQLite native-module crash seen in dev logs (dev-client/build mismatch) — blocks
       dev-client launch; unrelated to scanner changes. Triage separately.
+    - [x] DONE: client contact-leak fix (server half / Commit A). collector_contact was baked into the
+      release travel_log remark text (api.py:1794) and the mobile client rendered it via the RAW staff
+      endpoint GET /documents/<id> (which returns the full serialized doc to any owning client). Fixed:
+      (1) dropped the contact fragment from the release remark; (2) added GET /client/documents/<id> — a
+      client-safe endpoint composing build_client_track_view + explicit-whitelist document/release blocks
+      (NEVER collector_contact, never raw remarks/officer, never serialize(doc)); (3) added ownership gate
+      to /qr/generate/<id> (was @jwt_required with NO ownership check — any user could QR any doc).
+      Regression tests added (TestClientDocEndpoint, TestQrOwnershipGate) — the contact-absence test
+      asserts the value appears NOWHERE in the payload and was proven to fail on a deliberate re-leak.
+      pytest 14/383/1.
+    - [ ] TODO: Commit B (mobile) — repoint mobile/app/(client)/track/[id].tsx from GET /documents/<id>
+      to GET /client/documents/<id>, reshape to the new nested response (document/release/history blocks),
+      drop the raw remarks/notes/description rows, add a release/collector card. Until this ships, the
+      mobile client still calls the raw endpoint — the DISPLAY leak on existing docs (e.g. test3) persists
+      until B deploys; Part 1 only stops NEW contact from entering remarks.
+
+- [ ] **Maintenance mode (admin toggle).** A switch the admin flips to show an "under maintenance"
+  screen to everyone accessing DocTracker, with an ON indicator in the admin UI. Scope decided: blocks
+  **EVERYTHING** (staff web, client portal, mobile API) — admins **ALWAYS** exempt. Design constraints
+  already worked out (must honor when built):
+  1. **NEVER lock the admin out** — the maintenance guard must exempt admin sessions AND the login
+     route, or flipping it on bricks access to turn it off. This is the #1 rule.
+  2. **State must be DB-backed or file-backed, NOT an in-memory flag** — multi-worker gunicorn would
+     leave the flag inconsistent across workers (same reason as rate-limiting/job-state).
+  3. **Enforce via a `before_request` hook** (same layer as the CSRF guard), short-circuiting to the
+     maintenance response UNLESS admin or an exempt route.
+  4. **Mobile API must return a JSON 503** (not an HTML maintenance page) so the app can handle it
+     gracefully — an HTML body would break the app ugly. **Hard requirement:** the mobile API must
+     never receive an HTML maintenance page. The mobile app may need matching "under maintenance"
+     handling for that 503 (mobile-side follow-up).
+  5. **Server-side enforcement, not a client-hidden banner** — the block is real; the banner is just
+     the visible signal.
+  Attach point TBD: `before_request` in [app.py](app.py) near the CSRF guard; admin toggle in the admin
+  blueprint; state in a small settings table or a file like the webhook secrets.
 
 - [ ] **Display-name-only rename still orphans history** (follow-up to the shipped username-rename,
   now under Closed). The rename only fires when the username actually changes — `rename_user` rejects
