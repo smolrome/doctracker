@@ -482,6 +482,78 @@ def api_get_document(doc_id):
     return jsonify(serialize(doc))
 
 
+@api_bp.route('/client/documents/<doc_id>', methods=['GET'])
+@jwt_required()
+def api_client_get_document(doc_id):
+    """Client-safe document view — NEVER the raw doc.
+
+    Same ownership gate as api_get_document (a client may only fetch their own
+    doc), but the response is the sanitized client_view.py view-model plus an
+    explicitly whitelisted metadata block and a whitelisted release block. This
+    exists so the mobile client stops consuming the raw staff endpoint (which
+    leaks travel_log remarks/officer and collector_contact).
+    """
+    doc = get_doc(doc_id)
+    if not doc or doc.get('deleted'):
+        return jsonify(error='Document not found'), 404
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        user = get_user_by_username(user_id)
+        user_role = user.get('role', '') if user else ''
+        if user_role != 'staff' and doc.get('logged_by') != user_id and doc.get('submitted_by') != user_id:
+            return jsonify(error='Forbidden'), 403
+
+    from services.auth import get_all_users
+    from services.client_view import build_client_track_view
+    from services.database import get_document_releases
+
+    all_users = get_all_users()
+    view = build_client_track_view(doc, all_users)
+
+    releases = get_document_releases(doc_id)
+    latest = releases[0] if releases else None
+
+    release_block = None
+    if latest:
+        # released_at is a datetime in DB mode, an ISO string in JSON mode —
+        # normalise to a readable "YYYY-MM-DD HH:MM" either way.
+        ra = latest.get('released_at')
+        if hasattr(ra, 'strftime'):
+            released_at = ra.strftime('%Y-%m-%d %H:%M')
+        else:
+            released_at = str(ra or '').replace('T', ' ')[:16]
+        # Resolve released_by username -> full name; fall back to the username.
+        user_lookup = {u['username']: u.get('full_name') or u['username'] for u in all_users}
+        released_by = latest.get('released_by', '')
+        # Explicit whitelist — NEVER collector_contact; never spread the row.
+        release_block = {
+            'collector_name':     latest.get('collector_name'),
+            'collector_origin':   latest.get('collector_origin'),
+            'collector_office':   latest.get('collector_office'),
+            'collector_position': latest.get('collector_position'),
+            'released_at':        released_at,
+            'released_by_name':   user_lookup.get(released_by, released_by or ''),
+        }
+
+    # Explicit metadata pick — NEVER serialize(doc); no remarks/notes/description.
+    document_block = {
+        'doc_name':    doc.get('doc_name'),
+        'doc_id':      doc.get('doc_id'),
+        'category':    doc.get('category'),
+        'referred_to': doc.get('referred_to'),
+        'sender_org':  doc.get('sender_org'),
+        'created_at':  doc.get('created_at'),
+        'updated_at':  doc.get('updated_at'),
+        'status':      doc.get('status'),
+    }
+
+    return jsonify(serialize({
+        **view,
+        'document': document_block,
+        'release':  release_block,
+    }))
+
+
 @api_bp.route('/documents', methods=['POST'])
 @jwt_staff_required
 def api_create_document():
@@ -657,8 +729,17 @@ def api_stats():
 @jwt_required()
 def api_generate_qr(doc_id):
     doc = get_doc(doc_id)
-    if not doc:
+    if not doc or doc.get('deleted'):
         return jsonify(error='Document not found'), 404
+
+    # Ownership gate — mirrors api_get_document. A client may only generate the
+    # QR for their OWN document; staff/admin unrestricted.
+    user_id = get_jwt_identity()
+    if not _is_admin_user(user_id):
+        user = get_user_by_username(user_id)
+        user_role = user.get('role', '') if user else ''
+        if user_role != 'staff' and doc.get('logged_by') != user_id and doc.get('submitted_by') != user_id:
+            return jsonify(error='Forbidden'), 403
 
     import qrcode.constants
     qr = qrcode.QRCode(
@@ -1791,7 +1872,6 @@ def api_release_to_client(doc_id):
         'timestamp': now_str(),
         'remarks': (
             f'Document physically released to collector {collector_name}{origin_phrase}'
-            + (f' (contact: {collector_contact})' if collector_contact else '')
             + f'. Released by {staff_name}.'
         ),
     })
