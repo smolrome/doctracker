@@ -113,8 +113,9 @@ def test_rejection_reason_hidden_when_not_rejected():
     assert view["rejection_reason"] is None
 
 
-# 5. History dedupes consecutive same-office entries and NEVER leaks officer/remarks.
-def test_history_dedupes_and_hides_internal_text():
+# 5. History dedupes consecutive same-office entries. Staff name is now surfaced
+#    ONLY in detail.officer_name; remarks and raw action are STILL never leaked.
+def test_history_dedupes_surfaces_officer_in_detail_only():
     doc = {
         "status": "Received",
         "travel_log": [
@@ -123,14 +124,15 @@ def test_history_dedupes_and_hides_internal_text():
              "remarks": "Submitted via client portal. Target office: Records."},
             # same office + same bucket noise → should collapse:
             {"office": "Records Section", "action": "Document Submitted by Client - Pending at Jane Smith",
-             "officer": "SECRET_OFFICER_NAME", "timestamp": "2026-07-01T09:01:00",
+             "officer": "Client Person", "timestamp": "2026-07-01T09:01:00",
              "remarks": "LEAKED_REMARK_TEXT should never reach the client"},
+            # officer given as a USERNAME → must resolve to the full name in detail:
             {"office": "Records Section", "action": "Document Received",
-             "officer": "SECRET_OFFICER_NAME", "timestamp": "2026-07-01T10:00:00",
-             "remarks": "Document received and accepted by SECRET_OFFICER_NAME."},
+             "officer": "jsmith", "timestamp": "2026-07-01T10:00:00",
+             "remarks": "Document received and accepted by Jane Smith."},
             {"office": "Cash Unit", "action": "Routed — (Outside Office) (Cycle 1)",
-             "officer": "SECRET_OFFICER_NAME", "timestamp": "2026-07-02T08:00:00",
-             "remarks": "Transferred to SECRET_OFFICER_NAME (Cash Unit)."},
+             "officer": "Big Boss", "timestamp": "2026-07-02T08:00:00",
+             "remarks": "Transferred to LEAKED_REMARK_TEXT (Cash Unit)."},
         ],
     }
     view = build_client_track_view(doc, USERS)
@@ -138,14 +140,47 @@ def test_history_dedupes_and_hides_internal_text():
 
     # 4 raw entries → 3 after collapsing the duplicate submitted entry.
     assert len(history) == 3
-    # Each item exposes only office/label/date.
+    # Each item keeps the collapsed view AND gains a nested detail block.
     for item in history:
-        assert set(item.keys()) == {"office", "label", "date"}
+        assert {"office", "label", "date"} <= set(item.keys())
+        assert "detail" in item
+        d = item["detail"]
+        assert set(d.keys()) == {"label", "office", "officer_name", "date_time"}
+        # remarks/raw-action fields never appear on the item or in detail:
+        assert "remarks" not in item and "remarks" not in d
+        assert "action" not in item and "action" not in d
 
+    # Officer name IS now surfaced — and a bare username resolves to the full name.
+    received = next(h for h in history if h["label"] == "Received and being processed")
+    assert received["detail"]["officer_name"] == "Jane Smith"   # jsmith → Jane Smith
+    # date_time carries date + time (top-level date stays date-only).
+    assert received["detail"]["date_time"] == "2026-07-01T10:00"
+    assert received["date"] == "2026-07-01"
+
+    # Remarks text (and its fragments) must appear NOWHERE — including in detail.
     blob = json.dumps(history)
-    assert "SECRET_OFFICER_NAME" not in blob      # officer never leaks
     assert "LEAKED_REMARK_TEXT" not in blob        # remarks never leak
     assert "accepted by" not in blob               # no remark fragments
+
+
+# 5b. Raw action strings are NEVER surfaced — only the bucketed label. A staff
+#     name embedded in the action f-string must not reach the client output.
+def test_history_never_surfaces_raw_action():
+    doc = {
+        "status": "Released",
+        "travel_log": [
+            {"office": "Cash Unit", "action": "Released to SECRET_PERSON by Jane Smith",
+             "officer": "jsmith", "timestamp": "2026-07-03T11:00:00",
+             "remarks": "contact: 0917-xxx"},
+        ],
+    }
+    view = build_client_track_view(doc, USERS)
+    blob = json.dumps(view["history"])
+    # Only the bucketed label is used, so the collector name from the raw action
+    # string never appears; nor does the remark.
+    assert "SECRET_PERSON" not in blob
+    assert "contact" not in blob
+    assert view["history"][0]["label"] == "Released from the office"
 
 
 # 6. An unmapped/novel action → generic label, raw string not shown.

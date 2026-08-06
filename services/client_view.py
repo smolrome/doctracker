@@ -247,14 +247,25 @@ def _build_current(doc, user_map) -> dict:
 
 # ── History (deduped movement list) ────────────────────────────────────────────
 
-def _build_history(doc) -> list:
+def _build_history(doc, user_map: dict | None = None) -> list:
     """Walk travel_log oldest→newest, emitting a de-duped movement list.
 
     Emits a new item only on a MEANINGFUL transition — the office changes OR the
     action bucket changes. Consecutive entries in the same office with the same
-    bucket collapse into a single item. The internal `officer` and `remarks`
-    fields are dropped entirely; each item exposes only {office, label, date, icon}.
+    bucket collapse into a single item.
+
+    Each item carries the collapsed view — {office, label, date} — PLUS a nested
+    `detail` block for the mobile expand-on-tap:
+        {office, label, date, detail: {label, office, officer_name, date_time}}
+
+    The staff name is surfaced ONLY inside `detail.officer_name` (resolved
+    username→full name via `user_map` when possible, else passed through) — it is
+    never folded into the top-level `label` or `office`. The raw `action` string
+    is NEVER surfaced (only its bucketed `label`), because action f-strings embed
+    staff names and free text. The internal `remarks` field is dropped entirely,
+    including from `detail`.
     """
+    user_map = user_map or {}
     history = []
     last_office = object()   # sentinel — guarantees the first entry always emits
     last_bucket = object()
@@ -265,10 +276,21 @@ def _build_history(doc) -> list:
         if office == last_office and bucket == last_bucket:
             continue  # collapse consecutive same-office same-bucket noise
         ts = entry.get("timestamp") or ""
+        label = bucket_label(entry.get("action"))
+        officer_raw = entry.get("officer") or ""
+        # officer is usually a full name, but can be a bare username — resolve it
+        # the same way handler names resolve, falling back to the raw value.
+        officer_name = _resolve_name(officer_raw, user_map) or officer_raw
         history.append({
             "office": office,
-            "label":  bucket_label(entry.get("action")),
+            "label":  label,
             "date":   ts[:10] if ts else "",
+            "detail": {
+                "label":        label,
+                "office":       office,
+                "officer_name": officer_name,
+                "date_time":    ts[:16] if ts else "",
+            },
         })
         last_office, last_bucket = office, bucket
 
@@ -288,7 +310,8 @@ def build_client_track_view(doc: dict, users=None) -> dict:
     Returns a dict with:
         current:          {state, location_office, handler_name, handler_role_label, message}
         status_display:   {label, sub_text, icon}
-        history:          [{office, label, date}, ...]  (deduped, no officer/remarks)
+        history:          [{office, label, date, detail:{label, office, officer_name,
+                          date_time}}, ...]  (deduped; staff name only in detail, no remarks)
         rejection_reason: the internal reason ONLY when status is Rejected/Returned, else None
     """
     doc = doc or {}
@@ -302,6 +325,6 @@ def build_client_track_view(doc: dict, users=None) -> dict:
     return {
         "current":          _build_current(doc, user_map),
         "status_display":   status_display(status),
-        "history":          _build_history(doc),
+        "history":          _build_history(doc, user_map),
         "rejection_reason": reason,
     }

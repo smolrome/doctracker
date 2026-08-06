@@ -436,6 +436,21 @@ Wanted, not broken.
       (name/origin/office/position/date/releasing-staff) with NO contact field. Closes the DISPLAY leak
       on EXISTING docs (e.g. test3) whose stored remarks still contain contact — no data scrub needed.
       tsc: 7 pre-existing errors, 0 new (none in the touched file). Awaiting device test before deploy.
+    - [x] DONE: client history enrichment — server (Step 1). The post-leak sanitizer had over-reduced
+      history to generic bucket labels, hiding legitimate journey info. `_build_history` now emits, per
+      movement, the unchanged collapsed {office, label, date} PLUS a nested detail:{label, office,
+      officer_name, date_time} for tap-to-expand. Office stays visible in the collapsed label; the staff
+      name lands ONLY in detail.officer_name (resolved username→full-name via the user-map). Raw remarks
+      and the raw action string are STILL never surfaced anywhere including inside detail — only the
+      bucketed label is used. Additive/backward-compatible: web + mobile ignore the new detail key until
+      the expand-UI is built. Tests: rewrote the history privacy test for the new rule + added a
+      raw-action-not-surfaced test; TestClientDocEndpoint passes unchanged. pytest 14/384/1.
+    - [ ] TODO: client history enrichment — Step 2 (mobile expand-on-tap UI). Wire the mobile client
+      track screen to render the nested `detail` block on tap (staff name + full date_time), collapsed
+      row stays office + label + date. Server side (Step 1) already ships the shape; this is mobile-only.
+    - [ ] (optional) client history enrichment — Step 3 (web expand UI). client_track.html could grow a
+      matching tap/click-to-expand for `detail`; currently the web template just ignores the new key.
+      Nice-to-have, not required for the mobile enrichment to land.
     - [ ] TODO: staff scanner offers "Release to Collector" on an ALREADY-RELEASED doc. Scanning a doc
       with status=Released still shows the release action in the scanned-doc overlay (mobile scanner).
       Should suppress/disable release when the doc is already Released (status=='Released' or
