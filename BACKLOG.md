@@ -460,9 +460,16 @@ Wanted, not broken.
       2 below). NOTE: collector ORIGIN is optional on all release surfaces (server, mobile, web) — a
       candidate future improvement is making it required, which would also improve release-record
       completeness. pytest 14/388/1.
-    - [ ] TODO: client history enrichment — Step 2 (mobile expand-on-tap UI). Wire the mobile client
-      track screen to render the nested `detail` block on tap (staff name + full date_time), collapsed
-      row stays office + label + date. Server side (Step 1) already ships the shape; this is mobile-only.
+    - [x] DONE: client history enrichment — Step 2 (mobile render). The mobile client track screen
+      ([mobile/app/(client)/track/[id].tsx](mobile/app/(client)/track/[id].tsx)) now renders the enriched
+      shape: specific labels in the timeline; tap-to-expand shows "{actor_role} {officer_name}" (Received
+      by / Sent by / Released by…), a transient "Sent to {recipient_name}" on the latest transfer, and the
+      date/time. Full collector detail (name/origin/office/position, released-by, date) is folded INTO the
+      "Released to collector" entry's expand — the standalone release card was removed for one unified
+      timeline. Collector data comes from the endpoint's already-safe `release` block (no contact field
+      exists); the release entry is matched by the server-produced label, never by re-parsing raw strings
+      on the client. No contact anywhere. Closes the client history enrichment thread AND the broader
+      contact-leak privacy arc. tsc: 0 new errors (7 pre-existing, none in track/[id].tsx).
     - [ ] (optional) client history enrichment — Step 3 (web expand UI). client_track.html could grow a
       matching tap/click-to-expand for `detail`; currently the web template just ignores the new key.
       Nice-to-have, not required for the mobile enrichment to land.

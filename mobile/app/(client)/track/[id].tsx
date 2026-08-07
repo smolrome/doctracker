@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Trash2, Download, QrCode, PackageCheck } from 'lucide-react-native';
+import { ArrowLeft, Trash2, Download, QrCode, ChevronDown, ChevronUp } from 'lucide-react-native';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import api from '../../../lib/api';
@@ -41,7 +41,18 @@ type ClientTrackResponse = {
   current?: any;
   status_display?: any;
   rejection_reason?: string | null;
-  history?: { office?: string; label?: string; date?: string }[];
+  history?: {
+    office?: string; label?: string; date?: string;
+    // Nested expand-on-tap block (Step 2). Older payloads may omit it — guard for undefined.
+    // Never contains remarks or the raw action string — only the bucketed label + resolved name.
+    detail?: {
+      label?: string; office?: string; officer_name?: string; date_time?: string;
+      // actor_role: fixed-vocabulary verb phrase ("Received by"/"Sent by"/…), replaces
+      // the hardcoded "Handled by". recipient_name: transient, present ONLY on the
+      // latest-transfer item (server guarantees). Both optional — older payloads omit them.
+      actor_role?: string; recipient_name?: string;
+    };
+  }[];
   document?: {
     doc_name?: string; doc_id?: string; category?: string; referred_to?: string;
     sender_org?: string; created_at?: string; updated_at?: string; status?: string;
@@ -58,6 +69,15 @@ export default function TrackDocument() {
   const queryClient = useQueryClient();
 
   const [confirmVisible, setConfirmVisible] = useState(false);
+  // Expanded history rows, keyed by display index. A Set → multiple rows can be
+  // open at once (not one-open-at-a-time); toggling one leaves the others alone.
+  const [expandedHistory, setExpandedHistory] = useState<Set<number>>(new Set());
+  const toggleHistory = (i: number) =>
+    setExpandedHistory((prev) => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
+    });
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['client-doc', id],
@@ -204,34 +224,6 @@ export default function TrackDocument() {
             </View>
           </View>
 
-          {/* Release / collector card — only once the doc has actually been released */}
-          {release && (
-            <View style={{
-              backgroundColor: '#fff', borderRadius: 14, padding: 20,
-              borderWidth: 0.5, borderColor: '#E2E8F0', marginBottom: 12,
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                <PackageCheck size={16} color="#065F46" />
-                <Text style={{ fontWeight: '700', color: '#065F46', fontSize: 14 }}>Released</Text>
-              </View>
-              <View style={{ gap: 8 }}>
-                {[
-                  ['Collected By', release.collector_name || '—'],
-                  ['Origin', release.collector_origin || '—'],
-                  ['Office', release.collector_office || '—'],
-                  ['Position', release.collector_position || '—'],
-                  ['Released', release.released_at || '—'],
-                  ['Released By', release.released_by_name || '—'],
-                ].map(([label, value]) => (
-                  <View key={label} style={{ flexDirection: 'row' }}>
-                    <Text style={{ color: '#94A3B8', fontSize: 13, width: 110 }}>{label}</Text>
-                    <Text style={{ color: '#1E293B', fontSize: 13, fontWeight: '600', flex: 1 }}>{String(value)}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-
           {/* QR Code card */}
           <View style={{
             backgroundColor: '#fff', borderRadius: 14, padding: 20,
@@ -272,7 +264,8 @@ export default function TrackDocument() {
             )}
           </View>
 
-          {/* Document history — sanitized: label/office/date only, no remarks/officer */}
+          {/* Document history — sanitized: label/office/date collapsed; a nested
+              detail block (Handled by / When) reveals on tap. Never remarks/action. */}
           {history.length > 0 && (
             <View style={{
               backgroundColor: '#fff', borderRadius: 14, padding: 20,
@@ -281,21 +274,105 @@ export default function TrackDocument() {
               <Text style={{ fontWeight: '700', color: '#0038A8', fontSize: 14, marginBottom: 14 }}>
                 Document History
               </Text>
-              {[...history].reverse().map((entry, i) => (
-                <View key={i} style={{ flexDirection: 'row', gap: 12, marginBottom: i < history.length - 1 ? 16 : 0 }}>
-                  <View style={{ alignItems: 'center' }}>
-                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: i === 0 ? '#0038A8' : '#CBD5E1', marginTop: 3 }} />
-                    {i < history.length - 1 && (
-                      <View style={{ width: 1, flex: 1, backgroundColor: '#E2E8F0', marginTop: 4 }} />
-                    )}
+              {[...history].reverse().map((entry, i) => {
+                const detail = entry.detail;
+                const expandable = !!detail;
+                const expanded = expandedHistory.has(i);
+                const officerName = detail?.officer_name?.trim();
+                // Fixed-vocabulary verb phrase; fall back to the old generic label
+                // when an older/edge payload omits actor_role.
+                const actorRole = detail?.actor_role?.trim() || 'Handled by';
+                // Transient — server sets it only on the latest-transfer item.
+                const recipientName = detail?.recipient_name?.trim();
+                // Collector detail now lives INSIDE the "Released to collector" entry's
+                // expand (the standalone release card was removed). Match on the label the
+                // server already produced — mobile never re-classifies from raw strings.
+                // Only the collector release carries this block; "Released from the office"
+                // (no collector) shows just the normal actor/date detail.
+                const isCollectorRelease = entry.label === 'Released to collector';
+                const collectorRows: [string, string][] = [];
+                if (isCollectorRelease && release) {
+                  collectorRows.push(['Collected by', release.collector_name || '—']);
+                  if (release.collector_origin)   collectorRows.push(['Origin', release.collector_origin]);
+                  if (release.collector_office)   collectorRows.push(['Office', release.collector_office]);
+                  if (release.collector_position) collectorRows.push(['Position', release.collector_position]);
+                  collectorRows.push(['Released by', release.released_by_name || '—']);
+                  collectorRows.push(['Date', release.released_at || '—']);
+                }
+                return (
+                  <View key={i} style={{ flexDirection: 'row', gap: 12, marginBottom: i < history.length - 1 ? 16 : 0 }}>
+                    <View style={{ alignItems: 'center' }}>
+                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: i === 0 ? '#0038A8' : '#CBD5E1', marginTop: 3 }} />
+                      {i < history.length - 1 && (
+                        <View style={{ width: 1, flex: 1, backgroundColor: '#E2E8F0', marginTop: 4 }} />
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      style={{ flex: 1 }}
+                      activeOpacity={expandable ? 0.6 : 1}
+                      disabled={!expandable}
+                      onPress={() => toggleHistory(i)}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontWeight: '700', color: '#1E293B', fontSize: 13 }}>{entry.label || 'Update'}</Text>
+                          {entry.office ? <Text style={{ color: '#64748B', fontSize: 12 }}>{entry.office}</Text> : null}
+                          {entry.date ? <Text style={{ color: '#CBD5E1', fontSize: 11, marginTop: 3 }}>{entry.date}</Text> : null}
+                        </View>
+                        {expandable ? (
+                          expanded
+                            ? <ChevronUp size={16} color="#94A3B8" style={{ marginTop: 1 }} />
+                            : <ChevronDown size={16} color="#94A3B8" style={{ marginTop: 1 }} />
+                        ) : null}
+                      </View>
+
+                      {/* Expanded detail — nested, subtle. officer_name & date_time only. */}
+                      {expandable && expanded && (
+                        <View style={{
+                          marginTop: 10, paddingTop: 10, paddingLeft: 12,
+                          borderLeftWidth: 2, borderLeftColor: '#E2E8F0', gap: 6,
+                        }}>
+                          {officerName ? (
+                            <View style={{ flexDirection: 'row' }}>
+                              <Text style={{ color: '#94A3B8', fontSize: 12, width: 84 }}>{actorRole}</Text>
+                              <Text style={{ color: '#334155', fontSize: 12, fontWeight: '600', flex: 1 }}>{officerName}</Text>
+                            </View>
+                          ) : null}
+                          {recipientName ? (
+                            <View style={{ flexDirection: 'row' }}>
+                              <Text style={{ color: '#94A3B8', fontSize: 12, width: 84 }}>Sent to</Text>
+                              <Text style={{ color: '#334155', fontSize: 12, fontWeight: '600', flex: 1 }}>{recipientName}</Text>
+                            </View>
+                          ) : null}
+                          {detail?.date_time ? (
+                            <View style={{ flexDirection: 'row' }}>
+                              <Text style={{ color: '#94A3B8', fontSize: 12, width: 84 }}>When</Text>
+                              <Text style={{ color: '#334155', fontSize: 12, fontWeight: '600', flex: 1 }}>
+                                {formatDate(detail.date_time)}
+                              </Text>
+                            </View>
+                          ) : null}
+                          {/* Collector block — folded in from the (removed) release card,
+                              on the "Released to collector" entry only. No contact field exists. */}
+                          {collectorRows.length > 0 ? (
+                            <View style={{ gap: 8, marginTop: 4 }}>
+                              {collectorRows.map(([rLabel, rValue]) => (
+                                <View key={rLabel} style={{ flexDirection: 'row' }}>
+                                  <Text style={{ color: '#94A3B8', fontSize: 12, width: 84 }}>{rLabel}</Text>
+                                  <Text style={{ color: '#334155', fontSize: 12, fontWeight: '600', flex: 1 }}>{rValue}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          ) : null}
+                          {!officerName && !recipientName && !detail?.date_time && collectorRows.length === 0 ? (
+                            <Text style={{ color: '#94A3B8', fontSize: 12 }}>No further detail recorded.</Text>
+                          ) : null}
+                        </View>
+                      )}
+                    </TouchableOpacity>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '700', color: '#1E293B', fontSize: 13 }}>{entry.label || 'Update'}</Text>
-                    {entry.office ? <Text style={{ color: '#64748B', fontSize: 12 }}>{entry.office}</Text> : null}
-                    {entry.date ? <Text style={{ color: '#CBD5E1', fontSize: 11, marginTop: 3 }}>{entry.date}</Text> : null}
-                  </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
 
