@@ -481,6 +481,24 @@ Wanted, not broken.
       overlay), and whether the SERVER should also reject a re-release (defense in depth — the UI guard
       is convenience, the server should refuse releasing an already-released doc). Likely both: hide the
       button AND have api_release_to_client reject if already released.
+    - [ ] TODO (next arc — fresh session): registration + profile-edit should capture the fields the
+      collector-QR auto-fill needs (origin, office, position, contact), so scanning a registered user's QR
+      at release populates them. Currently the auto-fill (`/staff/resolve-collector-identity`) can only
+      fill what the profile stores — gaps because registration/profile don't capture these. Scope: BOTH
+      staff registration AND profile-edit (web + mobile). SECURITY-SENSITIVE — investigate before building:
+      * Mass-assignment check: confirm registration/profile assign fields explicitly (by name), NOT via
+        `user.update(request.form)`/dict-spread — adding form fields must not let a crafted POST set
+        `role`/`is_admin`/etc.
+      * Password handling stays intact (hashed, never widened).
+      * Authorization: users edit only their own profile; who can register whom.
+      * CONTACT interaction: profiles will now STORE collector contact, and the QR resolves it into
+        releases. Contact must reach STAFF (release record) but the client-side exclusions built in the
+        privacy arc (Commits 666a4d1/83ecee1/1624df9/3410d88/32830d8) MUST still hold — storing contact on
+        profiles must not create a new path for it to leak to clients. Verify no client surface serializes
+        the profile contact field.
+      * Ready-to-run investigation prompt exists in chat history (maps: what auto-fill consumes, what the
+        user model stores, what registration/profile capture now, the security shape, the field-by-field
+        gap table, and the contact-interaction flag).
 
 - [ ] **Maintenance mode (admin toggle).** A switch the admin flips to show an "under maintenance"
   screen to everyone accessing DocTracker, with an ON indicator in the admin UI. Scope decided: blocks
