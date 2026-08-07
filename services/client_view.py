@@ -23,28 +23,82 @@ generic label — the raw action string is never rendered.
 from __future__ import annotations
 
 
-# ── Action → client-friendly label (substring buckets, ordered by priority) ────
+# ── Action → client-friendly classification (lowercased-substring, never eq) ────
 #
-# Matched by lowercased substring against the travel_log `action` string.
-# ORDER MATTERS: earlier entries win. "released" is checked before the
-# transfer/route bucket because "Released — Routed to X" contains both.
+# The travel_log `action` strings are f-strings (they embed staff names and free
+# text), NOT an enum, so classification is done by LOWERCASED SUBSTRING matching.
+# `_classify` returns three derived, SAFE values — the raw action is never echoed:
 #
-# Each tuple: (list-of-substrings, client_label).
-_ACTION_BUCKETS = [
-    (["submitted"],              "You submitted this request"),
-    (["rejected"],               "Document was not accepted"),
-    (["returned"],               "Returned to the sending office"),
-    (["released", "picked up"],  "Released from the office"),
-    (["received", "accepted"],   "Received and being processed"),
-    (["transfer", "rout"],       "Forwarded to another office"),   # transfer/route/routed/reroute/rerouted
-    (["assigned"],               "Assignment updated"),            # assigned / unassigned
-    (["logged"],                 "Logged into the system"),
-    (["edited"],                 "Details updated"),
-    (["hold"],                   "Placed on hold"),
-    (["archived"],               "Archived"),
-]
+#   label       the client-visible line (specific, but carries NO person name)
+#   actor_role  a FIXED-VOCABULARY role prefix for the expanded detail — one of a
+#               closed set of strings, never free text pulled from the entry
+#   kind        a coarse class token used only to locate the latest transfer item
+#
+# ORDER MATTERS: `released` is checked before `transfer`/`rout` because
+# "Released — Routed to X" contains both.
 
 _ACTION_FALLBACK = "Document processed"
+
+
+def _classify(action: str) -> tuple[str, str, str]:
+    """Classify a raw travel_log action → (label, actor_role, kind).
+
+    Pure and side-effect free. Uses lowercased substring matching, never
+    equality, and NEVER returns any substring of the raw action — only the
+    fixed, client-safe label / role / kind vocabularies below. An unrecognised
+    action yields the safe generic fallback.
+    """
+    a = (action or "").lower()
+
+    if "submitted" in a:
+        return "Submitted to the office", "By", "submitted"
+
+    # rejected/returned collapse to one client-facing outcome.
+    if "rejected" in a or "returned" in a:
+        return "Not accepted — returned", "Handled by", "rejected"
+
+    # Released is checked BEFORE transfer/route: "Released — Routed to X" would
+    # otherwise be mis-bucketed as a forward. The collector hand-off is the ONLY
+    # release action of the form "Released to {name}[ of {origin}] by {staff}"
+    # (blueprints/api.py) — it ALWAYS contains BOTH "released to " and " by ",
+    # even when the origin is blank ("Released to Jane by Staff"). Every other
+    # release action is a slip/office/originating close-out that lacks at least
+    # one marker:
+    #   "Released via Routing Slip"        — neither
+    #   "Released from {office}"           — neither
+    #   "Released — Routed to {office}"    — no "released to " (it's "…— routed")
+    #   "Document Released / Picked Up"    — neither
+    #   "Released by Originating Staff"    — has " by " but NOT "released to "
+    # Requiring BOTH markers keeps "Released by Originating Staff" out of the
+    # collector bucket. The collector's name and origin are never echoed.
+    if "released" in a or "picked up" in a:
+        if "released to " in a and " by " in a:
+            return "Released to collector", "Released by", "released"
+        return "Released from the office", "Released by", "released"
+
+    if "received" in a or "accepted" in a:
+        return "Received & being processed", "Received by", "received"
+
+    # transfer/route/routed/reroute/rerouted — split inside-office vs outside by
+    # the explicit "(Inside Office)" / "(Outside Office)" marker (or "routed").
+    if "transfer" in a or "rout" in a:
+        if "outside office" in a or "routed" in a:
+            return "Forwarded — Another Office", "Sent by", "transfer"
+        # "(Inside Office)" or a bare "transferred" both mean an in-office hop.
+        return "Transferred — Inside Office", "Sent by", "transfer"
+
+    if "assigned" in a:
+        return "Assignment updated", "By", "assigned"
+    if "hold" in a:
+        return "Placed on hold", "By", "hold"
+    if "logged" in a:
+        return "Logged into the system", "Logged by", "logged"
+    if "edited" in a:
+        return "Details updated", "By", "edited"
+    if "archived" in a:
+        return "Archived", "By", "archived"
+
+    return _ACTION_FALLBACK, "Handled by", "other"
 
 
 def bucket_label(action: str) -> str:
@@ -53,25 +107,19 @@ def bucket_label(action: str) -> str:
     Uses lowercased substring matching. Never returns the raw action string;
     an unrecognised action yields the safe generic fallback.
     """
-    a = (action or "").lower()
-    for needles, label in _ACTION_BUCKETS:
-        if any(n in a for n in needles):
-            return label
-    return _ACTION_FALLBACK
+    return _classify(action)[0]
 
 
 def _bucket_key(action: str) -> str:
-    """A stable key identifying which bucket an action falls into.
+    """De-duplication key for the history walk.
 
-    Used purely for history de-duplication (so two consecutive entries in the
-    same office AND same bucket collapse into one). Falls back to a distinct
-    marker so unmatched actions still de-dupe against each other.
+    Keyed on the client-visible label so that ONLY genuinely-identical
+    consecutive entries (same office AND same label) collapse — two different
+    labels in the same office (e.g. a transfer then a release) stay distinct.
+    Unmatched actions all share the fallback label, so they still de-dupe
+    against each other.
     """
-    a = (action or "").lower()
-    for i, (needles, _label) in enumerate(_ACTION_BUCKETS):
-        if any(n in a for n in needles):
-            return f"b{i}"
-    return "b_generic"
+    return _classify(action)[0]
 
 
 # ── Status → client-friendly display (covers ALL 11 real statuses) ─────────────
@@ -256,27 +304,38 @@ def _build_history(doc, user_map: dict | None = None) -> list:
 
     Each item carries the collapsed view — {office, label, date} — PLUS a nested
     `detail` block for the mobile expand-on-tap:
-        {office, label, date, detail: {label, office, officer_name, date_time}}
+        {office, label, date, detail: {label, office, officer_name, date_time,
+                                       actor_role[, recipient_name]}}
 
     The staff name is surfaced ONLY inside `detail.officer_name` (resolved
     username→full name via `user_map` when possible, else passed through) — it is
-    never folded into the top-level `label` or `office`. The raw `action` string
-    is NEVER surfaced (only its bucketed `label`), because action f-strings embed
-    staff names and free text. The internal `remarks` field is dropped entirely,
-    including from `detail`.
+    never folded into the top-level `label` or `office`. `detail.actor_role` is a
+    FIXED-VOCABULARY prefix ("Received by", "Sent by", …) chosen by action type,
+    never free text from the entry. The raw `action` string is NEVER surfaced
+    (only its bucketed `label`), because action f-strings embed staff names and
+    free text. The internal `remarks` field is dropped entirely, incl. `detail`.
+
+    Transient recipient: the LATEST transfer/route item additionally gets
+    `detail.recipient_name` from the doc-level `pending_at_staff_name` (always a
+    resolved staff full name — never a contact field, never the free-text
+    `referred_to`). This reflects only the current pending recipient, so earlier
+    transfer hops never carry it (avoids showing a stale/wrong name). It clears
+    naturally once the recipient accepts (the write path blanks the field), after
+    which the next "Received by" item carries the name instead.
     """
     user_map = user_map or {}
     history = []
     last_office = object()   # sentinel — guarantees the first entry always emits
     last_bucket = object()
+    latest_transfer_idx = None
 
     for entry in (doc.get("travel_log") or []):
         office = (entry.get("office") or "").strip()
-        bucket = _bucket_key(entry.get("action"))
+        label, actor_role, kind = _classify(entry.get("action"))
+        bucket = label  # dedup keyed on the visible label (see _bucket_key)
         if office == last_office and bucket == last_bucket:
-            continue  # collapse consecutive same-office same-bucket noise
+            continue  # collapse consecutive same-office same-label noise
         ts = entry.get("timestamp") or ""
-        label = bucket_label(entry.get("action"))
         officer_raw = entry.get("officer") or ""
         # officer is usually a full name, but can be a bare username — resolve it
         # the same way handler names resolve, falling back to the raw value.
@@ -290,9 +349,17 @@ def _build_history(doc, user_map: dict | None = None) -> list:
                 "office":       office,
                 "officer_name": officer_name,
                 "date_time":    ts[:16] if ts else "",
+                "actor_role":   actor_role,
             },
         })
+        if kind == "transfer":
+            latest_transfer_idx = len(history) - 1
         last_office, last_bucket = office, bucket
+
+    # Attach the transient recipient to the latest transfer/route item ONLY.
+    recipient = (doc.get("pending_at_staff_name") or "").strip()
+    if recipient and latest_transfer_idx is not None:
+        history[latest_transfer_idx]["detail"]["recipient_name"] = recipient
 
     return history
 
@@ -311,7 +378,8 @@ def build_client_track_view(doc: dict, users=None) -> dict:
         current:          {state, location_office, handler_name, handler_role_label, message}
         status_display:   {label, sub_text, icon}
         history:          [{office, label, date, detail:{label, office, officer_name,
-                          date_time}}, ...]  (deduped; staff name only in detail, no remarks)
+                          date_time, actor_role[, recipient_name]}}, ...]  (deduped;
+                          staff name only in detail, no remarks, no raw action)
         rejection_reason: the internal reason ONLY when status is Rejected/Returned, else None
     """
     doc = doc or {}

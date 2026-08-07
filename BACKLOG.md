@@ -445,6 +445,21 @@ Wanted, not broken.
       bucketed label is used. Additive/backward-compatible: web + mobile ignore the new detail key until
       the expand-UI is built. Tests: rewrote the history privacy test for the new rule + added a
       raw-action-not-surfaced test; TestClientDocEndpoint passes unchanged. pytest 14/384/1.
+    - [x] DONE: client history enrichment — server, richer labels + actor role + transient recipient.
+      Builds on Step 1. `_classify` now emits SPECIFIC labels ("Transferred — Inside Office" /
+      "Forwarded — Another Office" split from one generic bucket; "Released to collector" vs "Released
+      from the office"; plus received/rejected/hold/logged/edited) — all from safe action substrings,
+      never echoing raw text. detail gains `actor_role` (fixed vocabulary — "Received by"/"Sent by"/
+      "Released by"/etc., never free text) and a transient `recipient_name` on the LATEST transfer entry
+      only, sourced from doc.pending_at_staff_name (a resolved staff name — never referred_to/free-text,
+      never contact). Collector-release detection uses the "Released to…by" shape and is robust to
+      collector origin being optional (origin-less collector releases were previously mislabeled as plain
+      office releases; the earlier " of … by " pattern missed them). Confirmed "Released by Originating
+      Staff" (has " by " but no "released to ") is NOT mislabeled. Display-layer only, no write-path
+      change; client_view stays pure (no DB import). Remaining: mobile render of the enriched shape (Step
+      2 below). NOTE: collector ORIGIN is optional on all release surfaces (server, mobile, web) — a
+      candidate future improvement is making it required, which would also improve release-record
+      completeness. pytest 14/388/1.
     - [ ] TODO: client history enrichment — Step 2 (mobile expand-on-tap UI). Wire the mobile client
       track screen to render the nested `detail` block on tap (staff name + full date_time), collapsed
       row stays office + label + date. Server side (Step 1) already ships the shape; this is mobile-only.
