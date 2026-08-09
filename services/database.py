@@ -342,6 +342,10 @@ def _run_migrations(cur):
         # Client approval - clients must be approved by admin before using their account
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS approved   BOOLEAN DEFAULT TRUE",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS email      TEXT DEFAULT ''",
+        # Collector profile fields — schema foundation for release-QR auto-fill.
+        # Inert until write sinks + read paths are wired in later steps.
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS origin     TEXT DEFAULT ''",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS position   TEXT DEFAULT ''",
         # invite_tokens — add expires_at if missing
         """
         DO $$
