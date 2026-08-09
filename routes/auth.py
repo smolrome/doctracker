@@ -128,6 +128,8 @@ def register():
             password  = request.form.get("password", "").strip()
             confirm   = request.form.get("confirm_password", "").strip()
             office    = request.form.get("office", "").strip()
+            origin    = request.form.get("origin", "").strip()
+            position  = request.form.get("position", "").strip()
 
             if not username or not password:
                 error = "Username and password are required."
@@ -141,7 +143,7 @@ def register():
                 error = "Passwords do not match."
             else:
                 ok, err = create_user(username, password, full_name or token_name,
-                                      office=office)
+                                      office=office, origin=origin, position=position)
                 if ok:
                     consume_invite_token(token)
 
@@ -345,12 +347,15 @@ def profile():
         if section == "info":
             full_name = request.form.get("full_name", "").strip()
             office    = request.form.get("office", "").strip()
+            origin    = request.form.get("origin", "").strip()
+            position  = request.form.get("position", "").strip()
             if not full_name:
                 errors["full_name"] = "Display name is required."
             if not office:
                 errors["office"] = "Office is required."
             if not errors:
-                ok, err = update_user(username, full_name=full_name, office=office)
+                ok, err = update_user(username, full_name=full_name, office=office,
+                                      origin=origin, position=position)
                 if ok:
                     session["full_name"] = full_name
                     session["office"]    = office

@@ -246,6 +246,63 @@ class TestClientRegister:
         body = rv.data.decode()
         assert "full name" in body.lower() or "required" in body.lower()
 
+    # ── Collector fields (origin + position) — capture + sink cap + mass-assign ──
+
+    def _register(self, client_obj, **overrides):
+        """POST /client/register with a valid baseline; overrides win. Clears the
+        per-IP register rate limit first so repeated registrations don't lock out."""
+        from services.auth import _rate_store, _rate_lock
+        with _rate_lock:
+            _rate_store.clear()
+        csrf = _client_csrf(client_obj)
+        data = {
+            "username":         f"reg{uuid.uuid4().hex[:6]}",
+            "full_name":        "Reg Client",
+            "password":         "ValidPass1!",
+            "confirm_password": "ValidPass1!",
+            "office":           "Test School",
+            "email":            "reg@example.com",
+            "csrf_token":       csrf,
+        }
+        data.update(overrides)
+        rv = client_obj.post("/client/register", data=data, follow_redirects=True)
+        return rv, data["username"]
+
+    def test_register_persists_origin_and_position(self, client):
+        """Primary collector path: a client-register POST including origin +
+        position stores them on the created user (read back via get_user)."""
+        from services.auth import get_user
+        rv, uname = self._register(
+            client, origin="DepEd Region VIII", position="Administrative Officer II")
+        assert rv.status_code == 200
+        user = get_user(uname)
+        assert user is not None
+        assert user["origin"] == "DepEd Region VIII"
+        assert user["position"] == "Administrative Officer II"
+
+    def test_register_over_cap_origin_rejected_by_sink(self, client):
+        """Handler → sink cap path end-to-end: a 201-char origin makes the sink
+        reject, so the handler surfaces the error and NO user is created."""
+        from services.auth import get_user
+        rv, uname = self._register(client, origin="R" * 201)
+        assert rv.status_code == 200
+        body = rv.data.decode().lower()
+        assert "origin" in body or "200" in body
+        assert get_user(uname) is None   # sink rejected → nothing persisted
+
+    def test_register_ignores_injected_role_and_approved(self, client):
+        """Mass-assignment guard: even if the form smuggles role=admin /
+        approved=true / active=false, the created user is still a plain,
+        unapproved client — the handler hardcodes role and never reads those."""
+        from services.auth import get_user
+        rv, uname = self._register(
+            client, role="admin", approved="true", active="false")
+        assert rv.status_code == 200
+        user = get_user(uname)
+        assert user is not None
+        assert user["role"] == "client"              # injected role ignored
+        assert user.get("approved") in (False, 0)    # clients start unapproved
+
 
 # ── /client/submit ────────────────────────────────────────────────────────────
 

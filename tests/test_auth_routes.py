@@ -282,3 +282,33 @@ class TestProfile:
         )
         body = rv.data.decode()
         assert "number" in body.lower() or rv.status_code == 200
+
+    def test_profile_info_updates_origin_and_position(self, app):
+        """The 'info' section captures origin + position and passes them to
+        update_user, which persists them (read back via get_user)."""
+        from services.auth import create_user, get_user
+        create_user("profcoll", "ProfPass1!", full_name="Prof Coll",
+                    role="staff", office="Old Office")
+        c = app.test_client()
+        csrf = _csrf(c)
+        c.post("/login",
+               data={"username": "profcoll", "password": "ProfPass1!",
+                     "csrf_token": csrf},
+               follow_redirects=True)
+        csrf = _csrf(c)
+        rv = c.post(
+            "/profile",
+            data={
+                "_section":  "info",
+                "full_name": "Prof Coll",
+                "office":    "New Office",
+                "origin":    "DepEd Region VIII",
+                "position":  "Records Officer I",
+                "csrf_token": csrf,
+            },
+            follow_redirects=True,
+        )
+        assert rv.status_code == 200
+        user = get_user("profcoll")
+        assert user["origin"] == "DepEd Region VIII"
+        assert user["position"] == "Records Officer I"

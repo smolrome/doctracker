@@ -121,6 +121,18 @@
       </div>
 
       <div class="profile-field">
+        <label>Origin</label>
+        <input type="text" name="origin" value="{{ user.origin or '' }}"
+               maxlength="200" placeholder="e.g. DepEd Region VIII">
+      </div>
+
+      <div class="profile-field">
+        <label>Position</label>
+        <input type="text" name="position" value="{{ user.position or '' }}"
+               maxlength="200" placeholder="e.g. Administrative Officer II">
+      </div>
+
+      <div class="profile-field">
         <label>Role</label>
         <input type="text" value="{{ user.role | capitalize }}" readonly>
       </div>

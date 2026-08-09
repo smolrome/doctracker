@@ -522,6 +522,23 @@ Wanted, not broken.
         returns the existing `(False, msg)` tuple. Biting tests (tests/test_services_auth.py `TestUserCRUD`):
         200 chars succeeds (inclusive boundary), 201 rejected with no user persisted (create) / value
         unchanged (update — proves no partial write). Still storage-only; handler wiring is Step 3 part 2.
+      * **Step 3 part 2 DONE (handler + template capture):** all four web/mobile write handlers now
+        capture `origin`/`position` with explicit `request.form.get`/`data.get`/`getlist` reads and pass
+        them as named kwargs — NO bulk/`**request.form`/key-iteration anywhere. Staff register
+        (routes/auth.py), client register (routes/client.py), web profile "info" (routes/auth.py) mirror
+        `office`'s empty-writes-`""`; mobile PATCH (blueprints/api.py) mirrors `office or None`
+        (omit = untouched); admin bulk-create (routes/admin.py) reads per-row `getlist("origin"/"position")`
+        aligned with the email column, and an over-cap row fails per-row without aborting the batch.
+        Templates gained the inputs (`maxlength="200"` client hint; server sink is authoritative):
+        register.html, client_register.html, profile.html (value-prefilled), bulk_create_users.html
+        (per-row column in both the static rows AND the JS row builder, so `getlist` stays row-aligned).
+        Route tests: client-register capture + handler→sink over-cap rejection + mass-assignment guard
+        (injected role=admin ignored, stays client) in tests/test_client_routes.py; profile-info
+        origin/position update in tests/test_auth_routes.py. **Mobile RN NOT wired** — the two Expo
+        profile screens (`mobile/app/(app)/profile.tsx` sends `{full_name, office}`;
+        `mobile/app/(client)/profile.tsx` sends `{full_name}`) still omit origin/position; that ships via
+        EAS separately (deferred). Read-back into resolver/release auto-fill is still Steps 4-5 (which must
+        also fix the `email` dead read above).
 
 - [ ] **Maintenance mode (admin toggle).** A switch the admin flips to show an "under maintenance"
   screen to everyone accessing DocTracker, with an ON indicator in the admin UI. Scope decided: blocks

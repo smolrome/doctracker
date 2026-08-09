@@ -1543,6 +1543,8 @@ def bulk_create_users():
         full_names   = request.form.getlist("full_name")
         emails       = request.form.getlist("email")
         docs_handled = request.form.getlist("documents_handled")
+        origins      = request.form.getlist("origin")
+        positions    = request.form.getlist("position")
 
         # Collect all existing users for collision detection and email lookup
         all_users = get_all_users()
@@ -1565,6 +1567,8 @@ def bulk_create_users():
         for i, full_name in enumerate(full_names):
             full_name = full_name.strip()
             email     = emails[i].strip() if i < len(emails) else ""
+            origin    = origins[i].strip()   if i < len(origins)   else ""
+            position  = positions[i].strip() if i < len(positions) else ""
 
             if not email:
                 continue
@@ -1602,7 +1606,8 @@ def bulk_create_users():
             temp_pw = _make_password()
 
             ok, err = create_user(uname, temp_pw, full_name, role=role, email=email,
-                                  office=office, documents_handled=doc_types or None)
+                                  office=office, origin=origin, position=position,
+                                  documents_handled=doc_types or None)
             if not ok:
                 results.append({
                     "username": uname, "full_name": full_name, "email": email,

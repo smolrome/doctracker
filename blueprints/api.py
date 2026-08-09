@@ -2063,10 +2063,13 @@ def api_update_profile():
     data = request.get_json(force=True, silent=True) or {}
     full_name = data.get('full_name', '').strip()
     office = data.get('office', '').strip()
+    origin = data.get('origin', '').strip()
+    position = data.get('position', '').strip()
     if not full_name:
         return jsonify(error='Display name is required'), 400
     from services.auth import update_user, get_user
-    ok, err = update_user(user_id, full_name=full_name, office=office or None)
+    ok, err = update_user(user_id, full_name=full_name, office=office or None,
+                          origin=origin or None, position=position or None)
     if not ok:
         return jsonify(error=err), 400
     updated = get_user(user_id)
