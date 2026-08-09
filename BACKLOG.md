@@ -515,6 +515,13 @@ Wanted, not broken.
         guard). Still **storage-only**: NOT yet captured by any registration/profile surface (Step 3), and
         NOT yet read back into the resolver/release auto-fill (Steps 4-5, which must also fix the `email`
         dead read above).
+      * **Step 3 part 1 DONE (cap chokepoint):** a 200-char server-side length cap on `origin`/`position`
+        now lives ONCE in the sinks (`MAX_COLLECTOR_FIELD` in services/auth.py), so every caller flows
+        through it — `create_user` rejects on the stripped length before any write; `update_user` rejects
+        only when the field is provided (None sentinel = leave unchanged). **Reject, not truncate** —
+        returns the existing `(False, msg)` tuple. Biting tests (tests/test_services_auth.py `TestUserCRUD`):
+        200 chars succeeds (inclusive boundary), 201 rejected with no user persisted (create) / value
+        unchanged (update — proves no partial write). Still storage-only; handler wiring is Step 3 part 2.
 
 - [ ] **Maintenance mode (admin toggle).** A switch the admin flips to show an "under maintenance"
   screen to everyone accessing DocTracker, with an ON indicator in the admin UI. Scope decided: blocks

@@ -224,6 +224,56 @@ class TestUserCRUD:
         assert user["origin"] == "Division Office"      # unchanged
         assert user["position"] == "Clerk III"          # unchanged
 
+    # ── Collector field length cap (200 chars, enforced in the sinks) ──────────
+    # These BITE: they fail if the cap is removed (201 would persist) or moved
+    # off the stripped value, and they assert reject-not-truncate + no partial
+    # write. See collector-fields Step 3 (part 1 — cap chokepoint).
+
+    def test_create_user_origin_at_cap_succeeds(self, tmp_path, monkeypatch):
+        """Exactly 200 chars is inclusive — must succeed."""
+        monkeypatch.chdir(tmp_path)
+        from services.auth import create_user, get_user
+        origin = "R" * 200
+        ok, err = create_user("pia", "PiaPass1!", role="staff", origin=origin)
+        assert ok is True
+        assert err is None
+        assert get_user("pia")["origin"] == origin
+
+    def test_create_user_origin_over_cap_rejected_and_not_persisted(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        from services.auth import create_user, get_user
+        ok, err = create_user("quinn", "QuinnPass1!", role="staff", origin="R" * 201)
+        assert ok is False
+        assert "Origin" in (err or "")
+        assert get_user("quinn") is None     # reject → no user written at all
+
+    def test_create_user_position_over_cap_rejected_and_not_persisted(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        from services.auth import create_user, get_user
+        ok, err = create_user("rex", "RexPass1!", role="staff", position="P" * 201)
+        assert ok is False
+        assert "Position" in (err or "")
+        assert get_user("rex") is None
+
+    def test_update_user_origin_over_cap_rejected_and_unchanged(self, tmp_path, monkeypatch):
+        """Reject must not partially write — the pre-update value survives."""
+        monkeypatch.chdir(tmp_path)
+        from services.auth import create_user, update_user, get_user
+        create_user("sam", "SamPass1!", role="staff", origin="Region VIII")
+        ok, err = update_user("sam", origin="R" * 201)
+        assert ok is False
+        assert "Origin" in (err or "")
+        assert get_user("sam")["origin"] == "Region VIII"   # unchanged
+
+    def test_update_user_origin_at_cap_succeeds(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        from services.auth import create_user, update_user, get_user
+        create_user("tina", "TinaPass1!", role="staff")
+        origin = "R" * 200
+        ok, err = update_user("tina", origin=origin)
+        assert ok is True
+        assert get_user("tina")["origin"] == origin
+
 
 # ── Rate limiting ─────────────────────────────────────────────────────────────
 

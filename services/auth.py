@@ -59,6 +59,12 @@ _USERNAME_RE  = re.compile(r"[a-z0-9._-]+")
 _USERNAME_MIN = 3
 _USERNAME_MAX = 32
 
+# Server-side length cap for the free-text collector profile fields
+# (origin, position). Defined once here so both create_user and update_user
+# enforce the same bound — the sinks are the single chokepoint every caller
+# funnels through, so the cap lives here rather than in each handler.
+MAX_COLLECTOR_FIELD = 200
+
 
 def _validate_username(name: str) -> tuple[bool, str | None]:
     """Validate a username's FORMAT. Returns (ok, error_message).
@@ -202,6 +208,13 @@ def create_user(username: str, password: str, full_name: str = "",
     # FIX 6: validate role against allowlist
     if role not in _VALID_ROLES:
         return False, f"Invalid role '{role}'."
+
+    # Cap the free-text collector fields (checked on the STRIPPED value, since
+    # that is what gets stored). Reject rather than truncate.
+    if len(origin.strip()) > MAX_COLLECTOR_FIELD:
+        return False, "Origin must be 200 characters or fewer."
+    if len(position.strip()) > MAX_COLLECTOR_FIELD:
+        return False, "Position must be 200 characters or fewer."
 
     # Clients require admin approval before they can log in
     approved = role != "client"
@@ -590,6 +603,13 @@ def update_user(username: str, full_name: str = None,
     # FIX 6: validate role value before touching the database
     if role is not None and role not in _VALID_ROLES:
         return False, f"Invalid role '{role}'."
+
+    # Cap the free-text collector fields, but only when provided (None sentinel
+    # means "leave unchanged"). Same 200-char bound as create_user; reject.
+    if origin is not None and len(origin.strip()) > MAX_COLLECTOR_FIELD:
+        return False, "Origin must be 200 characters or fewer."
+    if position is not None and len(position.strip()) > MAX_COLLECTOR_FIELD:
+        return False, "Position must be 200 characters or fewer."
 
     new_uname = new_username.lower().strip() if new_username else None
 
