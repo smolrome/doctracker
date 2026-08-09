@@ -184,6 +184,7 @@ def hmac_safe_compare(a: str, b: str) -> bool:
 def create_user(username: str, password: str, full_name: str = "",
                 role: str = "staff", office: str = "",
                 email: str = "",
+                origin: str = "", position: str = "",
                 documents_handled: list | None = None) -> tuple[bool, str | None]:
     """Create a new user. Returns (success, error_message).
 
@@ -212,10 +213,11 @@ def create_user(username: str, password: str, full_name: str = "",
                     cur.execute(
                         """INSERT INTO users
                                (username, password_hash, full_name, role, office, approved, email,
-                                documents_handled)
-                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb)""",
+                                origin, position, documents_handled)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)""",
                         (uname, hash_password(password),
                          full_name.strip(), role, office.strip(), approved, email.strip(),
+                         origin.strip(), position.strip(),
                          _json.dumps(documents_handled or [])),
                     )
             # Every client gets an opaque QR identity token at creation. This is
@@ -242,6 +244,8 @@ def create_user(username: str, password: str, full_name: str = "",
             "office":            office.strip(),
             "approved":          approved,
             "email":             email.strip(),
+            "origin":            origin.strip(),
+            "position":          position.strip(),
             "documents_handled": documents_handled or [],
         })
         _save_users_json(users)
@@ -574,6 +578,7 @@ def update_user_password(username: str, new_password: str) -> tuple[bool, str | 
 def update_user(username: str, full_name: str = None,
                 role: str = None, office: str = None,
                 email: str = None,
+                origin: str = None, position: str = None,
                 new_username: str = None) -> tuple[bool, str | None]:
     """
     Update user details. Only non-None values are changed.
@@ -616,6 +621,12 @@ def update_user(username: str, full_name: str = None,
             if email is not None:
                 updates.append("email = %s")
                 params.append(email.strip())
+            if origin is not None:
+                updates.append("origin = %s")
+                params.append(origin.strip())
+            if position is not None:
+                updates.append("position = %s")
+                params.append(position.strip())
             if not updates:
                 return False, "No fields to update."
             params.append(uname)
@@ -648,6 +659,10 @@ def update_user(username: str, full_name: str = None,
                     u["office"] = office.strip()
                 if email is not None:
                     u["email"] = email.strip()
+                if origin is not None:
+                    u["origin"] = origin.strip()
+                if position is not None:
+                    u["position"] = position.strip()
                 _save_users_json(users)
                 return True, None
         return False, "User not found."

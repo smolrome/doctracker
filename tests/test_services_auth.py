@@ -182,6 +182,48 @@ class TestUserCRUD:
         assert ok is False
         assert "client" in (err or "").lower()
 
+    # ── Collector profile fields (origin + position) ──────────────────────────
+    # These BITE: they fail if either sink drops a field, and the third one
+    # fails if the update guard clobbers on absence. See collector-fields Step 2.
+
+    def test_create_user_persists_origin_and_position(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        from services.auth import create_user, get_user
+        ok, err = create_user("mona", "MonaPass1!", full_name="Mona", role="staff",
+                              origin="Region VIII", position="Administrative Officer II")
+        assert ok is True
+        assert err is None
+        user = get_user("mona")
+        assert user is not None
+        assert user["origin"] == "Region VIII"
+        assert user["position"] == "Administrative Officer II"
+
+    def test_update_user_sets_origin_and_position(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        from services.auth import create_user, update_user, get_user
+        create_user("nate", "NatePass1!", role="staff")
+        ok, err = update_user("nate", origin="Region VIII",
+                              position="Records Officer I")
+        assert ok is True
+        user = get_user("nate")
+        assert user["origin"] == "Region VIII"
+        assert user["position"] == "Records Officer I"
+
+    def test_update_user_without_collector_fields_leaves_them_unchanged(self, tmp_path, monkeypatch):
+        """The is-not-None guard: an update that omits origin/position must NOT
+        clobber existing values. Catches a botched guard that writes on absence."""
+        monkeypatch.chdir(tmp_path)
+        from services.auth import create_user, update_user, get_user
+        create_user("opal", "OpalPass1!", full_name="Opal", role="staff",
+                    origin="Division Office", position="Clerk III")
+        # Update an UNRELATED field only.
+        ok, err = update_user("opal", full_name="Opal Renamed")
+        assert ok is True
+        user = get_user("opal")
+        assert user["full_name"] == "Opal Renamed"
+        assert user["origin"] == "Division Office"      # unchanged
+        assert user["position"] == "Clerk III"          # unchanged
+
 
 # ── Rate limiting ─────────────────────────────────────────────────────────────
 

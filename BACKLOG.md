@@ -507,6 +507,14 @@ Wanted, not broken.
         `/staff/resolve-collector-identity` — `get_user_by_username`'s SELECT (blueprints/api.py) omits the
         `email` column, so the resolver's `user.get('email')` never populates. When the resolver is wired for
         origin/position, `email` must be added to that SELECT alongside them, or auto-fill will still miss it.
+      * **Step 2 DONE (write sinks):** `create_user` and `update_user` (services/auth.py) now persist `origin`
+        and `position` on **both** backends (DB INSERT/SET + JSON dict/guards), added as explicit named args
+        with the field-by-field discipline (no dict-spread/`**kwargs`/bulk assign). Locked by a **biting**
+        regression test (tests/test_services_auth.py `TestUserCRUD`): create round-trips both fields, update
+        sets both, and an update that omits them leaves existing values UNCHANGED (proves the is-not-None
+        guard). Still **storage-only**: NOT yet captured by any registration/profile surface (Step 3), and
+        NOT yet read back into the resolver/release auto-fill (Steps 4-5, which must also fix the `email`
+        dead read above).
 
 - [ ] **Maintenance mode (admin toggle).** A switch the admin flips to show an "under maintenance"
   screen to everyone accessing DocTracker, with an ON indicator in the admin UI. Scope decided: blocks
