@@ -215,6 +215,8 @@ def register():
             confirm   = request.form.get("confirm_password", "").strip()
             email     = request.form.get("email", "").strip()
             office    = request.form.get("office", "").strip()
+            origin    = request.form.get("origin", "").strip()
+            position  = request.form.get("position", "").strip()
             if not full_name:
                 error = "Full name is required."
             elif not username:
@@ -226,7 +228,8 @@ def register():
             elif password != confirm:
                 error = "Passwords do not match."
             else:
-                ok, err = create_user(username, password, full_name, role="client", office=office, email=email)
+                ok, err = create_user(username, password, full_name, role="client", office=office, email=email,
+                                      origin=origin, position=position)
                 if ok:
                     _office_slug = request.form.get("office_slug", "").strip()
                     if _office_slug:

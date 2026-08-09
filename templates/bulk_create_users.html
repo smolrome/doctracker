@@ -256,9 +256,11 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
           <table class="bcu-table">
             <thead>
               <tr>
-                <th style="width:30%;">Full Name</th>
-                <th style="width:28%;">Email Address</th>
-                <th style="width:34%;">Documents Handled <span style="font-weight:400;opacity:.7;">(comma-separated)</span></th>
+                <th style="width:22%;">Full Name</th>
+                <th style="width:20%;">Email Address</th>
+                <th style="width:16%;">Origin</th>
+                <th style="width:16%;">Position</th>
+                <th style="width:26%;">Documents Handled <span style="font-weight:400;opacity:.7;">(comma-separated)</span></th>
                 <th style="width:40px;"></th>
               </tr>
             </thead>
@@ -269,6 +271,10 @@ table.bcu-table tbody tr:hover td { background: #F8FAFC; }
                            placeholder="e.g. Juan Dela Cruz"></td>
                 <td><input class="bcu-input" type="email" name="email"
                            placeholder="e.g. juan@deped.ph"></td>
+                <td><input class="bcu-input" type="text" name="origin"
+                           maxlength="200" placeholder="e.g. DepEd Region VIII"></td>
+                <td><input class="bcu-input" type="text" name="position"
+                           maxlength="200" placeholder="e.g. Admin Officer II"></td>
                 <td><input class="bcu-input" type="text" name="documents_handled"
                            placeholder="e.g. Memorandum, Letter, Report"></td>
                 <td><button type="button" class="btn-remove-row"
@@ -345,6 +351,8 @@ function buildRow(name, email, docs) {
   tr.innerHTML =
     '<td><input class="bcu-input" type="text" name="full_name" placeholder="e.g. Juan Dela Cruz" value="' + escAttr(name) + '"></td>' +
     '<td><input class="bcu-input" type="email" name="email" placeholder="e.g. juan@deped.ph" value="' + escAttr(email) + '"></td>' +
+    '<td><input class="bcu-input" type="text" name="origin" maxlength="200" placeholder="e.g. DepEd Region VIII" value=""></td>' +
+    '<td><input class="bcu-input" type="text" name="position" maxlength="200" placeholder="e.g. Admin Officer II" value=""></td>' +
     '<td><input class="bcu-input" type="text" name="documents_handled" placeholder="e.g. Memorandum, Letter, Report" value="' + escAttr(docs || '') + '"></td>' +
     '<td><button type="button" class="btn-remove-row" onclick="removeRow(this)" title="Remove">✕</button></td>';
   return tr;
