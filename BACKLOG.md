@@ -499,6 +499,14 @@ Wanted, not broken.
       * Ready-to-run investigation prompt exists in chat history (maps: what auto-fill consumes, what the
         user model stores, what registration/profile capture now, the security shape, the field-by-field
         gap table, and the contact-interaction flag).
+      * **Step 1 DONE (schema foundation):** `origin` and `position` columns added to the `users` table in
+        `_run_migrations` (services/database.py, `TEXT DEFAULT ''`, same idempotent idiom as email/approved).
+        They are **inert** — no write sink writes them, no SELECT reads them, no surface exposes them — until
+        the write sinks (`create_user`/`update_user`) and read paths are wired in later steps.
+      * **Discovery (resolver wiring):** `email` is currently a DEAD READ in
+        `/staff/resolve-collector-identity` — `get_user_by_username`'s SELECT (blueprints/api.py) omits the
+        `email` column, so the resolver's `user.get('email')` never populates. When the resolver is wired for
+        origin/position, `email` must be added to that SELECT alongside them, or auto-fill will still miss it.
 
 - [ ] **Maintenance mode (admin toggle).** A switch the admin flips to show an "under maintenance"
   screen to everyone accessing DocTracker, with an ON indicator in the admin UI. Scope decided: blocks
