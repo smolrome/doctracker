@@ -71,6 +71,11 @@ async function fetchQR(id: string) {
   return res.data as { qr_base64: string };
 }
 
+async function fetchReleases(id: string) {
+  const res = await api.get(`/documents/${id}/releases`);
+  return res.data as { releases: any[] };
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function DocumentDetail() {
@@ -141,6 +146,13 @@ export default function DocumentDetail() {
     enabled: !!id && !!doc,
     staleTime: Infinity,
   });
+
+  const { data: releasesData } = useQuery({
+    queryKey: ['releases', id],
+    queryFn: () => fetchReleases(id),
+    enabled: !!id && !!doc,
+  });
+  const releases = releasesData?.releases ?? [];
 
   // ── Auto-show forward modal when arriving from scanner ────────────────────
 
@@ -593,6 +605,50 @@ export default function DocumentDetail() {
             ) : null
           ))}
         </View>
+
+        {/* ── Released To Collector ─────────────────────────────────────── */}
+        {releases.length > 0 && (
+          <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 0.5, borderColor: '#E2E8F0' }}>
+            <Text style={{ fontWeight: '800', color: '#0038A8', marginBottom: releases.length > 1 ? 2 : 14, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              {releases.length > 1 ? 'Release History' : 'Released To Collector'}
+            </Text>
+            {releases.length > 1 && (
+              <Text style={{ color: '#94A3B8', fontSize: 12, marginBottom: 14 }}>
+                {releases.length} releases — most recent first
+              </Text>
+            )}
+            {releases.map((r: any, idx: number) => (
+              <View key={idx} style={idx < releases.length - 1 ? { marginBottom: 18, paddingBottom: 18, borderBottomWidth: 0.5, borderBottomColor: '#E2E8F0' } : undefined}>
+                {releases.length > 1 && (
+                  <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase', color: '#065F46', marginBottom: 10 }}>
+                    {idx === 0 ? 'Latest release' : `Release #${releases.length - idx}`}
+                  </Text>
+                )}
+                {([
+                  ['Collector', r.collector_name],
+                  ['Origin', r.collector_origin],
+                  ['Office', r.collector_office],
+                  ['Position', r.collector_position],
+                  ['Contact', r.collector_contact],
+                  ['Released', r.released_at],
+                  ['Released By', r.released_by_name],
+                ] as [string, string | undefined][]).map(([label, value]) => (
+                  value ? (
+                    <View key={label} style={{
+                      flexDirection: 'row', justifyContent: 'space-between',
+                      paddingVertical: 7, borderBottomWidth: 0.5, borderBottomColor: '#F1F5F9',
+                    }}>
+                      <Text style={{ color: '#64748B', fontSize: 13, flex: 1 }}>{label}</Text>
+                      <Text style={{ color: '#1E293B', fontSize: 13, fontWeight: '600', maxWidth: '58%', textAlign: 'right' }}>
+                        {value}
+                      </Text>
+                    </View>
+                  ) : null
+                ))}
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* ── QR Code ───────────────────────────────────────────────────── */}
         <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 0.5, borderColor: '#E2E8F0', alignItems: 'center' }}>
