@@ -9,6 +9,7 @@ from services.auth import (
     create_user, delete_user, get_all_users, set_user_active,
     update_user_password, update_user, approve_user, get_pending_clients,
     update_user_documents_handled, set_user_can_generate_so, rename_user,
+    user_has_history,
 )
 from services.database import set_user_can_route_documents, user_has_so_access
 from services.email import (
@@ -748,6 +749,10 @@ def delete_user_route(username):
         flash("Cannot delete the main admin account.", "error")
     elif username == session.get("username"):
         flash("Cannot delete your own account.", "error")
+    elif user_has_history(username):
+        flash(f"User '{username}' has document/activity history and cannot be "
+              f"deleted. Disable the account instead to preserve the audit trail.",
+              "error")
     else:
         delete_user(username)
         audit_log("user_deleted", f"deleted_user={username}",
