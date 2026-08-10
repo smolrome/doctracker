@@ -628,24 +628,27 @@ class TestResolveCollectorIdentity:
     """The release-to-collector scanner posts a collector's client QR token to
     /staff/resolve-collector-identity to auto-fill the capture form. Step 4 makes
     the resolver return origin + position + email (email was a dead read before —
-    now in the SELECT) and retires the phone read (no phone column exists).
+    now in the SELECT) and retires the phone read (no phone column exists); Step 5a
+    adds office (already in the SELECT, just not surfaced by the whitelist).
 
     This proves the resolver RESPONSE CONTRACT in JSON mode: the fields the handler
-    whitelists onto the identity dict. The DB SELECT column list itself is NOT
+    whitelists onto the identity dict. office is already in the SELECT, so its
+    response contract is JSON-provable here. The DB SELECT column list itself is NOT
     harness-provable — conftest forces the JSON backend (DATABASE_URL=""), which
     returns the raw user dict, so the SELECT string is exercised only on prod and
     is verified there after deploy.
     """
 
-    def test_resolver_returns_origin_position_email_no_phone(
+    def test_resolver_returns_origin_office_position_email_no_phone(
             self, api_client, staff_tokens):
         from services.auth import create_user, approve_user
         from services.qr import get_or_create_client_token
 
         # A collector is just an approved client user with the profile fields set.
+        # office is an existing create_user kwarg (mirrors staff records).
         create_user(
             "collector4", "Collect123!", full_name="Collector Four", role="client",
-            email="collector@example.com",
+            email="collector@example.com", office="Records Section",
             origin="Region VIII", position="Administrative Officer II",
         )
         approve_user("collector4")
@@ -663,6 +666,7 @@ class TestResolveCollectorIdentity:
         assert rv.status_code == 200, rv.data
         body = rv.get_json()
         assert body["origin"] == "Region VIII"
+        assert body["office"] == "Records Section"
         assert body["position"] == "Administrative Officer II"
         assert body["email"] == "collector@example.com"
         # phone read is retired — the key must not appear at all.
