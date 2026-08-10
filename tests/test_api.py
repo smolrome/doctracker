@@ -620,3 +620,50 @@ class TestQrOwnershipGate:
             f"/api/qr/generate/{released_client_doc}", headers=_auth(access))
         assert rv.status_code == 200
         assert rv.get_json()["qr_base64"].startswith("data:image/png;base64,")
+
+
+# ── Collector-identity resolver: response contract (collector-fields Step 4) ────
+
+class TestResolveCollectorIdentity:
+    """The release-to-collector scanner posts a collector's client QR token to
+    /staff/resolve-collector-identity to auto-fill the capture form. Step 4 makes
+    the resolver return origin + position + email (email was a dead read before —
+    now in the SELECT) and retires the phone read (no phone column exists).
+
+    This proves the resolver RESPONSE CONTRACT in JSON mode: the fields the handler
+    whitelists onto the identity dict. The DB SELECT column list itself is NOT
+    harness-provable — conftest forces the JSON backend (DATABASE_URL=""), which
+    returns the raw user dict, so the SELECT string is exercised only on prod and
+    is verified there after deploy.
+    """
+
+    def test_resolver_returns_origin_position_email_no_phone(
+            self, api_client, staff_tokens):
+        from services.auth import create_user, approve_user
+        from services.qr import get_or_create_client_token
+
+        # A collector is just an approved client user with the profile fields set.
+        create_user(
+            "collector4", "Collect123!", full_name="Collector Four", role="client",
+            email="collector@example.com",
+            origin="Region VIII", position="Administrative Officer II",
+        )
+        approve_user("collector4")
+
+        # Mint that user's long-lived client QR token (the CLI- token the scanner
+        # reads); resolve_client_token reverses it inside the resolver.
+        token = get_or_create_client_token("collector4")
+
+        access, _ = staff_tokens
+        rv = api_client.post(
+            "/api/staff/resolve-collector-identity",
+            json={"token": token},
+            headers=_auth(access),
+        )
+        assert rv.status_code == 200, rv.data
+        body = rv.get_json()
+        assert body["origin"] == "Region VIII"
+        assert body["position"] == "Administrative Officer II"
+        assert body["email"] == "collector@example.com"
+        # phone read is retired — the key must not appear at all.
+        assert "phone" not in body
