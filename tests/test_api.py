@@ -671,3 +671,79 @@ class TestResolveCollectorIdentity:
         assert body["email"] == "collector@example.com"
         # phone read is retired — the key must not appear at all.
         assert "phone" not in body
+
+
+# ── Release action string ⇄ client_view classifier coupling (collector-fields) ──
+
+class TestReleaseActionClassifierBinding:
+    """Binds api_release_to_client's composed travel_log `action` string to the
+    client_view release classifier — the coupling test_client_view.py can't cover.
+
+    test_client_view.py exercises the classifier against HARDCODED literals, so it
+    stays green even if api_release_to_client mangles the "Released to " / " by "
+    markers the classifier keys on. This test closes that gap: it drives the REAL
+    handler, pulls the ACTUAL action string it appended to the travel_log, and runs
+    THAT string through client_view.bucket_label (the same entrypoint the client
+    history uses). If a future edit breaks either marker in the handler's f-string,
+    the string stops bucketing as the collector hand-off and this test goes RED.
+
+    Uses the env-var admin token so the office-primary-group release gate
+    (_staff_in_office_primary_group) passes without standing up saved_offices — the
+    gate is orthogonal to the marker coupling under test.
+    """
+
+    def test_real_release_action_classifies_as_collector_bucket(
+            self, api_client, admin_tokens):
+        import uuid as _uuid
+        from services.documents import insert_doc, get_doc, generate_ref, now_str
+        from services.client_view import bucket_label
+
+        doc_id = str(_uuid.uuid4())
+        insert_doc({
+            "id": doc_id,
+            "doc_id": generate_ref(),
+            "doc_name": "Release Classifier Binding Doc",
+            "category": "Memo",
+            "status": "Released",
+            "created_at": now_str(),
+            "logged_by": "apiclient",
+            "travel_log": [],
+        })
+
+        access, _ = admin_tokens
+        rv = api_client.post(
+            f"/api/documents/{doc_id}/release-to-client",
+            json={
+                "collector_name":     "Test Collector",
+                "collector_origin":   "Region VIII",
+                "collector_office":   "ICU",
+                "collector_position": "Administrative Officer II",
+            },
+            headers=_auth(access),
+        )
+        assert rv.status_code == 201, rv.data
+
+        # Pull the ACTUAL action string the handler composed and appended.
+        doc = get_doc(doc_id)
+        release_actions = [
+            e.get("action", "") for e in doc.get("travel_log", [])
+            if "released to " in (e.get("action") or "").lower()
+        ]
+        assert release_actions, (
+            "handler did not append a collector-release travel_log entry: "
+            f"{doc.get('travel_log')}"
+        )
+        action = release_actions[-1]
+
+        # The office + position we passed must be woven into the descriptor (this
+        # is the display-only enrichment) WITHOUT breaking the markers.
+        assert "ICU" in action and "Administrative Officer II" in action, action
+
+        # THE BINDING: the real string must classify as the collector hand-off.
+        # bucket_label keys on "released to " AND " by " — break either in the
+        # handler and this flips to "Released from the office" (or the fallback).
+        assert bucket_label(action) == "Released to collector", (
+            f"real handler action {action!r} did not bucket as the collector "
+            f"release — got {bucket_label(action)!r}. The 'Released to '/' by ' "
+            "markers the client_view classifier depends on are broken."
+        )
