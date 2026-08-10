@@ -166,6 +166,12 @@ Things that look wrong or removable but must not be touched without understandin
 - **Small verified steps.** One change per branch. Commit and verify before the next. Always leave the system working.
 - **Say when you don't know.** Don't assert something you haven't checked. Don't claim a check ran if it didn't.
 
+## Backlog & work-selection discipline
+- Capture before drift: when a new idea, gap, or bug surfaces mid-work, log it to BACKLOG.md immediately — before deciding whether to act on it. An idea worth doing is worth writing down the moment it appears. (You may still choose to do it now, but capture first.)
+- Choose next work by PRIORITY, not arrival order. Backlog is NOT strict FIFO — do the most important/severe item, not the oldest. A live bug or a gap affecting many users beats a nice-to-have logged earlier.
+- Before starting a new arc: review the backlog and pick deliberately. Ask "is anything logged more important than what I'm about to start?"
+- After finishing an arc: do a short "what did this touch?" check — log any gaps or affected surfaces the work exposed. Features are not done until the parts they affect (existing data, other surfaces, edit paths) are checked, not just the happy path on new data.
+
 ## BACKLOG.md discipline
 Before every commit, ask: what did this work CLOSE?
 - Fixed a filed item → tick it, move it to Closed, and add one line on what actually turned out to be wrong (often not what the entry said).

@@ -238,6 +238,26 @@ Real but narrow limitations. Things that are wrong but contained, or design deci
 
 Wanted, not broken.
 
+- [ ] **Collector-fields edit + existing-user backfill (completion of the collector-fields arc).**
+  **Priority: HIGH — affects every existing user.**
+  Context: the collector-fields arc wired CAPTURE at registration (web) + scanner auto-fill + staff
+  view, and was verified with a NEW account. But existing users (created before the arc) have blank
+  origin/office/position, and there is no confirmed complete EDIT path — especially on mobile — to
+  populate them. Surfaced as: "when we finish something we don't check the other parts that should be
+  affected."
+  Known/suspected gaps (confirm via investigation before building):
+  - **Mobile self-edit:** client profile screen sends only `full_name`; staff profile sends
+    `full_name`+`office`. Neither lets a user set origin/office/position from mobile — likely a
+    FRONTEND-only gap since the `PATCH /profile` handler was already wired server-side to accept
+    origin/position (confirm office too).
+  - **Existing-user backfill:** web admin edit-user is the likely path to populate blank fields on
+    existing users — confirm whether it supports origin/office/position or needs it added.
+  - **Web profile self-edit:** confirm it pre-fills + saves all three so existing users can
+    self-populate.
+  Approach: investigation-first — build the surface matrix (who can edit which field, web/mobile,
+  covers existing users?), then build only the missing surfaces. Server may already accept the fields;
+  some gaps may be frontend-only.
+
 - [ ] **Opaque per-client QR token** (receive-side: staff pull up a client's pending docs by scanning
   the client's QR).
   - [x] **Storage + generation.** `client_qr_tokens` table (`token` PK, `username`, `created_at`;
@@ -697,6 +717,10 @@ Non-code operator actions and housekeeping surfaced during recent work.
   `~/rename_backups/doctrack_pre_rename_20260731_214203.dump` was taken before the prod rename and is
   kept as a rollback safety net. Delete it once the rename has been confirmed stable for a few days
   (early August 2026).
+
+- [ ] **Junk `document_releases` rows with test contact (`h3h3`/`bleeh`/`jwjanaj`).** LOWER priority —
+  cosmetic cleanup. A few release rows carry throwaway test contact values. Targeted `DELETE` after
+  confirming each parent document, not a bulk wipe. (Consolidate here if noted elsewhere.)
 
 ## Closed
 
