@@ -871,8 +871,13 @@ export default function Scanner() {
       const d = res.data || {};
       setCollectorName(d.full_name || '');
       setCollectorUsername(d.username || '');
-      // Server returns email and/or phone only when present on the client record.
-      setCollectorContact(d.email || d.phone || '');
+      // Resolver omits empty keys, so origin/office/position are often undefined —
+      // the || '' guard keeps them controlled empty strings, never 'undefined'.
+      setCollectorOrigin(d.origin || '');
+      setCollectorOffice(d.office || '');
+      setCollectorPosition(d.position || '');
+      // Server returns email only when present on the client record.
+      setCollectorContact(d.email || '');
       Vibration.vibrate([0, 60, 40, 60]);
       setCollectorScanning(false); // back to the form, now pre-filled
     } catch (err: any) {
