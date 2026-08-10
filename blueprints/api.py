@@ -1870,14 +1870,23 @@ def api_release_to_client(doc_id):
     doc['updated_at']      = now_str()
     doc['updated_by']      = caller_id
 
-    origin_phrase = f' of {collector_origin}' if collector_origin else ''
+    # Staff-facing descriptor woven between {collector_name} and " by {staff_name}".
+    # Each fragment is conditional so absent fields leave no empty artifacts. NEVER
+    # collector_contact (staff/admin-only; already excluded, keep it out). The
+    # "Released to " / " by " markers MUST stay intact and in order — the client_view
+    # release classifier keys on both (services/client_view.py).
+    collector_descriptor = (
+        (f' of {collector_origin}' if collector_origin else '')
+        + (f' ({collector_office})' if collector_office else '')
+        + (f' — {collector_position}' if collector_position else '')
+    )
     doc.setdefault('travel_log', []).append({
         'office':    staff_office or doc.get('pending_at_office', ''),
-        'action':    f'Released to {collector_name}{origin_phrase} by {staff_name}',
+        'action':    f'Released to {collector_name}{collector_descriptor} by {staff_name}',
         'officer':   staff_name,
         'timestamp': now_str(),
         'remarks': (
-            f'Document physically released to collector {collector_name}{origin_phrase}'
+            f'Document physically released to collector {collector_name}{collector_descriptor}'
             + f'. Released by {staff_name}.'
         ),
     })
