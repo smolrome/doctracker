@@ -539,6 +539,21 @@ Wanted, not broken.
         `mobile/app/(client)/profile.tsx` sends `{full_name}`) still omit origin/position; that ships via
         EAS separately (deferred). Read-back into resolver/release auto-fill is still Steps 4-5 (which must
         also fix the `email` dead read above).
+      * **Step 4 DONE (resolver read-back):** `/staff/resolve-collector-identity` (blueprints/api.py) now
+        returns `origin` + `position` + `email` on the identity whitelist, so the release-to-collector
+        scanner can auto-fill them from the collector's QR. Extended `get_user_by_username`'s DB SELECT
+        with `COALESCE(origin/position/email, '') AS …` (RealDictCursor → dict keyed by alias, so no
+        positional realignment; the resolver builds an explicit whitelist and no caller spreads the dict,
+        so extending the shared SELECT is leak-safe). This **fixes the `email` dead read** flagged above
+        (email was in neither SELECT) and **retires the `phone` dead read** (no phone column ever existed;
+        email is the contact field). **The DB SELECT column list is NOT pytest-provable** — conftest forces
+        the JSON backend (`DATABASE_URL=""`), which returns the raw user dict already carrying these keys,
+        so pytest can only lock the RESPONSE CONTRACT (biting test in tests/test_api.py
+        `TestResolveCollectorIdentity`: asserts origin/position/email present, `phone` key absent). The
+        SELECT string itself is verified on prod after deploy. **Step 5 remaining:** the mobile scanner
+        (`mobile/app/(app)/scanner.tsx`) must pre-fill from the new fields —
+        `setCollectorOrigin(d.origin)` / `setCollectorPosition(d.position)` (it already reads
+        `full_name`/`username`/`email`); ships via EAS separately.
 
 - [ ] **Maintenance mode (admin toggle).** A switch the admin flips to show an "under maintenance"
   screen to everyone accessing DocTracker, with an ON indicator in the admin UI. Scope decided: blocks

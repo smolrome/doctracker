@@ -64,7 +64,13 @@ def get_user_by_username(username: str, include_password: bool = False):
         try:
             with get_conn() as conn:
                 with conn.cursor() as cur:
-                    fields = "id, username, password_hash, full_name, role, COALESCE(office, '') AS office, active, approved"
+                    fields = (
+                        "id, username, password_hash, full_name, role, "
+                        "COALESCE(office, '') AS office, active, approved, "
+                        "COALESCE(origin, '') AS origin, "
+                        "COALESCE(position, '') AS position, "
+                        "COALESCE(email, '') AS email"
+                    )
                     cur.execute(
                         f"SELECT {fields} FROM users WHERE username = %s",
                         (username.lower().strip(),),
@@ -3505,14 +3511,17 @@ def api_staff_resolve_collector_identity():
         'username': username,
         'full_name': (user.get('full_name') if user else '') or username,
     }
-    # Only surface contact fields the record actually has — don't invent keys.
+    # Only surface fields the record actually has — don't invent keys.
     if user:
+        origin = (user.get('origin') or '').strip()
+        if origin:
+            identity['origin'] = origin
+        position = (user.get('position') or '').strip()
+        if position:
+            identity['position'] = position
         email = (user.get('email') or '').strip()
         if email:
             identity['email'] = email
-        phone = (user.get('phone') or '').strip()
-        if phone:
-            identity['phone'] = phone
 
     return jsonify(serialize(identity))
 
