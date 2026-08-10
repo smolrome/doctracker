@@ -747,3 +747,108 @@ class TestReleaseActionClassifierBinding:
             f"release — got {bucket_label(action)!r}. The 'Released to '/' by ' "
             "markers the client_view classifier depends on are broken."
         )
+
+
+# ── Staff-only release history endpoint (B1) ────────────────────────────────────
+#
+# GET /api/documents/<id>/releases returns the FULL release history WITH
+# collector_contact — staff/admin only. The settled rule: staff/admin see contact,
+# clients NEVER do. Because this block carries contact, the endpoint MUST be behind
+# @jwt_staff_required (which a client JWT cannot pass), NOT the ownership-gated
+# api_get_document (which a client CAN reach for their own doc). These tests are the
+# safety net: (a) a client is refused AND sees no contact; (b) staff DO see contact.
+
+_STAFF_RELEASE_CONTACT = "collector-b1@example.com-SENTINEL"
+
+
+class TestStaffReleaseHistory:
+    def _make_released_doc(self, contact=_STAFF_RELEASE_CONTACT, n_releases=1):
+        """Insert a doc + N release rows (JSON backend) and return its id."""
+        import uuid as _uuid
+        from services.documents import insert_doc, generate_ref, now_str
+        from services.database import create_document_release
+
+        doc_id = str(_uuid.uuid4())
+        insert_doc({
+            "id": doc_id,
+            "doc_id": generate_ref(),
+            "doc_name": "Staff Release History Doc",
+            "category": "Memo",
+            "status": "Released",
+            "created_at": now_str(),
+            "logged_by": "apiclient",
+            "submitted_by": "apiclient",  # so the OWNING client can reach api_get_document
+            "travel_log": [],
+        })
+        for i in range(n_releases):
+            create_document_release(
+                doc_id, released_by="apistaff",
+                collector_name=f"Collector {i}", collector_origin="Region VIII",
+                collector_office="ICU", collector_position="Administrative Officer II",
+                collector_contact=contact,
+            )
+        return doc_id
+
+    def test_client_is_refused_and_sees_no_contact(
+            self, api_client, client_tokens, staff_tokens):
+        # staff_tokens is requested so 'apistaff' exists for released_by resolution.
+        doc_id = self._make_released_doc()
+        access, _ = client_tokens  # a role='client' JWT — must be rejected.
+        rv = api_client.get(
+            f"/api/documents/{doc_id}/releases", headers=_auth(access))
+        # jwt_staff_required refuses role='client' outright.
+        assert rv.status_code == 403, rv.data
+        # And the contact value must appear NOWHERE in the refusal body.
+        assert _STAFF_RELEASE_CONTACT not in rv.get_data(as_text=True)
+
+    def test_staff_sees_full_release_block_with_contact(
+            self, api_client, staff_tokens):
+        doc_id = self._make_released_doc()
+        access, _ = staff_tokens
+        rv = api_client.get(
+            f"/api/documents/{doc_id}/releases", headers=_auth(access))
+        assert rv.status_code == 200, rv.data
+        blocks = rv.get_json()["releases"]
+        assert len(blocks) == 1
+        b = blocks[0]
+        # Staff DO get contact — the whole point of the endpoint.
+        assert b["collector_contact"] == _STAFF_RELEASE_CONTACT
+        # ... alongside the rest of the structured record.
+        assert b["collector_origin"] == "Region VIII"
+        assert b["collector_office"] == "ICU"
+        assert b["collector_position"] == "Administrative Officer II"
+        # released_by (username 'apistaff') resolves to the full name.
+        assert b["released_by_name"] == "API Staff"
+
+    def test_multi_release_returns_all(
+            self, api_client, staff_tokens):
+        doc_id = self._make_released_doc(n_releases=2)
+        access, _ = staff_tokens
+        rv = api_client.get(
+            f"/api/documents/{doc_id}/releases", headers=_auth(access))
+        assert rv.status_code == 200, rv.data
+        blocks = rv.get_json()["releases"]
+        # A doc CAN be re-released — the endpoint returns EVERY release, not just
+        # the latest. Assert count + membership; strict newest-first order is NOT
+        # asserted here because the JSON backend stamps released_at at second
+        # resolution and sorts stably, so two releases in the same second keep
+        # insertion order. Newest-first IS guaranteed on the DB backend
+        # (ORDER BY released_at DESC), which prod runs.
+        assert len(blocks) == 2
+        assert {b["collector_name"] for b in blocks} == {"Collector 0", "Collector 1"}
+
+    def test_doc_with_no_release_returns_empty_list_200(
+            self, api_client, staff_tokens):
+        import uuid as _uuid
+        from services.documents import insert_doc, generate_ref, now_str
+        doc_id = str(_uuid.uuid4())
+        insert_doc({
+            "id": doc_id, "doc_id": generate_ref(), "doc_name": "Unreleased",
+            "category": "Memo", "status": "Received", "created_at": now_str(),
+            "logged_by": "apiclient", "travel_log": [],
+        })
+        access, _ = staff_tokens
+        rv = api_client.get(
+            f"/api/documents/{doc_id}/releases", headers=_auth(access))
+        assert rv.status_code == 200, rv.data
+        assert rv.get_json()["releases"] == []

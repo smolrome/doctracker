@@ -560,6 +560,58 @@ def api_client_get_document(doc_id):
     }))
 
 
+@api_bp.route('/documents/<doc_id>/releases', methods=['GET'])
+@jwt_staff_required
+def api_get_document_releases(doc_id):
+    """Staff/admin: the FULL release-to-collector history for a document.
+
+    The settled rule is that staff/admin see the FULL release record INCLUDING
+    collector_contact; clients never do. This is the mobile mirror of the web
+    staff detail view (routes/dashboard.py:733 + templates/detail.html), which
+    already shows the full release list WITH contact.
+
+    It MUST sit behind @jwt_staff_required — NOT api_get_document, whose guard is
+    ownership-based (@jwt_required + logged_by/submitted_by), so a CLIENT can reach
+    that endpoint for their OWN doc. @jwt_staff_required rejects role='client' with
+    403, so this contact-bearing block is unreachable by clients.
+
+    Returns every release newest-first (a doc CAN be re-released — get_document_releases
+    returns a list). A doc with no release is valid → {'releases': []}, 200 (not 404).
+    """
+    from services.auth import get_all_users
+    from services.database import get_document_releases
+
+    releases = get_document_releases(doc_id)
+    user_lookup = {u['username']: u.get('full_name') or u['username']
+                   for u in get_all_users()}
+
+    blocks = []
+    for r in releases:
+        # released_at is a datetime in DB mode, an ISO string in JSON mode —
+        # normalise to a readable "YYYY-MM-DD HH:MM" either way (mirrors the client
+        # block and the web detail view).
+        ra = r.get('released_at')
+        if hasattr(ra, 'strftime'):
+            released_at = ra.strftime('%Y-%m-%d %H:%M')
+        else:
+            released_at = str(ra or '').replace('T', ' ')[:16]
+        released_by = r.get('released_by', '')
+        # Explicit whitelist — mirrors the client release_block but KEEPS
+        # collector_contact (staff/admin-only). NEVER spread the raw row, so an
+        # unexpected column can't leak through.
+        blocks.append({
+            'collector_name':     r.get('collector_name'),
+            'collector_origin':   r.get('collector_origin'),
+            'collector_office':   r.get('collector_office'),
+            'collector_position': r.get('collector_position'),
+            'collector_contact':  r.get('collector_contact'),
+            'released_at':        released_at,
+            'released_by_name':   user_lookup.get(released_by, released_by or ''),
+        })
+
+    return jsonify(serialize({'releases': blocks}))
+
+
 @api_bp.route('/documents', methods=['POST'])
 @jwt_staff_required
 def api_create_document():
