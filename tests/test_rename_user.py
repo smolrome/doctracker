@@ -134,7 +134,16 @@ class TestRenameUser:
         (tmp_path / "office_traffic.json").write_text(json.dumps(
             [{"id": 1, "client_username": "oldname"}]))
         (tmp_path / "appointments.json").write_text(json.dumps(
-            [{"id": "APT-1", "client_username": "oldname"}]))
+            [{"id": "APT-1", "client_username": "oldname",
+              "assigned_to": "oldname", "assigned_to_name": "Old Full Name"}]))
+        # document_releases.json — oldname appears as BOTH the collector and the
+        # releaser on one row; a second row belongs to a different user and must
+        # be left untouched (proves the rewrite is scoped, not blanket).
+        (tmp_path / "document_releases.json").write_text(json.dumps(
+            [{"id": 1, "document_id": "D1", "collector_username": "oldname",
+              "released_by": "oldname", "collector_name": "Old Full Name"},
+             {"id": 2, "document_id": "D2", "collector_username": "someoneelse",
+              "released_by": "someoneelse", "collector_name": "Someone Else"}]))
         (tmp_path / "pending_carts.json").write_text(json.dumps(
             {"oldname": [{"doc": 1}], "keepme": [{"doc": 2}]}))
 
@@ -200,7 +209,16 @@ class TestRenameUser:
         slip = json.loads((tmp_path / "routing_slips.json").read_text())[0]
         assert slip["prepared_by"] == "newname" and slip["archived_by"] == "newname"
         assert json.loads((tmp_path / "office_traffic.json").read_text())[0]["client_username"] == "newname"
-        assert json.loads((tmp_path / "appointments.json").read_text())[0]["client_username"] == "newname"
+        apt = json.loads((tmp_path / "appointments.json").read_text())[0]
+        assert apt["client_username"] == "newname"
+        # assigned_to (username) and assigned_to_name (full_name, fn-safe) follow.
+        assert apt["assigned_to"] == "newname"
+        assert apt["assigned_to_name"] == "New Full Name"
+        # document_releases: both the collector and releaser refs on row 1 follow;
+        # the other user's row is untouched.
+        rels = {r["id"]: r for r in json.loads((tmp_path / "document_releases.json").read_text())}
+        assert rels[1]["collector_username"] == "newname" and rels[1]["released_by"] == "newname"
+        assert rels[2]["collector_username"] == "someoneelse" and rels[2]["released_by"] == "someoneelse"
         carts = json.loads((tmp_path / "pending_carts.json").read_text())
         assert "oldname" not in carts and carts["newname"] == [{"doc": 1}] and carts["keepme"] == [{"doc": 2}]
 
@@ -214,7 +232,10 @@ class TestRenameUser:
         assert summary["documents_updated"] == 12
         assert summary["activity_log_updated"] == 1
         assert summary["routing_slips_updated"] == 2
-        assert summary["appointments_updated"] == 1
+        # appointments: client_username(1) + assigned_to(1) + assigned_to_name(1, fn-safe) = 3
+        assert summary["appointments_updated"] == 3
+        # document_releases: collector_username(1) + released_by(1) on row 1 = 2
+        assert summary["document_releases_updated"] == 2
         assert summary["user_carts_updated"] == 1
         assert summary["users_updated"] == 1
         # DB-only surfaces stay 0 in JSON mode
@@ -338,6 +359,53 @@ class TestRenameUser:
         assert office["created_by"] == "newname"
         # Field-level count: created_by + primary_recipient both hit → 2.
         assert summary["saved_offices_updated"] == 2
+
+    def test_document_releases_both_columns_rewritten(self, tmp_path, monkeypatch):
+        """Orphan-fix lock: a rename must rewrite BOTH document_releases username
+        columns in the same row — released_by (the staff releaser, accountability
+        anchor) AND collector_username (the collector) — mirroring the
+        saved_offices created_by+primary_recipient sibling-pairing proof. Before
+        this fix rename_user omitted document_releases entirely, orphaning the
+        release audit trail on rename."""
+        self._seed(tmp_path, monkeypatch)
+        from services.auth import rename_user
+        # One row where the renamed user is BOTH the collector AND the releaser.
+        (tmp_path / "document_releases.json").write_text(json.dumps(
+            [{"id": 9, "document_id": "DX", "collector_username": "oldname",
+              "released_by": "oldname", "collector_name": "Old Full Name"}]))
+
+        ok, err, summary = rename_user("oldname", "newname", "Old Full Name", "New Full Name")
+        assert ok is True, err
+
+        rel = json.loads((tmp_path / "document_releases.json").read_text())[0]
+        # BOTH columns now point at the new username — neither stale, neither blanked.
+        assert rel["collector_username"] == "newname"
+        assert rel["released_by"] == "newname"
+        assert "oldname" not in (rel["collector_username"], rel["released_by"])
+        # Field-level count: collector_username + released_by both hit → 2.
+        assert summary["document_releases_updated"] == 2
+
+    def test_other_persons_release_and_assignment_not_touched(self, tmp_path, monkeypatch):
+        """A different person's document_releases row AND appointments.assigned_to
+        must be left alone — only the renamed user's refs change (mirrors
+        test_other_persons_history_not_touched for the newly-covered surfaces)."""
+        self._seed(tmp_path, monkeypatch)
+        from services.auth import rename_user
+        # Bystander-only rows under BOTH new surfaces.
+        (tmp_path / "document_releases.json").write_text(json.dumps(
+            [{"id": 7, "document_id": "DB", "collector_username": "bystander",
+              "released_by": "bystander", "collector_name": "By Stander"}]))
+        (tmp_path / "appointments.json").write_text(json.dumps(
+            [{"id": "APT-B", "client_username": "bystander",
+              "assigned_to": "bystander", "assigned_to_name": "By Stander"}]))
+
+        ok, err, _ = rename_user("oldname", "newname", "Old Full Name", "New Full Name")
+        assert ok is True, err
+
+        rel = json.loads((tmp_path / "document_releases.json").read_text())[0]
+        assert rel["collector_username"] == "bystander" and rel["released_by"] == "bystander"
+        apt = json.loads((tmp_path / "appointments.json").read_text())[0]
+        assert apt["assigned_to"] == "bystander" and apt["assigned_to_name"] == "By Stander"
 
     def test_casing_drift_full_name_still_rewritten(self, tmp_path, monkeypatch):
         """THE Step 2.5 Change B proof — mirrors the real Kim data. users.full_name

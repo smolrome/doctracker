@@ -570,7 +570,10 @@ def delete_user(username: str):
 _HISTORY_DB_TABLES = (
     ("document_releases",   ("collector_username", "released_by")),
     ("activity_log",        ("username",)),
-    ("routing_slips",       ("prepared_by", "archived_by", "rerouted_to", "rerouted_from")),
+    # rerouted_to/rerouted_from hold OFFICE destination strings, not usernames
+    # (routes/offices.py sets them to new/old_destination), so a username never
+    # matches them — they are deliberately NOT in this list.
+    ("routing_slips",       ("prepared_by", "archived_by")),
     ("transfer_batches",    ("transferred_by", "transferred_to")),
     ("so_records",          ("generated_by",)),
     ("office_traffic",      ("client_username",)),
@@ -653,7 +656,7 @@ def _user_has_history_json(uname: str) -> bool:
     list_files = (
         ("document_releases.json", ("collector_username", "released_by")),
         ("activity_log.json",      ("username",)),
-        ("routing_slips.json",     ("prepared_by", "archived_by", "rerouted_to", "rerouted_from")),
+        ("routing_slips.json",     ("prepared_by", "archived_by")),  # rerouted_* are offices, not usernames
         ("office_traffic.json",    ("client_username",)),
         (_APT_FILE,                ("client_username", "assigned_to")),
     )
@@ -1175,8 +1178,25 @@ def rename_user(old_username: str, new_username: str,
                     cur.execute("UPDATE office_traffic SET client_username = %s WHERE client_username = %s", (new, old))
                     summary["office_traffic_updated"] = cur.rowcount
 
+                    appts = 0
                     cur.execute("UPDATE appointments SET client_username = %s WHERE client_username = %s", (new, old))
-                    summary["appointments_updated"] = cur.rowcount
+                    appts += cur.rowcount
+                    # assigned_to is the staff username an appointment is assigned
+                    # to (dashboard.py staff_confirm_appointment) — a real ref that
+                    # goes stale on rename, so rewrite it too.
+                    cur.execute("UPDATE appointments SET assigned_to = %s WHERE assigned_to = %s", (new, old))
+                    appts += cur.rowcount
+                    # assigned_to_name is the full_name display companion (twin of
+                    # transferred_to_name), so it takes the SAME fn_safe uniqueness
+                    # gate + case-insensitive match, writing the new canonical name.
+                    if fn_safe:
+                        cur.execute(
+                            "UPDATE appointments SET assigned_to_name = %s "
+                            "WHERE lower(assigned_to_name) = lower(%s)",
+                            (new_fn, old_fn),
+                        )
+                        appts += cur.rowcount
+                    summary["appointments_updated"] = appts
 
                     cur.execute("UPDATE so_records SET generated_by = %s WHERE generated_by = %s", (new, old))
                     summary["so_records_updated"] = cur.rowcount
@@ -1224,6 +1244,19 @@ def rename_user(old_username: str, new_username: str,
 
                     cur.execute("UPDATE import_batches SET imported_by = %s WHERE imported_by = %s", (new, old))
                     summary["import_batches_updated"] = cur.rowcount
+
+                    # document_releases — the release-to-collector audit trail.
+                    # released_by is the staff releaser (accountability anchor);
+                    # collector_username is the collector (nullable). Independent
+                    # username refs, so both need rewriting on a rename of either
+                    # party. NOT in _RENAME_DOC_KEYS (that's documents.data only),
+                    # so it must be rewritten explicitly here.
+                    rel = 0
+                    cur.execute("UPDATE document_releases SET collector_username = %s WHERE collector_username = %s", (new, old))
+                    rel += cur.rowcount
+                    cur.execute("UPDATE document_releases SET released_by = %s WHERE released_by = %s", (new, old))
+                    rel += cur.rowcount
+                    summary["document_releases_updated"] = rel
 
                     # Token tables keyed on their token (client_qr_tokens.token,
                     # password_reset_tokens.token_hash), with username as a plain
@@ -1290,6 +1323,35 @@ def _json_rewrite_list(path: str, fields: tuple, old: str, new: str) -> int:
         for fld in fields:
             if row.get(fld) == old:
                 row[fld] = new
+                changed += 1
+    if changed:
+        _atomic_write_json(path, rows)
+    return changed
+
+
+def _json_rewrite_list_fn(path: str, fields: tuple, old_fn_lower: str, new_fn: str) -> int:
+    """Full_name-companion twin of _json_rewrite_list: rewrite each field in
+    `fields` whose value CASE-INSENSITIVELY equals `old_fn_lower` → `new_fn`
+    (the new canonical display name). Used for the fn_safe display columns
+    (e.g. appointments.assigned_to_name), mirroring the DB path's lower()=lower()
+    rewrite. Missing file / decode error / non-list → 0."""
+    if not os.path.exists(path):
+        return 0
+    try:
+        with open(path) as f:
+            rows = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return 0
+    if not isinstance(rows, list):
+        return 0
+    changed = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        for fld in fields:
+            val = row.get(fld)
+            if isinstance(val, str) and val.lower() == old_fn_lower:
+                row[fld] = new_fn
                 changed += 1
     if changed:
         _atomic_write_json(path, rows)
@@ -1396,7 +1458,17 @@ def _rename_user_json(old: str, new: str, old_fn: str, new_fn: str,
         summary["saved_offices_updated"]  = _json_rewrite_list("saved_offices.json",  ("created_by", "primary_recipient"), old, new)
         summary["routing_slips_updated"]  = _json_rewrite_list("routing_slips.json",  ("prepared_by", "archived_by"), old, new)
         summary["office_traffic_updated"] = _json_rewrite_list("office_traffic.json", ("client_username",),  old, new)
-        summary["appointments_updated"]   = _json_rewrite_list(_APT_FILE,             ("client_username",),  old, new)
+        # appointments: client_username + assigned_to are exact-username refs;
+        # assigned_to_name is the full_name companion, rewritten only when the old
+        # full_name is unique (fn_safe), case-insensitive — mirrors the DB path.
+        appts = _json_rewrite_list(_APT_FILE, ("client_username", "assigned_to"), old, new)
+        if fn_safe:
+            appts += _json_rewrite_list_fn(_APT_FILE, ("assigned_to_name",), old_fn_lower, new_fn)
+        summary["appointments_updated"] = appts
+        # document_releases.json exists in JSON mode (create_document_release has a
+        # JSON fallback). Both columns are exact-username refs.
+        summary["document_releases_updated"] = _json_rewrite_list(
+            "document_releases.json", ("collector_username", "released_by"), old, new)
         # staff_*/transfer_batches/import_batches/so_records/push_tokens: DB-only,
         # no JSON file — counters intentionally remain 0 here.
         # client_qr_tokens.json and password_reset_tokens.json DO exist in JSON
