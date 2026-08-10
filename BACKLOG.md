@@ -550,10 +550,62 @@ Wanted, not broken.
         the JSON backend (`DATABASE_URL=""`), which returns the raw user dict already carrying these keys,
         so pytest can only lock the RESPONSE CONTRACT (biting test in tests/test_api.py
         `TestResolveCollectorIdentity`: asserts origin/position/email present, `phone` key absent). The
-        SELECT string itself is verified on prod after deploy. **Step 5 remaining:** the mobile scanner
-        (`mobile/app/(app)/scanner.tsx`) must pre-fill from the new fields —
-        `setCollectorOrigin(d.origin)` / `setCollectorPosition(d.position)` (it already reads
-        `full_name`/`username`/`email`); ships via EAS separately.
+        SELECT string itself is verified on prod after deploy.
+      * **Step 5a DONE (resolver office):** the resolver now also returns `office` on the identity
+        whitelist (blueprints/api.py), mirroring the origin/position blocks. `office` was already in
+        `get_user_by_username`'s SELECT (`COALESCE(office,'') AS office`) but the whitelist never copied
+        it — so this is a resolver-only change, no SELECT edit. Because office is already selected, its
+        response contract IS JSON-provable: the biting test (tests/test_api.py
+        `TestResolveCollectorIdentity`) now also sets `office="Records Section"` on the collector and
+        asserts `body["office"]` — alongside the existing origin/position/email present + `phone` absent.
+        **Step 5b remaining:** the mobile scanner (`mobile/app/(app)/scanner.tsx`) must pre-fill from the
+        resolved fields — `setCollectorOrigin(d.origin || '')` / `setCollectorOffice(d.office || '')` /
+        `setCollectorPosition(d.position || '')` in the `handleCollectorScan` response block (it already
+        reads `full_name`/`username`/`email→contact`, and the state + setters all exist); ships via EAS
+        separately. Two-sided rollout: this resolver change ships with the web/prod deploy, the scanner
+        with EAS — until both land, `d.office` reads `undefined` harmlessly (the `|| ''` guard).
+
+- [ ] **Client web QR display (parity with mobile).** The client-facing web system has no way to show
+  a client their own QR code — it exists only in the mobile app (the `mobile/app/(client)` QR screen).
+  Surfaced during collector-fields Step 4 prod verification: there was no way to display a collector's
+  QR from the web in order to scan it. **This is its own arc, NOT part of collector-fields.**
+  Scope: add a client web page/section that renders the logged-in client's own QR, reusing the exact
+  token the mobile app uses — `services.qr.get_or_create_client_token` / the existing `CLI-` token +
+  `resolve_client_token` pair (same signing key, so a web-displayed QR resolves identically to the
+  mobile one). Security notes for when it's built:
+  1. **Self-only** — a client sees only their OWN QR; the token is derived from the session identity,
+     **never** from a request parameter.
+  2. **No new secret exposure** — the QR encodes the `CLI-` token, which is already the mobile
+     contract; nothing new is surfaced.
+  3. **Render server-side or via a trusted client-side QR lib** — no external CDN (per project
+     constraints; same rule the artifact/CSP discipline follows).
+  Status: deferred, not started. Its own investigation-first arc when picked up.
+
+- [ ] **Client-initiated release-request QR.** New flow idea. Instead of the collector showing a
+  static identity QR, the client taps "request release" on a specific document they submitted; the app
+  generates a QR encoding that document + release request; staff scans it and the release process
+  continues. Nicer UX than typing / looking up the doc at release time. **This is its own arc — NOT
+  part of collector-fields, and distinct from the "Client web QR display" entry above (that one shows a
+  static identity QR; this one is a document-scoped authorization action).**
+  Status: **deferred, NOT started. Design-first arc — needs a design pass BEFORE any investigation or
+  code.** Open design questions, resolve before building:
+  1. **Authorization model** — the QR advances a document's state, so it is an **AUTHORIZATION
+     artifact, not just identity**. The server must **NEVER** trust the QR alone: on scan it must
+     re-verify server-side that the requesting client actually owns the document AND that the document
+     is in a releasable state. The UI/QR is convenience; enforcement is server-side.
+  2. **Replay / expiry** — can a request QR be scanned twice to release twice? Needs single-use or
+     state-guarded consumption, and likely a short expiry.
+  3. **Ownership** — can a client request release of a document that isn't theirs? The server must bind
+     the request to the authenticated client's identity, **never** a request param.
+  4. **State machine** — what state does the document move to on request vs. on staff scan? What
+     happens if the client requests but never appears, or staff scans but can't locate the physical
+     doc? Define the states and the abort/expire paths.
+  5. **Relationship to collector-fields** — does this new QR also carry collector profile fields
+     (origin/office/position), or does it reuse the existing resolver? Decide whether it supersedes or
+     complements the collector identity QR.
+  Reuse note: likely builds on the existing `services.qr` token infrastructure (signed tokens,
+  `resolve_client_token`) but with a **document-scoped, single-use, authorization-bearing token — a NEW
+  token type, not the existing long-lived `CLI-` identity token.**
 
 - [ ] **Maintenance mode (admin toggle).** A switch the admin flips to show an "under maintenance"
   screen to everyone accessing DocTracker, with an ON indicator in the admin UI. Scope decided: blocks
