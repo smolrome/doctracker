@@ -558,6 +558,152 @@ def delete_user(username: str):
         )
 
 
+# ── Footprint check for safe user deletion ──────────────────────────────────
+# Tables whose rows constitute real, must-preserve HISTORY. If the username
+# appears in ANY of these, a hard DELETE FROM users (which has no cascade) would
+# orphan an audit/history record, so the delete route BLOCKS and steers the
+# admin to DISABLE instead. Throwaway tables (client_qr_tokens, push_tokens,
+# user_carts, password_reset_tokens, password_reset_rate_limits) are deliberately
+# EXCLUDED — a user present only there is still clean to delete.
+# document_releases is included EXPLICITLY: rename_user's sweep omits it, so it
+# must be named here or a released-to/released-by actor would slip the gate.
+_HISTORY_DB_TABLES = (
+    ("document_releases",   ("collector_username", "released_by")),
+    ("activity_log",        ("username",)),
+    ("routing_slips",       ("prepared_by", "archived_by", "rerouted_to", "rerouted_from")),
+    ("transfer_batches",    ("transferred_by", "transferred_to")),
+    ("so_records",          ("generated_by",)),
+    ("office_traffic",      ("client_username",)),
+    ("appointments",        ("client_username", "assigned_to")),
+    ("saved_offices",       ("created_by", "primary_recipient")),
+    ("staff_group_members", ("username", "added_by")),
+    ("staff_groups",        ("created_by",)),
+    ("staff_pairings",      ("user_a", "user_b", "created_by")),
+    ("import_batches",      ("imported_by",)),
+)
+
+
+def user_has_history(username: str) -> bool:
+    """True if `username` appears in any must-preserve history surface.
+
+    Used by the admin delete-user route to BLOCK a hard delete that would orphan
+    an audit record (steering the admin to disable instead). Short-circuits on
+    the FIRST hit — never counts. FAILS CLOSED: any DB error returns True (block)
+    rather than risk allowing an unsafe delete. Dual-backend; in JSON mode the
+    DB-only tables simply have no file and contribute no hit.
+    """
+    uname = (username or "").lower().strip()
+    if not uname:
+        return False
+    if USE_DB:
+        try:
+            like = f"%{uname}%"
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    # documents.data — JSONB actors + travel_log[].officer. A
+                    # substring match is a deliberate safe superset: over-matching
+                    # only ever BLOCKS a delete, never allows an unsafe one.
+                    cur.execute("SELECT 1 FROM documents WHERE data::text LIKE %s LIMIT 1", (like,))
+                    if cur.fetchone():
+                        return True
+                    for table, cols in _HISTORY_DB_TABLES:
+                        where = " OR ".join(f"{c} = %s" for c in cols)
+                        try:
+                            cur.execute(
+                                f"SELECT 1 FROM {table} WHERE {where} LIMIT 1",
+                                tuple(uname for _ in cols),
+                            )
+                        except Exception:
+                            # Table/column absent in this deployment: the failing
+                            # statement poisons the txn, so roll back and treat
+                            # this surface as no-hit rather than crash.
+                            conn.rollback()
+                            continue
+                        if cur.fetchone():
+                            return True
+            return False
+        except Exception:
+            # Cannot confirm clean → fail CLOSED (block the delete).
+            return True
+    return _user_has_history_json(uname)
+
+
+def _user_has_history_json(uname: str) -> bool:
+    """JSON-backend footprint scan. Missing files/tables contribute no hit, so a
+    DB-only surface (staff_*, transfer_batches, import_batches) is skipped by
+    absence. document_releases.json DOES exist in JSON mode (create_document_release
+    has a JSON fallback), so it is scanned here too."""
+    # documents.json — actor keys + travel_log officers. Reuse rename_user's
+    # unambiguous actor-key inventory (a safe superset of the named block-list).
+    try:
+        from services.documents import load_docs
+        for d in load_docs(include_deleted=True):
+            for key in _RENAME_DOC_KEYS:
+                if d.get(key) == uname:
+                    return True
+            for hop in d.get("travel_log", []) or []:
+                if isinstance(hop, dict) and hop.get("officer") == uname:
+                    return True
+    except Exception:
+        pass
+    try:
+        from services.appointments import _APT_FILE
+    except Exception:
+        _APT_FILE = "appointments.json"
+    list_files = (
+        ("document_releases.json", ("collector_username", "released_by")),
+        ("activity_log.json",      ("username",)),
+        ("routing_slips.json",     ("prepared_by", "archived_by", "rerouted_to", "rerouted_from")),
+        ("office_traffic.json",    ("client_username",)),
+        (_APT_FILE,                ("client_username", "assigned_to")),
+    )
+    for path, fields in list_files:
+        if _json_list_has_value(path, fields, uname):
+            return True
+    # saved_offices.json is a DICT keyed by office slug, not a list.
+    if _saved_offices_json_has_user(uname):
+        return True
+    return False
+
+
+def _json_list_has_value(path: str, fields: tuple, uname: str) -> bool:
+    """True if any row in the list[dict] JSON file at `path` has one of `fields`
+    equal to `uname`. Missing file / decode error / non-list → False (no hit)."""
+    if not os.path.exists(path):
+        return False
+    try:
+        with open(path) as f:
+            rows = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return False
+    if not isinstance(rows, list):
+        return False
+    for row in rows:
+        if isinstance(row, dict) and any(row.get(fld) == uname for fld in fields):
+            return True
+    return False
+
+
+def _saved_offices_json_has_user(uname: str) -> bool:
+    """saved_offices.json is a dict {slug: {created_by, primary_recipient, ...}}."""
+    path = "saved_offices.json"
+    if not os.path.exists(path):
+        return False
+    try:
+        with open(path) as f:
+            offices = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return False
+    if not isinstance(offices, dict):
+        return False
+    for rec in offices.values():
+        if isinstance(rec, dict) and (
+            rec.get("created_by") == uname or rec.get("primary_recipient") == uname
+        ):
+            return True
+    return False
+
+
 def update_user_password(username: str, new_password: str) -> tuple[bool, str | None]:
     """Update a user's password. FIX 5: enforces minimum length of 8 chars."""
     # FIX 5: raised from 1 to 8 to match registration requirement
