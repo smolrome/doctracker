@@ -3516,6 +3516,9 @@ def api_staff_resolve_collector_identity():
         origin = (user.get('origin') or '').strip()
         if origin:
             identity['origin'] = origin
+        office = (user.get('office') or '').strip()
+        if office:
+            identity['office'] = office
         position = (user.get('position') or '').strip()
         if position:
             identity['position'] = position
