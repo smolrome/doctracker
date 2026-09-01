@@ -724,6 +724,23 @@ Non-code operator actions and housekeeping surfaced during recent work.
 
 ## Closed
 
+- [x] **~~SO download returned `{"error":"Invalid filename"}` for any non-ASCII employee name (Cariño, Peña, Muñoz).~~**
+  Consistent failure for a whole class of names. **Root cause: an ASCII-only download guard fighting a
+  Unicode filename builder.** The filename builder ([routes/so.py:935](routes/so.py:935)) used
+  `re.sub(r'[^\w\s]', '', name)` — in Python 3 `\w` is Unicode-aware, so it *keeps* `ñ`/`é`, and
+  `.upper()` produced `Ñ`. The download route then rejected its own output with
+  `re.match(r"^SO_[A-Z0-9_]+\.docx$", filename)` — `[A-Z0-9_]` is ASCII-only, so `Ñ` never matched.
+  Plain-ASCII names ("John Smith") passed; anything accented failed every time.
+  **Fix (Option C): serve by id, not by URL filename.** New `GET /api/so/download/<int:record_id>`
+  looks up the `so_records` row, uses the **stored `file_path`** (no more filename re-glob), verifies
+  path-containment inside the allowed SO dirs (traversal guard now runs on *our* stored path, not on
+  user input), and sends with `download_name=` so Flask RFC-5987-encodes the Unicode name in
+  `Content-Disposition`. The old ASCII-filename route is **removed** (dead attack surface, and the exact
+  buggy path). All 4 web callers moved to id-based links; mobile/emails never consumed this route.
+  Fixes **existing** SOs too — serving by id ignores the on-disk Unicode name. Locked by
+  [tests/test_so_download.py](tests/test_so_download.py) incl. a Cariño download, proven to bite
+  red-then-green against the reintroduced old guard. Baseline held: 14 failed / 424 passed / 1 skipped.
+
 - [x] **~~`rename_user` missed 3 username-bearing columns — one caused silent document misrouting.~~**
   A column-by-column audit (prompted by live device testing of the client-QR receive feature) found
   `rename_user` ([services/auth.py](services/auth.py)) rewrote ~15 surfaces but **missed three**:

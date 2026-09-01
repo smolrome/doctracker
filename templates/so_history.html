@@ -96,7 +96,9 @@
           {% if r.id %}
           <a href="/so/view/{{ r.id }}" class="sh-btn sh-btn-view">👁 View</a>
           {% endif %}
-          <a href="/api/so/download/{{ r.filename }}" class="sh-btn sh-btn-download">⬇ Download</a>
+          {% if r.id %}
+          <a href="/api/so/download/{{ r.id }}" class="sh-btn sh-btn-download">⬇ Download</a>
+          {% endif %}
           {% if current_role == 'admin' and r.id %}
           <button class="sh-btn sh-btn-delete" onclick="confirmDelete({{ r.id }}, '{{ r.employee_full_name | replace("'", "\\'") }}')">🗑 Delete</button>
           {% endif %}

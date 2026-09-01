@@ -979,43 +979,93 @@ def so_generate():
         return jsonify({
             "success":      True,
             "filename":     filename,
-            "download_url": url_for("so.so_download", filename=filename),
+            "download_url": (
+                url_for("so.so_download", record_id=record_id) if record_id else None
+            ),
         })
 
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-@so_bp.route("/api/so/download/<filename>")
+def _so_allowed_roots():
+    """Directories a served SO file is permitted to live under.
+
+    The traversal guard is enforced against OUR stored file_path (never against
+    user input), so it lists exactly the roots _get_output_dir() writes into.
+    """
+    roots = [os.path.abspath("so_output")]
+    if _IS_SERVER:
+        roots.append(os.path.abspath("/home/itpersonnelunit/so_documents"))
+    return roots
+
+
+def _fetch_so_record(record_id):
+    """Return the so_records row (as a dict) for record_id, or None."""
+    try:
+        from services.database import USE_DB, get_conn
+        if not USE_DB:
+            return None
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM so_records WHERE id = %s", (record_id,))
+                row = cur.fetchone()
+                return dict(row) if row else None
+    except Exception:
+        return None
+
+
+@so_bp.route("/api/so/download/<int:record_id>")
 @login_required
 @staff_required
-def so_download(filename):
-    """Serve the generated .docx file for download."""
+def so_download(record_id):
+    """Serve a generated SO .docx by its so_records id.
+
+    Serving by id (not by a user-supplied filename) means the Unicode display
+    name (Ñ, é, …) never has to survive an ASCII filename guard: it rides in the
+    Content-Disposition header via send_file(download_name=...), which Flask
+    RFC-5987-encodes. Path safety is enforced by containment-checking OUR stored
+    file_path against the allowed SO output roots — not by validating input.
+    """
     guard = _require_staff()
     if guard:
         return guard
     if session.get("role") not in ("staff", "admin"):
         return jsonify({"error": "Unauthorized"}), 403
 
-    # Only allow filenames that match the generator's pattern
-    if not re.match(r"^SO_[A-Z0-9_]+\.docx$", filename):
-        return jsonify({"error": "Invalid filename"}), 400
+    row = _fetch_so_record(record_id)
+    if not row:
+        return jsonify({"error": "Not found"}), 404
 
-    import glob as _glob
-    search_paths = []
-    if _IS_SERVER:
-        search_paths += _glob.glob(f"/home/itpersonnelunit/so_documents/**/{filename}", recursive=True)
-    search_paths += _glob.glob(os.path.join("so_output", "**", filename), recursive=True)
-    search_paths.append(os.path.join("so_output", filename))
+    stored_path = row.get("file_path")
+    if not stored_path:
+        return jsonify({"error": "File not found"}), 404
+    download_name = row.get("filename") or f"SO_{record_id}.docx"
 
-    filepath = next((p for p in search_paths if os.path.exists(p)), None)
-    if not filepath:
+    # Defensive containment: resolve OUR stored path and confirm it stays inside
+    # an allowed root. Stored paths should always be safe; verify anyway.
+    resolved = os.path.realpath(os.path.abspath(stored_path))
+    roots = [os.path.realpath(r) for r in _so_allowed_roots()]
+    if not any(resolved == r or resolved.startswith(r + os.sep) for r in roots):
+        try:
+            from services.misc import audit_log
+            audit_log(
+                "so_download_blocked",
+                f"record_id={record_id} path_escape={resolved}",
+                username=session.get("username", "?"),
+                ip=get_client_ip(),
+            )
+        except Exception:
+            pass
+        return jsonify({"error": "Invalid path"}), 403
+
+    if not os.path.exists(resolved):
         return jsonify({"error": "File not found"}), 404
 
     return send_file(
-        os.path.abspath(filepath),
+        resolved,
         as_attachment=True,
-        download_name=filename,
+        download_name=download_name,
         mimetype=(
             "application/vnd.openxmlformats-officedocument"
             ".wordprocessingml.document"

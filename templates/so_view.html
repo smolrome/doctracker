@@ -198,7 +198,9 @@
     </div>
 
     <div class="sv-card-footer">
-      <a href="/api/so/download/{{ record.filename }}" class="sv-btn sv-btn-download">⬇ Download</a>
+      {% if record.id %}
+      <a href="/api/so/download/{{ record.id }}" class="sv-btn sv-btn-download">⬇ Download</a>
+      {% endif %}
       <a href="/so-history" class="sv-btn sv-btn-back">← Back to History</a>
     </div>
 
